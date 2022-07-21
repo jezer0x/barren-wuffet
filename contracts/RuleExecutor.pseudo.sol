@@ -3,10 +3,13 @@ pragma solidity ^0.8.9;
 
 // Import this file to use console.log
 import "hardhat/console.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 
-contract RuleExecutor{
+contract RuleExecutor is Ownable {
     
+    // If Trigger and Action are update, the HashRule needs to be updated
     struct Trigger {
         // eg. asset,price,gt
         string param;
@@ -14,8 +17,7 @@ contract RuleExecutor{
         string op;
     }
 
-    struct Action {
-        // ?? 
+    struct Action {        
         string action; // eg. swapUni        
         string[] params;  // key value pairs to be added to the contract call.
 
@@ -56,13 +58,13 @@ contract RuleExecutor{
     string[] allowedActions = ["uniswap", "dopex"];
     
     struct TriggerFeed {
-        string dataSource;
+        address dataSource;
         string fn;
         string[] params;
     }
 
     struct ActionCall {
-        string _contract;
+        address callee;
         string fn;
         string[][] fixedParams; // array of key, value tuples
         string[] customParams; // list of keys that can be inserted at runtime
@@ -74,38 +76,73 @@ contract RuleExecutor{
     mapping(string => ActionCall) actionCalls;
 
     string[] ops = ["gt", "eq", "lt"]; // gt, eq, lt
-    
-    function onlyOwner() private;
-    
+        
     constructor(uint _unlockTime) {
         // can have multiple, and we find median. This is a standard oracle call we can extend
-        triggerFeeds["eth"] = [TriggerFeed(dataSource="0xfoobarChainlinkfeed", fn= "abicall", params=[("token", "eth")])];
-        triggerFeeds["uni"] = [TriggerFeed(dataSource="0xfoobarChainlinkfeed", fn= "abicall", params=[("token", "uni")])];
-        triggerFeeds["wbtc"] = [TriggerFeed(dataSource="0xfoobarChainlinkfeed", fn= "abicall", params=[("token", "wbtc")])];
+        triggerFeeds["eth"] = [TriggerFeed({
+            dataSource:"0xfoobarChainlinkfeed", 
+            fn:"abicall", 
+            params:[("token", "eth")]
+        })];
+        triggerFeeds["uni"] = [TriggerFeed({
+            dataSource:"0xfoobarChainlinkfeed", 
+            fn:"abicall", 
+            params:[("token", "uni")]
+        })];
+        triggerFeeds["wbtc"] = [TriggerFeed({
+            dataSource:"0xfoobarChainlinkfeed", 
+            fn:"abicall", 
+            params:[("token", "wbtc")]
+        })];
 
         // can have multiple, they are executed in order
         // It seems like we will eventually need a library contract that wraps the functionality and exposes a common interface        
-        actionCalls["swapUni"] = [ActionCall(_contract="0xfoobaruniswapcontract", fn="abicallswap", fixedParams=[("slippage", 0.001)])];
-        actionCalls["swapSushi"] = [ActionCall(dataSource="0xfoobarSushiswapcontract", fn= "abicallswap", fixedParams=[("slippage", 0.001)])];
-        actionCalls["buyOptionDopex"] = [ActionCall(dataSource="0xfoobarDopexContract", fn= "abicalloption", fixedParams=[("slippage", 0.001)])];
+        actionCalls["swapUni"] = [ActionCall({
+            callee:"0xfoobaruniswapcontract", 
+            fn:"abicallswap", 
+            fixedParams:[("slippage", 0.001)]
+        })];
+        actionCalls["swapSushi"] = [ActionCall({
+            callee:"0xfoobarsushipcontract", 
+            fn:"abicallswap", 
+            fixedParams:[("slippage", 0.001)]
+        })];
+        actionCalls["buyOptionDopex"] = [ActionCall({
+            callee:"0xfoobardopexcontract", 
+            fn:"abicallswap", 
+            fixedParams:[("slippage", 0.001)]
+        })];
     }
 
-    function addAllowedActionCalls(string action, address _contract, string fn, string[] params) public onlyOwner {
-        actionCalls[param] = [ActionCall(dataSource=dataSource, fn=fn, fixedParams=params)];
+    function addAllowedActionCalls(string action, address callee, string fn, string[] params) public onlyOwner {
+        actionCalls[action] = [ActionCall({
+            callee:callee, 
+            fn:fn, 
+            fixedParams:params}
+        )];
     }
 
     function addTriggerFeeds(string param, address dataSource, string fn, string[] params) public onlyOwner {
-        triggerFeeds[param] = [TriggerFeed(dataSource=dataSource, fn=fn, params=params)];
+        triggerFeeds[param] = [TriggerFeed({
+            dataSource:dataSource, 
+            fn:fn, 
+            params:params
+        })];
+    }
+
+    function median(uint[] vals) private{
+        // TODO
+        return vals[0];
     }
 
     function checkTrigger(Trigger trigger) private {
         // get the val of var, so we can check if it matches trigger
-        string (param, val, op) = (trigger.param, trigger.value, trigger.op);
+        (string param, string val, string op) = (trigger.param, trigger.value, trigger.op);
         triggerFeeds = triggerFeeds[param];
         uint[] oracleValues = [];
-        for (int i = 0;i < len(triggerFeeds); i++){
-            (dataSource, fn, params) = triggerFeeds[0];
-            oracleValue = triggerFeed.call(fn, params);
+        for (int i = 0;i < triggerFeeds.length; i++){
+            (address dataSource, string fn, string[] params) = triggerFeeds[0];
+            string oracleValue = dataSource.call(fn, params);
             oracleValues.push(oracleValue);
         }
         uint medianVal = median(oracleValues); // we might not want median always.
@@ -125,7 +162,7 @@ contract RuleExecutor{
         actionCalls = actionCalls[action.action];
 
         for(int i=0;i < actionCalls.length; i++){
-            ActionCall actionCall = actionCall[i];
+            ActionCall memory actionCall  = actionCalls[i];
             // this approves _contract to take the specified token amount from RuleExecutor
             ERC20(action.token).approve(actionCall._contract, action.tokenAmount);
             actionCall._contract.call(actionCall.fn, actionCall.fixedParams, action.params);
@@ -158,14 +195,18 @@ contract RuleExecutor{
     }
 
     function hashRule(Trigger trigger, Action action) private {
-        return keccak256(abiencode(str(trigger) + str(action)));
+        return keccak256(abi.encode(trigger.op, trigger.param, trigger.value, action.action, action.params, action.token, action.tokenAmount));
     }
-    function subscribeToRule(string ruleHash, string collateralToken, uint collateralAmount) public {                        
-        validateCollateral(action, collateralToken, collateralAmount);
+    function subscribeToRule(string ruleHash, string collateralToken, uint collateralAmount) public {    
+
+        validateCollateral(rules[ruleHash].action, collateralToken, collateralAmount);
         collateralToken.transferFrom(msg.sender, this, collateralAmount); // get the collateral
         rules[ruleHash].subscribers.push(msg.sender);
         subscriptions[msg.sender] = (subscriptions[msg.sender] || []) + 
-            [Subscription(ruleHash, balances=[TokenBalance(token=collateralToken, amount=collateralAmount)])];        
+            [Subscription({
+                ruleHash: ruleHash, balances:[TokenBalance({
+                    token:collateralToken, amount:collateralAmount})]})
+            ];        
 
         
     }
