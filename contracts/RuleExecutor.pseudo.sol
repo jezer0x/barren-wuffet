@@ -8,6 +8,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./Utils.sol";
 
+//TODO: we will likely want the trigger value to be fed into the action. we need to specify the param that we want to feed.
+
 
 contract RuleExecutor is Ownable {
     
@@ -23,6 +25,7 @@ contract RuleExecutor is Ownable {
     struct Action {        
         string action; // eg. swapUni        
         string[] params;  // key value pairs to be added to the contract call.
+        // TODO - maybe here we can say that we want to feed in the value from the trigger.
 
         // We will approve this  much token to be transferred to the target contract.
         // and it needs to be provided as collateral.
@@ -58,13 +61,13 @@ contract RuleExecutor is Ownable {
         
     struct TriggerFeed {
         address dataSource;
-        string fn;
+        bytes4 fn;
         mapping(string => string) params;
     }
     
     struct ActionCall {
         address callee;
-        string fn;
+        bytes4 fn;
         mapping(string => string) fixedParams; // array of key, value tuples
         string[] customParams; // list of keys that can be inserted at runtime
     }
@@ -75,54 +78,54 @@ contract RuleExecutor is Ownable {
 
     mapping(string => ActionCall[]) actionCalls;    
 
-    constructor(uint _unlockTime) {
+    constructor() {
 
         // there isnt a cleaner way to init this struct.
         // https://docs.soliditylang.org/en/v0.7.1/070-breaking-changes.html#mappings-outside-storage
         // https://docs.soliditylang.org/en/v0.7.0/types.html?highlight=struct#structs
         TriggerFeed storage tf = triggerFeeds["eth"][0];
         tf.dataSource = 0xc0ffee254729296a45a3885639AC7E10F9d54979; // chainlink feed
-        tf.fn="abicall";    
+        tf.fn="abic";    
         tf.params["token"] = "eth";
 
         tf = triggerFeeds["uni"][0]; // mutating the vars yo. I feel icky enough already whatever
         tf.dataSource = 0xc0ffee254729296a45a3885639AC7E10F9d54979; // chainlink feed
-        tf.fn="abicall";    
+        tf.fn="abic";    
         tf.params["token"] = "uni";
 
         tf = triggerFeeds["wbtc"][0]; // mutating the vars yo. I feel icky enough already whatever
         tf.dataSource = 0xc0ffee254729296a45a3885639AC7E10F9d54979; // chainlink feed
-        tf.fn="abicall";    
+        tf.fn="abic";    
         tf.params["token"] = "wbtc";    
 
         // can have multiple, they are executed in order
         // It seems like we will eventually need a library contract that wraps the functionality and exposes a common interface        
         ActionCall storage ac = actionCalls["swapUni"][0];
         ac.callee = 0xc0ffee254729296a45a3885639AC7E10F9d54979; // uniswap contract
-        ac.fn = "abicallswap";
+        ac.fn = "abic";
         ac.fixedParams["slippage"] = "0.001";
 
 
         ac = actionCalls["swapSushi"][0];
         ac.callee = 0xc0ffee254729296a45a3885639AC7E10F9d54979; // swapSushi contract
-        ac.fn = "abicallswap";
+        ac.fn = "abic";
         ac.fixedParams["slippage"] = "0.001";
 
         
         ac = actionCalls["buyOptionDopex"][0];
         ac.callee = 0xc0ffee254729296a45a3885639AC7E10F9d54979; // buyOptionDopex contract
-        ac.fn = "abicallswap";
+        ac.fn = "abic";
         ac.fixedParams["slippage"] = "0.001";        
     }
 
-    function addAllowedActionCalls(string memory action, uint idx, address callee, string memory fn, string[] memory customParams) public onlyOwner {
+    function addAllowedActionCalls(string memory action, uint idx, address callee, bytes4 fn, string[] memory customParams) public onlyOwner {
         ActionCall storage ac = actionCalls[action][idx]; 
         ac.callee = callee; // buyOptionDopex contract
         ac.fn = fn;
         ac.customParams = customParams;
     }    
 
-    function addTriggerFeeds(string memory param, uint idx, address dataSource, string memory fn, string[] memory params) public onlyOwner {
+    function addTriggerFeeds(string memory param, uint idx, address dataSource, bytes4 fn, string[] memory params) public onlyOwner {
         TriggerFeed storage tf = triggerFeeds[param][idx];
         tf.dataSource = dataSource;
         tf.fn = fn;
@@ -132,32 +135,33 @@ contract RuleExecutor is Ownable {
         }        
     }
 
-    function _first(bytes[] memory vals) private pure returns (bytes memory) {        
+    function _first(uint[] memory vals) private pure returns (uint) {        
         return vals[0];
     }
 
-    function _checkTrigger(Trigger storage trigger) private view returns (bool) {
+    function _checkTrigger(Trigger storage trigger) private returns (bool) {
         // get the val of var, so we can check if it matches trigger
         (string storage param, string storage val, Ops op) = (trigger.param, trigger.value, trigger.op);
         uint triggerFeedsLength  = 1; //TODO need to keep track of trigger feeds length separately to init this.
         TriggerFeed[] storage _triggerFeeds = triggerFeeds[param];
-        bytes[] memory oracleValues = new bytes[](triggerFeedsLength);
+        uint[] memory oracleValues = new uint[](triggerFeedsLength);
         for (uint i = 0;i < triggerFeedsLength; i++){
             TriggerFeed storage tf = _triggerFeeds[i];
-            (address dataSource, string storage fn, mapping(string => string) storage params) = (tf.dataSource, tf.fn, tf.params);
-            bytes memory oracleValue = ""; //Address(dataSource).functionCall(address(fn), bytes(params));                                    
-            oracleValues[i] = oracleValue;
+            (address dataSource, bytes4 fn, mapping(string => string) storage params) = (tf.dataSource, tf.fn, tf.params);
+            bytes memory oracleValue = Address.functionCall(dataSource, abi.encodeWithSelector(fn)); // bytes(params)));
+
+            oracleValues[i] = abi.decode(oracleValue, (uint));
         }
-        bytes memory firstVal = _first(oracleValues); // TODO: we might want some aggregator function. see chainlink code and figure it out.
+        uint firstVal = _first(oracleValues); // TODO: we might want some aggregator function. see chainlink code and figure it out.
         
         if(op == Ops.GT){            
-            return Utils.toUint256(firstVal, 0) > Utils.toUint256(bytes(val), 0);
+            return firstVal > Utils.toUint256(bytes(val), 0);
         }
         if(op == Ops.LT){
-            return Utils.toUint256(firstVal, 0) < Utils.toUint256(bytes(val), 0);
+            return firstVal < Utils.toUint256(bytes(val), 0);
         }
         if(op == Ops.EQ){
-            return Utils.toUint256(firstVal, 0) == Utils.toUint256(bytes(val), 0);
+            return firstVal == Utils.toUint256(bytes(val), 0);
         }
     }
 
@@ -170,9 +174,14 @@ contract RuleExecutor is Ownable {
             // this approves _contract to take the specified token amount from RuleExecutor
             IERC20(action.token).approve(actionCall.callee, action.tokenAmount);
             // TODO
-            // Address(actionCall.callee).functionCall(actionCall.fn, actionCall.fixedParams + action.params);
+            bytes memory resp = Address.functionCall(actionCall.callee, abi.encodeWithSelector(actionCall.fn)); //, actionCall.fixedParams + action.params);
+            // resp will be different based on the contract. If it doesnt work for some reason, we need to throw an exception.
+            // So we ignore resp for now.
             // this revokes the token approval            
             IERC20(action.token).approve(actionCall.callee, 0);
+            
+            // TODO: Here we need to adjust the subscriber balance based on the action we are doing.
+            // If we are doing a swap, then uniswap will add to our balance presumably? so we need to adjust that. 
 
         }
     }
