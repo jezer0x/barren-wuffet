@@ -4,18 +4,20 @@ pragma solidity ^0.8.9;
 // Import this file to use console.log
 import "hardhat/console.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "./Utils.sol";
 
 
 contract RuleExecutor is Ownable {
     
+    enum Ops { GT, EQ, LT }
     // If Trigger and Action are update, the HashRule needs to be updated
     struct Trigger {
         // eg. asset,price,gt
         string param;
         string value;
-        string op;
+        Ops op;
     }
 
     struct Action {        
@@ -24,7 +26,7 @@ contract RuleExecutor is Ownable {
 
         // We will approve this  much token to be transferred to the target contract.
         // and it needs to be provided as collateral.
-        string token;
+        address token;
         uint tokenAmount;
     }
 
@@ -39,15 +41,15 @@ contract RuleExecutor is Ownable {
         address[] subscribers;
     }
     // hash -> Rule
-    mapping(string => Rule) rules;
+    mapping(bytes32 => Rule) rules;
 
     struct TokenBalance {
-        string token;
+        address token;
         uint amount;
     }
 
     struct Subscription {
-        string ruleHash;
+        bytes32 ruleHash;
         TokenBalance[] balances;
     }
 
@@ -71,10 +73,8 @@ contract RuleExecutor is Ownable {
     // can have multiple, and we find median. This is a standard oracle call we can extend
     mapping(string => TriggerFeed[]) triggerFeeds;
 
-    mapping(string => ActionCall[]) actionCalls;
+    mapping(string => ActionCall[]) actionCalls;    
 
-    string[] ops = ["gt", "eq", "lt"]; // gt, eq, lt
-    
     constructor(uint _unlockTime) {
 
         // there isnt a cleaner way to init this struct.
@@ -126,49 +126,53 @@ contract RuleExecutor is Ownable {
         TriggerFeed storage tf = triggerFeeds[param][idx];
         tf.dataSource = dataSource;
         tf.fn = fn;
-        tf.params = params;
+        for (uint i = 0; i < params.length; i++){
+            // TODO. need to split the params by comma.
+            tf.params[params[i]] = params[i];
+        }        
     }
 
-    function _median(uint[] memory vals) private pure returns (uint) {
-        // TODO
+    function _first(bytes[] memory vals) private pure returns (bytes memory) {        
         return vals[0];
     }
 
-    function _checkTrigger(Trigger storage trigger) private returns (bool){
+    function _checkTrigger(Trigger storage trigger) private view returns (bool) {
         // get the val of var, so we can check if it matches trigger
-        (string storage param, string storage val, string storage op) = (trigger.param, trigger.value, trigger.op);
-        int triggerFeedsLength  = 1; //TODO need to keep track of trigger feeds length separately to init this.
+        (string storage param, string storage val, Ops op) = (trigger.param, trigger.value, trigger.op);
+        uint triggerFeedsLength  = 1; //TODO need to keep track of trigger feeds length separately to init this.
         TriggerFeed[] storage _triggerFeeds = triggerFeeds[param];
-        int[] memory oracleValues = int[](triggerFeedsLength);
-        for (int i = 0;i < triggerFeedsLength; i++){
-            (address dataSource, string storage fn, string[] storage params) = _triggerFeeds[i];
-            string memory oracleValue = Address(dataSource).functionCall(fn, params);
-            oracleValues.push(oracleValue);
+        bytes[] memory oracleValues = new bytes[](triggerFeedsLength);
+        for (uint i = 0;i < triggerFeedsLength; i++){
+            TriggerFeed storage tf = _triggerFeeds[i];
+            (address dataSource, string storage fn, mapping(string => string) storage params) = (tf.dataSource, tf.fn, tf.params);
+            bytes memory oracleValue = ""; //Address(dataSource).functionCall(address(fn), bytes(params));                                    
+            oracleValues[i] = oracleValue;
         }
-        uint medianVal = _median(oracleValues); // we might not want median always.
+        bytes memory firstVal = _first(oracleValues); // TODO: we might want some aggregator function. see chainlink code and figure it out.
         
-        if(op == "gt"){
-            return medianVal > val;
+        if(op == Ops.GT){            
+            return Utils.toUint256(firstVal, 0) > Utils.toUint256(bytes(val), 0);
         }
-        if(op == "lt"){
-            return medianVal < val;
+        if(op == Ops.LT){
+            return Utils.toUint256(firstVal, 0) < Utils.toUint256(bytes(val), 0);
         }
-        if(op == "eq"){
-            return medianVal == val;
+        if(op == Ops.EQ){
+            return Utils.toUint256(firstVal, 0) == Utils.toUint256(bytes(val), 0);
         }
     }
 
     function _performAction(Action storage action, address subscriber) private {
-        actionCalls = actionCalls[action.action];
+        ActionCall[] storage _actionCalls = actionCalls[action.action];
 
         // TODO: if any of them throw an exception, we need to revert the whole thing. 
-        for(int i=0; i < actionCalls.length; i++){            
-            ActionCall storage actionCall  = actionCalls[i];
+        for(uint i=0; i < _actionCalls.length; i++){            
+            ActionCall storage actionCall  = _actionCalls[i];
             // this approves _contract to take the specified token amount from RuleExecutor
-            ERC20(action.token).approve(actionCall._contract, action.tokenAmount);
-            Address(actionCall.callee).functionCall(actionCall.fn, actionCall.fixedParams + action.params);
+            IERC20(action.token).approve(actionCall.callee, action.tokenAmount);
+            // TODO
+            // Address(actionCall.callee).functionCall(actionCall.fn, actionCall.fixedParams + action.params);
             // this revokes the token approval            
-            ERC20(action.token).approve(actionCall._contract, 0);
+            IERC20(action.token).approve(actionCall.callee, 0);
 
         }
     }
@@ -177,12 +181,12 @@ contract RuleExecutor is Ownable {
         // TODO loop through subscriptions, cancel all of them and then return the balances.
     }
 
-    function _validateCollateral(Action storage action, string storage collateralToken, uint collateralAmount) private {
+    function _validateCollateral(Action storage action, address collateralToken, uint collateralAmount) private view {
         require(action.token == collateralToken);
         require(action.tokenAmount <= collateralAmount);
     }
 
-    function addRule(Trigger memory trigger, Action memory action) public { // var:val:op, action:data
+    function addRule(Trigger calldata trigger, Action calldata action) public { // var:val:op, action:data
         // ethPrice: 1000: gt, uniswap:<sellethforusdc>
         // check if action[0] is in actionTypes
         // if action[1] is "swap", we need to do a swap.
@@ -190,57 +194,61 @@ contract RuleExecutor is Ownable {
         // the swap will happen on behalf of this contract, 
         // need to approve uniswap to take asset1 from this contract, and get asset2 back        
         _validateTrigger(trigger);
-        _validateAction(action);        
-        rules[_hashRule(trigger, action)] = (trigger, action);
-        
+        _validateAction(action);
+        Rule storage rule = rules[_hashRule(trigger, action)];
+        rule.trigger = trigger;
+        rule.action = rule.action;
     }
 
-    function _hashRule(Trigger memory trigger, Action memory action) private pure returns (string memory) {
+    function _hashRule(Trigger memory trigger, Action memory action) private pure returns (bytes32) {
         return keccak256(abi.encode(trigger.op, trigger.param, trigger.value, action.action, action.params, action.token, action.tokenAmount));
     }
 
-    function subscribeToRule(string memory ruleHash, string memory collateralToken, uint collateralAmount) public {    
+    function subscribeToRule(bytes32 ruleHash, address collateralToken, uint collateralAmount) public {    
 
         _validateCollateral(rules[ruleHash].action, collateralToken, collateralAmount);
-        collateralToken.transferFrom(msg.sender, this, collateralAmount); // get the collateral
+        IERC20(collateralToken).transferFrom(msg.sender, address(this), collateralAmount); // get the collateral
         rules[ruleHash].subscribers.push(msg.sender);
-        subscriptions[msg.sender] = (subscriptions[msg.sender] || []) + 
-            [Subscription({
-                ruleHash: ruleHash, balances:[TokenBalance({
-                    token:collateralToken, amount:collateralAmount})]})
-            ];        
-
+        Subscription storage newSubscription = subscriptions[msg.sender][subscriptions[msg.sender].length+1];
+        newSubscription.ruleHash = ruleHash;
+        TokenBalance storage tb = newSubscription.balances[0];
+        tb.token = collateralToken;
+        tb.amount = collateralAmount;        
         
     }
     
-    function _validateTrigger(Trigger memory trigger) private {
-        require(trigger.param && trigger.value && trigger.op && triggerFeeds.includes(trigger.param), "unauthorized trigger");
+    function _validateTrigger(Trigger memory trigger) private view {
+        require(bytes(trigger.param).length != 0 && bytes(trigger.value).length != 0 && triggerFeeds[trigger.param][0].dataSource != address(0), "unauthorized trigger");
     }
 
-    function _validateAction(Action memory action) private {
-        ActionCall memory actionCall = actionCalls[action.action];
-        require(action.action && action.params && actionCall, "unauthorized action");
-        for (int i=0;i<action.params.length; i++){
-            require(actionCall.customParams.includes(action.params[i][0]), "unauthorized action param");
+    function _validateAction(Action memory action) private view {
+        ActionCall storage actionCall = actionCalls[action.action][0];
+        require(bytes(action.action).length != 0 && action.params.length > 0 && actionCall.callee != address(0), "unauthorized action");
+        for (uint i=0;i<action.params.length; i++){
+            bool found = false;            
+            for(uint j=0; j < actionCall.customParams.length; j++){
+                found = Utils.strEq(actionCall.customParams[j], action.params[i]);
+                if(found){
+                    break;
+                }
+            }            
+            require(found, "unauthorized action param");
         }
     }
 
-    function execute(string memory ruleHash) public payable { // <- send gas, get a refund if action is performed, else lose gas.
+    function execute(bytes32 ruleHash) public payable { // <- send gas, get a refund if action is performed, else lose gas.
         // check if trigger is met
         // if yes, execute the tx
         // give reward to caller
         // if not, abort            
         
         Rule storage rule = rules[ruleHash];
-        require(rule, "rule not found");
+        require(bytes(rule.action.action).length > 0, "rule not found");
         require(_checkTrigger(rule.trigger), "Trigger not satisfied");
         
         Action storage action = rule.action;
-        for(int i=0; i < rule.subscribers.length; i++){
-            _performAction(action, rules.subscribers[i]);
-        }
-
-
-        
+        for(uint i=0; i < rule.subscribers.length; i++){
+            _performAction(action, rule.subscribers[i]);
+        }        
     } 
 }
