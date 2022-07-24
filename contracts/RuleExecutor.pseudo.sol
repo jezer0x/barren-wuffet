@@ -22,15 +22,19 @@ contract RuleExecutor is Ownable {
         Ops op;
     }
 
-    struct Action {        
-        string action; // eg. swapUni        
-        string[] params;  // key value pairs to be added to the contract call.
-        // TODO - maybe here we can say that we want to feed in the value from the trigger.
+    struct ProtoAction {
+        string action; 
+        bytes data; 
+        address fromToken; 
+        uint minTokenAmount; 
+    }
 
-        // We will approve this  much token to be transferred to the target contract.
-        // and it needs to be provided as collateral.
-        address token;
-        uint tokenAmount;
+    struct Action {        
+        string action;          // eg. swapUni
+        address callee;         // contract address to call
+        bytes data;             // abi encoded function call
+        address fromToken;      // token to be used to initiate the action   
+        uint minTokenAmount;    // minimum amount needed as collateral to subscribe 
     }
 
     struct Rule {        
@@ -41,23 +45,18 @@ contract RuleExecutor is Ownable {
         // action is a smart contract call, data is sent to the call
         // anyone can execute it. 
         Action action;
-        address[] subscribers;
     }
+
     // hash -> Rule
     mapping(bytes32 => Rule) rules;
 
-    struct TokenBalance {
-        address token;
-        uint amount;
-    }
-
     struct Subscription {
-        bytes32 ruleHash;
-        TokenBalance[] balances;
+        address subscriber;
+        uint collateralAmount; 
     }
 
-    // account -> [ruleHash]
-    mapping(address => Subscription[]) subscriptions;
+    // ruleHash -> [Subscription]
+    mapping(bytes32 => Subscription[]) subscriptions;
         
     struct TriggerFeed {
         address dataSource;
@@ -65,18 +64,10 @@ contract RuleExecutor is Ownable {
         mapping(string => string) params;
     }
     
-    struct ActionCall {
-        address callee;
-        bytes4 fn;
-        mapping(string => string) fixedParams; // array of key, value tuples
-        string[] customParams; // list of keys that can be inserted at runtime
-    }
     // keyword -> fn call to get data
     // if we know how to get the value, then it can be a trigger. so this serves as a list of allowed triggers
     // can have multiple, and we find median. This is a standard oracle call we can extend
     mapping(string => TriggerFeed[]) triggerFeeds;
-
-    mapping(string => ActionCall[]) actionCalls;    
 
     constructor() {
 
@@ -97,33 +88,7 @@ contract RuleExecutor is Ownable {
         tf.dataSource = 0xc0ffee254729296a45a3885639AC7E10F9d54979; // chainlink feed
         tf.fn="abic";    
         tf.params["token"] = "wbtc";    
-
-        // can have multiple, they are executed in order
-        // It seems like we will eventually need a library contract that wraps the functionality and exposes a common interface        
-        ActionCall storage ac = actionCalls["swapUni"][0];
-        ac.callee = 0xc0ffee254729296a45a3885639AC7E10F9d54979; // uniswap contract
-        ac.fn = "abic";
-        ac.fixedParams["slippage"] = "0.001";
-
-
-        ac = actionCalls["swapSushi"][0];
-        ac.callee = 0xc0ffee254729296a45a3885639AC7E10F9d54979; // swapSushi contract
-        ac.fn = "abic";
-        ac.fixedParams["slippage"] = "0.001";
-
-        
-        ac = actionCalls["buyOptionDopex"][0];
-        ac.callee = 0xc0ffee254729296a45a3885639AC7E10F9d54979; // buyOptionDopex contract
-        ac.fn = "abic";
-        ac.fixedParams["slippage"] = "0.001";        
     }
-
-    function addAllowedActionCalls(string memory action, uint idx, address callee, bytes4 fn, string[] memory customParams) public onlyOwner {
-        ActionCall storage ac = actionCalls[action][idx]; 
-        ac.callee = callee; // buyOptionDopex contract
-        ac.fn = fn;
-        ac.customParams = customParams;
-    }    
 
     function addTriggerFeeds(string memory param, uint idx, address dataSource, bytes4 fn, string[] memory params) public onlyOwner {
         TriggerFeed storage tf = triggerFeeds[param][idx];
@@ -165,25 +130,19 @@ contract RuleExecutor is Ownable {
         }
     }
 
-    function _performAction(Action storage action, address subscriber) private {
-        ActionCall[] storage _actionCalls = actionCalls[action.action];
+    function _performAction(Action storage action, Subscription storage subscription) private {            
+        // TODO
 
-        // TODO: if any of them throw an exception, we need to revert the whole thing. 
-        for(uint i=0; i < _actionCalls.length; i++){            
-            ActionCall storage actionCall  = _actionCalls[i];
-            // this approves _contract to take the specified token amount from RuleExecutor
-            IERC20(action.token).approve(actionCall.callee, action.tokenAmount);
-            // TODO
-            bytes memory resp = Address.functionCall(actionCall.callee, abi.encodeWithSelector(actionCall.fn)); //, actionCall.fixedParams + action.params);
-            // resp will be different based on the contract. If it doesnt work for some reason, we need to throw an exception.
-            // So we ignore resp for now.
-            // this revokes the token approval            
-            IERC20(action.token).approve(actionCall.callee, 0);
-            
-            // TODO: Here we need to adjust the subscriber balance based on the action we are doing.
-            // If we are doing a swap, then uniswap will add to our balance presumably? so we need to adjust that. 
+        IERC20(action.fromToken).approve(action.callee, subscription.collateralAmount);
+        bytes memory resp = Address.functionCall(action.callee, action.data); 
+        IERC20(action.fromToken).approve(action.callee, 0);
 
-        }
+        // resp will be different based on the contract. If it doesnt work for some reason, we need to throw an exception.
+        // So we ignore resp for now.
+        
+        // TODO: Here we need to adjust the subscriber balance based on the action we are doing.
+        // If we are doing a swap, then uniswap will add to our balance presumably? so we need to adjust that. 
+
     }
 
     function redeemBalance() public {
@@ -191,11 +150,11 @@ contract RuleExecutor is Ownable {
     }
 
     function _validateCollateral(Action storage action, address collateralToken, uint collateralAmount) private view {
-        require(action.token == collateralToken);
-        require(action.tokenAmount <= collateralAmount);
+        require(action.fromToken == collateralToken);
+        require(action.minTokenAmount <= collateralAmount);
     }
 
-    function addRule(Trigger calldata trigger, Action calldata action) public { // var:val:op, action:data
+    function addRule(Trigger calldata trigger, ProtoAction calldata protoAction) public { // var:val:op, action:data
         // ethPrice: 1000: gt, uniswap:<sellethforusdc>
         // check if action[0] is in actionTypes
         // if action[1] is "swap", we need to do a swap.
@@ -203,47 +162,56 @@ contract RuleExecutor is Ownable {
         // the swap will happen on behalf of this contract, 
         // need to approve uniswap to take asset1 from this contract, and get asset2 back        
         _validateTrigger(trigger);
-        _validateAction(action);
+        Action memory action = _createAction(protoAction);
         Rule storage rule = rules[_hashRule(trigger, action)];
         rule.trigger = trigger;
-        rule.action = rule.action;
+        rule.action = action;
     }
 
     function _hashRule(Trigger memory trigger, Action memory action) private pure returns (bytes32) {
-        return keccak256(abi.encode(trigger.op, trigger.param, trigger.value, action.action, action.params, action.token, action.tokenAmount));
+        return keccak256(abi.encode(trigger.op, trigger.param, trigger.value, action.action, action.data, action.fromToken, action.minTokenAmount));
     }
 
     function subscribeToRule(bytes32 ruleHash, address collateralToken, uint collateralAmount) public {    
-
         _validateCollateral(rules[ruleHash].action, collateralToken, collateralAmount);
         IERC20(collateralToken).transferFrom(msg.sender, address(this), collateralAmount); // get the collateral
-        rules[ruleHash].subscribers.push(msg.sender);
-        Subscription storage newSubscription = subscriptions[msg.sender][subscriptions[msg.sender].length+1];
-        newSubscription.ruleHash = ruleHash;
-        TokenBalance storage tb = newSubscription.balances[0];
-        tb.token = collateralToken;
-        tb.amount = collateralAmount;        
-        
+        Subscription storage newSub = subscriptions[ruleHash].push(); 
+        newSub.subscriber = msg.sender; 
+        newSub.collateralAmount = collateralAmount;
     }
     
     function _validateTrigger(Trigger memory trigger) private view {
         require(bytes(trigger.param).length != 0 && bytes(trigger.value).length != 0 && triggerFeeds[trigger.param][0].dataSource != address(0), "unauthorized trigger");
     }
 
-    function _validateAction(Action memory action) private view {
-        ActionCall storage actionCall = actionCalls[action.action][0];
-        require(bytes(action.action).length != 0 && action.params.length > 0 && actionCall.callee != address(0), "unauthorized action");
-        for (uint i=0;i<action.params.length; i++){
-            bool found = false;            
-            for(uint j=0; j < actionCall.customParams.length; j++){
-                found = Utils.strEq(actionCall.customParams[j], action.params[i]);
-                if(found){
-                    break;
-                }
-            }            
-            require(found, "unauthorized action param");
+    // will need to update the contract to add more _create* actions that are allowed. 
+    function _createAction(ProtoAction memory protoAction) private returns (Action memory) {
+        if (Utils.strEq(protoAction.action, "swapUni")) {
+            return _createSwapUni(protoAction); 
+        } else if (Utils.strEq(protoAction.action, "swapSushi")) {
+            return _createSwapSushi(protoAction); 
         }
+        // and so on
     }
+
+    function _createSwapUni(ProtoAction memory protoAction) private returns (Action memory) {
+        // TODO, toy example below 
+        (address toToken, uint amount) = abi.decode(protoAction.data, (address, uint256)); 
+        uint slippage = 100; // hardcoded params
+
+        return Action({
+            action: protoAction.action, 
+            callee: 0xc0ffee254729296a45a3885639AC7E10F9d54979, 
+            data: abi.encodeWithSignature("SwapUni(address, address, uint256, uint256)", protoAction.fromToken, toToken, slippage, amount), 
+            fromToken: protoAction.fromToken, 
+            minTokenAmount: protoAction.minTokenAmount
+        }); 
+    }
+
+    function _createSwapSushi(ProtoAction memory protoAction) private  returns (Action memory) {
+        // TODO
+    }
+
 
     function execute(bytes32 ruleHash) public payable { // <- send gas, get a refund if action is performed, else lose gas.
         // check if trigger is met
@@ -252,12 +220,12 @@ contract RuleExecutor is Ownable {
         // if not, abort            
         
         Rule storage rule = rules[ruleHash];
-        require(bytes(rule.action.action).length > 0, "rule not found");
+        require(bytes(rule.action.action).length > 0, "Rule not found!");
         require(_checkTrigger(rule.trigger), "Trigger not satisfied");
         
         Action storage action = rule.action;
-        for(uint i=0; i < rule.subscribers.length; i++){
-            _performAction(action, rule.subscribers[i]);
+        for(uint i=0; i < subscriptions[ruleHash].length; i++){
+            _performAction(action, subscriptions[ruleHash][i]);
         }        
     } 
 }
