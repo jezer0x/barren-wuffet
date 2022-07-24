@@ -26,6 +26,7 @@ contract RuleExecutor is Ownable {
         string action; 
         bytes data; 
         address fromToken; 
+        address toToken; 
         uint minTokenAmount; 
     }
 
@@ -34,7 +35,9 @@ contract RuleExecutor is Ownable {
         address callee;         // contract address to call
         bytes data;             // abi encoded function call
         address fromToken;      // token to be used to initiate the action   
+        address toToken;        // token to be gotten as output
         uint minTokenAmount;    // minimum amount needed as collateral to subscribe 
+        uint totalCollateralAmount; 
     }
 
     struct Rule {        
@@ -45,6 +48,8 @@ contract RuleExecutor is Ownable {
         // action is a smart contract call, data is sent to the call
         // anyone can execute it. 
         Action action;
+        bool executed; 
+        uint outputAmount; 
     }
 
     // hash -> Rule
@@ -130,23 +135,32 @@ contract RuleExecutor is Ownable {
         }
     }
 
-    function _performAction(Action storage action, Subscription storage subscription) private {            
+    function _performAction(Action storage action) private returns (uint) {            
         // TODO
 
-        IERC20(action.fromToken).approve(action.callee, subscription.collateralAmount);
+        IERC20(action.fromToken).approve(action.callee, action.totalCollateralAmount);
         bytes memory resp = Address.functionCall(action.callee, action.data); 
+        // TODO: throw exception if failed
         IERC20(action.fromToken).approve(action.callee, 0);
 
-        // resp will be different based on the contract. If it doesnt work for some reason, we need to throw an exception.
-        // So we ignore resp for now.
-        
-        // TODO: Here we need to adjust the subscriber balance based on the action we are doing.
-        // If we are doing a swap, then uniswap will add to our balance presumably? so we need to adjust that. 
-
+        // TODO: convert resp to uint and return; this should tell you how much token you've gotten from the trade.
     }
 
-    function redeemBalance() public {
-        // TODO loop through subscriptions, cancel all of them and then return the balances.
+    function redeemBalance(bytes32 ruleHash, uint subscriptionIdx) public {
+        Rule storage rule = rules[ruleHash]; 
+        Subscription storage subscription = subscriptions[ruleHash][subscriptionIdx]; 
+
+        if (rule.executed) {
+            // withdrawing after successfully triggered rule
+            uint balance = subscription.collateralAmount*rule.outputAmount/rule.action.totalCollateralAmount; 
+            IERC20(rule.action.toToken).approve(subscription.subscriber, balance);
+            IERC20(rule.action.toToken).transferFrom(address(this), subscription.subscriber, balance);
+        } else {
+            // withdrawing before anyone triggered this
+            rule.action.totalCollateralAmount = rule.action.totalCollateralAmount - subscription.collateralAmount; 
+            IERC20(rule.action.fromToken).approve(subscription.subscriber, subscription.collateralAmount);
+            IERC20(rule.action.fromToken).transferFrom(address(this), subscription.subscriber, subscription.collateralAmount);
+        }
     }
 
     function _validateCollateral(Action storage action, address collateralToken, uint collateralAmount) private view {
@@ -166,6 +180,8 @@ contract RuleExecutor is Ownable {
         Rule storage rule = rules[_hashRule(trigger, action)];
         rule.trigger = trigger;
         rule.action = action;
+        rule.executed = false; 
+        rule.outputAmount = 0; 
     }
 
     function _hashRule(Trigger memory trigger, Action memory action) private pure returns (bytes32) {
@@ -177,7 +193,9 @@ contract RuleExecutor is Ownable {
         IERC20(collateralToken).transferFrom(msg.sender, address(this), collateralAmount); // get the collateral
         Subscription storage newSub = subscriptions[ruleHash].push(); 
         newSub.subscriber = msg.sender; 
+        // TODO: take a fee here
         newSub.collateralAmount = collateralAmount;
+        rules[ruleHash].action.totalCollateralAmount = rules[ruleHash].action.totalCollateralAmount + collateralAmount; 
     }
     
     function _validateTrigger(Trigger memory trigger) private view {
@@ -194,7 +212,7 @@ contract RuleExecutor is Ownable {
         // and so on
     }
 
-    function _createSwapUni(ProtoAction memory protoAction) private returns (Action memory) {
+    function _createSwapUni(ProtoAction memory protoAction) private pure returns (Action memory) {
         // TODO, toy example below 
         (address toToken, uint amount) = abi.decode(protoAction.data, (address, uint256)); 
         uint slippage = 100; // hardcoded params
@@ -204,7 +222,9 @@ contract RuleExecutor is Ownable {
             callee: 0xc0ffee254729296a45a3885639AC7E10F9d54979, 
             data: abi.encodeWithSignature("SwapUni(address, address, uint256, uint256)", protoAction.fromToken, toToken, slippage, amount), 
             fromToken: protoAction.fromToken, 
-            minTokenAmount: protoAction.minTokenAmount
+            toToken: protoAction.toToken, 
+            minTokenAmount: protoAction.minTokenAmount, 
+            totalCollateralAmount: 0  
         }); 
     }
 
@@ -224,8 +244,8 @@ contract RuleExecutor is Ownable {
         require(_checkTrigger(rule.trigger), "Trigger not satisfied");
         
         Action storage action = rule.action;
-        for(uint i=0; i < subscriptions[ruleHash].length; i++){
-            _performAction(action, subscriptions[ruleHash][i]);
-        }        
+        uint outputAmount = _performAction(action);
+        rule.outputAmount = outputAmount; 
+        rule.executed = true; 
     } 
 }
