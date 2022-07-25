@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.9;
+pragma abicoder v2;
 
 // Import this file to use console.log
 import "hardhat/console.sol";
@@ -7,12 +8,15 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./Utils.sol";
+import '@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol';
 
 //TODO: we will likely want the trigger value to be fed into the action. we need to specify the param that we want to feed.
 
 
 contract RuleExecutor is Ownable {
     
+    address ETH = address(0); 
+
     enum Ops { GT, EQ, LT }
     // If Trigger and Action are update, the HashRule needs to be updated
     struct Trigger {
@@ -22,17 +26,8 @@ contract RuleExecutor is Ownable {
         Ops op;
     }
 
-    struct ProtoAction {
-        string action; 
-        bytes data; 
-        address fromToken; 
-        address toToken; 
-        uint minTokenAmount; 
-    }
-
     struct Action {        
         string action;          // eg. swapUni
-        address callee;         // contract address to call
         bytes data;             // abi encoded function call
         address fromToken;      // token to be used to initiate the action   
         address toToken;        // token to be gotten as output
@@ -135,15 +130,66 @@ contract RuleExecutor is Ownable {
         }
     }
 
-    function _performAction(Action storage action) private returns (uint) {            
+    function _performAction(Action storage action) private returns (uint amountOut) {            
         // TODO
 
-        IERC20(action.fromToken).approve(action.callee, action.totalCollateralAmount);
-        bytes memory resp = Address.functionCall(action.callee, action.data); 
-        // TODO: throw exception if failed
-        IERC20(action.fromToken).approve(action.callee, 0);
+        if (Utils.strEq(action.action, "swapUni")) {
+            amountOut = _performSwapUni(action);
+        }
 
         // TODO: convert resp to uint and return; this should tell you how much token you've gotten from the trade.
+    }
+
+    function _performSwapUni(Action storage action) private returns (uint amountOut) {
+        ISwapRouter swapRouter = ISwapRouter(0xc0ffee254729296a45a3885639AC7E10F9d54979);  // TODO: put in the right addr
+        address WETH9 = 0xc0ffee254729296a45a3885639AC7E10F9d54979; // TODO: put in the right addr
+
+        ISwapRouter.ExactInputSingleParams memory params; 
+
+        if (action.fromToken == ETH) {
+            params =
+                ISwapRouter.ExactInputSingleParams({
+                    tokenIn: WETH9,
+                    tokenOut: action.toToken,
+                    fee: 3000, // TODO: pass from action.data? 
+                    recipient: address(this),
+                    deadline: block.timestamp, // need to do an immediate swap
+                    amountIn: action.totalCollateralAmount,
+                    amountOutMinimum: 0, // TODO: this needs to be fed in from the trigger
+                    sqrtPriceLimitX96: 0
+                });
+            amountOut = swapRouter.exactInputSingle{value: action.totalCollateralAmount}(params);
+        } else {
+                address toToken; 
+                if (action.toToken == ETH) {
+                    toToken = WETH9; 
+                } else {
+                    toToken = action.toToken; 
+                }
+
+                IERC20(action.fromToken).approve(address(swapRouter), action.totalCollateralAmount);
+                params =
+                    ISwapRouter.ExactInputSingleParams({
+                        tokenIn: action.fromToken,
+                        tokenOut: toToken,
+                        fee: 3000, // TODO: pass from action.data? 
+                        recipient: address(this),
+                        deadline: block.timestamp, // need to do an immediate swap
+                        amountIn: action.totalCollateralAmount,
+                        amountOutMinimum: 0, // TODO: this needs to be fed in from the trigger
+                        sqrtPriceLimitX96: 0
+                    });
+                amountOut = swapRouter.exactInputSingle(params);
+                IERC20(action.fromToken).approve(address(swapRouter), 0);
+        }
+    }
+
+    function _redeemBalance(address receiver, uint balance, address token) internal {
+        if (token != ETH) {
+            IERC20(token).transfer(receiver, balance);
+        } else {
+            payable(receiver).transfer(balance); 
+        }        
     }
 
     function redeemBalance(bytes32 ruleHash, uint subscriptionIdx) public {
@@ -153,20 +199,24 @@ contract RuleExecutor is Ownable {
         if (rule.executed) {
             // withdrawing after successfully triggered rule
             uint balance = subscription.collateralAmount*rule.outputAmount/rule.action.totalCollateralAmount;
-            IERC20(rule.action.toToken).transfer(subscription.subscriber, balance);
+            _redeemBalance(subscription.subscriber, balance, rule.action.toToken); 
         } else {
             // withdrawing before anyone triggered this
             rule.action.totalCollateralAmount = rule.action.totalCollateralAmount - subscription.collateralAmount;
-            IERC20(rule.action.fromToken).transfer(subscription.subscriber, subscription.collateralAmount);
+            _redeemBalance(subscription.subscriber, subscription.collateralAmount, rule.action.fromToken);
         }
     }
 
     function _validateCollateral(Action storage action, address collateralToken, uint collateralAmount) private view {
         require(action.fromToken == collateralToken);
         require(action.minTokenAmount <= collateralAmount);
+
+        if (collateralToken == ETH) {
+            require(collateralAmount == msg.value); 
+        }
     }
 
-    function addRule(Trigger calldata trigger, ProtoAction calldata protoAction) public { // var:val:op, action:data
+    function addRule(Trigger calldata trigger, Action calldata action) public { // var:val:op, action:data
         // ethPrice: 1000: gt, uniswap:<sellethforusdc>
         // check if action[0] is in actionTypes
         // if action[1] is "swap", we need to do a swap.
@@ -174,7 +224,7 @@ contract RuleExecutor is Ownable {
         // the swap will happen on behalf of this contract, 
         // need to approve uniswap to take asset1 from this contract, and get asset2 back        
         _validateTrigger(trigger);
-        Action memory action = _createAction(protoAction);
+        _validateAction(action);
         Rule storage rule = rules[_hashRule(trigger, action)];
         rule.trigger = trigger;
         rule.action = action;
@@ -188,7 +238,7 @@ contract RuleExecutor is Ownable {
 
     function subscribeToRule(bytes32 ruleHash, address collateralToken, uint collateralAmount) public {    
         _validateCollateral(rules[ruleHash].action, collateralToken, collateralAmount);
-        IERC20(collateralToken).transferFrom(msg.sender, address(this), collateralAmount); // get the collateral
+        _collectCollateral(collateralToken, collateralAmount);  
         Subscription storage newSub = subscriptions[ruleHash].push(); 
         newSub.subscriber = msg.sender; 
         // TODO: take a fee here
@@ -196,42 +246,39 @@ contract RuleExecutor is Ownable {
         rules[ruleHash].action.totalCollateralAmount = rules[ruleHash].action.totalCollateralAmount + collateralAmount; 
     }
     
+    function _collectCollateral(address collateralToken, uint collateralAmount) private {
+         if (collateralToken != ETH) {
+            IERC20(collateralToken).transferFrom(msg.sender, address(this), collateralAmount);
+        } // else it should be in our balance already 
+    }
+
     function _validateTrigger(Trigger memory trigger) private view {
         require(bytes(trigger.param).length != 0 && bytes(trigger.value).length != 0 && triggerFeeds[trigger.param][0].dataSource != address(0), "unauthorized trigger");
     }
 
     // will need to update the contract to add more _create* actions that are allowed. 
-    function _createAction(ProtoAction memory protoAction) private returns (Action memory) {
-        if (Utils.strEq(protoAction.action, "swapUni")) {
-            return _createSwapUni(protoAction); 
-        } else if (Utils.strEq(protoAction.action, "swapSushi")) {
-            return _createSwapSushi(protoAction); 
+    function _validateAction(Action memory action) private {
+        require(action.totalCollateralAmount == 0, "Wrong collateral amount stated"); 
+        if (Utils.strEq(action.action, "swapUni")) {
+            _validateSwapUni(action); 
+        } else if (Utils.strEq(action.action, "swapSushi")) {
+            _validateSwapSushi(action); 
+        } else {
+            revert("Action not supported"); 
         }
         // and so on
     }
 
-    function _createSwapUni(ProtoAction memory protoAction) private pure returns (Action memory) {
-        // TODO, toy example below 
-        (address toToken, uint amount) = abi.decode(protoAction.data, (address, uint256)); 
-        uint slippage = 100; // hardcoded params
-
-        return Action({
-            action: protoAction.action, 
-            callee: 0xc0ffee254729296a45a3885639AC7E10F9d54979, 
-            data: abi.encodeWithSignature("SwapUni(address, address, uint256, uint256)", protoAction.fromToken, toToken, slippage, amount), 
-            fromToken: protoAction.fromToken, 
-            toToken: protoAction.toToken, 
-            minTokenAmount: protoAction.minTokenAmount, 
-            totalCollateralAmount: 0  
-        }); 
+    function _validateSwapUni(Action memory action) private {
+        // we'll be ignoring action.data in swapUni (?)
     }
 
-    function _createSwapSushi(ProtoAction memory protoAction) private  returns (Action memory) {
+    function _validateSwapSushi(Action memory action) private {
         // TODO
     }
 
 
-    function execute(bytes32 ruleHash) public payable { // <- send gas, get a refund if action is performed, else lose gas.
+    function executeRule(bytes32 ruleHash) public payable { // <- send gas, get a refund if action is performed, else lose gas.
         // check if trigger is met
         // if yes, execute the tx
         // give reward to caller
@@ -240,9 +287,7 @@ contract RuleExecutor is Ownable {
         Rule storage rule = rules[ruleHash];
         require(bytes(rule.action.action).length > 0, "Rule not found!");
         require(_checkTrigger(rule.trigger), "Trigger not satisfied");
-        
-        Action storage action = rule.action;
-        uint outputAmount = _performAction(action);
+        uint outputAmount = _performAction(rule.action);
         rule.outputAmount = outputAmount; 
         rule.executed = true; 
     } 
