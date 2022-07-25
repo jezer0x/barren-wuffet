@@ -17,13 +17,12 @@ contract RuleExecutor is Ownable {
     
     address ETH = address(0); 
 
-    enum Ops { GT, EQ, LT }
+    enum Ops { GT, LT }
     // If Trigger and Action are update, the HashRule needs to be updated
     struct Trigger {
-        // eg. asset,price,gt
-        string param;
-        string value;
-        Ops op;
+        bytes param;   //eg. abi.encode(["string", "string"], ["eth", "uni"]) 
+        uint value;     //eg. 1000
+        Ops op;         //eg. GT
     }
 
     struct Action {        
@@ -104,11 +103,9 @@ contract RuleExecutor is Ownable {
         return vals[0];
     }
 
-    function _checkTrigger(Trigger storage trigger) private returns (bool) {
-        // get the val of var, so we can check if it matches trigger
-        (string storage param, string storage val, Ops op) = (trigger.param, trigger.value, trigger.op);
+    function _getPrice(string memory asset) private returns (uint) {
         uint triggerFeedsLength  = 1; //TODO need to keep track of trigger feeds length separately to init this.
-        TriggerFeed[] storage _triggerFeeds = triggerFeeds[param];
+        TriggerFeed[] storage _triggerFeeds = triggerFeeds[asset];
         uint[] memory oracleValues = new uint[](triggerFeedsLength);
         for (uint i = 0;i < triggerFeedsLength; i++){
             TriggerFeed storage tf = _triggerFeeds[i];
@@ -118,29 +115,36 @@ contract RuleExecutor is Ownable {
             oracleValues[i] = abi.decode(oracleValue, (uint));
         }
         uint firstVal = _first(oracleValues); // TODO: we might want some aggregator function. see chainlink code and figure it out.
-        
+        return firstVal; 
+    }
+
+    function _checkTrigger(Trigger storage trigger) private returns (bool, uint) {
+        // get the val of var, so we can check if it matches trigger
+        (uint val, Ops op) = (trigger.value, trigger.op);
+        (string memory asset1, string memory asset2) = abi.decode(trigger.param, (string, string)); 
+        uint asset1price = _getPrice(asset1);
+        uint asset2price = _getPrice(asset2); 
+
+        uint res = asset1price/asset2price;  
+
         if(op == Ops.GT){            
-            return firstVal > Utils.toUint256(bytes(val), 0);
-        }
-        if(op == Ops.LT){
-            return firstVal < Utils.toUint256(bytes(val), 0);
-        }
-        if(op == Ops.EQ){
-            return firstVal == Utils.toUint256(bytes(val), 0);
+            return (res > val, res);
+        } else if(op == Ops.LT){
+            return (res < val, res);
         }
     }
 
-    function _performAction(Action storage action) private returns (uint amountOut) {            
+    function _performAction(Action storage action, uint triggerData) private returns (uint amountOut) {            
         // TODO
 
         if (Utils.strEq(action.action, "swapUni")) {
-            amountOut = _performSwapUni(action);
+            amountOut = _performSwapUni(action, triggerData);
         }
 
         // TODO: convert resp to uint and return; this should tell you how much token you've gotten from the trade.
     }
 
-    function _performSwapUni(Action storage action) private returns (uint amountOut) {
+    function _performSwapUni(Action storage action, uint triggerData) private returns (uint amountOut) {
         ISwapRouter swapRouter = ISwapRouter(0xc0ffee254729296a45a3885639AC7E10F9d54979);  // TODO: put in the right addr
         address WETH9 = 0xc0ffee254729296a45a3885639AC7E10F9d54979; // TODO: put in the right addr
 
@@ -155,7 +159,7 @@ contract RuleExecutor is Ownable {
                     recipient: address(this),
                     deadline: block.timestamp, // need to do an immediate swap
                     amountIn: action.totalCollateralAmount,
-                    amountOutMinimum: 0, // TODO: this needs to be fed in from the trigger
+                    amountOutMinimum: triggerData,
                     sqrtPriceLimitX96: 0
                 });
             amountOut = swapRouter.exactInputSingle{value: action.totalCollateralAmount}(params);
@@ -176,7 +180,7 @@ contract RuleExecutor is Ownable {
                         recipient: address(this),
                         deadline: block.timestamp, // need to do an immediate swap
                         amountIn: action.totalCollateralAmount,
-                        amountOutMinimum: 0, // TODO: this needs to be fed in from the trigger
+                        amountOutMinimum: triggerData,
                         sqrtPriceLimitX96: 0
                     });
                 amountOut = swapRouter.exactInputSingle(params);
@@ -253,7 +257,8 @@ contract RuleExecutor is Ownable {
     }
 
     function _validateTrigger(Trigger memory trigger) private view {
-        require(bytes(trigger.param).length != 0 && bytes(trigger.value).length != 0 && triggerFeeds[trigger.param][0].dataSource != address(0), "unauthorized trigger");
+        (string memory asset1, string memory asset2) = abi.decode(trigger.param, (string, string)); 
+        require(triggerFeeds[asset1][0].dataSource != address(0) && triggerFeeds[asset2][0].dataSource != address(0), "unauthorized trigger");
     }
 
     // will need to update the contract to add more _create* actions that are allowed. 
@@ -277,6 +282,9 @@ contract RuleExecutor is Ownable {
         // TODO
     }
 
+    function checkRule(bytes32 ruleHash) public returns (bool valid) {
+        (bool valid, ) = _checkTrigger(rules[ruleHash].trigger); 
+    }
 
     function executeRule(bytes32 ruleHash) public payable { // <- send gas, get a refund if action is performed, else lose gas.
         // check if trigger is met
@@ -286,9 +294,13 @@ contract RuleExecutor is Ownable {
         
         Rule storage rule = rules[ruleHash];
         require(bytes(rule.action.action).length > 0, "Rule not found!");
-        require(_checkTrigger(rule.trigger), "Trigger not satisfied");
-        uint outputAmount = _performAction(rule.action);
+        (bool valid, uint triggerData) = _checkTrigger(rule.trigger); 
+        require(valid == true, "Trigger not satisfied");
+
+        uint outputAmount = _performAction(rule.action, triggerData);
         rule.outputAmount = outputAmount; 
         rule.executed = true; 
+
+        //TODO: send reward to caller
     } 
 }
