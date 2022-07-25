@@ -152,14 +152,12 @@ contract RuleExecutor is Ownable {
 
         if (rule.executed) {
             // withdrawing after successfully triggered rule
-            uint balance = subscription.collateralAmount*rule.outputAmount/rule.action.totalCollateralAmount; 
-            IERC20(rule.action.toToken).approve(subscription.subscriber, balance);
-            IERC20(rule.action.toToken).transferFrom(address(this), subscription.subscriber, balance);
+            uint balance = subscription.collateralAmount*rule.outputAmount/rule.action.totalCollateralAmount;
+            IERC20(rule.action.toToken).transfer(subscription.subscriber, balance);
         } else {
             // withdrawing before anyone triggered this
-            rule.action.totalCollateralAmount = rule.action.totalCollateralAmount - subscription.collateralAmount; 
-            IERC20(rule.action.fromToken).approve(subscription.subscriber, subscription.collateralAmount);
-            IERC20(rule.action.fromToken).transferFrom(address(this), subscription.subscriber, subscription.collateralAmount);
+            rule.action.totalCollateralAmount = rule.action.totalCollateralAmount - subscription.collateralAmount;
+            IERC20(rule.action.fromToken).transfer(subscription.subscriber, subscription.collateralAmount);
         }
     }
 
