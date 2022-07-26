@@ -23,7 +23,7 @@ describe("RuleExecutor", function () {
       const { ruleExecutor, owner } = await loadFixture(deployRuleExecutorFixture);
 
       expect(await ruleExecutor.owner()).to.equal(owner.address);
-    });    
+    });
   });
 
   describe("Add Triggers", function () {
@@ -33,7 +33,7 @@ describe("RuleExecutor", function () {
       );
 
       // We use lock.connect() to send a transaction from another account
-      await expect(ruleExecutor.connect(otherAccount).addTriggerFeeds("", 1, "", "", [""])).to.be.revertedWith(
+      await expect(ruleExecutor.connect(otherAccount).addTriggerFeed("", "", "", [""])).to.be.revertedWith(
         "You aren't the owner"
       );
     });
@@ -43,7 +43,7 @@ describe("RuleExecutor", function () {
         deployRuleExecutorFixture
       );
       
-      await ruleExecutor.addTriggerFeeds("", 1, "", "", [""]);
+      await ruleExecutor.addTriggerFeed("", "", "", [""]);
     });
 
 
