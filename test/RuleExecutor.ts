@@ -33,8 +33,8 @@ describe("RuleExecutor", function () {
       );
 
       // We use lock.connect() to send a transaction from another account
-      await expect(ruleExecutor.connect(otherAccount).addTriggerFeed("", "", "", [""])).to.be.revertedWith(
-        "You aren't the owner"
+      await expect(ruleExecutor.connect(otherAccount).addTriggerFeed("eth", "0xc0ffee254729296a45a3885639AC7E10F9d54979", "0x616d4bcd", [])).to.be.revertedWith(
+        "Ownable: caller is not the owner"
       );
     });
 
@@ -43,7 +43,7 @@ describe("RuleExecutor", function () {
         deployRuleExecutorFixture
       );
       
-      await ruleExecutor.addTriggerFeed("", "", "", [""]);
+      await ruleExecutor.addTriggerFeed("eth", "0xc0ffee254729296a45a3885639AC7E10F9d54979", "0x616d4bcd", []);
     });
 
 
