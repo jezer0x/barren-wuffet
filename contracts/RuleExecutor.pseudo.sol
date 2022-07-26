@@ -122,6 +122,7 @@ contract RuleExecutor is Ownable {
         } else if(op == Ops.LT){
             return (res < val, res);
         }
+        return (false, 0);
     }
 
     function _performAction(Action storage action, uint triggerData) private returns (uint amountOut) {            
@@ -234,7 +235,7 @@ contract RuleExecutor is Ownable {
         _validateCollateral(rules[ruleHash].action, collateralToken, collateralAmount);
         _collectCollateral(collateralToken, collateralAmount);  
         Subscription storage newSub = subscriptions[ruleHash].push(); 
-        newSub.subscriber = msg.sender; 
+        newSub.subscriber = msg.sender;
         // TODO: take a fee here
         newSub.collateralAmount = collateralAmount;
         rules[ruleHash].action.totalCollateralAmount = rules[ruleHash].action.totalCollateralAmount + collateralAmount; 
@@ -273,7 +274,7 @@ contract RuleExecutor is Ownable {
     }
 
     function checkRule(bytes32 ruleHash) public returns (bool valid) {
-        (bool valid, ) = _checkTrigger(rules[ruleHash].trigger); 
+        (valid, ) = _checkTrigger(rules[ruleHash].trigger); 
     }
 
     function executeRule(bytes32 ruleHash) public payable { // <- send gas, get a refund if action is performed, else lose gas.
