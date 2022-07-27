@@ -50,14 +50,21 @@ describe("RuleExecutor", () => {
   });
 
   describe("Add Rule", function() {
+    const validTrigger: REType.TriggerStruct = {
+      op: 1,
+      // TODO trigger requires 2 assets. this doesnt fit here.
+      param: ethers.utils.defaultAbiCoder.encode([ "string", "string" ], [ "eth", "uni" ]),
+      value: 1000
+    }
+
     it("Should not allow adding a rule, where the trigger is not a whitelisted item", async () =>{
       const { ruleExecutor, owner, otherAccount } = await loadFixture(
         deployRuleExecutorFixture
       );            
       
       const trigger: REType.TriggerStruct = {
-        op: 2,
-        param: "0x000000000000000000000000000000000000000000000000000000000000acde",
+        op: 0,
+        param: ethers.utils.defaultAbiCoder.encode([ "string", "string" ], [ "0x0", "0x0" ]),
         value: 1000
       }
 
@@ -70,55 +77,66 @@ describe("RuleExecutor", () => {
         toToken: "0xc0ffee254729296a45a3885639AC7E10F9d54979"
       };
 
-      await ruleExecutor.connect(otherAccount).addRule(trigger, action);
+      await expect(ruleExecutor.connect(otherAccount).addRule(trigger, action)).to.be.revertedWith(
+        "unauthorized trigger"
+      );      
 
     });
-    it("Should not allow adding a rule, where the action is not a whitelisted item", async () =>{
+    it("Should not allow adding a rule, with a valid trigger where the action is not a whitelisted item", async () =>{
       const { ruleExecutor, owner, otherAccount } = await loadFixture(
         deployRuleExecutorFixture
-      );            
+      );
       
-      const trigger: REType.TriggerStruct = {
-        op: 1,
-        param: "0x000000000000000000000000000000000000000000000000000000000000acde",
-        value: 1000
-      }
+      // Add trigger feeds with valid wallets.
+      await ruleExecutor.addTriggerFeed("eth", ethers.Wallet.createRandom().address, "0x616d4bcd", []);
+      await ruleExecutor.addTriggerFeed("uni", ethers.Wallet.createRandom().address, "0x616d4bcd", []);      
 
       const action: REType.ActionStruct = {
         action: "backflip",
         data: "0x000000000000000000000000000000000000000000000000000000000000acde",
         fromToken: "0xc0ffee254729296a45a3885639AC7E10F9d54979",
         minTokenAmount: 1,
-        totalCollateralAmount: 1,
+        // this field indicates the total collateral attributed to this action.
+        // we shouldnt be passing this here.
+        totalCollateralAmount: 0, 
         toToken: "0xc0ffee254729296a45a3885639AC7E10F9d54979"
       };
 
-      await ruleExecutor.connect(otherAccount).addRule(trigger, action);
-
-
+      await expect(ruleExecutor.connect(otherAccount).addRule(validTrigger, action)).to.be.revertedWith(
+        "Action not supported"
+      );
     });
 
-    it("Should allow adding a rule, for all whitelisted triggers", async () =>{
+    it("Should allow adding a rule, for all whitelisted triggers and actions", async () =>{
       const { ruleExecutor, owner, otherAccount } = await loadFixture(
         deployRuleExecutorFixture
       );
 
-      const trigger: REType.TriggerStruct = {
-        op: 1,
-        param: "0x000000000000000000000000000000000000000000000000000000000000acde",
-        value: 1000
-      }
+      await ruleExecutor.addTriggerFeed("eth", ethers.Wallet.createRandom().address, "0x616d4bcd", []); 
+      await ruleExecutor.addTriggerFeed("uni", ethers.Wallet.createRandom().address, "0x616d4bcd", []);          
 
-      const action: REType.ActionStruct = {
+
+      await ruleExecutor.connect(otherAccount).addRule(validTrigger, {
         action: "swapUni",
         data: "0x000000000000000000000000000000000000000000000000000000000000acde",
         fromToken: "0xc0ffee254729296a45a3885639AC7E10F9d54979",
         minTokenAmount: 1,
-        totalCollateralAmount: 1,
+        // this field indicates the total collateral attributed to this action.
+        // we shouldnt be passing this here.
+        totalCollateralAmount: 0, 
         toToken: "0xc0ffee254729296a45a3885639AC7E10F9d54979"
-      };
-
-      await ruleExecutor.connect(otherAccount).addRule(trigger, action);
+      });
+      
+      await ruleExecutor.connect(otherAccount).addRule(validTrigger, {
+        action: "swapSushi",
+        data: "0x000000000000000000000000000000000000000000000000000000000000acde",
+        fromToken: "0xc0ffee254729296a45a3885639AC7E10F9d54979",
+        minTokenAmount: 1,
+        // this field indicates the total collateral attributed to this action.
+        // we shouldnt be passing this here.
+        totalCollateralAmount: 0, 
+        toToken: "0xc0ffee254729296a45a3885639AC7E10F9d54979"
+      });
 
     });
 
