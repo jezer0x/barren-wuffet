@@ -10,6 +10,6 @@ interface IAction {
         external
         returns (bool, uint256);
 
-    // reverts if action fails to validate
-    function validateAction(RETypes.Action memory action) external view;
+    // reverts if action fails to validate, otherwise returns true
+    function validateAction(RETypes.Action memory action) external view returns (bool);
 }

@@ -61,13 +61,13 @@ contract PriceRatioTrigger is ITrigger, Ownable {
         return abi.decode(oracleValue, (uint256));
     }
 
-    function validateTrigger(RETypes.Trigger memory trigger) external view returns (bool valid){
+    function validateTrigger(RETypes.Trigger memory trigger) external view returns (bool){
         (string memory asset1, string memory asset2) = abi.decode(trigger.param, (string, string));
         require(
             triggerFeeds[asset1].dataSource != address(0) && triggerFeeds[asset2].dataSource != address(0),
             "unauthorized trigger"
         );
-        valid = true;
+        return true;
     }
 
     function checkTrigger(RETypes.Trigger memory trigger) external view returns (bool, uint256) {
