@@ -13,15 +13,42 @@ import "./ITrigger.sol";
 
 contract RuleExecutor is Ownable {
 
+    event RuleCreated(
+        bytes32 indexed ruleHash, 
+        Rule rule
+    ); 
+
+    event Subscribed(
+        bytes32 indexed ruleHash, 
+        uint SubIdx, 
+        Subscription subscription 
+    ); 
+
+    event Executed(
+        bytes32 indexed ruleHash, 
+        address executor 
+    ); 
+
+    event Redeemed(
+        bytes32 indexed ruleHash,
+        uint SubIdx, 
+        uint balance, 
+        address token
+    ); 
+
+    enum RuleStatus {
+        CREATED, 
+        EXECUTED
+    }
+
     struct Rule {        
         RETypes.Trigger trigger;
         RETypes.Action action;
-        
+
         uint minTokenAmount;    // minimum amount needed as collateral to subscribe 
         uint maxCollateralAmount; 
         uint totalCollateralAmount;
-
-        bool executed; 
+        RuleStatus status; 
         uint outputAmount;  
     }
 
@@ -53,14 +80,16 @@ contract RuleExecutor is Ownable {
         Rule storage rule = rules[ruleHash]; 
         Subscription storage subscription = subscriptions[ruleHash][subscriptionIdx]; 
 
-        if (rule.executed) {
+        if (rule.status == RuleStatus.EXECUTED) {
             // withdrawing after successfully triggered rule
             uint balance = subscription.collateralAmount*rule.outputAmount/rule.totalCollateralAmount;
             _redeemBalance(subscription.subscriber, balance, rule.action.toToken); 
+            emit Redeemed(ruleHash, subscriptionIdx, balance, rule.action.toToken); 
         } else {
             // withdrawing before anyone triggered this
             rule.totalCollateralAmount = rule.totalCollateralAmount - subscription.collateralAmount;
             _redeemBalance(subscription.subscriber, subscription.collateralAmount, rule.action.fromToken);
+            emit Redeemed(ruleHash, subscriptionIdx, subscription.collateralAmount, rule.action.fromToken); 
         }
     }
 
@@ -83,11 +112,15 @@ contract RuleExecutor is Ownable {
         // need to approve uniswap to take asset1 from this contract, and get asset2 back        
         ITrigger(trigger.callee).validateTrigger(trigger);
         IAction(action.callee).validateAction(action);
-        Rule storage rule = rules[_hashRule(trigger, action)];
+
+        bytes32 ruleHash = _hashRule(trigger, action); 
+        Rule storage rule = rules[ruleHash];
         rule.trigger = trigger;
         rule.action = action;
-        rule.executed = false; 
+        rule.status = RuleStatus.CREATED; 
         rule.outputAmount = 0; 
+
+        emit RuleCreated(ruleHash, rule);
     }
 
     function _hashRule(RETypes.Trigger memory trigger, RETypes.Action memory action) private pure returns (bytes32) {
@@ -102,6 +135,8 @@ contract RuleExecutor is Ownable {
         // TODO: take a fee here
         newSub.collateralAmount = collateralAmount;
         rules[ruleHash].totalCollateralAmount = rules[ruleHash].totalCollateralAmount + collateralAmount; 
+
+        emit Subscribed(ruleHash, subscriptions[ruleHash].length-1, newSub); 
     }
     
     function _collectCollateral(address collateralToken, uint collateralAmount) private {
@@ -131,8 +166,10 @@ contract RuleExecutor is Ownable {
         require(success == true, "Action unsuccessful");
 
         rule.outputAmount = output;
-        rule.executed = true; 
+        rule.status = RuleStatus.EXECUTED; 
 
         //TODO: send reward to caller
+
+        emit Executed(ruleHash, msg.sender); 
     } 
 }
