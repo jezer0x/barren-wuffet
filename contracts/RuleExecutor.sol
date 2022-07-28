@@ -16,8 +16,13 @@ contract RuleExecutor is Ownable {
     struct Rule {        
         RETypes.Trigger trigger;
         RETypes.Action action;
+        
+        uint minTokenAmount;    // minimum amount needed as collateral to subscribe 
+        uint maxCollateralAmount; 
+        uint totalCollateralAmount;
+
         bool executed; 
-        uint outputAmount; 
+        uint outputAmount;  
     }
 
     // hash -> Rule
@@ -50,18 +55,19 @@ contract RuleExecutor is Ownable {
 
         if (rule.executed) {
             // withdrawing after successfully triggered rule
-            uint balance = subscription.collateralAmount*rule.outputAmount/rule.action.totalCollateralAmount;
+            uint balance = subscription.collateralAmount*rule.outputAmount/rule.totalCollateralAmount;
             _redeemBalance(subscription.subscriber, balance, rule.action.toToken); 
         } else {
             // withdrawing before anyone triggered this
-            rule.action.totalCollateralAmount = rule.action.totalCollateralAmount - subscription.collateralAmount;
+            rule.totalCollateralAmount = rule.totalCollateralAmount - subscription.collateralAmount;
             _redeemBalance(subscription.subscriber, subscription.collateralAmount, rule.action.fromToken);
         }
     }
 
-    function _validateCollateral(RETypes.Action storage action, address collateralToken, uint collateralAmount) private view {
+    function _validateCollateral(Rule storage rule, RETypes.Action storage action, address collateralToken, uint collateralAmount) private view {
         require(action.fromToken == collateralToken);
-        require(action.minTokenAmount <= collateralAmount);
+        require(rule.minTokenAmount <= collateralAmount);
+        require(rule.maxCollateralAmount <= rule.totalCollateralAmount + collateralAmount); 
 
         if (collateralToken == REConstants.ETH) {
             require(collateralAmount == msg.value); 
@@ -89,13 +95,13 @@ contract RuleExecutor is Ownable {
     }
 
     function subscribeToRule(bytes32 ruleHash, address collateralToken, uint collateralAmount) public {    
-        _validateCollateral(rules[ruleHash].action, collateralToken, collateralAmount);
+        _validateCollateral(rules[ruleHash], rules[ruleHash].action, collateralToken, collateralAmount);
         _collectCollateral(collateralToken, collateralAmount);  
         Subscription storage newSub = subscriptions[ruleHash].push(); 
         newSub.subscriber = msg.sender; 
         // TODO: take a fee here
         newSub.collateralAmount = collateralAmount;
-        rules[ruleHash].action.totalCollateralAmount = rules[ruleHash].action.totalCollateralAmount + collateralAmount; 
+        rules[ruleHash].totalCollateralAmount = rules[ruleHash].totalCollateralAmount + collateralAmount; 
     }
     
     function _collectCollateral(address collateralToken, uint collateralAmount) private {
@@ -119,7 +125,9 @@ contract RuleExecutor is Ownable {
         (bool valid, uint triggerData) = ITrigger(rule.trigger.callee).checkTrigger(rule.trigger); 
         require(valid == true, "RETypes.Trigger not satisfied");
 
-        (bool success, uint output) = IAction(rule.action.callee).performAction(rule.action, triggerData);
+        RETypes.ActionRuntimeParams memory runtimeParams = RETypes.ActionRuntimeParams({triggerData: triggerData , totalCollateralAmount: rule.totalCollateralAmount}); 
+
+        (bool success, uint output) = IAction(rule.action.callee).performAction(rule.action, runtimeParams);
         require(success == true, "Action unsuccessful");
 
         rule.outputAmount = output;

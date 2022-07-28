@@ -3,13 +3,16 @@ pragma solidity ^0.8.9;
 
 library RETypes {
 
+    struct ActionRuntimeParams {
+        uint triggerData; 
+        uint totalCollateralAmount; 
+    }
+
     struct Action {        
         address callee;         // eg. swapUni
         bytes data;             // any custom param to send to the callee
         address fromToken;      // token to be used to initiate the action   
         address toToken;        // token to be gotten as output
-        uint minTokenAmount;    // minimum amount needed as collateral to subscribe 
-        uint totalCollateralAmount; 
     }
 
     enum Ops { GT, LT }
