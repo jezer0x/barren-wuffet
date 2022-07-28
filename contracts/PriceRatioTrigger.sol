@@ -5,7 +5,7 @@ import "./ITrigger.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract PriceTrigger is ITrigger, Ownable {
+contract PriceRatioTrigger is ITrigger, Ownable {
     struct TriggerFeed {
         address dataSource;
         bytes4 fn;
