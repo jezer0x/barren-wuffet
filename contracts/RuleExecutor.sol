@@ -36,6 +36,14 @@ contract RuleExecutor is Ownable {
         address token
     ); 
 
+    event Cancelled(
+        bytes32 indexed ruleHash,
+        uint SubIdx, 
+        uint balance, 
+        address token
+    ); 
+
+
     enum RuleStatus {
         CREATED, 
         EXECUTED
@@ -53,15 +61,23 @@ contract RuleExecutor is Ownable {
     // hash -> Rule
     mapping(bytes32 => Rule) rules;
 
+    enum SubscriptionStatus {
+        ACTIVE, 
+        CANCELLED, 
+        REDEEMED
+    }
+
     struct Subscription {
         address subscriber;
         uint collateralAmount; 
+        SubscriptionStatus status; 
     }
 
     struct SubscriptionConstraints {
         uint minTokenAmount;        // minimum amount needed as collateral to subscribe 
         uint maxCollateralAmount;   // limit on subscription to protect from slippage DOS attacks
     }
+
 
     // ruleHash -> [Subscription]
     mapping(bytes32 => Subscription[]) subscriptions;
@@ -83,16 +99,20 @@ contract RuleExecutor is Ownable {
         Rule storage rule = rules[ruleHash]; 
         Subscription storage subscription = subscriptions[ruleHash][subscriptionIdx]; 
 
+        require(subscription.status == SubscriptionStatus.ACTIVE, "subscription is not active!"); 
+
         if (rule.status == RuleStatus.EXECUTED) {
             // withdrawing after successfully triggered rule
             uint balance = subscription.collateralAmount*rule.outputAmount/rule.totalCollateralAmount;
-            _redeemBalance(subscription.subscriber, balance, rule.action.toToken); 
+            _redeemBalance(subscription.subscriber, balance, rule.action.toToken);
+            subscription.status = SubscriptionStatus.REDEEMED; 
             emit Redeemed(ruleHash, subscriptionIdx, balance, rule.action.toToken); 
         } else {
             // withdrawing before anyone triggered this
             rule.totalCollateralAmount = rule.totalCollateralAmount - subscription.collateralAmount;
             _redeemBalance(subscription.subscriber, subscription.collateralAmount, rule.action.fromToken);
-            emit Redeemed(ruleHash, subscriptionIdx, subscription.collateralAmount, rule.action.fromToken); 
+            subscription.status = SubscriptionStatus.CANCELLED; 
+            emit Cancelled(ruleHash, subscriptionIdx, subscription.collateralAmount, rule.action.fromToken); 
         }
     }
 
@@ -106,7 +126,7 @@ contract RuleExecutor is Ownable {
         }
     }
 
-    function addRule(RETypes.Trigger calldata trigger, RETypes.Action calldata action, SubscriptionConstraints memory constraints) public { // var:val:op, action:data
+    function addRule(RETypes.Trigger calldata trigger, RETypes.Action calldata action, SubscriptionConstraints calldata constraints) public { // var:val:op, action:data
         // ethPrice: 1000: gt, uniswap:<sellethforusdc>
         // check if action[0] is in actionTypes
         // if action[1] is "swap", we need to do a swap.
@@ -135,6 +155,7 @@ contract RuleExecutor is Ownable {
         _collectCollateral(collateralToken, collateralAmount);  
         Subscription storage newSub = subscriptions[ruleHash].push(); 
         newSub.subscriber = msg.sender; 
+        newSub.status = SubscriptionStatus.ACTIVE; 
         // TODO: take a fee here
         newSub.collateralAmount = collateralAmount;
         rules[ruleHash].totalCollateralAmount = rules[ruleHash].totalCollateralAmount + collateralAmount; 
