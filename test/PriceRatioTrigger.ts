@@ -79,15 +79,12 @@ describe("PriceRatioTrigger", () => {
 
       const trigger: RETypes.TriggerStruct = {        
         op: GT,        
-        param: ethers.utils.defaultAbiCoder.encode([ "string" ], [ "eth" ]),
+        param: ethers.utils.defaultAbiCoder.encode([ "string" ], [ "eth" ]),        
         callee: testOracleEth.address,
         value: 0
       };
-      // const val = await priceRatioTrigger.connect(otherAccount).validateTrigger(trigger);
-      // val here is []
-      // the require isnt executed.      
       
-      await expect(priceRatioTrigger.connect(otherAccount).validateTrigger(trigger)).to.be.revertedWith("");
+      await expect(priceRatioTrigger.connect(otherAccount).validateTrigger(trigger)).to.be.reverted;
     });
     
     it("Should revert if the trigger has 2 assets and the datasource is specified incorrectly", async () => {
@@ -96,7 +93,7 @@ describe("PriceRatioTrigger", () => {
       );
 
       const trigger: RETypes.TriggerStruct = {        
-        op: GT,        
+        op: GT,
         param: ethers.utils.defaultAbiCoder.encode([ "string", "string" ], [ "eth", "sushi" ]),
         callee: testOracleEth.address,
         value: 0
@@ -120,7 +117,7 @@ describe("PriceRatioTrigger", () => {
         value: 0
       };
 
-      await expect(priceRatioTrigger.connect(otherAccount).validateTrigger(trigger)).to.not.be.reverted;
+      expect(await priceRatioTrigger.connect(otherAccount).validateTrigger(trigger)).to.equal(true);
       
     });
   });

@@ -9,5 +9,5 @@ interface ITrigger {
 
     // Used during addition of a trigger.
     // Reverts if trigger.fields don't make sense.
-    function validateTrigger(RETypes.Trigger memory trigger) external view;
+    function validateTrigger(RETypes.Trigger memory trigger) external view returns (bool valid);
 }
