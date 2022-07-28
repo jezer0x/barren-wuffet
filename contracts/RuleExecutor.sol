@@ -44,9 +44,7 @@ contract RuleExecutor is Ownable {
     struct Rule {        
         RETypes.Trigger trigger;
         RETypes.Action action;
-
-        uint minTokenAmount;    // minimum amount needed as collateral to subscribe 
-        uint maxCollateralAmount; 
+        SubscriptionConstraints constraints; 
         uint totalCollateralAmount;
         RuleStatus status; 
         uint outputAmount;  
@@ -58,6 +56,11 @@ contract RuleExecutor is Ownable {
     struct Subscription {
         address subscriber;
         uint collateralAmount; 
+    }
+
+    struct SubscriptionConstraints {
+        uint minTokenAmount;        // minimum amount needed as collateral to subscribe 
+        uint maxCollateralAmount;   // limit on subscription to protect from slippage DOS attacks
     }
 
     // ruleHash -> [Subscription]
@@ -95,15 +98,15 @@ contract RuleExecutor is Ownable {
 
     function _validateCollateral(Rule storage rule, RETypes.Action storage action, address collateralToken, uint collateralAmount) private view {
         require(action.fromToken == collateralToken);
-        require(rule.minTokenAmount <= collateralAmount);
-        require(rule.maxCollateralAmount <= rule.totalCollateralAmount + collateralAmount); 
+        require(rule.constraints.minTokenAmount <= collateralAmount);
+        require(rule.constraints.maxCollateralAmount <= rule.totalCollateralAmount + collateralAmount); 
 
         if (collateralToken == REConstants.ETH) {
             require(collateralAmount == msg.value); 
         }
     }
 
-    function addRule(RETypes.Trigger calldata trigger, RETypes.Action calldata action) public { // var:val:op, action:data
+    function addRule(RETypes.Trigger calldata trigger, RETypes.Action calldata action, SubscriptionConstraints memory constraints) public { // var:val:op, action:data
         // ethPrice: 1000: gt, uniswap:<sellethforusdc>
         // check if action[0] is in actionTypes
         // if action[1] is "swap", we need to do a swap.
@@ -113,7 +116,7 @@ contract RuleExecutor is Ownable {
         ITrigger(trigger.callee).validateTrigger(trigger);
         IAction(action.callee).validateAction(action);
 
-        bytes32 ruleHash = _hashRule(trigger, action); 
+        bytes32 ruleHash = _hashRule(trigger, action, constraints); 
         Rule storage rule = rules[ruleHash];
         rule.trigger = trigger;
         rule.action = action;
@@ -123,8 +126,8 @@ contract RuleExecutor is Ownable {
         emit RuleCreated(ruleHash, rule);
     }
 
-    function _hashRule(RETypes.Trigger memory trigger, RETypes.Action memory action) private pure returns (bytes32) {
-        return keccak256(abi.encode(trigger, action));
+    function _hashRule(RETypes.Trigger memory trigger, RETypes.Action memory action, SubscriptionConstraints memory constraints) private view returns (bytes32) {
+        return keccak256(abi.encode(trigger, action, constraints, msg.sender, block.timestamp));
     }
 
     function subscribeToRule(bytes32 ruleHash, address collateralToken, uint collateralAmount) public {    
