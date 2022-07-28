@@ -117,8 +117,8 @@ contract RuleExecutor is Ownable {
         // we could store the "swap" opcodes as data, which will allow us to whitelist rules.
         // the swap will happen on behalf of this contract,
         // need to approve uniswap to take asset1 from this contract, and get asset2 back
-        ITrigger(trigger.callee).validateTrigger(trigger);
-        IAction(action.callee).validateAction(action);
+        require(ITrigger(trigger.callee).validateTrigger(trigger), "invalid trigger");
+        require(IAction(action.callee).validateAction(action), "invalid action");
 
         bytes32 ruleHash = _hashRule(trigger, action, constraints);
         Rule storage rule = rules[ruleHash];
