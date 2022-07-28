@@ -7,5 +7,7 @@ interface IAction {
     // calls the function
     // returns (success, uint) 
     function performAction(RETypes.Action memory action, uint triggerData) external returns (bool, uint); 
-    function validateAction(RETypes.Action memory action) external; 
+
+    // reverts if action fails to validate 
+    function validateAction(RETypes.Action memory action) external view; 
 }
