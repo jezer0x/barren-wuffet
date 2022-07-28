@@ -53,11 +53,11 @@ contract PriceRatioTrigger is ITrigger, Ownable {
         }
     }
 
-    function _getPrice(string memory asset) private returns (uint256) {
+    function _getPrice(string memory asset) private view returns (uint256) {
         TriggerFeed storage tf = triggerFeeds[asset];
 
         (address dataSource, bytes4 fn, mapping(string => string) storage params) = (tf.dataSource, tf.fn, tf.params);
-        bytes memory oracleValue = Address.functionCall(dataSource, abi.encodeWithSelector(fn)); // bytes(params)));
+        bytes memory oracleValue = Address.functionStaticCall(dataSource, abi.encodeWithSelector(fn)); // bytes(params)));
         return abi.decode(oracleValue, (uint256));
     }
 
@@ -69,7 +69,7 @@ contract PriceRatioTrigger is ITrigger, Ownable {
         );
     }
 
-    function checkTrigger(RETypes.Trigger memory trigger) external returns (bool, uint256) {
+    function checkTrigger(RETypes.Trigger memory trigger) external view returns (bool, uint256) {
         // get the val of var, so we can check if it matches trigger
         (uint256 val, RETypes.Ops op) = (trigger.value, trigger.op);
         (string memory asset1, string memory asset2) = abi.decode(trigger.param, (string, string));
