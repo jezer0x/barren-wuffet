@@ -40,7 +40,7 @@ contract PriceTrigger is ITrigger, Ownable {
         tf.params["token"] = "wbtc";    
     }
 
-    function addTriggerFeeds(string memory param, uint idx, address dataSource, bytes4 fn, string[] memory params) public onlyOwner {
+    function addTriggerFeed(string memory param, address dataSource, bytes4 fn, string[] memory params) public onlyOwner {
         TriggerFeed storage tf = triggerFeeds[param];
         tf.dataSource = dataSource;
         tf.fn = fn;
