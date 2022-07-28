@@ -2,8 +2,19 @@ import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { RuleExecutor as REType } from '../typechain-types/contracts/RuleExecutor.pseudo.sol/RuleExecutor';
+import { RuleExecutor as REType } from '../typechain-types/contracts/RuleExecutor';
 
+
+function createRuleHash(trigger: REType.TriggerStruct, action: REType.ActionStruct) {
+  return ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
+    ["uint", "bytes", "uint", "string", "bytes", "address", "uint"],
+    [trigger.op, trigger.param, trigger.value, action.action, action.data, action.fromToken, action.minTokenAmount]));
+}
+
+const LT = 0;
+const GT = 1;
+const ETH_PRICE = 100;
+const UNI_PRICE = 10;
 
 describe("RuleExecutor", () => {
   // We define a fixture to reuse the same setup in every test.
@@ -16,7 +27,10 @@ describe("RuleExecutor", () => {
     const RuleExecutor = await ethers.getContractFactory("RuleExecutor");
     const ruleExecutor = await RuleExecutor.deploy();
 
-    return { ruleExecutor, owner, otherAccount };
+    const TestOracle = await ethers.getContractFactory("TestOracle");
+    const testOracleEth = await TestOracle.deploy(ETH_PRICE);
+    const testOracleUni = await TestOracle.deploy(UNI_PRICE);
+    return { ruleExecutor, testOracleEth, testOracleUni, owner, otherAccount };
   }
 
   describe("Deployment", () => {    
@@ -58,7 +72,7 @@ describe("RuleExecutor", () => {
     }
 
     it("Should not allow adding a rule, where the trigger is not a whitelisted item", async () =>{
-      const { ruleExecutor, owner, otherAccount } = await loadFixture(
+      const { ruleExecutor, otherAccount } = await loadFixture(
         deployRuleExecutorFixture
       );            
       
@@ -108,13 +122,13 @@ describe("RuleExecutor", () => {
     });
 
     it("Should allow adding a rule, for all whitelisted triggers and actions", async () =>{
-      const { ruleExecutor, owner, otherAccount } = await loadFixture(
+      const { ruleExecutor, otherAccount } = await loadFixture(
         deployRuleExecutorFixture
       );
 
       await ruleExecutor.addTriggerFeed("eth", ethers.Wallet.createRandom().address, "0x616d4bcd", []); 
       await ruleExecutor.addTriggerFeed("uni", ethers.Wallet.createRandom().address, "0x616d4bcd", []);          
-
+      
 
       await ruleExecutor.connect(otherAccount).addRule(validTrigger, {
         action: "swapUni",
@@ -141,35 +155,4 @@ describe("RuleExecutor", () => {
     });
 
   });
-
-
-
-    // describe("Events", function () {
-    //   it("Should emit an event on withdrawals", async function () {
-    //     const { lock, unlockTime, lockedAmount } = await loadFixture(
-    //       deployOneYearLockFixture
-    //     );
-
-    //     await time.increaseTo(unlockTime);
-
-    //     await expect(lock.withdraw())
-    //       .to.emit(lock, "Withdrawal")
-    //       .withArgs(lockedAmount, anyValue); // We accept any value as `when` arg
-    //   });
-    // });
-
-    // describe("Transfers", function () {
-    //   it("Should transfer the funds to the owner", async function () {
-    //     const { lock, unlockTime, lockedAmount, owner } = await loadFixture(
-    //       deployOneYearLockFixture
-    //     );
-
-    //     await time.increaseTo(unlockTime);
-
-    //     await expect(lock.withdraw()).to.changeEtherBalances(
-    //       [owner, lock],
-    //       [lockedAmount, -lockedAmount]
-    //     );
-    //   });
-    // });  
 });
