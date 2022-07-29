@@ -98,6 +98,8 @@ describe("RuleExecutor", () => {
       const badTrigger = makePassingTrigger(ethers.constants.AddressZero); // passing trigger with bad address
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
 
+      ruleExecutor.disableTriggerWhitelist();
+      ruleExecutor.disableActionWhitelist();
       await expect(ruleExecutor.connect(ruleMakerWallet).addRule(badTrigger, executableAction, permissiveConstraints)).to.be.revertedWithoutReason();
     });
 
@@ -112,10 +114,12 @@ describe("RuleExecutor", () => {
 
     
     it("Should revert if action doesnt have a callee with validateAction", async () => {
-      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1 } = await loadFixture(deployRuleExecutorFixture);
+      const { ruleExecutor, priceTrigger, ruleMakerWallet, testToken1 } = await loadFixture(deployRuleExecutorFixture);
 
       const passingTrigger = makePassingTrigger(priceTrigger.address); // passing trigger with bad address
       const badAction = makeSwapAction(ethers.constants.AddressZero, testToken1.address);
+      ruleExecutor.disableTriggerWhitelist();
+      ruleExecutor.disableActionWhitelist();
 
       await expect(ruleExecutor.connect(ruleMakerWallet).addRule(passingTrigger, badAction, permissiveConstraints)).to.be.revertedWithoutReason();
 
@@ -134,13 +138,24 @@ describe("RuleExecutor", () => {
 
     });
 
-    it.skip("Should revert if trigger has not been whitelisted", async () => {
-      
+    it("Should revert if trigger has not been whitelisted", async () => {
+      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1 } = await loadFixture(deployRuleExecutorFixture);
 
+      const passingTrigger = makePassingTrigger(priceTrigger.address); // passing trigger with bad address
+      const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
+
+      await expect(ruleExecutor.connect(ruleMakerWallet).addRule(passingTrigger, executableAction, permissiveConstraints)).to.be.revertedWith("Unauthorized trigger");
     });
 
-    it.skip("Should revert if action has not been whitelisted", async () => {
+    it("Should revert if action has not been whitelisted", async () => {
+      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1 } = await loadFixture(deployRuleExecutorFixture);
 
+      const passingTrigger = makePassingTrigger(priceTrigger.address); // passing trigger with bad address
+      ruleExecutor.addTriggerToWhitelist(priceTrigger.address);
+
+      const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
+
+      await expect(ruleExecutor.connect(ruleMakerWallet).addRule(passingTrigger, executableAction, permissiveConstraints)).to.be.revertedWith("Unauthorized action");
     });
 
     it("Should emit RuleCreated event if Trigger and Action are valid", async () => {
@@ -154,11 +169,13 @@ describe("RuleExecutor", () => {
         status: 2,
         outputAmount: 0
       }
+      ruleExecutor.addTriggerToWhitelist(priceTrigger.address);
+      ruleExecutor.addActionToWhitelist(swapUniSingleAction.address);
 
       await expect(ruleExecutor.connect(ruleMakerWallet).addRule(
         passingTrigger, executableAction, permissiveConstraints)).to.emit(ruleExecutor, "RuleCreated")        
           .withArgs(anyValue, (_rule: []) => {
-            console.log(_rule)
+            console.log(_rule);
           }); // We accept any value as `when` arg
 
     });

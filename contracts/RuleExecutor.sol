@@ -61,8 +61,8 @@ contract RuleExecutor is Ownable {
     bool _disableTriggerWhitelist = false;
 
     modifier onlyWhitelist(address triggerAddr, address actionAddr) {
-        require(_disableTriggerWhitelist || whitelistedTriggers[triggerAddr]);
-        require(_disableActionWhitelist || whitelistedActions[actionAddr]);
+        require(_disableTriggerWhitelist || whitelistedTriggers[triggerAddr], "Unauthorized trigger");
+        require(_disableActionWhitelist || whitelistedActions[actionAddr], "Unauthorized action");
         _;
     }
 
@@ -160,8 +160,8 @@ contract RuleExecutor is Ownable {
         // we could store the "swap" opcodes as data, which will allow us to whitelist rules.
         // the swap will happen on behalf of this contract,
         // need to approve uniswap to take asset1 from this contract, and get asset2 back
-        require(ITrigger(trigger.callee).validateTrigger(trigger), "invalid trigger");
-        require(IAction(action.callee).validateAction(action), "invalid action");
+        require(ITrigger(trigger.callee).validateTrigger(trigger), "Invalid trigger");
+        require(IAction(action.callee).validateAction(action), "Invalid action");
 
         bytes32 ruleHash = _hashRule(trigger, action, constraints);
         Rule storage rule = rules[ruleHash];
