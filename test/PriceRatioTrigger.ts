@@ -1,9 +1,7 @@
-import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { RETypes } from '../typechain-types/contracts/PriceRatioTrigger';
-import { ContractTransaction } from "ethers";
 
 
 const GT = 0;
@@ -78,9 +76,11 @@ describe("PriceRatioTrigger", () => {
       );
 
       const trigger: RETypes.TriggerStruct = {        
-        op: GT,        
+        op: GT,
         param: ethers.utils.defaultAbiCoder.encode([ "string" ], [ "eth" ]),        
-        callee: testOracleEth.address,
+        // this is the address of the ITrigger, priceRatioTrigger.address in this case
+        // but we dont expect it to matter within priceRatioTrigger.
+        callee: ethers.constants.AddressZero,
         value: 0
       };
       
@@ -95,7 +95,7 @@ describe("PriceRatioTrigger", () => {
       const trigger: RETypes.TriggerStruct = {        
         op: GT,
         param: ethers.utils.defaultAbiCoder.encode([ "string", "string" ], [ "eth", "sushi" ]),
-        callee: testOracleEth.address,
+        callee: ethers.constants.AddressZero,
         value: 0
       };
             
@@ -113,7 +113,7 @@ describe("PriceRatioTrigger", () => {
       const trigger: RETypes.TriggerStruct = {        
         op: GT,        
         param: ETH_UNI_PARAM,
-        callee: testOracleEth.address,
+        callee: ethers.constants.AddressZero,
         value: 0
       };
 
@@ -130,7 +130,7 @@ describe("PriceRatioTrigger", () => {
         const trigger: RETypes.TriggerStruct = {        
           op: LT,          
           param: ETH_UNI_PARAM,
-          callee: testOracleEth.address,
+          callee: ethers.constants.AddressZero,
           value: (ETH_UNI_PRICE - 1)
         };
         
@@ -144,7 +144,7 @@ describe("PriceRatioTrigger", () => {
         const trigger: RETypes.TriggerStruct = {        
           op: GT,          
           param: ETH_UNI_PARAM,
-          callee: testOracleEth.address,
+          callee: ethers.constants.AddressZero,
           value: (ETH_UNI_PRICE + 1)
         };
                     
@@ -159,7 +159,7 @@ describe("PriceRatioTrigger", () => {
         const trigger: RETypes.TriggerStruct = {        
           op: GT,          
           param: ETH_UNI_PARAM,
-          callee: testOracleEth.address,
+          callee: ethers.constants.AddressZero,
           value: (ETH_UNI_PRICE - 1)
         };
                     
@@ -174,7 +174,7 @@ describe("PriceRatioTrigger", () => {
         const trigger: RETypes.TriggerStruct = {        
           op: LT,          
           param: ETH_UNI_PARAM,
-          callee: testOracleEth.address,
+          callee: ethers.constants.AddressZero,
           value: (ETH_UNI_PRICE + 1)
         };
                     
