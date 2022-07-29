@@ -55,6 +55,49 @@ contract RuleExecutor is Ownable {
     // ruleHash -> [Subscription]
     mapping(bytes32 => Subscription[]) subscriptions;
 
+    mapping(address => bool) whitelistedActions;
+    mapping(address => bool) whitelistedTriggers;
+    bool allowAllActions = false;
+    bool allowAllTriggers = false;
+
+    modifier onlyWhitelist(address triggerAddr, address actionAddr) {
+        require(allowAllTriggers || whitelistedTriggers[triggerAddr]);
+        require(allowAllActions || whitelistedActions[actionAddr]);
+        _;
+    }
+
+    function addTriggerToWhitelist(address triggerAddr) public onlyOwner {
+        whitelistedTriggers[triggerAddr] = true;
+    }
+
+    function addActionToWhitelist(address actionAddr) public onlyOwner {
+        whitelistedActions[actionAddr] = true;
+    }
+
+    function removeTriggerFromWhitelist(address triggerAddr) public onlyOwner {
+        whitelistedTriggers[triggerAddr] = false;
+    }
+
+    function removeActionFromWhitelist(address actionAddr) public onlyOwner {
+        whitelistedActions[actionAddr] = false;
+    }
+
+    function allowAllTrigger() public onlyOwner {
+        allowAllTriggers = true;
+    }
+
+    function allowAllAction() public onlyOwner {
+        allowAllActions = true;
+    }
+
+    function disallowAllTrigger() public onlyOwner {
+        allowAllTriggers = false;
+    }
+
+    function disallowAllAction() public onlyOwner {
+        allowAllActions = false;
+    }
+
     constructor() {}
 
     function _redeemBalance(
@@ -109,7 +152,7 @@ contract RuleExecutor is Ownable {
         RETypes.Trigger calldata trigger,
         RETypes.Action calldata action,
         SubscriptionConstraints calldata constraints
-    ) public {
+    ) public onlyWhitelist(trigger.callee, action.callee) {
         // var:val:op, action:data
         // ethPrice: 1000: gt, uniswap:<sellethforusdc>
         // check if action[0] is in actionTypes
