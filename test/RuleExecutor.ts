@@ -13,11 +13,11 @@ const UNI_PRICE = 10;
 const ETH_UNI_PARAM = ethers.utils.defaultAbiCoder.encode([ "string", "string" ], [ "eth", "uni" ]);
 const ETH_UNI_PRICE = (ETH_PRICE/ UNI_PRICE);
 
-function makePassingTrigger(priceRatioTriggerContract: string): RETypes.TriggerStruct {
+function makePassingTrigger(priceTriggerContract: string): RETypes.TriggerStruct {
   return {        
     op: GT,          
     param: ETH_UNI_PARAM,
-    callee: priceRatioTriggerContract,
+    callee: priceTriggerContract,
     value: (ETH_UNI_PRICE - 1)
   };
 }
@@ -61,17 +61,17 @@ describe("RuleExecutor", () => {
     const testOracleEth = await TestOracle.deploy(ETH_PRICE);
     const testOracleUni = await TestOracle.deploy(UNI_PRICE);
 
-    const PriceRatioTrigger = await ethers.getContractFactory("PriceRatioTrigger");
-    const priceRatioTrigger = await PriceRatioTrigger.deploy();
-    await priceRatioTrigger.addTriggerFeed("eth", testOracleEth.address, testOracleEth.interface.getSighash('getPrice()'), []);
-    await priceRatioTrigger.addTriggerFeed("uni", testOracleUni.address, testOracleUni.interface.getSighash('getPrice()'), []);
+    const PriceTrigger = await ethers.getContractFactory("PriceTrigger");
+    const priceTrigger = await PriceTrigger.deploy();
+    await priceTrigger.addPriceFeed("eth", testOracleEth.address);
+    await priceTrigger.addPriceFeed("uni", testOracleUni.address);
 
 
     const TestToken = await ethers.getContractFactory("TestToken");
     const testToken1 = await TestToken.deploy(100000, "Test1", "TST1");
     const testToken2 = await TestToken.deploy(100000, "Test2", "TST2");
     
-    return { ruleExecutor,  priceRatioTrigger, swapUniSingleAction, testOracleEth, testOracleUni, 
+    return { ruleExecutor,  priceTrigger, swapUniSingleAction, testOracleEth, testOracleUni, 
       testToken1, testToken2, ownerWallet, ruleMakerWallet, ruleSubscriberWallet };
   }
 
@@ -112,9 +112,9 @@ describe("RuleExecutor", () => {
 
     
     it("Should revert if action doesnt have a callee with validateAction", async () => {
-      const { ruleExecutor, swapUniSingleAction, priceRatioTrigger, ruleMakerWallet, testToken1 } = await loadFixture(deployRuleExecutorFixture);
+      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1 } = await loadFixture(deployRuleExecutorFixture);
 
-      const passingTrigger = makePassingTrigger(priceRatioTrigger.address); // passing trigger with bad address
+      const passingTrigger = makePassingTrigger(priceTrigger.address); // passing trigger with bad address
       const badAction = makeSwapAction(ethers.constants.AddressZero, testToken1.address);
 
       await expect(ruleExecutor.connect(ruleMakerWallet).addRule(passingTrigger, badAction, permissiveConstraints)).to.be.revertedWithoutReason();
@@ -144,9 +144,9 @@ describe("RuleExecutor", () => {
     });
 
     it("Should emit RuleCreated event if Trigger and Action are valid", async () => {
-      const { ruleExecutor, swapUniSingleAction, priceRatioTrigger, ruleMakerWallet, testToken1 } = await loadFixture(deployRuleExecutorFixture);
+      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1 } = await loadFixture(deployRuleExecutorFixture);
 
-      const passingTrigger = makePassingTrigger(priceRatioTrigger.address); // passing trigger with bad address
+      const passingTrigger = makePassingTrigger(priceTrigger.address); // passing trigger with bad address
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
       const rule = {
         trigger: passingTrigger,
