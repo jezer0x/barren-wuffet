@@ -6,10 +6,10 @@ interface IAction {
     // unpacks action and triggerdata and creates calldata of the callee
     // calls the function
     // returns (success, uint)
-    function performAction(RETypes.Action memory action, RETypes.ActionRuntimeParams memory runtimeParams)
+    function performAction(RETypes.Action calldata action, RETypes.ActionRuntimeParams calldata runtimeParams)
         external
         returns (bool, uint256);
 
     // reverts if action fails to validate, otherwise returns true
-    function validateAction(RETypes.Action memory action) external view returns (bool);
+    function validateAction(RETypes.Action calldata action) external view returns (bool);
 }

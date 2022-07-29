@@ -134,8 +134,8 @@ contract RuleExecutor is Ownable {
     }
 
     function _validateCollateral(
-        Rule storage rule,
-        RETypes.Action storage action,
+        Rule memory rule,
+        RETypes.Action memory action,
         address collateralToken,
         uint256 collateralAmount
     ) private view {

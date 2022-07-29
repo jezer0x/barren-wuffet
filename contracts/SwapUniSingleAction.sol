@@ -10,12 +10,12 @@ contract SwapUniSingleAction is IAction {
     ISwapRouter swapRouter = ISwapRouter(0xc0ffee254729296a45a3885639AC7E10F9d54979); // TODO: put in the right addr
     address WETH9 = 0xc0ffee254729296a45a3885639AC7E10F9d54979; // TODO: put in the right addr
 
-    function validateAction(RETypes.Action memory action) external view returns (bool){
+    function validateAction(RETypes.Action calldata action) external view returns (bool){
         // we'll be ignoring action.data in swapUni (?)
         return true;
     }
 
-    function performAction(RETypes.Action memory action, RETypes.ActionRuntimeParams memory runtimeParams)
+    function performAction(RETypes.Action calldata action, RETypes.ActionRuntimeParams calldata runtimeParams)
         external
         returns (bool, uint256)
     {
