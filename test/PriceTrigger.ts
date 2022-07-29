@@ -20,58 +20,58 @@ describe("PriceTrigger", () => {
     const [owner, otherAccount] = await ethers.getSigners();
 
     const PriceTrigger = await ethers.getContractFactory("PriceTrigger");
-    const PriceTrigger = await PriceTrigger.deploy();
+    const priceTrigger = await PriceTrigger.deploy();
 
     const TestOracle = await ethers.getContractFactory("TestOracle");
     const testOracleEth = await TestOracle.deploy(ETH_PRICE);
     const testOracleUni = await TestOracle.deploy(UNI_PRICE);
-    return { PriceTrigger, testOracleEth, testOracleUni, owner, otherAccount };
+    return { priceTrigger, testOracleEth, testOracleUni, owner, otherAccount };
   }
 
   async function deployEthUniTriggerFixture() {
-    const { PriceTrigger, testOracleEth, testOracleUni, otherAccount } = await loadFixture(
+    const { priceTrigger, testOracleEth, testOracleUni, otherAccount } = await loadFixture(
       deployPriceTriggerFixture
     );
-    await PriceTrigger.addTriggerFeed("eth", testOracleEth.address, testOracleEth.interface.getSighash('getPrice()'), []);
-    await PriceTrigger.addTriggerFeed("uni", testOracleUni.address, testOracleUni.interface.getSighash('getPrice()'), []);
+    await priceTrigger.addPriceFeed("eth", testOracleEth.address);
+    await priceTrigger.addPriceFeed("uni", testOracleUni.address);
     
-    return { PriceTrigger, testOracleEth, testOracleUni, otherAccount };
+    return { priceTrigger, testOracleEth, testOracleUni, otherAccount };
   }
 
   describe("Deployment", () => {    
 
     it("Should set the right owner", async function () {
-      const { PriceTrigger, owner } = await loadFixture(deployPriceTriggerFixture);
+      const { priceTrigger, owner } = await loadFixture(deployPriceTriggerFixture);
 
-      expect(await PriceTrigger.owner()).to.equal(owner.address);
+      expect(await priceTrigger.owner()).to.equal(owner.address);
     });
   });
 
   describe("Add Triggers", () => {
     it("Should revert with the right error if called from another account", async () => {
-      const { PriceTrigger, owner, otherAccount } = await loadFixture(
+      const { priceTrigger, owner, otherAccount } = await loadFixture(
         deployPriceTriggerFixture
       );
 
       // We use lock.connect() to send a transaction from another account
-      await expect(PriceTrigger.connect(otherAccount).addTriggerFeed("eth", "0xc0ffee254729296a45a3885639AC7E10F9d54979", "0x616d4bcd", [])).to.be.revertedWith(
+      await expect(priceTrigger.connect(otherAccount).addPriceFeed("eth", "0xc0ffee254729296a45a3885639AC7E10F9d54979")).to.be.revertedWith(
         "Ownable: caller is not the owner"
       );
     });
 
     it("Should add a trigger feed if called by the owner", async () => {
-      const { PriceTrigger, owner } = await loadFixture(
+      const { priceTrigger, owner } = await loadFixture(
         deployPriceTriggerFixture
       );
       
-      await PriceTrigger.addTriggerFeed("eth", "0xc0ffee254729296a45a3885639AC7E10F9d54979", "0x616d4bcd", []);
+      await priceTrigger.addPriceFeed("eth", "0xc0ffee254729296a45a3885639AC7E10F9d54979");
     });
   });
 
 
   describe("Validate Trigger", () => {    
     it("Should revert if the trigger has only 1 asset", async () => {
-      const { PriceTrigger, testOracleEth, otherAccount } = await loadFixture(
+      const { priceTrigger, testOracleEth, otherAccount } = await loadFixture(
         deployEthUniTriggerFixture
       );
 
@@ -84,11 +84,11 @@ describe("PriceTrigger", () => {
         value: 0
       };
       
-      await expect(PriceTrigger.connect(otherAccount).validateTrigger(trigger)).to.be.reverted;
+      await expect(priceTrigger.connect(otherAccount).validateTrigger(trigger)).to.be.revertedWithoutReason;;
     });
     
     it("Should revert if the trigger has 2 assets and the datasource is specified incorrectly", async () => {
-      const { PriceTrigger, testOracleEth, otherAccount } = await loadFixture(
+      const { priceTrigger, otherAccount } = await loadFixture(
         deployEthUniTriggerFixture
       );
 
@@ -99,14 +99,12 @@ describe("PriceTrigger", () => {
         value: 0
       };
             
-      await expect(PriceTrigger.connect(otherAccount).validateTrigger(trigger)).to.be.revertedWith(
-        "unauthorized trigger"
-      );
+      await expect(priceTrigger.connect(otherAccount).validateTrigger(trigger)).to.be.revertedWithoutReason;
 
     });
 
     it("Should pass if the trigger has 2 assets and the datasource is specified", async () => {
-      const { PriceTrigger, testOracleEth, otherAccount } = await loadFixture(
+      const { priceTrigger, testOracleEth, otherAccount } = await loadFixture(
         deployEthUniTriggerFixture
       );
 
@@ -117,14 +115,14 @@ describe("PriceTrigger", () => {
         value: 0
       };
 
-      expect(await PriceTrigger.connect(otherAccount).validateTrigger(trigger)).to.equal(true);
+      expect(await priceTrigger.connect(otherAccount).validateTrigger(trigger)).to.equal(true);
       
     });
   });
   describe("Check Trigger", () => {        
     describe("Should pass / fail the trigger based on eth/uni limit price. Current eth/uni is " + ETH_UNI_PRICE, () => {      
       it("Should fail the trigger if eth/uni trigger is LT " + (ETH_UNI_PRICE - 1), async () => {
-        const { PriceTrigger, testOracleEth, otherAccount } = await loadFixture(
+        const { priceTrigger, testOracleEth, otherAccount } = await loadFixture(
           deployEthUniTriggerFixture
         );
         const trigger: RETypes.TriggerStruct = {        
@@ -134,11 +132,11 @@ describe("PriceTrigger", () => {
           value: (ETH_UNI_PRICE - 1)
         };
         
-        expect(await PriceTrigger.connect(otherAccount).checkTrigger(trigger)).to.deep.equal([false, ethers.BigNumber.from(ETH_UNI_PRICE)]);
+        expect(await priceTrigger.connect(otherAccount).checkTrigger(trigger)).to.deep.equal([false, ethers.BigNumber.from(ETH_UNI_PRICE)]);
       });
   
       it("Should fail the trigger if eth/uni limit is GT " + (ETH_UNI_PRICE + 1), async () => {
-        const { PriceTrigger, testOracleEth, otherAccount } = await loadFixture(
+        const { priceTrigger, testOracleEth, otherAccount } = await loadFixture(
           deployEthUniTriggerFixture
         );
         const trigger: RETypes.TriggerStruct = {        
@@ -148,12 +146,12 @@ describe("PriceTrigger", () => {
           value: (ETH_UNI_PRICE + 1)
         };
                     
-        expect(await PriceTrigger.connect(otherAccount).checkTrigger(trigger)).to.deep.equal([false, ethers.BigNumber.from(ETH_UNI_PRICE)]);
+        expect(await priceTrigger.connect(otherAccount).checkTrigger(trigger)).to.deep.equal([false, ethers.BigNumber.from(ETH_UNI_PRICE)]);
   
       });
   
       it("Should pass the trigger if eth/uni limit is GT " + (ETH_UNI_PRICE - 1), async () => {
-        const { PriceTrigger, testOracleEth, otherAccount } = await loadFixture(
+        const { priceTrigger, testOracleEth, otherAccount } = await loadFixture(
           deployEthUniTriggerFixture
         );
         const trigger: RETypes.TriggerStruct = {        
@@ -163,12 +161,12 @@ describe("PriceTrigger", () => {
           value: (ETH_UNI_PRICE - 1)
         };
                     
-        expect(await PriceTrigger.connect(otherAccount).checkTrigger(trigger)).to.deep.equal([true, ethers.BigNumber.from(ETH_UNI_PRICE)]);
+        expect(await priceTrigger.connect(otherAccount).checkTrigger(trigger)).to.deep.equal([true, ethers.BigNumber.from(ETH_UNI_PRICE)]);
   
       });
   
       it("Should pass the trigger if eth/uni limit is LT " + (ETH_UNI_PRICE + 1), async () => {
-        const { PriceTrigger, testOracleEth, otherAccount } = await loadFixture(
+        const { priceTrigger, testOracleEth, otherAccount } = await loadFixture(
           deployEthUniTriggerFixture
         );
         const trigger: RETypes.TriggerStruct = {        
@@ -178,7 +176,7 @@ describe("PriceTrigger", () => {
           value: (ETH_UNI_PRICE + 1)
         };
                     
-        expect(await PriceTrigger.connect(otherAccount).checkTrigger(trigger)).to.deep.equal([true, ethers.BigNumber.from(ETH_UNI_PRICE)]);
+        expect(await priceTrigger.connect(otherAccount).checkTrigger(trigger)).to.deep.equal([true, ethers.BigNumber.from(ETH_UNI_PRICE)]);
   
       });
 
