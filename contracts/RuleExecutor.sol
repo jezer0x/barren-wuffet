@@ -57,12 +57,12 @@ contract RuleExecutor is Ownable {
 
     mapping(address => bool) whitelistedActions;
     mapping(address => bool) whitelistedTriggers;
-    bool allowAllActions = false;
-    bool allowAllTriggers = false;
+    bool _disableActionWhitelist = false;
+    bool _disableTriggerWhitelist = false;
 
     modifier onlyWhitelist(address triggerAddr, address actionAddr) {
-        require(allowAllTriggers || whitelistedTriggers[triggerAddr]);
-        require(allowAllActions || whitelistedActions[actionAddr]);
+        require(_disableTriggerWhitelist || whitelistedTriggers[triggerAddr]);
+        require(_disableActionWhitelist || whitelistedActions[actionAddr]);
         _;
     }
 
@@ -82,20 +82,20 @@ contract RuleExecutor is Ownable {
         whitelistedActions[actionAddr] = false;
     }
 
-    function allowAllTrigger() public onlyOwner {
-        allowAllTriggers = true;
+    function disableTriggerWhitelist() public onlyOwner {
+        _disableTriggerWhitelist = true;
     }
 
-    function allowAllAction() public onlyOwner {
-        allowAllActions = true;
+    function disableActionWhitelist() public onlyOwner {
+        _disableActionWhitelist = true;
     }
 
-    function disallowAllTrigger() public onlyOwner {
-        allowAllTriggers = false;
+    function enableTriggerWhitelist() public onlyOwner {
+        _disableTriggerWhitelist = false;
     }
 
-    function disallowAllAction() public onlyOwner {
-        allowAllActions = false;
+    function enableActionWhitelist() public onlyOwner {
+        _disableActionWhitelist = false;
     }
 
     constructor() {}
