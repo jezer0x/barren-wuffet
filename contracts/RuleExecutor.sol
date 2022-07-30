@@ -12,11 +12,11 @@ import "./IAction.sol";
 import "./ITrigger.sol";
 
 contract RuleExecutor is Ownable {
-    event RuleCreated(bytes32 indexed ruleHash, Rule rule);
-    event Subscribed(bytes32 indexed ruleHash, uint256 SubIdx, Subscription subscription);
+    event RuleCreated(bytes32 indexed ruleHash);
+    event Subscribed(bytes32 indexed ruleHash, uint256 SubIdx);
     event Executed(bytes32 indexed ruleHash, address executor);
-    event Redeemed(bytes32 indexed ruleHash, uint256 SubIdx, uint256 balance, address token);
-    event Cancelled(bytes32 indexed ruleHash, uint256 SubIdx, uint256 balance, address token);
+    event Redeemed(bytes32 indexed ruleHash, uint256 SubIdx);
+    event Cancelled(bytes32 indexed ruleHash, uint256 SubIdx);
 
     enum RuleStatus {
         CREATED,
@@ -33,7 +33,7 @@ contract RuleExecutor is Ownable {
     }
 
     // hash -> Rule
-    mapping(bytes32 => Rule) rules;
+    mapping(bytes32 => Rule) public rules;
 
     enum SubscriptionStatus {
         ACTIVE,
@@ -53,7 +53,7 @@ contract RuleExecutor is Ownable {
     }
 
     // ruleHash -> [Subscription]
-    mapping(bytes32 => Subscription[]) subscriptions;
+    mapping(bytes32 => Subscription[]) public subscriptions;
 
     mapping(address => bool) whitelistedActions;
     mapping(address => bool) whitelistedTriggers;
@@ -123,13 +123,13 @@ contract RuleExecutor is Ownable {
             uint256 balance = (subscription.collateralAmount * rule.outputAmount) / rule.totalCollateralAmount;
             _redeemBalance(subscription.subscriber, balance, rule.action.toToken);
             subscription.status = SubscriptionStatus.REDEEMED;
-            emit Redeemed(ruleHash, subscriptionIdx, balance, rule.action.toToken);
+            emit Redeemed(ruleHash, subscriptionIdx);
         } else {
             // withdrawing before anyone triggered this
             rule.totalCollateralAmount = rule.totalCollateralAmount - subscription.collateralAmount;
             _redeemBalance(subscription.subscriber, subscription.collateralAmount, rule.action.fromToken);
             subscription.status = SubscriptionStatus.CANCELLED;
-            emit Cancelled(ruleHash, subscriptionIdx, subscription.collateralAmount, rule.action.fromToken);
+            emit Cancelled(ruleHash, subscriptionIdx);
         }
     }
 
@@ -170,7 +170,7 @@ contract RuleExecutor is Ownable {
         rule.status = RuleStatus.CREATED;
         rule.outputAmount = 0;
 
-        emit RuleCreated(ruleHash, rule);
+        emit RuleCreated(ruleHash);
     }
 
     function _hashRule(
@@ -195,7 +195,7 @@ contract RuleExecutor is Ownable {
         newSub.collateralAmount = collateralAmount;
         rules[ruleHash].totalCollateralAmount = rules[ruleHash].totalCollateralAmount + collateralAmount;
 
-        emit Subscribed(ruleHash, subscriptions[ruleHash].length - 1, newSub);
+        emit Subscribed(ruleHash, subscriptions[ruleHash].length - 1);
     }
 
     function _collectCollateral(address collateralToken, uint256 collateralAmount) private {
