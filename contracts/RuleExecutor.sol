@@ -48,8 +48,10 @@ contract RuleExecutor is Ownable {
     }
 
     struct SubscriptionConstraints {
-        uint256 minTokenAmount; // minimum amount needed as collateral to subscribe
-        uint256 maxCollateralAmount; // limit on subscription to protect from slippage DOS attacks
+        uint256 minCollateralPerSub; // minimum amount needed as collateral to subscribe
+        uint256 maxCollateralPerSub; // max ...
+        uint256 minCollateralTotal;
+        uint256 maxCollateralTotal; // limit on subscription to protect from slippage DOS attacks
     }
 
     // ruleHash -> [Subscription]
@@ -140,8 +142,9 @@ contract RuleExecutor is Ownable {
         uint256 collateralAmount
     ) private view {
         require(action.fromToken == collateralToken);
-        require(rule.constraints.minTokenAmount <= collateralAmount);
-        require(rule.constraints.maxCollateralAmount <= rule.totalCollateralAmount + collateralAmount);
+        require(rule.constraints.minCollateralPerSub <= collateralAmount);
+        require(rule.constraints.maxCollateralPerSub >= collateralAmount);
+        require(rule.constraints.maxCollateralTotal <= rule.totalCollateralAmount + collateralAmount);
 
         if (collateralToken == REConstants.ETH) {
             require(collateralAmount == msg.value);
@@ -219,6 +222,7 @@ contract RuleExecutor is Ownable {
         require(rule.action.callee == address(0), "Rule not found!");
         (bool valid, uint256 triggerData) = ITrigger(rule.trigger.callee).checkTrigger(rule.trigger);
         require(valid == true, "RETypes.Trigger not satisfied");
+        require(rule.totalCollateralAmount >= rule.constraints.minCollateralTotal, "Not enough collateral for executing");
 
         RETypes.ActionRuntimeParams memory runtimeParams = RETypes.ActionRuntimeParams({
             triggerData: triggerData,

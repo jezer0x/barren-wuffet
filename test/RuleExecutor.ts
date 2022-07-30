@@ -88,8 +88,8 @@ describe("RuleExecutor", () => {
     
     
     const permissiveConstraints: RuleExecutorType.SubscriptionConstraintsStruct = {
-      minTokenAmount: 0,
-      maxCollateralAmount: 10000000,
+      minCollateralPerSub: 0,
+      maxCollateralTotal: 10000000,
     }
 
     it("Should revert if trigger doesnt have a callee with validateTrigger", async () => {
