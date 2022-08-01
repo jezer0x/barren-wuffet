@@ -141,10 +141,10 @@ contract RuleExecutor is Ownable {
         address collateralToken,
         uint256 collateralAmount
     ) private view {
-        require(action.fromToken == collateralToken);
-        require(rule.constraints.minCollateralPerSub <= collateralAmount);
-        require(rule.constraints.maxCollateralPerSub >= collateralAmount);
-        require(rule.constraints.maxCollateralTotal <= rule.totalCollateralAmount + collateralAmount);
+        require(action.fromToken == collateralToken, "Wrong Collateral Type");
+        require(rule.constraints.minCollateralPerSub <= collateralAmount, "Insufficient Collateral for Subscription");
+        require(rule.constraints.maxCollateralPerSub >= collateralAmount, "Max Collateral for Subscription exceeded");
+        require(rule.constraints.maxCollateralTotal >= (rule.totalCollateralAmount + collateralAmount), "Max Collateral for Rule exceeded");
 
         if (collateralToken == REConstants.ETH) {
             require(collateralAmount == msg.value);
@@ -172,6 +172,7 @@ contract RuleExecutor is Ownable {
         rule.action = action;
         rule.status = RuleStatus.CREATED;
         rule.outputAmount = 0;
+        rule.constraints = constraints;
 
         emit RuleCreated(ruleHash);
     }
@@ -188,7 +189,7 @@ contract RuleExecutor is Ownable {
         bytes32 ruleHash,
         address collateralToken,
         uint256 collateralAmount
-    ) public {
+    ) public payable {
         _validateCollateral(rules[ruleHash], rules[ruleHash].action, collateralToken, collateralAmount);
         _collectCollateral(collateralToken, collateralAmount);
         Subscription storage newSub = subscriptions[ruleHash].push();
