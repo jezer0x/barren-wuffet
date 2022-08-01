@@ -221,9 +221,9 @@ contract RuleExecutor is Ownable {
         // if not, abort
 
         Rule storage rule = rules[ruleHash];
-        require(rule.action.callee == address(0), "Rule not found!");
+        require(rule.action.callee != address(0), "Rule not found!");
         (bool valid, uint256 triggerData) = ITrigger(rule.trigger.callee).checkTrigger(rule.trigger);
-        require(valid == true, "RETypes.Trigger not satisfied");
+        require(valid, "Trigger not satisfied");
         require(rule.totalCollateralAmount >= rule.constraints.minCollateralTotal, "Not enough collateral for executing");
 
         RETypes.ActionRuntimeParams memory runtimeParams = RETypes.ActionRuntimeParams({
@@ -232,7 +232,7 @@ contract RuleExecutor is Ownable {
         });
 
         (bool success, uint256 output) = IAction(rule.action.callee).performAction(rule.action, runtimeParams);
-        require(success == true, "Action unsuccessful");
+        require(success, "Action unsuccessful");
 
         rule.outputAmount = output;
         rule.status = RuleStatus.EXECUTED;
