@@ -89,6 +89,8 @@ describe("RuleExecutor", () => {
     
     const permissiveConstraints: RuleExecutorType.SubscriptionConstraintsStruct = {
       minCollateralPerSub: 0,
+      maxCollateralPerSub:100000000,
+      minCollateralTotal: 0,
       maxCollateralTotal: 10000000,
     }
 
@@ -174,9 +176,9 @@ describe("RuleExecutor", () => {
 
       await expect(ruleExecutor.connect(ruleMakerWallet).addRule(
         passingTrigger, executableAction, permissiveConstraints)).to.emit(ruleExecutor, "RuleCreated")        
-          .withArgs(anyValue, (_rule: []) => {
-            console.log(_rule);
-          }); // We accept any value as `when` arg
+          .withArgs(anyValue); //, (_rule: []) => {
+            //console.log(_rule);
+          //}); // We accept any value as `when` arg
 
     });
     
