@@ -6,10 +6,11 @@ import { RETypes } from '../typechain-types/contracts/PriceTrigger';
 
 const GT = 0;
 const LT = 1;
-const ETH_PRICE = 100;
-const UNI_PRICE = 10;
+// TODO: this whole setup wont work if eth / uni is < 1
+const ETH_PRICE = 1700;
+const UNI_PRICE = 3;
 const ETH_UNI_PARAM = ethers.utils.defaultAbiCoder.encode([ "string", "string" ], [ "eth", "uni" ]);
-const ETH_UNI_PRICE = (ETH_PRICE/ UNI_PRICE);
+const ETH_UNI_PRICE = Math.floor(ETH_PRICE/ UNI_PRICE);
 
 describe("PriceTrigger", () => {
   // We define a fixture to reuse the same setup in every test.

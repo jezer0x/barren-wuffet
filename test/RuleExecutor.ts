@@ -5,12 +5,15 @@ import { ethers } from "hardhat";
 import { RETypes } from '../typechain-types/contracts/RuleExecutor';
 import { RuleExecutor as RuleExecutorType } from '../typechain-types/contracts/RuleExecutor';
 import { assert } from "console";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { int } from "hardhat/internal/core/params/argumentTypes";
 
 
-const LT = 0;
-const GT = 1;
-const ETH_PRICE = 100;
-const UNI_PRICE = 10;
+const GT = 0;
+const LT = 1;
+
+const ETH_PRICE = 1300;
+const UNI_PRICE = 3;
 const ETH_UNI_PARAM = ethers.utils.defaultAbiCoder.encode([ "string", "string" ], [ "eth", "uni" ]);
 const ETH_UNI_PRICE = (ETH_PRICE/ UNI_PRICE);
 
@@ -27,16 +30,16 @@ function makePassingTrigger(priceTriggerContract: string): RETypes.TriggerStruct
     op: GT,          
     param: ETH_UNI_PARAM,
     callee: priceTriggerContract,
-    value: (ETH_UNI_PRICE - 1)
-  };
+    value: Math.round(ETH_UNI_PRICE - 1)
+  };  
 }
 
 function makeFailingTrigger(triggerContract: string): RETypes.TriggerStruct {
   return {        
-    op: GT,          
+    op: GT,
     param: ETH_UNI_PARAM,
     callee: triggerContract,
-    value: (ETH_UNI_PRICE - 1)
+    value: Math.round(ETH_UNI_PRICE + 1)
   };
 }
 
@@ -50,6 +53,18 @@ function makeSwapAction(swapContract: string,
     toToken: toToken
   };
   
+}
+
+async function createRule(_ruleExecutor: RuleExecutorType, trigger: RETypes.TriggerStruct, 
+  action: RETypes.ActionStruct, constraints: RuleExecutorType.SubscriptionConstraintsStruct, 
+  wallet: SignerWithAddress): Promise<string> {    
+  _ruleExecutor.addTriggerToWhitelist(trigger.callee);
+  _ruleExecutor.addActionToWhitelist(action.callee);
+  
+  const tx2 = await _ruleExecutor.connect(wallet).addRule(trigger, action, constraints);
+  const receipt2 = await tx2.wait();
+  return receipt2.events?.find((x => x.event == "RuleCreated"))?.args?.ruleHash;
+
 }
 
 describe("RuleExecutor", () => {
@@ -153,7 +168,7 @@ describe("RuleExecutor", () => {
     it("Should revert if action has not been whitelisted", async () => {
       const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1 } = await loadFixture(deployRuleExecutorFixture);
 
-      const passingTrigger = makePassingTrigger(priceTrigger.address);
+      const passingTrigger = makeFailingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
       ruleExecutor.addTriggerToWhitelist(priceTrigger.address);
 
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
@@ -164,7 +179,7 @@ describe("RuleExecutor", () => {
     it("Should emit RuleCreated event if Trigger and Action are valid", async () => {
       const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1 } = await loadFixture(deployRuleExecutorFixture);
 
-      const passingTrigger = makePassingTrigger(priceTrigger.address);
+      const passingTrigger = makeFailingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
 
       ruleExecutor.addTriggerToWhitelist(priceTrigger.address);
@@ -217,35 +232,62 @@ describe("RuleExecutor", () => {
     });
         
   });
+  
+  describe("Check Rule", () => {
+    it("should return false if the checkTrigger on the rule denoted by ruleHash returns false", async () => {
+      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, otherWallet1, testToken1 } = await loadFixture(deployRuleExecutorFixture);
+      
+      const passingTrigger = makeFailingTrigger(priceTrigger.address);
+      const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, ethers.constants.AddressZero);
+      const ruleHash = await createRule(ruleExecutor, passingTrigger, tokenSwapAction, PERMISSIVE_CONSTRAINTS, ruleMakerWallet);
+            
+      expect(await ruleExecutor.connect(otherWallet1).checkRule(ruleHash)).to.equal(false);
+      
+    });
 
-  describe("Subscribe to Rule", function() {  
-    async function deployValidRuleFixture() {
-      const { ruleExecutor, swapUniSingleAction, priceTrigger, ownerWallet, ruleMakerWallet, ruleSubscriberWallet, otherWallet1, testToken1 } = await loadFixture(deployRuleExecutorFixture);
+    it.skip("should return false if the checkTrigger is not available on the callee", async () => {      
+      // WE need to create a Badtrigger for this. 
+      // And it's better to test for malicious checkTrigger vs. a non-existent checkTrigger
+      // We already check for validateTrigger and revent random addresses from being included      
+    });
 
+    it("should return true if the checkTrigger on the callee denoted by ruleHash returns true", async () => {
+      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, otherWallet1, testToken1 } = await loadFixture(deployRuleExecutorFixture);
+      
       const passingTrigger = makePassingTrigger(priceTrigger.address);
       const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, ethers.constants.AddressZero);
-      const ethSwapAction = makeSwapAction(swapUniSingleAction.address, ethers.constants.AddressZero, testToken1.address);
-      ruleExecutor.addTriggerToWhitelist(priceTrigger.address);
-      ruleExecutor.addActionToWhitelist(swapUniSingleAction.address);
+      const ruleHash = await createRule(ruleExecutor, passingTrigger, tokenSwapAction, PERMISSIVE_CONSTRAINTS, ruleMakerWallet);
+    
+      expect(await ruleExecutor.connect(otherWallet1).checkRule(ruleHash)).to.equal(true);
+    });    
+  });
 
-      const constraints = {
-        minCollateralPerSub: 10,
-        maxCollateralPerSub: 50,
-        minCollateralTotal: 0,
-        maxCollateralTotal: 90,
-      }
-      const tx = await ruleExecutor.connect(ruleMakerWallet).addRule(passingTrigger, ethSwapAction, constraints);
-      const receipt = await tx.wait();
-      const ruleHashEth = receipt.events?.find((x => x.event == "RuleCreated"))?.args?.ruleHash;
+  async function deployValidRuleFixture() {
+    const { ruleExecutor, swapUniSingleAction, priceTrigger, ownerWallet, ruleMakerWallet, ruleSubscriberWallet, otherWallet1, testToken1 } = await loadFixture(deployRuleExecutorFixture);
 
-      const tx2 = await ruleExecutor.connect(ruleMakerWallet).addRule(passingTrigger, tokenSwapAction, constraints);
-      const receipt2 = await tx2.wait();
-      const ruleHashToken = receipt2.events?.find((x => x.event == "RuleCreated"))?.args?.ruleHash;
+    const passingTrigger = makePassingTrigger(priceTrigger.address);
+    const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, ethers.constants.AddressZero);
+    const ethSwapAction = makeSwapAction(swapUniSingleAction.address, ethers.constants.AddressZero, testToken1.address);
 
-      await testToken1.transfer(ruleSubscriberWallet.address, 200);
-      return { ruleHashEth, ruleHashToken, ruleExecutor, ownerWallet, ruleSubscriberWallet, otherWallet1, testToken1 };
+    ruleExecutor.addTriggerToWhitelist(priceTrigger.address);
+    ruleExecutor.addActionToWhitelist(swapUniSingleAction.address);
 
+    const constraints = {
+      minCollateralPerSub: 10,
+      maxCollateralPerSub: 50,
+      minCollateralTotal: 0,
+      maxCollateralTotal: 90,
     }
+
+    const ruleHashEth = await createRule(ruleExecutor, passingTrigger, ethSwapAction, constraints, ruleMakerWallet);
+    const ruleHashToken = await createRule(ruleExecutor, passingTrigger, tokenSwapAction, constraints, ruleMakerWallet);
+    
+    await testToken1.transfer(ruleSubscriberWallet.address, 200);
+    return { ruleHashEth, ruleHashToken, ruleExecutor, ownerWallet, ruleSubscriberWallet, otherWallet1, testToken1 };
+
+  }
+
+  describe("Subscribe to Rule", function() {      
 
     it("should revert if ruleHash doesnt exist", async  () => { 
       const { ruleSubscriberWallet, ruleExecutor } = await loadFixture(deployValidRuleFixture);
@@ -335,25 +377,9 @@ describe("RuleExecutor", () => {
       await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, 90);
       await ruleExecutor.connect(ruleSubscriberWallet).subscribeToRule(ruleHashToken, testToken1.address, 45);
       await ruleExecutor.connect(ruleSubscriberWallet).subscribeToRule(ruleHashToken, testToken1.address, 45);
-
     });
 
-  });
-
-  describe.skip("Check Rule", () => {
-    it("should return true if the checkTrigger on the callee denoted by ruleHash returns true", async () => {
-
-    });
-
-    it("should return false if the checkTrigger on the callee denoted by ruleHash returns false", async () => {
-
-    });
-
-    it("should return false if the checkTrigger is not available on the callee", async () => {
-
-    });
-
-  });
+  });  
 
   describe.skip("Execute Rule", () => {
     it("Should revert if anyone tries to execute the rule, and the trigger is invalid", async () => {
