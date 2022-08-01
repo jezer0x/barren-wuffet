@@ -208,7 +208,8 @@ contract RuleExecutor is Ownable {
         } // else it should be in our balance already
     }
 
-    function checkRule(bytes32 ruleHash) public returns (bool valid) {
+    function checkRule(bytes32 ruleHash) external view returns (bool valid) {
+
         (valid, ) = ITrigger(rules[ruleHash].trigger.callee).checkTrigger(rules[ruleHash].trigger);
     }
 
