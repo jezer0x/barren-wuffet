@@ -28,18 +28,19 @@ contract SwapUniSingleAction is IAction {
         ISwapRouter.ExactInputSingleParams memory params;
         uint256 amountOut;
 
-        if (action.fromToken == REConstants.ETH) {
+        if (msg.value > 0) {
+            require(action.fromToken == REConstants.ETH, "ETH != fromToken");
             params = ISwapRouter.ExactInputSingleParams({
                 tokenIn: WETH9,
                 tokenOut: action.toToken,
                 fee: 3000, // TODO: pass from action.data?
                 recipient: msg.sender,
                 deadline: block.timestamp, // need to do an immediate swap
-                amountIn: runtimeParams.totalCollateralAmount,
+                amountIn: msg.value,
                 amountOutMinimum: runtimeParams.triggerData,
                 sqrtPriceLimitX96: 0
             });
-            amountOut = swapRouter.exactInputSingle{value: runtimeParams.totalCollateralAmount}(params);
+            amountOut = swapRouter.exactInputSingle{value: msg.value}(params);
         } else {
             address toToken;
             if (action.toToken == REConstants.ETH) {
@@ -47,7 +48,7 @@ contract SwapUniSingleAction is IAction {
             } else {
                 toToken = action.toToken;
             }
-
+            IERC20(action.fromToken).transferFrom(msg.sender, address(this), runtimeParams.totalCollateralAmount);
             IERC20(action.fromToken).approve(address(swapRouter), runtimeParams.totalCollateralAmount);
             params = ISwapRouter.ExactInputSingleParams({
                 tokenIn: action.fromToken,
