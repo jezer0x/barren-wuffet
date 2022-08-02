@@ -264,6 +264,22 @@ describe("RuleExecutor", () => {
     });    
   });
 
+  describe("Execute Rule with Failing Trigger", () => {
+    it("Should revert if anyone tries to execute the rule, and the trigger fails", async () => {
+      // It appears that this rule has to be placed before the deployValidRuleFixture.
+      // since it calls the deployRuleExecutorFixture
+      // It causes all tests after it to fail, if it is located after tests that use deployValidRuleFixture
+      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, otherWallet1, testToken1 } = await loadFixture(deployRuleExecutorFixture);
+      
+      const passingTrigger = makeFailingTrigger(priceTrigger.address);
+      const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, ethers.constants.AddressZero);
+      const ruleHash = await createRule(ruleExecutor, passingTrigger, tokenSwapAction, PERMISSIVE_CONSTRAINTS, ruleMakerWallet);
+            
+      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHash)).to.be.rejectedWith("Trigger not satisfied");
+
+    });
+  });
+
   async function deployValidRuleFixture() {
     const { ruleExecutor, swapUniSingleAction, priceTrigger, ownerWallet, ruleMakerWallet, ruleSubscriberWallet, otherWallet1, testToken1 } = await loadFixture(deployRuleExecutorFixture);
 
@@ -397,29 +413,17 @@ describe("RuleExecutor", () => {
       await ruleExecutor.connect(ruleSubscriberWallet).subscribeToRule(ruleHashToken, testToken1.address, 11);
       // 1 subscriber but min collateral not met.
       await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.be.rejectedWith("Not enough collateral for executing");
-    });
-
-    it("Should revert if anyone tries to execute the rule, and the trigger fails", async () => {
-      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, otherWallet1, testToken1 } = await loadFixture(deployRuleExecutorFixture);
-      
-      const passingTrigger = makeFailingTrigger(priceTrigger.address);
-      const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, ethers.constants.AddressZero);
-      const ruleHash = await createRule(ruleExecutor, passingTrigger, tokenSwapAction, PERMISSIVE_CONSTRAINTS, ruleMakerWallet);
-            
-      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHash)).to.be.rejectedWith("Trigger not satisfied");
-
-
-    });
+    });    
 
     it.skip("Should revert if anyone tries to execute the rule, and action fails", async () => {
       // Need to create a dummy action and make it fail
       const { ruleHashToken, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);      
       await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.be.rejectedWith("Action unsuccessful");
-    });
+    });    
 
     it("Should allow anyone to execute the rule and get a reward if gas is paid, and the trigger passes", async () => {
       // execute valid rule with collateral by someone else. and get a reward.
-      const { ruleHashToken, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);      
+      const { ruleHashToken, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
       await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, 12);
       await ruleExecutor.connect(ruleSubscriberWallet).subscribeToRule(ruleHashToken, testToken1.address, 12);
       await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.emit(ruleExecutor, "Executed")
