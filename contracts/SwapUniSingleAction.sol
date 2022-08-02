@@ -7,10 +7,15 @@ import "./REConstants.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract SwapUniSingleAction is IAction {
-    ISwapRouter swapRouter = ISwapRouter(0xc0ffee254729296a45a3885639AC7E10F9d54979); // TODO: put in the right addr
-    address WETH9 = 0xc0ffee254729296a45a3885639AC7E10F9d54979; // TODO: put in the right addr
+    ISwapRouter swapRouter;
+    address WETH9;
 
-    function validateAction(RETypes.Action calldata action) external view returns (bool){
+    constructor(address swapRouterAddress, address wethAddress) {
+        swapRouter = ISwapRouter(swapRouterAddress);
+        WETH9 = wethAddress;
+    }
+
+    function validateAction(RETypes.Action calldata action) external view returns (bool) {
         // we'll be ignoring action.data in swapUni (?)
         return true;
     }
