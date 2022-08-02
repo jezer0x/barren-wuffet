@@ -24,14 +24,14 @@ contract PriceTrigger is ITrigger, Ownable {
         require(priceFeeds[asset] != address(0));
         AggregatorV3Interface priceFeed = AggregatorV3Interface(priceFeeds[asset]);
         (, int256 price, , , ) = priceFeed.latestRoundData();
-        require(price >= 0, "price is negative!");         
+        require(price >= 0, "price is negative!");
         return uint256(price); // WARNING: feels icky. Why did they not use uint?
     }
 
     function validateTrigger(RETypes.Trigger calldata trigger) external view returns (bool) {
         (string memory asset1, string memory asset2) = abi.decode(trigger.param, (string, string));
         require(priceFeeds[asset1] != address(0), "asset1 unauthorized");
-        require(Utils.strEq(asset2, "usd") || priceFeeds[asset2] != address(0)); 
+        require(Utils.strEq(asset2, "usd") || priceFeeds[asset2] != address(0));
         return true;
     }
 

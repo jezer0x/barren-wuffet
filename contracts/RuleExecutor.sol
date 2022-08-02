@@ -144,7 +144,10 @@ contract RuleExecutor is Ownable {
         require(action.fromToken == collateralToken, "Wrong Collateral Type");
         require(rule.constraints.minCollateralPerSub <= collateralAmount, "Insufficient Collateral for Subscription");
         require(rule.constraints.maxCollateralPerSub >= collateralAmount, "Max Collateral for Subscription exceeded");
-        require(rule.constraints.maxCollateralTotal >= (rule.totalCollateralAmount + collateralAmount), "Max Collateral for Rule exceeded");
+        require(
+            rule.constraints.maxCollateralTotal >= (rule.totalCollateralAmount + collateralAmount),
+            "Max Collateral for Rule exceeded"
+        );
 
         if (collateralToken == REConstants.ETH) {
             require(collateralAmount == msg.value);
@@ -209,11 +212,10 @@ contract RuleExecutor is Ownable {
     }
 
     function checkRule(bytes32 ruleHash) external view returns (bool valid) {
-
         (valid, ) = ITrigger(rules[ruleHash].trigger.callee).checkTrigger(rules[ruleHash].trigger);
     }
 
-    function executeRule(bytes32 ruleHash) public payable {
+    function executeRule(bytes32 ruleHash) public {
         // <- send gas, get a refund if action is performed, else lose gas.
         // check if trigger is met
         // if yes, execute the tx
@@ -224,14 +226,29 @@ contract RuleExecutor is Ownable {
         require(rule.action.callee != address(0), "Rule not found!");
         (bool valid, uint256 triggerData) = ITrigger(rule.trigger.callee).checkTrigger(rule.trigger);
         require(valid, "Trigger not satisfied");
-        require(rule.totalCollateralAmount >= rule.constraints.minCollateralTotal, "Not enough collateral for executing");
+        require(
+            rule.totalCollateralAmount >= rule.constraints.minCollateralTotal,
+            "Not enough collateral for executing"
+        );
 
         RETypes.ActionRuntimeParams memory runtimeParams = RETypes.ActionRuntimeParams({
             triggerData: triggerData,
             totalCollateralAmount: rule.totalCollateralAmount
         });
 
-        (bool success, uint256 output) = IAction(rule.action.callee).performAction(rule.action, runtimeParams);
+        bool success;
+        uint256 output;
+        if (rule.action.fromToken != REConstants.ETH) {
+            bool trfSuccess = IERC20(rule.action.fromToken).transfer(rule.action.callee, rule.totalCollateralAmount);
+            require(trfSuccess, "transfer of erc20 failed");
+            (success, output) = IAction(rule.action.callee).performAction(rule.action, runtimeParams);
+        } else {
+            (success, output) = IAction(rule.action.callee).performAction{value: rule.totalCollateralAmount}(
+                rule.action,
+                runtimeParams
+            );
+        }
+
         require(success, "Action unsuccessful");
 
         rule.outputAmount = output;

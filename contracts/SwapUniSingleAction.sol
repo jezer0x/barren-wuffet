@@ -10,11 +10,14 @@ contract SwapUniSingleAction is IAction {
     ISwapRouter swapRouter;
     address WETH9;
 
+<<<<<<< HEAD
     constructor(address swapRouterAddress, address wethAddress) {
         swapRouter = ISwapRouter(swapRouterAddress);
         WETH9 = wethAddress;
     }
 
+=======
+>>>>>>> 36b857c (change trf flow from/to RE and Actions)
     function validateAction(RETypes.Action calldata action) external view returns (bool) {
         // we'll be ignoring action.data in swapUni (?)
         return true;
@@ -22,6 +25,7 @@ contract SwapUniSingleAction is IAction {
 
     function performAction(RETypes.Action calldata action, RETypes.ActionRuntimeParams calldata runtimeParams)
         external
+        payable
         returns (bool, uint256)
     {
         ISwapRouter.ExactInputSingleParams memory params;
@@ -32,7 +36,7 @@ contract SwapUniSingleAction is IAction {
                 tokenIn: WETH9,
                 tokenOut: action.toToken,
                 fee: 3000, // TODO: pass from action.data?
-                recipient: address(this),
+                recipient: msg.sender,
                 deadline: block.timestamp, // need to do an immediate swap
                 amountIn: runtimeParams.totalCollateralAmount,
                 amountOutMinimum: runtimeParams.triggerData,
@@ -52,7 +56,7 @@ contract SwapUniSingleAction is IAction {
                 tokenIn: action.fromToken,
                 tokenOut: toToken,
                 fee: 3000, // TODO: pass from action.data?
-                recipient: address(this),
+                recipient: msg.sender,
                 deadline: block.timestamp, // need to do an immediate swap
                 amountIn: runtimeParams.totalCollateralAmount,
                 amountOutMinimum: runtimeParams.triggerData,

@@ -8,6 +8,7 @@ interface IAction {
     // returns (success, uint)
     function performAction(RETypes.Action calldata action, RETypes.ActionRuntimeParams calldata runtimeParams)
         external
+        payable
         returns (bool, uint256);
 
     // reverts if action fails to validate, otherwise returns true
