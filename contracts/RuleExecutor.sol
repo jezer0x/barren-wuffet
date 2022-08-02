@@ -236,20 +236,17 @@ contract RuleExecutor is Ownable {
             totalCollateralAmount: rule.totalCollateralAmount
         });
 
-        bool success;
         uint256 output;
         if (rule.action.fromToken != REConstants.ETH) {
             bool trfSuccess = IERC20(rule.action.fromToken).transfer(rule.action.callee, rule.totalCollateralAmount);
             require(trfSuccess, "transfer of erc20 failed");
-            (success, output) = IAction(rule.action.callee).performAction(rule.action, runtimeParams);
+            output = IAction(rule.action.callee).performAction(rule.action, runtimeParams);
         } else {
-            (success, output) = IAction(rule.action.callee).performAction{value: rule.totalCollateralAmount}(
+            output = IAction(rule.action.callee).performAction{value: rule.totalCollateralAmount}(
                 rule.action,
                 runtimeParams
             );
         }
-
-        require(success, "Action unsuccessful");
 
         rule.outputAmount = output;
         rule.status = RuleStatus.EXECUTED;

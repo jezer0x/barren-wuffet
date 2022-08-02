@@ -23,7 +23,7 @@ contract SwapUniSingleAction is IAction {
     function performAction(RETypes.Action calldata action, RETypes.ActionRuntimeParams calldata runtimeParams)
         external
         payable
-        returns (bool, uint256)
+        returns (uint256)
     {
         ISwapRouter.ExactInputSingleParams memory params;
         uint256 amountOut;
@@ -63,6 +63,6 @@ contract SwapUniSingleAction is IAction {
             IERC20(action.fromToken).approve(address(swapRouter), 0);
         }
 
-        return (true, amountOut);
+        return (amountOut);
     }
 }
