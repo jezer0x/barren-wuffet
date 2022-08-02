@@ -10,14 +10,11 @@ contract SwapUniSingleAction is IAction {
     ISwapRouter swapRouter;
     address WETH9;
 
-<<<<<<< HEAD
     constructor(address swapRouterAddress, address wethAddress) {
         swapRouter = ISwapRouter(swapRouterAddress);
         WETH9 = wethAddress;
     }
 
-=======
->>>>>>> 36b857c (change trf flow from/to RE and Actions)
     function validateAction(RETypes.Action calldata action) external view returns (bool) {
         // we'll be ignoring action.data in swapUni (?)
         return true;
