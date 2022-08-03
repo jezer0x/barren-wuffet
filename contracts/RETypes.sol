@@ -9,7 +9,7 @@ library RETypes {
 
     struct Action {
         address callee; // eg. swapUni
-        bytes data; // any custom param to send to the callee
+        bytes data; // any custom param to send to the callee, encoded at compileTime
         address fromToken; // token to be used to initiate the action
         address toToken; // token to be gotten as output
     }
@@ -19,10 +19,9 @@ library RETypes {
         LT
     }
 
-    // If Trigger and RETypes.Action are update, the HashRule needs to be updated
     struct Trigger {
         address callee;
-        bytes param; //eg. abi.encode(["string", "string"], ["eth", "uni"])
+        bytes param; // any custom param to send to the callee, encoded at compileTime
         uint256 value; //eg. 1000
         Ops op; //eg. GT
     }
