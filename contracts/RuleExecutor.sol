@@ -13,10 +13,7 @@ import "./ITrigger.sol";
 
 contract RuleExecutor is Ownable {
     event RuleCreated(bytes32 indexed ruleHash);
-    event Subscribed(bytes32 indexed ruleHash, uint256 SubIdx);
     event Executed(bytes32 indexed ruleHash, address executor);
-    event Redeemed(bytes32 indexed ruleHash, uint256 SubIdx);
-    event Cancelled(bytes32 indexed ruleHash, uint256 SubIdx);
 
     enum RuleStatus {
         CREATED,
@@ -24,9 +21,8 @@ contract RuleExecutor is Ownable {
     }
 
     struct Rule {
-        RETypes.Trigger trigger;
-        RETypes.Action action;
-        SubscriptionConstraints constraints;
+        RETypes.Trigger[] triggers;
+        RETypes.Action[] actions;
         uint256 totalCollateralAmount;
         RuleStatus status;
         uint256 outputAmount;
@@ -35,36 +31,23 @@ contract RuleExecutor is Ownable {
     // hash -> Rule
     mapping(bytes32 => Rule) public rules;
 
-    enum SubscriptionStatus {
-        ACTIVE,
-        CANCELLED,
-        REDEEMED
-    }
-
-    struct Subscription {
-        address subscriber;
-        uint256 collateralAmount;
-        SubscriptionStatus status;
-    }
-
-    struct SubscriptionConstraints {
-        uint256 minCollateralPerSub; // minimum amount needed as collateral to subscribe
-        uint256 maxCollateralPerSub; // max ...
-        uint256 minCollateralTotal;
-        uint256 maxCollateralTotal; // limit on subscription to protect from slippage DOS attacks
-    }
-
-    // ruleHash -> [Subscription]
-    mapping(bytes32 => Subscription[]) public subscriptions;
-
     mapping(address => bool) whitelistedActions;
     mapping(address => bool) whitelistedTriggers;
     bool _disableActionWhitelist = false;
     bool _disableTriggerWhitelist = false;
 
-    modifier onlyWhitelist(address triggerAddr, address actionAddr) {
-        require(_disableTriggerWhitelist || whitelistedTriggers[triggerAddr], "Unauthorized trigger");
-        require(_disableActionWhitelist || whitelistedActions[actionAddr], "Unauthorized action");
+    modifier onlyWhitelist(RETypes.Trigger[] calldata triggers, RETypes.Action[] calldata actions) {
+        if (!_disableTriggerWhitelist) {
+            for (uint256 i = 0; i < triggers.length; i++) {
+                require(whitelistedTriggers[triggers[i].callee], "Unauthorized trigger");
+            }
+        }
+
+        if (!_disableActionWhitelist) {
+            for (uint256 i = 0; i < actions.length; i++) {
+                require(whitelistedActions[actions[i].callee], "Unauthorized action");
+            }
+        }
         _;
     }
 
@@ -114,51 +97,10 @@ contract RuleExecutor is Ownable {
         }
     }
 
-    function redeemBalance(bytes32 ruleHash, uint256 subscriptionIdx) public {
-        Rule storage rule = rules[ruleHash];
-        Subscription storage subscription = subscriptions[ruleHash][subscriptionIdx];
-
-        require(subscription.status == SubscriptionStatus.ACTIVE, "subscription is not active!");
-
-        if (rule.status == RuleStatus.EXECUTED) {
-            // withdrawing after successfully triggered rule
-            uint256 balance = (subscription.collateralAmount * rule.outputAmount) / rule.totalCollateralAmount;
-            _redeemBalance(subscription.subscriber, balance, rule.action.toToken);
-            subscription.status = SubscriptionStatus.REDEEMED;
-            emit Redeemed(ruleHash, subscriptionIdx);
-        } else {
-            // withdrawing before anyone triggered this
-            rule.totalCollateralAmount = rule.totalCollateralAmount - subscription.collateralAmount;
-            _redeemBalance(subscription.subscriber, subscription.collateralAmount, rule.action.fromToken);
-            subscription.status = SubscriptionStatus.CANCELLED;
-            emit Cancelled(ruleHash, subscriptionIdx);
-        }
-    }
-
-    function _validateCollateral(
-        Rule memory rule,
-        RETypes.Action memory action,
-        address collateralToken,
-        uint256 collateralAmount
-    ) private view {
-        require(action.fromToken == collateralToken, "Wrong Collateral Type");
-        require(rule.constraints.minCollateralPerSub <= collateralAmount, "Insufficient Collateral for Subscription");
-        require(rule.constraints.maxCollateralPerSub >= collateralAmount, "Max Collateral for Subscription exceeded");
-        require(
-            rule.constraints.maxCollateralTotal >= (rule.totalCollateralAmount + collateralAmount),
-            "Max Collateral for Rule exceeded"
-        );
-
-        if (collateralToken == REConstants.ETH) {
-            require(collateralAmount == msg.value);
-        }
-    }
-
-    function addRule(
-        RETypes.Trigger calldata trigger,
-        RETypes.Action calldata action,
-        SubscriptionConstraints calldata constraints
-    ) public onlyWhitelist(trigger.callee, action.callee) {
+    function addRule(RETypes.Trigger[] calldata triggers, RETypes.Action[] calldata actions)
+        public
+        onlyWhitelist(triggers, actions)
+    {
         // var:val:op, action:data
         // ethPrice: 1000: gt, uniswap:<sellethforusdc>
         // check if action[0] is in actionTypes
@@ -166,53 +108,49 @@ contract RuleExecutor is Ownable {
         // we could store the "swap" opcodes as data, which will allow us to whitelist rules.
         // the swap will happen on behalf of this contract,
         // need to approve uniswap to take asset1 from this contract, and get asset2 back
-        require(ITrigger(trigger.callee).validateTrigger(trigger), "Invalid trigger");
-        require(IAction(action.callee).validateAction(action), "Invalid action");
+        for (uint256 i = 0; i < triggers.length; i++) {
+            require(ITrigger(triggers[i].callee).validateTrigger(triggers[i]), "Invalid trigger provided");
+        }
 
-        bytes32 ruleHash = _hashRule(trigger, action, constraints);
+        for (uint256 i = 0; i < actions.length; i++) {
+            require(IAction(actions[i].callee).validateAction(actions[i]), "Invalid action provided");
+            if (i != actions.length - 1) {
+                require(actions[i].toToken == actions[i + 1].fromToken, "check fromToken -> toToken chain is valid");
+            }
+        }
+
+        bytes32 ruleHash = _hashRule(triggers, actions);
         Rule storage rule = rules[ruleHash];
-        rule.trigger = trigger;
-        rule.action = action;
+        rule.triggers = triggers;
+        rule.actions = actions;
         rule.status = RuleStatus.CREATED;
         rule.outputAmount = 0;
-        rule.constraints = constraints;
-
         emit RuleCreated(ruleHash);
     }
 
-    function _hashRule(
-        RETypes.Trigger memory trigger,
-        RETypes.Action memory action,
-        SubscriptionConstraints memory constraints
-    ) private view returns (bytes32) {
-        return keccak256(abi.encode(trigger, action, constraints, msg.sender, block.timestamp));
+    function _hashRule(RETypes.Trigger[] calldata triggers, RETypes.Action[] calldata actions)
+        private
+        view
+        returns (bytes32)
+    {
+        return keccak256(abi.encode(triggers, actions, msg.sender, block.timestamp));
     }
 
-    function subscribeToRule(
-        bytes32 ruleHash,
-        address collateralToken,
-        uint256 collateralAmount
-    ) public payable {
-        _validateCollateral(rules[ruleHash], rules[ruleHash].action, collateralToken, collateralAmount);
-        _collectCollateral(collateralToken, collateralAmount);
-        Subscription storage newSub = subscriptions[ruleHash].push();
-        newSub.subscriber = msg.sender;
-        newSub.status = SubscriptionStatus.ACTIVE;
-        // TODO: take a fee here
-        newSub.collateralAmount = collateralAmount;
-        rules[ruleHash].totalCollateralAmount = rules[ruleHash].totalCollateralAmount + collateralAmount;
-
-        emit Subscribed(ruleHash, subscriptions[ruleHash].length - 1);
-    }
-
-    function _collectCollateral(address collateralToken, uint256 collateralAmount) private {
-        if (collateralToken != REConstants.ETH) {
-            IERC20(collateralToken).transferFrom(msg.sender, address(this), collateralAmount);
-        } // else it should be in our balance already
+    // WARNING: only the last trigger's data gets sent back as triggerData
+    function _checkTriggers(RETypes.Trigger[] storage triggers)
+        internal
+        view
+        returns (bool valid, uint256 triggerData)
+    {
+        for (uint256 i = 0; i < triggers.length; i++) {
+            (valid, triggerData) = ITrigger(triggers[i].callee).checkTrigger(triggers[i]);
+            if (!valid) return (false, 0);
+        }
+        return (true, triggerData);
     }
 
     function checkRule(bytes32 ruleHash) external view returns (bool valid) {
-        (valid, ) = ITrigger(rules[ruleHash].trigger.callee).checkTrigger(rules[ruleHash].trigger);
+        (valid, ) = _checkTriggers(rules[ruleHash].triggers);
     }
 
     function executeRule(bytes32 ruleHash) public {
@@ -223,13 +161,9 @@ contract RuleExecutor is Ownable {
         // if not, abort
 
         Rule storage rule = rules[ruleHash];
-        require(rule.action.callee != address(0), "Rule not found!");
-        (bool valid, uint256 triggerData) = ITrigger(rule.trigger.callee).checkTrigger(rule.trigger);
-        require(valid, "Trigger not satisfied");
-        require(
-            rule.totalCollateralAmount >= rule.constraints.minCollateralTotal,
-            "Not enough collateral for executing"
-        );
+        require(rule.actions[0].callee != address(0), "Rule not found!");
+        (bool valid, uint256 triggerData) = _checkTriggers(rule.triggers);
+        require(valid, "One (or more) trigger(s) not satisfied");
 
         RETypes.ActionRuntimeParams memory runtimeParams = RETypes.ActionRuntimeParams({
             triggerData: triggerData,
@@ -237,14 +171,18 @@ contract RuleExecutor is Ownable {
         });
 
         uint256 output;
-        if (rule.action.fromToken != REConstants.ETH) {
-            IERC20(rule.action.fromToken).approve(rule.action.callee, rule.totalCollateralAmount);
-            output = IAction(rule.action.callee).performAction(rule.action, runtimeParams);
-        } else {
-            output = IAction(rule.action.callee).performAction{value: rule.totalCollateralAmount}(
-                rule.action,
-                runtimeParams
-            );
+        for (uint256 i = 0; i < rule.actions.length; i++) {
+            RETypes.Action storage action = rule.actions[i];
+            if (action.fromToken != REConstants.ETH) {
+                IERC20(action.fromToken).approve(action.callee, runtimeParams.totalCollateralAmount);
+                output = IAction(action.callee).performAction(action, runtimeParams);
+            } else {
+                output = IAction(action.callee).performAction{value: runtimeParams.totalCollateralAmount}(
+                    action,
+                    runtimeParams
+                );
+            }
+            runtimeParams.totalCollateralAmount = output;
         }
 
         rule.outputAmount = output;
