@@ -2,6 +2,21 @@
 pragma solidity ^0.8.9;
 
 library RETypes {
+    enum RuleStatus {
+        CREATED,
+        EXECUTED,
+        CANCELLED
+    }
+
+    struct Rule {
+        address owner;
+        RETypes.Trigger[] triggers;
+        RETypes.Action[] actions;
+        uint256 totalCollateralAmount;
+        RuleStatus status;
+        uint256 outputAmount;
+    }
+
     struct ActionRuntimeParams {
         uint256 triggerData;
         uint256 totalCollateralAmount;

@@ -17,23 +17,8 @@ contract RuleExecutor is Ownable {
     event Redeemed(bytes32 indexed ruleHash);
     event Cancelled(bytes32 indexed ruleHash);
 
-    enum RuleStatus {
-        CREATED,
-        EXECUTED,
-        CANCELLED
-    }
-
-    struct Rule {
-        address owner;
-        RETypes.Trigger[] triggers;
-        RETypes.Action[] actions;
-        uint256 totalCollateralAmount;
-        RuleStatus status;
-        uint256 outputAmount;
-    }
-
-    // hash -> Rule
-    mapping(bytes32 => Rule) public rules;
+    // hash -> RETypes.Rule
+    mapping(bytes32 => RETypes.Rule) public rules;
 
     mapping(address => bool) whitelistedActions;
     mapping(address => bool) whitelistedTriggers;
@@ -102,18 +87,18 @@ contract RuleExecutor is Ownable {
     }
 
     function redeemBalance(bytes32 ruleHash) public {
-        Rule storage rule = rules[ruleHash];
+        RETypes.Rule storage rule = rules[ruleHash];
 
         require(msg.sender == rule.owner, "You're not the owner of this rule!");
 
-        if (rule.status == RuleStatus.EXECUTED) {
+        if (rule.status == RETypes.RuleStatus.EXECUTED) {
             // withdrawing after successfully triggered rule
             _redeemBalance(rule.owner, rule.outputAmount, rule.actions[rule.actions.length - 1].toToken);
             emit Redeemed(ruleHash);
         } else {
             // withdrawing before anyone triggered this
             _redeemBalance(rule.owner, rule.totalCollateralAmount, rule.actions[0].fromToken);
-            rule.status = RuleStatus.CANCELLED;
+            rule.status = RETypes.RuleStatus.CANCELLED;
             emit Cancelled(ruleHash);
         }
     }
@@ -141,10 +126,10 @@ contract RuleExecutor is Ownable {
         }
 
         bytes32 ruleHash = _hashRule(triggers, actions);
-        Rule storage rule = rules[ruleHash];
+        RETypes.Rule storage rule = rules[ruleHash];
         rule.triggers = triggers;
         rule.actions = actions;
-        rule.status = RuleStatus.CREATED;
+        rule.status = RETypes.RuleStatus.CREATED;
         rule.outputAmount = 0;
         emit RuleCreated(ruleHash);
     }
@@ -181,7 +166,7 @@ contract RuleExecutor is Ownable {
         // give reward to caller
         // if not, abort
 
-        Rule storage rule = rules[ruleHash];
+        RETypes.Rule storage rule = rules[ruleHash];
         require(rule.actions[0].callee != address(0), "Rule not found!");
         (bool valid, uint256 triggerData) = _checkTriggers(rule.triggers);
         require(valid, "One (or more) trigger(s) not satisfied");
@@ -207,7 +192,7 @@ contract RuleExecutor is Ownable {
         }
 
         rule.outputAmount = output;
-        rule.status = RuleStatus.EXECUTED;
+        rule.status = RETypes.RuleStatus.EXECUTED;
 
         //TODO: send reward to caller
 

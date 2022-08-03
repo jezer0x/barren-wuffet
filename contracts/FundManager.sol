@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./RETypes.sol";
+import "./REConstants.sol";
+
 contract FundManager {
     event Subscribed(bytes32 indexed ruleHash, uint256 SubIdx);
     event Redeemed(bytes32 indexed ruleHash, uint256 SubIdx);
@@ -64,7 +68,7 @@ contract FundManager {
     }
 
     function _validateCollateral(
-        Rule memory rule,
+        RETypes.Rule memory rule,
         RETypes.Action memory action,
         address collateralToken,
         uint256 collateralAmount
@@ -74,7 +78,7 @@ contract FundManager {
         require(rule.constraints.maxCollateralPerSub >= collateralAmount, "Max Collateral for Subscription exceeded");
         require(
             rule.constraints.maxCollateralTotal >= (rule.totalCollateralAmount + collateralAmount),
-            "Max Collateral for Rule exceeded"
+            "Max Collateral for RETypes.Rule exceeded"
         );
 
         if (collateralToken == REConstants.ETH) {
@@ -83,12 +87,12 @@ contract FundManager {
     }
 
     function redeemBalance(bytes32 ruleHash, uint256 subscriptionIdx) public {
-        Rule storage rule = rules[ruleHash];
+        RETypes.Rule storage rule = rules[ruleHash];
         Subscription storage subscription = subscriptions[ruleHash][subscriptionIdx];
 
         require(subscription.status == SubscriptionStatus.ACTIVE, "subscription is not active!");
 
-        if (rule.status == RuleStatus.EXECUTED) {
+        if (rule.status == RETypes.RuleStatus.EXECUTED) {
             // withdrawing after successfully triggered rule
             uint256 balance = (subscription.collateralAmount * rule.outputAmount) / rule.totalCollateralAmount;
             _redeemBalance(subscription.subscriber, balance, rule.action.toToken);
