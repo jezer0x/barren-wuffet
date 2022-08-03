@@ -51,6 +51,18 @@ contract FundManager {
         } // else it should be in our balance already
     }
 
+    function _redeemBalance(
+        address receiver,
+        uint256 balance,
+        address token
+    ) internal {
+        if (token != REConstants.ETH) {
+            IERC20(token).transfer(receiver, balance);
+        } else {
+            payable(receiver).transfer(balance);
+        }
+    }
+
     function _validateCollateral(
         Rule memory rule,
         RETypes.Action memory action,

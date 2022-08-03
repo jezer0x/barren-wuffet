@@ -14,13 +14,17 @@ import "./triggers/ITrigger.sol";
 contract RuleExecutor is Ownable {
     event RuleCreated(bytes32 indexed ruleHash);
     event Executed(bytes32 indexed ruleHash, address executor);
+    event Redeemed(bytes32 indexed ruleHash);
+    event Cancelled(bytes32 indexed ruleHash);
 
     enum RuleStatus {
         CREATED,
-        EXECUTED
+        EXECUTED,
+        CANCELLED
     }
 
     struct Rule {
+        address owner;
         RETypes.Trigger[] triggers;
         RETypes.Action[] actions;
         uint256 totalCollateralAmount;
@@ -94,6 +98,23 @@ contract RuleExecutor is Ownable {
             IERC20(token).transfer(receiver, balance);
         } else {
             payable(receiver).transfer(balance);
+        }
+    }
+
+    function redeemBalance(bytes32 ruleHash) public {
+        Rule storage rule = rules[ruleHash];
+
+        require(msg.sender == rule.owner, "You're not the owner of this rule!");
+
+        if (rule.status == RuleStatus.EXECUTED) {
+            // withdrawing after successfully triggered rule
+            _redeemBalance(rule.owner, rule.outputAmount, rule.actions[rule.actions.length - 1].toToken);
+            emit Redeemed(ruleHash);
+        } else {
+            // withdrawing before anyone triggered this
+            _redeemBalance(rule.owner, rule.totalCollateralAmount, rule.actions[0].fromToken);
+            rule.status = RuleStatus.CANCELLED;
+            emit Cancelled(ruleHash);
         }
     }
 
