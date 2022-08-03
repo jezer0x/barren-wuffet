@@ -16,6 +16,8 @@ contract RuleExecutor is Ownable {
     event Executed(bytes32 indexed ruleHash, address executor);
     event Redeemed(bytes32 indexed ruleHash);
     event Cancelled(bytes32 indexed ruleHash);
+    event AddCollateral(bytes32 indexed ruleHash, uint256 amt);
+    event ReduceCollateral(bytes32 indexed ruleHash, uint256 amt);
 
     // hash -> RETypes.Rule
     mapping(bytes32 => RETypes.Rule) public rules;
@@ -103,6 +105,34 @@ contract RuleExecutor is Ownable {
         }
     }
 
+    function addCollateral(bytes32 ruleHash, uint256 amount) public payable {
+        RETypes.Rule storage rule = rules[ruleHash];
+        require(rule.status == RETypes.RuleStatus.CREATED, "Can't add collateral to this rule");
+        require(msg.sender == rule.owner);
+        if (rule.actions[0].fromToken != REConstants.ETH) {
+            // must have been approved first
+            IERC20(rule.actions[0].fromToken).transferFrom(msg.sender, address(this), amount);
+            rule.totalCollateralAmount = rule.totalCollateralAmount + amount;
+        } else {
+            rule.totalCollateralAmount = rule.totalCollateralAmount + msg.value;
+        }
+        emit AddCollateral(ruleHash, amount);
+    }
+
+    function reduceCollateral(bytes32 ruleHash, uint256 amount) public {
+        RETypes.Rule storage rule = rules[ruleHash];
+        require(rule.status == RETypes.RuleStatus.CREATED, "Can't add collateral to this rule");
+        require(msg.sender == rule.owner);
+        if (rule.actions[0].fromToken != REConstants.ETH) {
+            // must have been approved first
+            IERC20(rule.actions[0].fromToken).transfer(msg.sender, amount);
+        } else {
+            payable(msg.sender).transfer(amount);
+        }
+        rule.totalCollateralAmount = rule.totalCollateralAmount - amount;
+        emit ReduceCollateral(ruleHash, amount);
+    }
+
     function addRule(RETypes.Trigger[] calldata triggers, RETypes.Action[] calldata actions)
         public
         onlyWhitelist(triggers, actions)
@@ -127,6 +157,7 @@ contract RuleExecutor is Ownable {
 
         bytes32 ruleHash = _hashRule(triggers, actions);
         RETypes.Rule storage rule = rules[ruleHash];
+        rule.owner = msg.sender;
         rule.triggers = triggers;
         rule.actions = actions;
         rule.status = RETypes.RuleStatus.CREATED;
