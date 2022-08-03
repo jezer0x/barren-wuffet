@@ -8,8 +8,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./Utils.sol";
 import "./RETypes.sol";
 import "./REConstants.sol";
-import "./IAction.sol";
-import "./ITrigger.sol";
+import "./actions/IAction.sol";
+import "./triggers/ITrigger.sol";
 
 contract RuleExecutor is Ownable {
     event RuleCreated(bytes32 indexed ruleHash);

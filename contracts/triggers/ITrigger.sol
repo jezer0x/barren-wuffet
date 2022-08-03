@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
-import "./RETypes.sol";
+import "../RETypes.sol";
 
 interface ITrigger {
     // Returns true if Action needs to be called
