@@ -20,7 +20,7 @@ contract RuleExecutor is Ownable {
     event ReduceCollateral(bytes32 indexed ruleHash, uint256 amt);
 
     // hash -> Rule
-    mapping(bytes32 => Rule) public rules;
+    mapping(bytes32 => Rule) rules;
 
     mapping(address => bool) whitelistedActions;
     mapping(address => bool) whitelistedTriggers;
@@ -76,6 +76,10 @@ contract RuleExecutor is Ownable {
 
     constructor() {}
 
+    function getRule(bytes32 ruleHash) public view returns (Rule memory) {
+        return rules[ruleHash];
+    }
+
     function _redeemBalance(
         address receiver,
         uint256 balance,
@@ -91,7 +95,7 @@ contract RuleExecutor is Ownable {
     function redeemBalance(bytes32 ruleHash) public {
         Rule storage rule = rules[ruleHash];
 
-        require(msg.sender == rule.owner, "You're not the owner of this rule!");
+        require(msg.sender == rule.owner, "Only owner of the rule can redeem the balance");
 
         if (rule.status == RuleStatus.EXECUTED) {
             // withdrawing after successfully triggered rule
@@ -108,7 +112,7 @@ contract RuleExecutor is Ownable {
     function addCollateral(bytes32 ruleHash, uint256 amount) public payable {
         Rule storage rule = rules[ruleHash];
         require(rule.status == RuleStatus.CREATED, "Can't add collateral to this rule");
-        require(msg.sender == rule.owner);
+        require(msg.sender == rule.owner, "Only owner of the rule can add collateral");
         if (rule.actions[0].fromToken != REConstants.ETH) {
             // must have been approved first
             IERC20(rule.actions[0].fromToken).transferFrom(msg.sender, address(this), amount);
@@ -122,9 +126,8 @@ contract RuleExecutor is Ownable {
     function reduceCollateral(bytes32 ruleHash, uint256 amount) public {
         Rule storage rule = rules[ruleHash];
         require(rule.status == RuleStatus.CREATED, "Can't add collateral to this rule");
-        require(msg.sender == rule.owner);
+        require(msg.sender == rule.owner, "Only owner of the rule can remove collateral");
         if (rule.actions[0].fromToken != REConstants.ETH) {
-            // must have been approved first
             IERC20(rule.actions[0].fromToken).transfer(msg.sender, amount);
         } else {
             payable(msg.sender).transfer(amount);
@@ -133,7 +136,11 @@ contract RuleExecutor is Ownable {
         emit ReduceCollateral(ruleHash, amount);
     }
 
-    function addRule(Trigger[] calldata triggers, Action[] calldata actions) public onlyWhitelist(triggers, actions) {
+    function addRule(Trigger[] calldata triggers, Action[] calldata actions)
+        public
+        onlyWhitelist(triggers, actions)
+        returns (bytes32)
+    {
         // var:val:op, action:data
         // ethPrice: 1000: gt, uniswap:<sellethforusdc>
         // check if action[0] is in actionTypes
@@ -144,22 +151,23 @@ contract RuleExecutor is Ownable {
         for (uint256 i = 0; i < triggers.length; i++) {
             require(ITrigger(triggers[i].callee).validate(triggers[i]), "Invalid trigger provided");
         }
-
         for (uint256 i = 0; i < actions.length; i++) {
             require(IAction(actions[i].callee).validate(actions[i]), "Invalid action provided");
             if (i != actions.length - 1) {
                 require(actions[i].toToken == actions[i + 1].fromToken, "check fromToken -> toToken chain is valid");
             }
         }
-
         bytes32 ruleHash = _hashRule(triggers, actions);
         Rule storage rule = rules[ruleHash];
+        require(rule.owner == address(0), "Rule already exists!");
         rule.owner = msg.sender;
         rule.triggers = triggers;
         rule.actions = actions;
         rule.status = RuleStatus.CREATED;
         rule.outputAmount = 0;
+
         emit RuleCreated(ruleHash);
+        return ruleHash;
     }
 
     function _hashRule(Trigger[] calldata triggers, Action[] calldata actions) private view returns (bytes32) {

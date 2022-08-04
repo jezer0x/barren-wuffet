@@ -2,15 +2,25 @@
 pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./RETypes.sol";
 import "./REConstants.sol";
+import "./RuleExecutor.sol";
 
-contract FundManager {
+contract FundManager is Ownable {
+    event FundCreated(bytes32 indexed fundHash);
     event Subscribed(bytes32 indexed ruleHash, uint256 SubIdx);
     event Redeemed(bytes32 indexed ruleHash, uint256 SubIdx);
     event Cancelled(bytes32 indexed ruleHash, uint256 SubIdx);
 
     enum SubscriptionStatus {
+        ACTIVE,
+        CANCELLED,
+        REDEEMED
+    }
+
+    enum FundStatus {
+        RAISING,
         ACTIVE,
         CANCELLED,
         REDEEMED
@@ -29,81 +39,119 @@ contract FundManager {
         uint256 maxCollateralTotal; // limit on subscription to protect from slippage DOS attacks
     }
 
-    // ruleHash -> [Subscription]
-    mapping(bytes32 => Subscription[]) public subscriptions;
-
-    function subscribeToRule(
-        bytes32 ruleHash,
-        address collateralToken,
-        uint256 collateralAmount
-    ) public payable {
-        _validateCollateral(rules[ruleHash], rules[ruleHash].action, collateralToken, collateralAmount);
-        _collectCollateral(collateralToken, collateralAmount);
-        Subscription storage newSub = subscriptions[ruleHash].push();
-        newSub.subscriber = msg.sender;
-        newSub.status = SubscriptionStatus.ACTIVE;
-        // TODO: take a fee here
-        newSub.collateralAmount = collateralAmount;
-        rules[ruleHash].totalCollateralAmount = rules[ruleHash].totalCollateralAmount + collateralAmount;
-
-        emit Subscribed(ruleHash, subscriptions[ruleHash].length - 1);
+    struct Fund {
+        address manager;
+        bytes32 ruleHash;
+        FundStatus status;
+        SubscriptionConstraints contraints;
+        Subscription[] subscriptions;
     }
 
-    function _collectCollateral(address collateralToken, uint256 collateralAmount) private {
-        if (collateralToken != REConstants.ETH) {
-            IERC20(collateralToken).transferFrom(msg.sender, address(this), collateralAmount);
-        } // else it should be in our balance already
+    mapping(bytes32 => Fund) funds;
+    RuleExecutor public ruleExecutor;
+
+    constructor(address ReAddr) {
+        ruleExecutor = RuleExecutor(ReAddr);
     }
 
-    function _redeemBalance(
-        address receiver,
-        uint256 balance,
-        address token
-    ) internal {
-        if (token != REConstants.ETH) {
-            IERC20(token).transfer(receiver, balance);
-        } else {
-            payable(receiver).transfer(balance);
-        }
+    function setRuleExecutorAddress(address ReAddr) public onlyOwner {
+        ruleExecutor = RuleExecutor(ReAddr);
     }
 
-    function _validateCollateral(
-        Rule memory rule,
-        Action memory action,
-        address collateralToken,
-        uint256 collateralAmount
-    ) private view {
-        require(action.fromToken == collateralToken, "Wrong Collateral Type");
-        require(rule.constraints.minCollateralPerSub <= collateralAmount, "Insufficient Collateral for Subscription");
-        require(rule.constraints.maxCollateralPerSub >= collateralAmount, "Max Collateral for Subscription exceeded");
-        require(
-            rule.constraints.maxCollateralTotal >= (rule.totalCollateralAmount + collateralAmount),
-            "Max Collateral for Rule exceeded"
-        );
+    // function subscribeToFund(
+    //     bytes32 fundHash,
+    //     address collateralToken,
+    //     uint256 collateralAmount
+    // ) public payable {
+    //     Rule memory rule = ruleExecutor.getRule(funds[fundHash].ruleHash);
+    //     _validateCollateral(fundHash, collateralToken, collateralAmount);
+    //     _collectCollateral(collateralToken, collateralAmount);
+    //     Subscription storage newSub = subscriptionsMap[ruleHash].push();
+    //     newSub.subscriber = msg.sender;
+    //     newSub.status = SubscriptionStatus.ACTIVE;
+    //     // TODO: take a fee here
+    //     newSub.collateralAmount = collateralAmount;
+    //     ruleExecutor.addCollateral(ruleHash, collateralAmount);
+    //     emit Subscribed(ruleHash, subscriptionsMap[ruleHash].length - 1);
+    // }
 
-        if (collateralToken == REConstants.ETH) {
-            require(collateralAmount == msg.value);
-        }
+    // function _collectCollateral(address collateralToken, uint256 collateralAmount) private {
+    //     if (collateralToken != REConstants.ETH) {
+    //         IERC20(collateralToken).transferFrom(msg.sender, address(this), collateralAmount);
+    //     } // else it should be in our balance already
+    // }
+
+    // function _redeemBalance(
+    //     address receiver,
+    //     uint256 balance,
+    //     address token
+    // ) internal {
+    //     if (token != REConstants.ETH) {
+    //         IERC20(token).transfer(receiver, balance);
+    //     } else {
+    //         payable(receiver).transfer(balance);
+    //     }
+    // }
+
+    // function _validateCollateral(
+    //     bytes32 fundHash,
+    //     address collateralToken,
+    //     uint256 collateralAmount
+    // ) private view {
+    //     Rule memory rule = ruleExecutor.getRule(ruleHash);
+    //     SubscriptionConstraints memory constraints = constraintsMap[ruleHash];
+    //     require(rule.actions[0].fromToken == collateralToken, "Wrong Collateral Type");
+    //     require(constraints.minCollateralPerSub <= collateralAmount, "Insufficient Collateral for Subscription");
+    //     require(constraints.maxCollateralPerSub >= collateralAmount, "Max Collateral for Subscription exceeded");
+    //     require(
+    //         constraints.maxCollateralTotal >= (rule.totalCollateralAmount + collateralAmount),
+    //         "Max Collateral for Rule exceeded"
+    //     );
+
+    //     if (collateralToken == REConstants.ETH) {
+    //         require(collateralAmount == msg.value);
+    //     }
+    // }
+
+    // function redeemBalance(bytes32 ruleHash, uint256 subscriptionIdx) public {
+    //     Rule memory rule = ruleExecutor.getRule(ruleHash);
+    //     Subscription storage subscription = subscriptionsMap[ruleHash][subscriptionIdx];
+    //     require(subscription.status == SubscriptionStatus.ACTIVE, "Subscription is not active!");
+    //     require(subscription.subscriber == msg.sender, "You cannot redeem someone else's balance!");
+
+    //     if (rule.status == RuleStatus.EXECUTED) {
+    //         // withdrawing after successfully triggered rule
+    //         uint256 balance = (subscription.collateralAmount * rule.outputAmount) / rule.totalCollateralAmount;
+    //         _redeemBalance(subscription.subscriber, balance, rule.actions[rule.actions.length - 1].toToken);
+    //         subscription.status = SubscriptionStatus.REDEEMED;
+    //         emit Redeemed(ruleHash, subscriptionIdx);
+    //     } else {
+    //         // withdrawing before anyone triggered this
+    //         ruleExecutor.reduceCollateral(ruleHash, subscription.collateralAmount);
+    //         _redeemBalance(subscription.subscriber, subscription.collateralAmount, rule.actions[0].fromToken);
+    //         subscription.status = SubscriptionStatus.CANCELLED;
+    //         emit Cancelled(ruleHash, subscriptionIdx);
+    //     }
+    // }
+
+    function hashFund(address manager, bytes32 ruleHash) public returns (bytes32) {
+        return keccak256(abi.encode(manager, ruleHash));
     }
 
-    function redeemBalance(bytes32 ruleHash, uint256 subscriptionIdx) public {
-        Rule storage rule = rules[ruleHash];
-        Subscription storage subscription = subscriptions[ruleHash][subscriptionIdx];
+    function createFund(
+        Trigger[] calldata triggers,
+        Action[] calldata actions,
+        SubscriptionConstraints calldata contraints
+    ) public returns (bytes32) {
+        bytes32 ruleHash = ruleExecutor.addRule(triggers, actions);
+        bytes fundHash = hashFund(msg.sender, ruleHash);
+        Fund storage fund = funds[fundHash];
+        fund.manager = msg.sender;
+        fund.ruleHash = ruleHash;
+        fund.status = FundStatus.RAISING;
+        fund.contraints = contraints;
 
-        require(subscription.status == SubscriptionStatus.ACTIVE, "subscription is not active!");
-
-        if (rule.status == RuleStatus.EXECUTED) {
-            // withdrawing after successfully triggered rule
-            uint256 balance = (subscription.collateralAmount * rule.outputAmount) / rule.totalCollateralAmount;
-            _redeemBalance(subscription.subscriber, balance, rule.action.toToken);
-            subscription.status = SubscriptionStatus.REDEEMED;
-            emit Redeemed(ruleHash, subscriptionIdx);
-        } else {
-            // withdrawing before anyone triggered this
-            rule.totalCollateralAmount = rule.totalCollateralAmount - subscription.collateralAmount;
-            _redeemBalance(subscription.subscriber, subscription.collateralAmount, rule.action.fromToken);
-            subscription.status = SubscriptionStatus.CANCELLED;
-            emit Cancelled(ruleHash, subscriptionIdx);
-        }
+        emit FundCreated(fundHash);
+        return fundHash;
     }
 }
