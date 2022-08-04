@@ -9,9 +9,9 @@ import "./RuleExecutor.sol";
 
 contract FundManager is Ownable {
     event FundCreated(bytes32 indexed fundHash);
-    event Subscribed(bytes32 indexed ruleHash, uint256 SubIdx);
-    event Redeemed(bytes32 indexed ruleHash, uint256 SubIdx);
-    event Cancelled(bytes32 indexed ruleHash, uint256 SubIdx);
+    event Subscribed(bytes32 indexed fundHash, uint256 SubIdx);
+    event Redeemed(bytes32 indexed fundHash, uint256 SubIdx);
+    event Cancelled(bytes32 indexed fundHash, uint256 SubIdx);
 
     enum SubscriptionStatus {
         ACTIVE,
@@ -43,7 +43,7 @@ contract FundManager is Ownable {
         address manager;
         bytes32 ruleHash;
         FundStatus status;
-        SubscriptionConstraints contraints;
+        SubscriptionConstraints constraints;
         Subscription[] subscriptions;
     }
 
@@ -58,28 +58,40 @@ contract FundManager is Ownable {
         ruleExecutor = RuleExecutor(ReAddr);
     }
 
-    // function subscribeToFund(
-    //     bytes32 fundHash,
-    //     address collateralToken,
-    //     uint256 collateralAmount
-    // ) public payable {
-    //     Rule memory rule = ruleExecutor.getRule(funds[fundHash].ruleHash);
-    //     _validateCollateral(fundHash, collateralToken, collateralAmount);
-    //     _collectCollateral(collateralToken, collateralAmount);
-    //     Subscription storage newSub = subscriptionsMap[ruleHash].push();
-    //     newSub.subscriber = msg.sender;
-    //     newSub.status = SubscriptionStatus.ACTIVE;
-    //     // TODO: take a fee here
-    //     newSub.collateralAmount = collateralAmount;
-    //     ruleExecutor.addCollateral(ruleHash, collateralAmount);
-    //     emit Subscribed(ruleHash, subscriptionsMap[ruleHash].length - 1);
-    // }
+    function subscribeToFund(
+        bytes32 fundHash,
+        address collateralToken,
+        uint256 collateralAmount
+    ) public payable {
+        Fund storage fund = funds[fundHash];
+        _collectCollateral(fund, collateralToken, collateralAmount);
+        Subscription storage newSub = fund.subscriptions.push();
+        newSub.subscriber = msg.sender;
+        newSub.status = SubscriptionStatus.ACTIVE;
+        // TODO: take a fee here
+        newSub.collateralAmount = collateralAmount;
+        Rule memory rule = ruleExecutor.getRule(fund.ruleHash);
+        if (rule.totalCollateralAmount >= fund.constraints.minCollateralTotal) {
+            ruleExecutor.activateRule(fund.ruleHash);
+        }
+        emit Subscribed(fundHash, fund.subscriptions.length - 1);
+    }
 
-    // function _collectCollateral(address collateralToken, uint256 collateralAmount) private {
-    //     if (collateralToken != REConstants.ETH) {
-    //         IERC20(collateralToken).transferFrom(msg.sender, address(this), collateralAmount);
-    //     } // else it should be in our balance already
-    // }
+    function _collectCollateral(
+        Fund memory fund,
+        address collateralToken,
+        uint256 collateralAmount
+    ) private {
+        _validateCollateral(fund, collateralToken, collateralAmount);
+        if (collateralToken != REConstants.ETH) {
+            IERC20(collateralToken).transferFrom(msg.sender, address(this), collateralAmount);
+            IERC20(collateralToken).approve(address(ruleExecutor), collateralAmount);
+            ruleExecutor.addCollateral(fund.ruleHash, collateralAmount);
+        } else {
+            // else it should be in our balance already
+            ruleExecutor.addCollateral{value: msg.value}(fund.ruleHash, collateralAmount);
+        }
+    }
 
     // function _redeemBalance(
     //     address receiver,
@@ -93,25 +105,25 @@ contract FundManager is Ownable {
     //     }
     // }
 
-    // function _validateCollateral(
-    //     bytes32 fundHash,
-    //     address collateralToken,
-    //     uint256 collateralAmount
-    // ) private view {
-    //     Rule memory rule = ruleExecutor.getRule(ruleHash);
-    //     SubscriptionConstraints memory constraints = constraintsMap[ruleHash];
-    //     require(rule.actions[0].fromToken == collateralToken, "Wrong Collateral Type");
-    //     require(constraints.minCollateralPerSub <= collateralAmount, "Insufficient Collateral for Subscription");
-    //     require(constraints.maxCollateralPerSub >= collateralAmount, "Max Collateral for Subscription exceeded");
-    //     require(
-    //         constraints.maxCollateralTotal >= (rule.totalCollateralAmount + collateralAmount),
-    //         "Max Collateral for Rule exceeded"
-    //     );
+    function _validateCollateral(
+        Fund memory fund,
+        address collateralToken,
+        uint256 collateralAmount
+    ) private view {
+        Rule memory rule = ruleExecutor.getRule(fund.ruleHash);
+        SubscriptionConstraints memory constraints = fund.constraints;
+        require(rule.actions[0].fromToken == collateralToken, "Wrong Collateral Type");
+        require(constraints.minCollateralPerSub <= collateralAmount, "Insufficient Collateral for Subscription");
+        require(constraints.maxCollateralPerSub >= collateralAmount, "Max Collateral for Subscription exceeded");
+        require(
+            constraints.maxCollateralTotal >= (rule.totalCollateralAmount + collateralAmount),
+            "Max Collateral for Rule exceeded"
+        );
 
-    //     if (collateralToken == REConstants.ETH) {
-    //         require(collateralAmount == msg.value);
-    //     }
-    // }
+        if (collateralToken == REConstants.ETH) {
+            require(collateralAmount == msg.value);
+        }
+    }
 
     // function redeemBalance(bytes32 ruleHash, uint256 subscriptionIdx) public {
     //     Rule memory rule = ruleExecutor.getRule(ruleHash);
@@ -134,22 +146,22 @@ contract FundManager is Ownable {
     //     }
     // }
 
-    function hashFund(address manager, bytes32 ruleHash) public returns (bytes32) {
+    function hashFund(address manager, bytes32 ruleHash) public pure returns (bytes32) {
         return keccak256(abi.encode(manager, ruleHash));
     }
 
     function createFund(
         Trigger[] calldata triggers,
         Action[] calldata actions,
-        SubscriptionConstraints calldata contraints
+        SubscriptionConstraints calldata constraints
     ) public returns (bytes32) {
         bytes32 ruleHash = ruleExecutor.createRule(triggers, actions);
-        bytes fundHash = hashFund(msg.sender, ruleHash);
+        bytes32 fundHash = hashFund(msg.sender, ruleHash);
         Fund storage fund = funds[fundHash];
         fund.manager = msg.sender;
         fund.ruleHash = ruleHash;
         fund.status = FundStatus.RAISING;
-        fund.contraints = contraints;
+        fund.constraints = constraints;
 
         emit FundCreated(fundHash);
         return fundHash;
