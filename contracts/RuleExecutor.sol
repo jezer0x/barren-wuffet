@@ -12,12 +12,19 @@ import "./actions/IAction.sol";
 import "./triggers/ITrigger.sol";
 
 contract RuleExecutor is Ownable {
-    event RuleCreated(bytes32 indexed ruleHash);
+    event Created(bytes32 indexed ruleHash);
+    event Activated(bytes32 indexed ruleHash);
+    event Paused(bytes32 indexed ruleHash);
+    event Cancelled(bytes32 indexed ruleHash);
     event Executed(bytes32 indexed ruleHash, address executor);
     event Redeemed(bytes32 indexed ruleHash);
-    event Cancelled(bytes32 indexed ruleHash);
     event AddCollateral(bytes32 indexed ruleHash, uint256 amt);
     event ReduceCollateral(bytes32 indexed ruleHash, uint256 amt);
+
+    modifier onlyRuleOwner(bytes32 ruleHash) {
+        require(rules[ruleHash].owner == msg.sender, "You're not the owner of this rule");
+        _;
+    }
 
     // hash -> Rule
     mapping(bytes32 => Rule) rules;
@@ -80,7 +87,7 @@ contract RuleExecutor is Ownable {
         return rules[ruleHash];
     }
 
-    function _redeemBalance(
+    function _send(
         address receiver,
         uint256 balance,
         address token
@@ -92,27 +99,19 @@ contract RuleExecutor is Ownable {
         }
     }
 
-    function redeemBalance(bytes32 ruleHash) public {
+    function redeemBalance(bytes32 ruleHash) public onlyRuleOwner(ruleHash) {
         Rule storage rule = rules[ruleHash];
-
-        require(msg.sender == rule.owner, "Only owner of the rule can redeem the balance");
-
-        if (rule.status == RuleStatus.EXECUTED) {
-            // withdrawing after successfully triggered rule
-            _redeemBalance(rule.owner, rule.outputAmount, rule.actions[rule.actions.length - 1].toToken);
-            emit Redeemed(ruleHash);
-        } else {
-            // withdrawing before anyone triggered this
-            _redeemBalance(rule.owner, rule.totalCollateralAmount, rule.actions[0].fromToken);
-            rule.status = RuleStatus.CANCELLED;
-            emit Cancelled(ruleHash);
-        }
+        require(rule.status == RuleStatus.EXECUTED, "Rule not executed yet!");
+        _send(rule.owner, rule.outputAmount, rule.actions[rule.actions.length - 1].toToken);
+        emit Redeemed(ruleHash);
     }
 
-    function addCollateral(bytes32 ruleHash, uint256 amount) public payable {
+    function addCollateral(bytes32 ruleHash, uint256 amount) public payable onlyRuleOwner(ruleHash) {
         Rule storage rule = rules[ruleHash];
-        require(rule.status == RuleStatus.CREATED, "Can't add collateral to this rule");
-        require(msg.sender == rule.owner, "Only owner of the rule can add collateral");
+        require(
+            rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.PAUSED,
+            "Can't add collateral to this rule"
+        );
         if (rule.actions[0].fromToken != REConstants.ETH) {
             // must have been approved first
             IERC20(rule.actions[0].fromToken).transferFrom(msg.sender, address(this), amount);
@@ -123,10 +122,13 @@ contract RuleExecutor is Ownable {
         emit AddCollateral(ruleHash, amount);
     }
 
-    function reduceCollateral(bytes32 ruleHash, uint256 amount) public {
+    function reduceCollateral(bytes32 ruleHash, uint256 amount) public onlyRuleOwner(ruleHash) {
         Rule storage rule = rules[ruleHash];
-        require(rule.status == RuleStatus.CREATED, "Can't add collateral to this rule");
-        require(msg.sender == rule.owner, "Only owner of the rule can remove collateral");
+        require(
+            rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.PAUSED,
+            "Can't add collateral to this rule"
+        );
+
         if (rule.actions[0].fromToken != REConstants.ETH) {
             IERC20(rule.actions[0].fromToken).transfer(msg.sender, amount);
         } else {
@@ -136,7 +138,7 @@ contract RuleExecutor is Ownable {
         emit ReduceCollateral(ruleHash, amount);
     }
 
-    function addRule(Trigger[] calldata triggers, Action[] calldata actions)
+    function createRule(Trigger[] calldata triggers, Action[] calldata actions)
         public
         onlyWhitelist(triggers, actions)
         returns (bytes32)
@@ -163,11 +165,28 @@ contract RuleExecutor is Ownable {
         rule.owner = msg.sender;
         rule.triggers = triggers;
         rule.actions = actions;
-        rule.status = RuleStatus.CREATED;
+        rule.status = RuleStatus.PAUSED;
         rule.outputAmount = 0;
 
-        emit RuleCreated(ruleHash);
+        emit Created(ruleHash);
         return ruleHash;
+    }
+
+    function activateRule(bytes32 ruleHash) public onlyRuleOwner {
+        rules[ruleHash].status = RuleStauts.ACTIVE;
+        emit Activated(ruleHash);
+    }
+
+    function pauseRule(bytes32 ruleHash) public onlyRuleOwner {
+        rules[ruleHash].status = RuleStauts.PAUSED;
+        emit Paused(ruleHash);
+    }
+
+    function cancelRule(bytes32 ruleHash) public onlyRuleOwner {
+        Rule storage rule = rules[ruleHash];
+        rule.status = RuleStauts.CANCELLED;
+        _send(rule.owner, rule.totalCollateralAmount, rule.actions[0].fromToken);
+        emit Cancelled(ruleHash);
     }
 
     function _hashRule(Trigger[] calldata triggers, Action[] calldata actions) private view returns (bytes32) {
@@ -196,6 +215,7 @@ contract RuleExecutor is Ownable {
 
         Rule storage rule = rules[ruleHash];
         require(rule.actions[0].callee != address(0), "Rule not found!");
+        require(rule.status == RuleStatus.ACTIVE, "Rule is not active!");
         (bool valid, uint256 triggerData) = _checkTriggers(rule.triggers);
         require(valid, "One (or more) trigger(s) not satisfied");
 

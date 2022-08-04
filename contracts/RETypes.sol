@@ -2,7 +2,8 @@
 pragma solidity ^0.8.9;
 
 enum RuleStatus {
-    CREATED,
+    ACTIVE,
+    PAUSED,
     EXECUTED,
     CANCELLED
 }

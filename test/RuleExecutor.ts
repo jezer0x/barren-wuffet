@@ -63,9 +63,9 @@ async function createRule(_ruleExecutor: RuleExecutorType, trigger: RETypes.Trig
   _ruleExecutor.addTriggerToWhitelist(trigger.callee);
   _ruleExecutor.addActionToWhitelist(action.callee);
   
-  const tx2 = await _ruleExecutor.connect(wallet).addRule(trigger, action, constraints);
+  const tx2 = await _ruleExecutor.connect(wallet).createRule(trigger, action, constraints);
   const receipt2 = await tx2.wait();
-  return receipt2.events?.find((x => x.event == "RuleCreated"))?.args?.ruleHash;
+  return receipt2.events?.find((x => x.event == "Created"))?.args?.ruleHash;
 
 }
 
@@ -120,7 +120,7 @@ describe("RuleExecutor", () => {
 
       ruleExecutor.disableTriggerWhitelist();
       ruleExecutor.disableActionWhitelist();
-      await expect(ruleExecutor.connect(ruleMakerWallet).addRule(badTrigger, executableAction, PERMISSIVE_CONSTRAINTS)).to.be.revertedWithoutReason();
+      await expect(ruleExecutor.connect(ruleMakerWallet).createRule(badTrigger, executableAction, PERMISSIVE_CONSTRAINTS)).to.be.revertedWithoutReason();
     });
 
     it("Should revert if validateTrigger on trigger does not return true", async () => {
@@ -141,7 +141,7 @@ describe("RuleExecutor", () => {
       ruleExecutor.disableTriggerWhitelist();
       ruleExecutor.disableActionWhitelist();
 
-      await expect(ruleExecutor.connect(ruleMakerWallet).addRule(passingTrigger, badAction, PERMISSIVE_CONSTRAINTS)).to.be.revertedWithoutReason();
+      await expect(ruleExecutor.connect(ruleMakerWallet).createRule(passingTrigger, badAction, PERMISSIVE_CONSTRAINTS)).to.be.revertedWithoutReason();
 
     });
 
@@ -164,7 +164,7 @@ describe("RuleExecutor", () => {
       const passingTrigger = makePassingTrigger(priceTrigger.address);
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
 
-      await expect(ruleExecutor.connect(ruleMakerWallet).addRule(passingTrigger, executableAction, PERMISSIVE_CONSTRAINTS)).to.be.revertedWith("Unauthorized trigger");
+      await expect(ruleExecutor.connect(ruleMakerWallet).createRule(passingTrigger, executableAction, PERMISSIVE_CONSTRAINTS)).to.be.revertedWith("Unauthorized trigger");
     });
 
     it("Should revert if action has not been whitelisted", async () => {
@@ -175,10 +175,10 @@ describe("RuleExecutor", () => {
 
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
 
-      await expect(ruleExecutor.connect(ruleMakerWallet).addRule(passingTrigger, executableAction, PERMISSIVE_CONSTRAINTS)).to.be.revertedWith("Unauthorized action");
+      await expect(ruleExecutor.connect(ruleMakerWallet).createRule(passingTrigger, executableAction, PERMISSIVE_CONSTRAINTS)).to.be.revertedWith("Unauthorized action");
     });
 
-    it("Should emit RuleCreated event if Trigger and Action are valid", async () => {
+    it("Should emit Created event if Trigger and Action are valid", async () => {
       const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1 } = await loadFixture(deployRuleExecutorFixture);
 
       const passingTrigger = makeFailingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
@@ -187,8 +187,8 @@ describe("RuleExecutor", () => {
       ruleExecutor.addTriggerToWhitelist(priceTrigger.address);
       ruleExecutor.addActionToWhitelist(swapUniSingleAction.address);
 
-      await expect(ruleExecutor.connect(ruleMakerWallet).addRule(
-        passingTrigger, executableAction, PERMISSIVE_CONSTRAINTS)).to.emit(ruleExecutor, "RuleCreated")        
+      await expect(ruleExecutor.connect(ruleMakerWallet).createRule(
+        passingTrigger, executableAction, PERMISSIVE_CONSTRAINTS)).to.emit(ruleExecutor, "Created")        
           .withArgs(anyValue);
     });
 
@@ -202,12 +202,12 @@ describe("RuleExecutor", () => {
       ruleExecutor.addActionToWhitelist(swapUniSingleAction.address);
 
       var rule1Hash: string;
-      await expect(ruleExecutor.connect(ruleMakerWallet).addRule(
-        passingTrigger, executableAction, PERMISSIVE_CONSTRAINTS)).to.emit(ruleExecutor, "RuleCreated")
+      await expect(ruleExecutor.connect(ruleMakerWallet).createRule(
+        passingTrigger, executableAction, PERMISSIVE_CONSTRAINTS)).to.emit(ruleExecutor, "Created")
           .withArgs((_hash: string) => { rule1Hash = _hash; return true; });
 
-      await expect(ruleExecutor.connect(ruleMakerWallet).addRule(
-            passingTrigger, executableAction, PERMISSIVE_CONSTRAINTS)).to.emit(ruleExecutor, "RuleCreated")
+      await expect(ruleExecutor.connect(ruleMakerWallet).createRule(
+            passingTrigger, executableAction, PERMISSIVE_CONSTRAINTS)).to.emit(ruleExecutor, "Created")
               .withArgs((_hash2: string) => rule1Hash == _hash2);
     });
     
@@ -224,12 +224,12 @@ describe("RuleExecutor", () => {
       ruleExecutor.addActionToWhitelist(swapUniSingleAction.address);
 
       var rule1Hash: string;
-      await expect(ruleExecutor.connect(ruleMakerWallet).addRule(
-        passingTrigger, executableAction, PERMISSIVE_CONSTRAINTS)).to.emit(ruleExecutor, "RuleCreated")        
+      await expect(ruleExecutor.connect(ruleMakerWallet).createRule(
+        passingTrigger, executableAction, PERMISSIVE_CONSTRAINTS)).to.emit(ruleExecutor, "Created")        
           .withArgs((_hash: string) => { rule1Hash = _hash; return true; });
 
-      await expect(ruleExecutor.connect(ruleMakerWallet2).addRule(
-            passingTrigger, executableAction, PERMISSIVE_CONSTRAINTS)).to.emit(ruleExecutor, "RuleCreated")
+      await expect(ruleExecutor.connect(ruleMakerWallet2).createRule(
+            passingTrigger, executableAction, PERMISSIVE_CONSTRAINTS)).to.emit(ruleExecutor, "Created")
               .withArgs((_hash2: string) => rule1Hash != _hash2);
     });
         
