@@ -172,6 +172,7 @@ contract RuleExecutor is Ownable {
 
     function cancelRule(bytes32 ruleHash) public onlyRuleOwner(ruleHash) {
         Rule storage rule = rules[ruleHash];
+        require(rule.status != RuleStatus.CANCELLED, "Rule is already cancelled!");
         rule.status = RuleStatus.CANCELLED;
         Utils._send(rule.owner, rule.totalCollateralAmount, rule.actions[0].fromToken);
         emit Cancelled(ruleHash);

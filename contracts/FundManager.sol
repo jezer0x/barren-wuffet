@@ -10,10 +10,11 @@ import "./Utils.sol";
 
 contract FundManager is Ownable {
     event FundCreated(bytes32 indexed fundHash);
-    event Subscribed(bytes32 indexed fundHash, uint256 SubIdx);
-    event Unsubscribed(bytes32 indexed fundHash, uint256 SubIdx);
-    event Redeemed(bytes32 indexed fundHash, uint256 SubIdx);
-    event Cancelled(bytes32 indexed fundHash, uint256 SubIdx);
+    event Subscribed(bytes32 indexed fundHash, uint256 subIdx);
+    event Unsubscribed(bytes32 indexed fundHash, uint256 subIdx);
+    event RedeemedCancelled(bytes32 indexed fundHash, uint256 subIdx);
+    event RedeemedExecuted(bytes32 indexed fundHash, uint256 subIdx);
+    event Cancelled(bytes32 indexed fundHash);
 
     enum SubscriptionStatus {
         ACTIVE,
@@ -52,8 +53,12 @@ contract FundManager is Ownable {
     mapping(bytes32 => Fund) funds;
     RuleExecutor public ruleExecutor;
 
-    modifier onlySubscriber(bytes32 fundHash, uint256 subscriptionIdx) {
-        require(funds[fundHash].subscriptions[subscriptionIdx].subscriber == msg.sender);
+    modifier onlyActiveSubscriber(bytes32 fundHash, uint256 subscriptionIdx) {
+        require(funds[fundHash].subscriptions[subscriptionIdx].subscriber == msg.sender, "You're not the subscriber!");
+        require(
+            funds[fundHash].subscriptions[subscriptionIdx].status == SubscriptionStatus.ACTIVE,
+            "This subscription is not active!"
+        );
         _;
     }
 
@@ -125,22 +130,46 @@ contract FundManager is Ownable {
         }
     }
 
-    function unsubscribe(bytes32 fundHash, uint256 subscriptionIdx) public onlySubscriber(fundHash, subscriptionIdx) {
+    function unsubscribe(bytes32 fundHash, uint256 subscriptionIdx)
+        public
+        onlyActiveSubscriber(fundHash, subscriptionIdx)
+    {
         Fund storage fund = funds[fundHash];
         bytes32 ruleHash = fund.ruleHash;
         Rule memory rule = ruleExecutor.getRule(ruleHash);
         Subscription storage subscription = fund.subscriptions[subscriptionIdx];
         require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.PAUSED, "unsubscribe failed");
-        require(subscription.status == SubscriptionStatus.ACTIVE, "Subscription is not Active!");
         ruleExecutor.reduceCollateral(ruleHash, subscription.collateralAmount);
         Utils._send(subscription.subscriber, subscription.collateralAmount, rule.actions[0].fromToken);
         subscription.status = SubscriptionStatus.CANCELLED;
 
-        if (rule.totalCollateralAmount < fund.constraints.minCollateralTotal) {
+        if (rule.status == RuleStatus.ACTIVE && rule.totalCollateralAmount < fund.constraints.minCollateralTotal) {
             ruleExecutor.pauseRule(ruleHash);
         }
 
         emit Unsubscribed(fundHash, subscriptionIdx);
+    }
+
+    function cancelFund(bytes32 fundHash) public onlyFundManager(fundHash) {
+        Fund storage fund = funds[fundHash];
+        fund.status = FundStatus.CANCELLED;
+        ruleExecutor.cancelRule(fund.ruleHash);
+        emit Cancelled(fundHash);
+    }
+
+    function redeemCollateralFromCancelledFund(bytes32 fundHash, uint256 subscriptionIdx)
+        public
+        onlyActiveSubscriber(fundHash, subscriptionIdx)
+    {
+        Fund storage fund = funds[fundHash];
+        bytes32 ruleHash = fund.ruleHash;
+        Rule memory rule = ruleExecutor.getRule(ruleHash);
+        Subscription storage subscription = fund.subscriptions[subscriptionIdx];
+        require(fund.status == FundStatus.CANCELLED, "Fund is not cancelled!");
+        // This contract should have the collateral back already since it was cancelled by fund.manager
+        Utils._send(subscription.subscriber, subscription.collateralAmount, rule.actions[0].fromToken);
+        subscription.status = SubscriptionStatus.REDEEMED;
+        emit RedeemedCancelled(fundHash, subscriptionIdx);
     }
 
     // function redeemBalance(bytes32 ruleHash, uint256 subscriptionIdx) public {
