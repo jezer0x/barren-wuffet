@@ -24,6 +24,7 @@ contract FundManager is Ownable {
 
     enum FundStatus {
         ACTIVE,
+        EXECUTED,
         CANCELLED
     }
 
@@ -170,20 +171,30 @@ contract FundManager is Ownable {
         emit RedeemedCancelled(fundHash, subscriptionIdx);
     }
 
-    // function redeemBalance(bytes32 ruleHash, uint256 subscriptionIdx) public {
-    //     Rule memory rule = ruleExecutor.getRule(ruleHash);
-    //     Subscription storage subscription = subscriptionsMap[ruleHash][subscriptionIdx];
-    //     require(subscription.status == SubscriptionStatus.ACTIVE, "Subscription is not active!");
-    //     require(subscription.subscriber == msg.sender, "You cannot redeem someone else's balance!");
+    function redeemOutputFromExecutedFund(bytes32 fundHash, uint256 subscriptionIdx)
+        public
+        onlyActiveSubscriber(fundHash, subscriptionIdx)
+    {
+        Fund storage fund = funds[fundHash];
+        bytes32 ruleHash = fund.ruleHash;
+        Rule memory rule = ruleExecutor.getRule(ruleHash);
+        Subscription storage subscription = fund.subscriptions[subscriptionIdx];
 
-    //     if (rule.status == RuleStatus.EXECUTED) {
-    //         // withdrawing after successfully triggered rule
-    //         uint256 balance = (subscription.collateralAmount * rule.outputAmount) / rule.totalCollateralAmount;
-    //         _redeemBalance(subscription.subscriber, balance, rule.actions[rule.actions.length - 1].toToken);
-    //         subscription.status = SubscriptionStatus.REDEEMED;
-    //         emit Redeemed(ruleHash, subscriptionIdx);
-    //     }
-    // }
+        if (rule.status == RuleStatus.EXECUTED && fund.status != FundStatus.EXECUTED) {
+            // When rule was executed but fund doesn't know
+            // first time subscriber wants to get back the output, we change this
+            // TODO: maybe doing it in the ruleExecution->fund callback would be a better idea?
+            ruleExecutor.redeemBalance(ruleHash);
+            fund.status = FundStatus.EXECUTED;
+        }
+
+        require(fund.status == FundStatus.EXECUTED, "Rule hasn't been executed yet!");
+
+        uint256 balance = (subscription.collateralAmount * rule.outputAmount) / rule.totalCollateralAmount; // TODO: make sure the math is fine, especially at the boundaries
+        Utils._send(subscription.subscriber, balance, rule.actions[rule.actions.length - 1].toToken);
+        subscription.status = SubscriptionStatus.REDEEMED;
+        emit RedeemedExecuted(ruleHash, subscriptionIdx);
+    }
 
     function hashFund(address manager, bytes32 ruleHash) public pure returns (bytes32) {
         return keccak256(abi.encode(manager, ruleHash));
