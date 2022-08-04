@@ -18,8 +18,8 @@ contract RuleExecutor is Ownable {
     event Cancelled(bytes32 indexed ruleHash);
     event Executed(bytes32 indexed ruleHash, address executor);
     event Redeemed(bytes32 indexed ruleHash);
-    event AddCollateral(bytes32 indexed ruleHash, uint256 amt);
-    event ReduceCollateral(bytes32 indexed ruleHash, uint256 amt);
+    event CollateralAdded(bytes32 indexed ruleHash, uint256 amt);
+    event CollateralReduced(bytes32 indexed ruleHash, uint256 amt);
 
     modifier onlyRuleOwner(bytes32 ruleHash) {
         require(rules[ruleHash].owner == msg.sender, "You're not the owner of this rule");
@@ -119,7 +119,7 @@ contract RuleExecutor is Ownable {
         } else {
             rule.totalCollateralAmount = rule.totalCollateralAmount + msg.value;
         }
-        emit AddCollateral(ruleHash, amount);
+        emit CollateralAdded(ruleHash, amount);
     }
 
     function reduceCollateral(bytes32 ruleHash, uint256 amount) public onlyRuleOwner(ruleHash) {
@@ -135,7 +135,7 @@ contract RuleExecutor is Ownable {
             payable(msg.sender).transfer(amount);
         }
         rule.totalCollateralAmount = rule.totalCollateralAmount - amount;
-        emit ReduceCollateral(ruleHash, amount);
+        emit CollateralReduced(ruleHash, amount);
     }
 
     function createRule(Trigger[] calldata triggers, Action[] calldata actions)
@@ -172,19 +172,19 @@ contract RuleExecutor is Ownable {
         return ruleHash;
     }
 
-    function activateRule(bytes32 ruleHash) public onlyRuleOwner {
-        rules[ruleHash].status = RuleStauts.ACTIVE;
+    function activateRule(bytes32 ruleHash) public onlyRuleOwner(ruleHash) {
+        rules[ruleHash].status = RuleStatus.ACTIVE;
         emit Activated(ruleHash);
     }
 
-    function pauseRule(bytes32 ruleHash) public onlyRuleOwner {
-        rules[ruleHash].status = RuleStauts.PAUSED;
+    function pauseRule(bytes32 ruleHash) public onlyRuleOwner(ruleHash) {
+        rules[ruleHash].status = RuleStatus.PAUSED;
         emit Paused(ruleHash);
     }
 
-    function cancelRule(bytes32 ruleHash) public onlyRuleOwner {
+    function cancelRule(bytes32 ruleHash) public onlyRuleOwner(ruleHash) {
         Rule storage rule = rules[ruleHash];
-        rule.status = RuleStauts.CANCELLED;
+        rule.status = RuleStatus.CANCELLED;
         _send(rule.owner, rule.totalCollateralAmount, rule.actions[0].fromToken);
         emit Cancelled(ruleHash);
     }
