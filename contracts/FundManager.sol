@@ -23,10 +23,8 @@ contract FundManager is Ownable {
     }
 
     enum FundStatus {
-        RAISING,
         ACTIVE,
-        CANCELLED,
-        REDEEMED
+        CANCELLED
     }
 
     struct Subscription {
@@ -201,7 +199,7 @@ contract FundManager is Ownable {
         Fund storage fund = funds[fundHash];
         fund.manager = msg.sender;
         fund.ruleHash = ruleHash;
-        fund.status = FundStatus.RAISING;
+        fund.status = FundStatus.ACTIVE;
         fund.constraints = constraints;
 
         emit FundCreated(fundHash);
