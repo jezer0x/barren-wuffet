@@ -19,15 +19,15 @@ contract RuleExecutor is Ownable {
     event AddCollateral(bytes32 indexed ruleHash, uint256 amt);
     event ReduceCollateral(bytes32 indexed ruleHash, uint256 amt);
 
-    // hash -> RETypes.Rule
-    mapping(bytes32 => RETypes.Rule) public rules;
+    // hash -> Rule
+    mapping(bytes32 => Rule) public rules;
 
     mapping(address => bool) whitelistedActions;
     mapping(address => bool) whitelistedTriggers;
     bool _disableActionWhitelist = false;
     bool _disableTriggerWhitelist = false;
 
-    modifier onlyWhitelist(RETypes.Trigger[] calldata triggers, RETypes.Action[] calldata actions) {
+    modifier onlyWhitelist(Trigger[] calldata triggers, Action[] calldata actions) {
         if (!_disableTriggerWhitelist) {
             for (uint256 i = 0; i < triggers.length; i++) {
                 require(whitelistedTriggers[triggers[i].callee], "Unauthorized trigger");
@@ -89,25 +89,25 @@ contract RuleExecutor is Ownable {
     }
 
     function redeemBalance(bytes32 ruleHash) public {
-        RETypes.Rule storage rule = rules[ruleHash];
+        Rule storage rule = rules[ruleHash];
 
         require(msg.sender == rule.owner, "You're not the owner of this rule!");
 
-        if (rule.status == RETypes.RuleStatus.EXECUTED) {
+        if (rule.status == RuleStatus.EXECUTED) {
             // withdrawing after successfully triggered rule
             _redeemBalance(rule.owner, rule.outputAmount, rule.actions[rule.actions.length - 1].toToken);
             emit Redeemed(ruleHash);
         } else {
             // withdrawing before anyone triggered this
             _redeemBalance(rule.owner, rule.totalCollateralAmount, rule.actions[0].fromToken);
-            rule.status = RETypes.RuleStatus.CANCELLED;
+            rule.status = RuleStatus.CANCELLED;
             emit Cancelled(ruleHash);
         }
     }
 
     function addCollateral(bytes32 ruleHash, uint256 amount) public payable {
-        RETypes.Rule storage rule = rules[ruleHash];
-        require(rule.status == RETypes.RuleStatus.CREATED, "Can't add collateral to this rule");
+        Rule storage rule = rules[ruleHash];
+        require(rule.status == RuleStatus.CREATED, "Can't add collateral to this rule");
         require(msg.sender == rule.owner);
         if (rule.actions[0].fromToken != REConstants.ETH) {
             // must have been approved first
@@ -120,8 +120,8 @@ contract RuleExecutor is Ownable {
     }
 
     function reduceCollateral(bytes32 ruleHash, uint256 amount) public {
-        RETypes.Rule storage rule = rules[ruleHash];
-        require(rule.status == RETypes.RuleStatus.CREATED, "Can't add collateral to this rule");
+        Rule storage rule = rules[ruleHash];
+        require(rule.status == RuleStatus.CREATED, "Can't add collateral to this rule");
         require(msg.sender == rule.owner);
         if (rule.actions[0].fromToken != REConstants.ETH) {
             // must have been approved first
@@ -133,10 +133,7 @@ contract RuleExecutor is Ownable {
         emit ReduceCollateral(ruleHash, amount);
     }
 
-    function addRule(RETypes.Trigger[] calldata triggers, RETypes.Action[] calldata actions)
-        public
-        onlyWhitelist(triggers, actions)
-    {
+    function addRule(Trigger[] calldata triggers, Action[] calldata actions) public onlyWhitelist(triggers, actions) {
         // var:val:op, action:data
         // ethPrice: 1000: gt, uniswap:<sellethforusdc>
         // check if action[0] is in actionTypes
@@ -145,42 +142,34 @@ contract RuleExecutor is Ownable {
         // the swap will happen on behalf of this contract,
         // need to approve uniswap to take asset1 from this contract, and get asset2 back
         for (uint256 i = 0; i < triggers.length; i++) {
-            require(ITrigger(triggers[i].callee).validateTrigger(triggers[i]), "Invalid trigger provided");
+            require(ITrigger(triggers[i].callee).validate(triggers[i]), "Invalid trigger provided");
         }
 
         for (uint256 i = 0; i < actions.length; i++) {
-            require(IAction(actions[i].callee).validateAction(actions[i]), "Invalid action provided");
+            require(IAction(actions[i].callee).validate(actions[i]), "Invalid action provided");
             if (i != actions.length - 1) {
                 require(actions[i].toToken == actions[i + 1].fromToken, "check fromToken -> toToken chain is valid");
             }
         }
 
         bytes32 ruleHash = _hashRule(triggers, actions);
-        RETypes.Rule storage rule = rules[ruleHash];
+        Rule storage rule = rules[ruleHash];
         rule.owner = msg.sender;
         rule.triggers = triggers;
         rule.actions = actions;
-        rule.status = RETypes.RuleStatus.CREATED;
+        rule.status = RuleStatus.CREATED;
         rule.outputAmount = 0;
         emit RuleCreated(ruleHash);
     }
 
-    function _hashRule(RETypes.Trigger[] calldata triggers, RETypes.Action[] calldata actions)
-        private
-        view
-        returns (bytes32)
-    {
+    function _hashRule(Trigger[] calldata triggers, Action[] calldata actions) private view returns (bytes32) {
         return keccak256(abi.encode(triggers, actions, msg.sender, block.timestamp));
     }
 
     // WARNING: only the last trigger's data gets sent back as triggerData
-    function _checkTriggers(RETypes.Trigger[] storage triggers)
-        internal
-        view
-        returns (bool valid, uint256 triggerData)
-    {
+    function _checkTriggers(Trigger[] storage triggers) internal view returns (bool valid, uint256 triggerData) {
         for (uint256 i = 0; i < triggers.length; i++) {
-            (valid, triggerData) = ITrigger(triggers[i].callee).checkTrigger(triggers[i]);
+            (valid, triggerData) = ITrigger(triggers[i].callee).check(triggers[i]);
             if (!valid) return (false, 0);
         }
         return (true, triggerData);
@@ -197,24 +186,24 @@ contract RuleExecutor is Ownable {
         // give reward to caller
         // if not, abort
 
-        RETypes.Rule storage rule = rules[ruleHash];
+        Rule storage rule = rules[ruleHash];
         require(rule.actions[0].callee != address(0), "Rule not found!");
         (bool valid, uint256 triggerData) = _checkTriggers(rule.triggers);
         require(valid, "One (or more) trigger(s) not satisfied");
 
-        RETypes.ActionRuntimeParams memory runtimeParams = RETypes.ActionRuntimeParams({
+        ActionRuntimeParams memory runtimeParams = ActionRuntimeParams({
             triggerData: triggerData,
             totalCollateralAmount: rule.totalCollateralAmount
         });
 
         uint256 output;
         for (uint256 i = 0; i < rule.actions.length; i++) {
-            RETypes.Action storage action = rule.actions[i];
+            Action storage action = rule.actions[i];
             if (action.fromToken != REConstants.ETH) {
                 IERC20(action.fromToken).approve(action.callee, runtimeParams.totalCollateralAmount);
-                output = IAction(action.callee).performAction(action, runtimeParams);
+                output = IAction(action.callee).perform(action, runtimeParams);
             } else {
-                output = IAction(action.callee).performAction{value: runtimeParams.totalCollateralAmount}(
+                output = IAction(action.callee).perform{value: runtimeParams.totalCollateralAmount}(
                     action,
                     runtimeParams
                 );
@@ -223,7 +212,7 @@ contract RuleExecutor is Ownable {
         }
 
         rule.outputAmount = output;
-        rule.status = RETypes.RuleStatus.EXECUTED;
+        rule.status = RuleStatus.EXECUTED;
 
         //TODO: send reward to caller
 

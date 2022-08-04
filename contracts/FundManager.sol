@@ -68,8 +68,8 @@ contract FundManager {
     }
 
     function _validateCollateral(
-        RETypes.Rule memory rule,
-        RETypes.Action memory action,
+        Rule memory rule,
+        Action memory action,
         address collateralToken,
         uint256 collateralAmount
     ) private view {
@@ -78,7 +78,7 @@ contract FundManager {
         require(rule.constraints.maxCollateralPerSub >= collateralAmount, "Max Collateral for Subscription exceeded");
         require(
             rule.constraints.maxCollateralTotal >= (rule.totalCollateralAmount + collateralAmount),
-            "Max Collateral for RETypes.Rule exceeded"
+            "Max Collateral for Rule exceeded"
         );
 
         if (collateralToken == REConstants.ETH) {
@@ -87,12 +87,12 @@ contract FundManager {
     }
 
     function redeemBalance(bytes32 ruleHash, uint256 subscriptionIdx) public {
-        RETypes.Rule storage rule = rules[ruleHash];
+        Rule storage rule = rules[ruleHash];
         Subscription storage subscription = subscriptions[ruleHash][subscriptionIdx];
 
         require(subscription.status == SubscriptionStatus.ACTIVE, "subscription is not active!");
 
-        if (rule.status == RETypes.RuleStatus.EXECUTED) {
+        if (rule.status == RuleStatus.EXECUTED) {
             // withdrawing after successfully triggered rule
             uint256 balance = (subscription.collateralAmount * rule.outputAmount) / rule.totalCollateralAmount;
             _redeemBalance(subscription.subscriber, balance, rule.action.toToken);

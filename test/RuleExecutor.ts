@@ -133,7 +133,7 @@ describe("RuleExecutor", () => {
     });
 
     
-    it("Should revert if action doesnt have a callee with validateAction", async () => {
+    it("Should revert if action doesnt have a callee with validate", async () => {
       const { ruleExecutor, priceTrigger, ruleMakerWallet, testToken1 } = await loadFixture(deployRuleExecutorFixture);
 
       const passingTrigger = makePassingTrigger(priceTrigger.address);
@@ -145,14 +145,14 @@ describe("RuleExecutor", () => {
 
     });
 
-    it.skip("Should revert if validateAction on action does not return true", async () => {
+    it.skip("Should revert if validate on action does not return true", async () => {
       
       // KIV This. currently we dont have a situation where the action fails validation.
 
 
     });
 
-    it.skip("Should revert if validateAction on action is not a view fn", async () => {
+    it.skip("Should revert if validate on action is not a view fn", async () => {
       // KIV. Need to create a bad action. I am yet not sure what damage this can do, and what protection we should have for this.
 
 

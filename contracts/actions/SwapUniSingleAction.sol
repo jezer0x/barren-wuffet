@@ -16,12 +16,12 @@ contract SwapUniSingleAction is IAction {
         WETH9 = wethAddress;
     }
 
-    function validateAction(RETypes.Action calldata action) external view returns (bool) {
+    function validate(Action calldata) external view returns (bool) {
         // we'll be ignoring action.data in swapUni (?)
         return true;
     }
 
-    function performAction(RETypes.Action calldata action, RETypes.ActionRuntimeParams calldata runtimeParams)
+    function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
         external
         payable
         returns (uint256)

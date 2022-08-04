@@ -11,18 +11,18 @@ import "../Utils.sol";
 contract TimestampTrigger is ITrigger, Ownable {
     constructor() {}
 
-    function validateTrigger(RETypes.Trigger calldata) external view returns (bool) {
+    function validate(Trigger calldata) external view returns (bool) {
         return true;
     }
 
-    function checkTrigger(RETypes.Trigger calldata trigger) external view returns (bool, uint256) {
+    function check(Trigger calldata trigger) external view returns (bool, uint256) {
         // get the val of var, so we can check if it matches trigger
-        (uint256 val, RETypes.Ops op) = (trigger.value, trigger.op);
+        (uint256 val, Ops op) = (trigger.value, trigger.op);
         uint256 res = block.timestamp;
 
-        if (op == RETypes.Ops.GT) {
+        if (op == Ops.GT) {
             return (res > val, res);
-        } else if (op == RETypes.Ops.LT) {
+        } else if (op == Ops.LT) {
             return (res < val, res);
         }
 
