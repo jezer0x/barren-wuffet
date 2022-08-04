@@ -6,10 +6,12 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./RETypes.sol";
 import "./REConstants.sol";
 import "./RuleExecutor.sol";
+import "./Utils.sol";
 
 contract FundManager is Ownable {
     event FundCreated(bytes32 indexed fundHash);
     event Subscribed(bytes32 indexed fundHash, uint256 SubIdx);
+    event Unsubscribed(bytes32 indexed fundHash, uint256 SubIdx);
     event Redeemed(bytes32 indexed fundHash, uint256 SubIdx);
     event Cancelled(bytes32 indexed fundHash, uint256 SubIdx);
 
@@ -50,6 +52,16 @@ contract FundManager is Ownable {
     mapping(bytes32 => Fund) funds;
     RuleExecutor public ruleExecutor;
 
+    modifier onlySubscriber(bytes32 fundHash, uint256 subscriptionIdx) {
+        require(funds[fundHash].subscriptions[subscriptionIdx].subscriber == msg.sender);
+        _;
+    }
+
+    modifier onlyFundManager(bytes32 fundHash) {
+        require(funds[fundHash].manager == msg.sender);
+        _;
+    }
+
     constructor(address ReAddr) {
         ruleExecutor = RuleExecutor(ReAddr);
     }
@@ -58,7 +70,7 @@ contract FundManager is Ownable {
         ruleExecutor = RuleExecutor(ReAddr);
     }
 
-    function subscribeToFund(
+    function subscribe(
         bytes32 fundHash,
         address collateralToken,
         uint256 collateralAmount
@@ -93,18 +105,6 @@ contract FundManager is Ownable {
         }
     }
 
-    // function _redeemBalance(
-    //     address receiver,
-    //     uint256 balance,
-    //     address token
-    // ) internal {
-    //     if (token != REConstants.ETH) {
-    //         IERC20(token).transfer(receiver, balance);
-    //     } else {
-    //         payable(receiver).transfer(balance);
-    //     }
-    // }
-
     function _validateCollateral(
         Fund memory fund,
         address collateralToken,
@@ -125,6 +125,24 @@ contract FundManager is Ownable {
         }
     }
 
+    function unsubscribe(bytes32 fundHash, uint256 subscriptionIdx) public onlySubscriber(fundHash, subscriptionIdx) {
+        Fund storage fund = funds[fundHash];
+        bytes32 ruleHash = fund.ruleHash;
+        Rule memory rule = ruleExecutor.getRule(ruleHash);
+        Subscription storage subscription = fund.subscriptions[subscriptionIdx];
+        require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.PAUSED, "unsubscribe failed");
+        require(subscription.status == SubscriptionStatus.ACTIVE, "Subscription is not Active!");
+        ruleExecutor.reduceCollateral(ruleHash, subscription.collateralAmount);
+        Utils._send(subscription.subscriber, subscription.collateralAmount, rule.actions[0].fromToken);
+        subscription.status = SubscriptionStatus.CANCELLED;
+
+        if (rule.totalCollateralAmount < fund.constraints.minCollateralTotal) {
+            ruleExecutor.pauseRule(ruleHash);
+        }
+
+        emit Unsubscribed(fundHash, subscriptionIdx);
+    }
+
     // function redeemBalance(bytes32 ruleHash, uint256 subscriptionIdx) public {
     //     Rule memory rule = ruleExecutor.getRule(ruleHash);
     //     Subscription storage subscription = subscriptionsMap[ruleHash][subscriptionIdx];
@@ -137,12 +155,6 @@ contract FundManager is Ownable {
     //         _redeemBalance(subscription.subscriber, balance, rule.actions[rule.actions.length - 1].toToken);
     //         subscription.status = SubscriptionStatus.REDEEMED;
     //         emit Redeemed(ruleHash, subscriptionIdx);
-    //     } else {
-    //         // withdrawing before anyone triggered this
-    //         ruleExecutor.reduceCollateral(ruleHash, subscription.collateralAmount);
-    //         _redeemBalance(subscription.subscriber, subscription.collateralAmount, rule.actions[0].fromToken);
-    //         subscription.status = SubscriptionStatus.CANCELLED;
-    //         emit Cancelled(ruleHash, subscriptionIdx);
     //     }
     // }
 

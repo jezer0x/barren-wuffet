@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
+import "./REConstants.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 library Utils {
     // https://github.com/GNSPS/solidity-bytes-utils/blob/6458fb2780a3092bc756e737f246be1de6d3d362/contracts/BytesLib.sol
@@ -16,5 +18,17 @@ library Utils {
 
     function strEq(string memory a, string memory b) internal pure returns (bool) {
         return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
+    }
+
+    function _send(
+        address receiver,
+        uint256 balance,
+        address token
+    ) internal {
+        if (token != REConstants.ETH) {
+            IERC20(token).transfer(receiver, balance);
+        } else {
+            payable(receiver).transfer(balance);
+        }
     }
 }

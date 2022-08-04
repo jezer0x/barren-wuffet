@@ -87,22 +87,10 @@ contract RuleExecutor is Ownable {
         return rules[ruleHash];
     }
 
-    function _send(
-        address receiver,
-        uint256 balance,
-        address token
-    ) internal {
-        if (token != REConstants.ETH) {
-            IERC20(token).transfer(receiver, balance);
-        } else {
-            payable(receiver).transfer(balance);
-        }
-    }
-
     function redeemBalance(bytes32 ruleHash) public onlyRuleOwner(ruleHash) {
         Rule storage rule = rules[ruleHash];
         require(rule.status == RuleStatus.EXECUTED, "Rule not executed yet!");
-        _send(rule.owner, rule.outputAmount, rule.actions[rule.actions.length - 1].toToken);
+        Utils._send(rule.owner, rule.outputAmount, rule.actions[rule.actions.length - 1].toToken);
         emit Redeemed(ruleHash);
     }
 
@@ -185,7 +173,7 @@ contract RuleExecutor is Ownable {
     function cancelRule(bytes32 ruleHash) public onlyRuleOwner(ruleHash) {
         Rule storage rule = rules[ruleHash];
         rule.status = RuleStatus.CANCELLED;
-        _send(rule.owner, rule.totalCollateralAmount, rule.actions[0].fromToken);
+        Utils._send(rule.owner, rule.totalCollateralAmount, rule.actions[0].fromToken);
         emit Cancelled(ruleHash);
     }
 
