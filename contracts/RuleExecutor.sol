@@ -139,13 +139,6 @@ contract RuleExecutor is Ownable {
         onlyWhitelist(triggers, actions)
         returns (bytes32)
     {
-        // var:val:op, action:data
-        // ethPrice: 1000: gt, uniswap:<sellethforusdc>
-        // check if action[0] is in actionTypes
-        // if action[1] is "swap", we need to do a swap.
-        // we could store the "swap" opcodes as data, which will allow us to whitelist rules.
-        // the swap will happen on behalf of this contract,
-        // need to approve uniswap to take asset1 from this contract, and get asset2 back
         for (uint256 i = 0; i < triggers.length; i++) {
             require(ITrigger(triggers[i].callee).validate(triggers[i]), "Invalid trigger provided");
         }
