@@ -77,6 +77,18 @@ contract TradeManager is Ownable {
         ruleExecutor = RuleExecutor(ReAddr);
     }
 
+    function getCollateralToken(bytes32 tradeHash) public view {
+        bytes32 ruleHash = trade.ruleHash;
+        Rule memory rule = ruleExecutor.getRule(ruleHash);
+        return rule.actions[0].fromToken; 
+    }
+
+    functiong getOutputToken(bytes32 tradeHash) {
+        bytes32 ruleHash = trade.ruleHash;
+        Rule memory rule = ruleExecutor.getRule(ruleHash);
+        return rule.actions[rule.actions.length - 1].toToken; 
+    }
+
     function subscribe(
         bytes32 tradeHash,
         address collateralToken,
@@ -208,6 +220,7 @@ contract TradeManager is Ownable {
         Action[] calldata actions,
         SubscriptionConstraints calldata constraints
     ) public payable returns (bytes32) {
+        // Note: Rule is created through TradeManager so that TradeManager is rule.owner
         bytes32 ruleHash = ruleExecutor.createRule{value: msg.value}(triggers, actions);
         bytes32 tradeHash = hashTrade(msg.sender, ruleHash);
         Trade storage trade = trades[tradeHash];
