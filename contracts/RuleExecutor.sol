@@ -126,8 +126,16 @@ contract RuleExecutor is Ownable {
         emit CollateralReduced(ruleHash, amount);
     }
 
+    function increaseReward(bytes32 ruleHash) public payable {
+        Rule storage rule = rules[ruleHash];
+        if (rule.owner != address(0)) {
+            rule.reward += msg.value;
+        }
+    }
+
     function createRule(Trigger[] calldata triggers, Action[] calldata actions)
         public
+        payable
         onlyWhitelist(triggers, actions)
         returns (bytes32)
     {
@@ -155,6 +163,7 @@ contract RuleExecutor is Ownable {
         rule.actions = actions;
         rule.status = RuleStatus.PAUSED;
         rule.outputAmount = 0;
+        rule.reward = msg.value;
 
         emit Created(ruleHash);
         return ruleHash;
@@ -196,12 +205,6 @@ contract RuleExecutor is Ownable {
     }
 
     function executeRule(bytes32 ruleHash) public {
-        // <- send gas, get a refund if action is performed, else lose gas.
-        // check if trigger is met
-        // if yes, execute the tx
-        // give reward to caller
-        // if not, abort
-
         Rule storage rule = rules[ruleHash];
         require(rule.actions[0].callee != address(0), "Rule not found!");
         require(rule.status == RuleStatus.ACTIVE, "Rule is not active!");
@@ -230,9 +233,7 @@ contract RuleExecutor is Ownable {
 
         rule.outputAmount = output;
         rule.status = RuleStatus.EXECUTED;
-
-        //TODO: send reward to caller
-
+        payable(msg.sender).transfer(rule.reward);
         emit Executed(ruleHash, msg.sender);
     }
 }

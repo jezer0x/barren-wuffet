@@ -204,8 +204,8 @@ contract FundManager is Ownable {
         Trigger[] calldata triggers,
         Action[] calldata actions,
         SubscriptionConstraints calldata constraints
-    ) public returns (bytes32) {
-        bytes32 ruleHash = ruleExecutor.createRule(triggers, actions);
+    ) public payable returns (bytes32) {
+        bytes32 ruleHash = ruleExecutor.createRule{value: msg.value}(triggers, actions);
         bytes32 fundHash = hashFund(msg.sender, ruleHash);
         Fund storage fund = funds[fundHash];
         fund.manager = msg.sender;

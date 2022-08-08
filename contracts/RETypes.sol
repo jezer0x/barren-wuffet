@@ -15,6 +15,7 @@ struct Rule {
     uint256 totalCollateralAmount;
     RuleStatus status;
     uint256 outputAmount;
+    uint256 reward;
 }
 
 struct ActionRuntimeParams {
