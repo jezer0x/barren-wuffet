@@ -92,19 +92,14 @@ contract RuleExecutor is Ownable {
         return rules[ruleHash];
     }
 
-    function redeemBalance(bytes32 ruleHash) public ruleExists(ruleHash) onlyRuleOwner(ruleHash) {
+    function redeemBalance(bytes32 ruleHash) public onlyRuleOwner(ruleHash) {
         Rule storage rule = rules[ruleHash];
         require(rule.status == RuleStatus.EXECUTED, "Rule not executed yet!");
         Utils._send(rule.owner, rule.outputAmount, rule.actions[rule.actions.length - 1].toToken);
         emit Redeemed(ruleHash);
     }
 
-    function addCollateral(bytes32 ruleHash, uint256 amount)
-        public
-        payable
-        ruleExists(ruleHash)
-        onlyRuleOwner(ruleHash)
-    {
+    function addCollateral(bytes32 ruleHash, uint256 amount) public payable onlyRuleOwner(ruleHash) {
         Rule storage rule = rules[ruleHash];
         require(
             rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.PAUSED,
@@ -170,17 +165,17 @@ contract RuleExecutor is Ownable {
         return ruleHash;
     }
 
-    function activateRule(bytes32 ruleHash) public ruleExists(ruleHash) onlyRuleOwner(ruleHash) {
+    function activateRule(bytes32 ruleHash) public onlyRuleOwner(ruleHash) {
         rules[ruleHash].status = RuleStatus.ACTIVE;
         emit Activated(ruleHash);
     }
 
-    function pauseRule(bytes32 ruleHash) public ruleExists(ruleHash) onlyRuleOwner(ruleHash) {
+    function pauseRule(bytes32 ruleHash) public onlyRuleOwner(ruleHash) {
         rules[ruleHash].status = RuleStatus.PAUSED;
         emit Paused(ruleHash);
     }
 
-    function cancelRule(bytes32 ruleHash) public ruleExists(ruleHash) onlyRuleOwner(ruleHash) {
+    function cancelRule(bytes32 ruleHash) public onlyRuleOwner(ruleHash) {
         Rule storage rule = rules[ruleHash];
         require(rule.status != RuleStatus.CANCELLED, "Rule is already cancelled!");
         rule.status = RuleStatus.CANCELLED;

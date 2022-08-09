@@ -13,20 +13,6 @@ contract TradeManager is Ownable, ISubscription {
     event TradeCreated(bytes32 indexed tradeHash);
     event Cancelled(bytes32 indexed tradeHash);
 
-    enum TradeStatus {
-        ACTIVE,
-        EXECUTED,
-        CANCELLED
-    }
-
-    struct Trade {
-        address manager;
-        bytes32 ruleHash;
-        TradeStatus status;
-        SubscriptionConstraints constraints;
-        Subscription[] subscriptions;
-    }
-
     mapping(bytes32 => Trade) trades;
     RuleExecutor public ruleExecutor;
 
@@ -70,6 +56,10 @@ contract TradeManager is Ownable, ISubscription {
         bytes32 ruleHash = trades[tradeHash].ruleHash;
         Rule memory rule = ruleExecutor.getRule(ruleHash);
         return rule.actions[rule.actions.length - 1].toToken;
+    }
+
+    function getStatus(bytes32 tradeHash) public view tradeExists(tradeHash) returns (TradeStatus) {
+        return trades[tradeHash].status;
     }
 
     function subscribe(
@@ -132,6 +122,7 @@ contract TradeManager is Ownable, ISubscription {
         external
         tradeExists(tradeHash)
         onlyActiveSubscriber(tradeHash, subscriptionIdx)
+        returns (uint256)
     {
         Trade storage trade = trades[tradeHash];
         bytes32 ruleHash = trade.ruleHash;
@@ -147,9 +138,10 @@ contract TradeManager is Ownable, ISubscription {
 
         Utils._send(subscription.subscriber, subscription.collateralAmount, rule.actions[0].fromToken);
         emit Unsubscribed(tradeHash, subscriptionIdx);
+        return subscription.collateralAmount;
     }
 
-    function cancelTrade(bytes32 tradeHash) public onlyTradeManager(tradeHash) tradeExists(tradeHash) {
+    function cancelTrade(bytes32 tradeHash) public onlyTradeManager(tradeHash) {
         Trade storage trade = trades[tradeHash];
         trade.status = TradeStatus.CANCELLED;
         ruleExecutor.cancelRule(trade.ruleHash);
@@ -160,6 +152,7 @@ contract TradeManager is Ownable, ISubscription {
         external
         tradeExists(tradeHash)
         onlyActiveSubscriber(tradeHash, subscriptionIdx)
+        returns (uint256)
     {
         Trade storage trade = trades[tradeHash];
         bytes32 ruleHash = trade.ruleHash;
@@ -171,12 +164,14 @@ contract TradeManager is Ownable, ISubscription {
 
         Utils._send(subscription.subscriber, subscription.collateralAmount, rule.actions[0].fromToken);
         emit RedeemedCollateral(tradeHash, subscriptionIdx);
+        return subscription.collateralAmount;
     }
 
     function redeemSubscriptionOutput(bytes32 tradeHash, uint256 subscriptionIdx)
         external
         tradeExists(tradeHash)
         onlyActiveSubscriber(tradeHash, subscriptionIdx)
+        returns (uint256)
     {
         Trade storage trade = trades[tradeHash];
         bytes32 ruleHash = trade.ruleHash;
@@ -198,6 +193,7 @@ contract TradeManager is Ownable, ISubscription {
 
         Utils._send(subscription.subscriber, balance, rule.actions[rule.actions.length - 1].toToken);
         emit RedeemedOutput(ruleHash, subscriptionIdx);
+        return balance;
     }
 
     function hashTrade(address manager, bytes32 ruleHash) public pure returns (bytes32) {

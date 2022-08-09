@@ -2,26 +2,6 @@
 pragma solidity ^0.8.9;
 
 interface ISubscription {
-    enum SubscriptionStatus {
-        ACTIVE,
-        CANCELLED,
-        REDEEMED
-    }
-
-    struct Subscription {
-        address subscriber;
-        uint256 collateralAmount;
-        SubscriptionStatus status;
-    }
-
-    struct SubscriptionConstraints {
-        uint256 minCollateralPerSub; // minimum amount needed as collateral to subscribe
-        uint256 maxCollateralPerSub; // max ...
-        uint256 minCollateralTotal;
-        uint256 maxCollateralTotal; // limit on subscription to protect from slippage DOS attacks
-        uint256 deadline; // a block.timestamp
-    }
-
     event Subscribed(bytes32 indexed hash, uint256 subIdx);
     event Unsubscribed(bytes32 indexed hash, uint256 subIdx);
     event RedeemedCollateral(bytes32 indexed hash, uint256 subIdx);
@@ -34,11 +14,11 @@ interface ISubscription {
     ) external payable returns (uint256);
 
     // Used by subscriber before service was cancelled/completed
-    function unsubscribe(bytes32 hash, uint256 subscriptionIdx) external;
+    function unsubscribe(bytes32 hash, uint256 subscriptionIdx) external returns (uint256);
 
     // Used by the subscriber after the service was cancelled
-    function redeemSubscriptionCollateral(bytes32 hash, uint256 subscriptionIdx) external;
+    function redeemSubscriptionCollateral(bytes32 hash, uint256 subscriptionIdx) external returns (uint256);
 
     // Used by the subscriber after the service was completed
-    function redeemSubscriptionOutput(bytes32 hash, uint256 subscriptionIdx) external;
+    function redeemSubscriptionOutput(bytes32 hash, uint256 subscriptionIdx) external returns (uint256);
 }
