@@ -76,7 +76,7 @@ contract TradeManager is Ownable, ISubscription {
         bytes32 tradeHash,
         address collateralToken,
         uint256 collateralAmount
-    ) external payable tradeExists(tradeHash) {
+    ) external payable tradeExists(tradeHash) returns (uint256) {
         Trade storage trade = trades[tradeHash];
         _collectCollateral(trade, collateralToken, collateralAmount);
         Subscription storage newSub = trade.subscriptions.push();
@@ -89,6 +89,7 @@ contract TradeManager is Ownable, ISubscription {
             ruleExecutor.activateRule(trade.ruleHash);
         }
         emit Subscribed(tradeHash, trade.subscriptions.length - 1);
+        return trade.subscriptions.length - 1;
     }
 
     function _collectCollateral(
@@ -138,13 +139,13 @@ contract TradeManager is Ownable, ISubscription {
         Subscription storage subscription = trade.subscriptions[subscriptionIdx];
         require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.PAUSED, "unsubscribe failed");
         ruleExecutor.reduceCollateral(ruleHash, subscription.collateralAmount);
-        Utils._send(subscription.subscriber, subscription.collateralAmount, rule.actions[0].fromToken);
         subscription.status = SubscriptionStatus.CANCELLED;
 
         if (rule.status == RuleStatus.ACTIVE && rule.totalCollateralAmount < trade.constraints.minCollateralTotal) {
             ruleExecutor.pauseRule(ruleHash);
         }
 
+        Utils._send(subscription.subscriber, subscription.collateralAmount, rule.actions[0].fromToken);
         emit Unsubscribed(tradeHash, subscriptionIdx);
     }
 
@@ -166,8 +167,9 @@ contract TradeManager is Ownable, ISubscription {
         Subscription storage subscription = trade.subscriptions[subscriptionIdx];
         require(trade.status == TradeStatus.CANCELLED, "Trade is not cancelled!");
         // This contract should have the collateral back already since it was cancelled by trade.manager
-        Utils._send(subscription.subscriber, subscription.collateralAmount, rule.actions[0].fromToken);
         subscription.status = SubscriptionStatus.REDEEMED;
+
+        Utils._send(subscription.subscriber, subscription.collateralAmount, rule.actions[0].fromToken);
         emit RedeemedCollateral(tradeHash, subscriptionIdx);
     }
 
@@ -192,8 +194,9 @@ contract TradeManager is Ownable, ISubscription {
         require(trade.status == TradeStatus.EXECUTED, "Rule hasn't been executed yet!");
 
         uint256 balance = (subscription.collateralAmount * rule.outputAmount) / rule.totalCollateralAmount; // TODO: make sure the math is fine, especially at the boundaries
-        Utils._send(subscription.subscriber, balance, rule.actions[rule.actions.length - 1].toToken);
         subscription.status = SubscriptionStatus.REDEEMED;
+
+        Utils._send(subscription.subscriber, balance, rule.actions[rule.actions.length - 1].toToken);
         emit RedeemedOutput(ruleHash, subscriptionIdx);
     }
 

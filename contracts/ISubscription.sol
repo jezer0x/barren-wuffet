@@ -19,6 +19,7 @@ interface ISubscription {
         uint256 maxCollateralPerSub; // max ...
         uint256 minCollateralTotal;
         uint256 maxCollateralTotal; // limit on subscription to protect from slippage DOS attacks
+        uint256 deadline; // a block.timestamp
     }
 
     event Subscribed(bytes32 indexed hash, uint256 subIdx);
@@ -30,7 +31,7 @@ interface ISubscription {
         bytes32 hash,
         address collateralToken,
         uint256 collateralAmount
-    ) external payable;
+    ) external payable returns (uint256);
 
     // Used by subscriber before service was cancelled/completed
     function unsubscribe(bytes32 hash, uint256 subscriptionIdx) external;
