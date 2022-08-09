@@ -26,6 +26,11 @@ contract RuleExecutor is Ownable {
         _;
     }
 
+    modifier ruleExists(bytes32 ruleHash) {
+        require(rules[ruleHash].owner != address(0), "Rule not found!");
+        _;
+    }
+
     // hash -> Rule
     mapping(bytes32 => Rule) rules;
 
@@ -83,18 +88,23 @@ contract RuleExecutor is Ownable {
 
     constructor() {}
 
-    function getRule(bytes32 ruleHash) public view returns (Rule memory) {
+    function getRule(bytes32 ruleHash) public view ruleExists(ruleHash) returns (Rule memory) {
         return rules[ruleHash];
     }
 
-    function redeemBalance(bytes32 ruleHash) public onlyRuleOwner(ruleHash) {
+    function redeemBalance(bytes32 ruleHash) public ruleExists(ruleHash) onlyRuleOwner(ruleHash) {
         Rule storage rule = rules[ruleHash];
         require(rule.status == RuleStatus.EXECUTED, "Rule not executed yet!");
         Utils._send(rule.owner, rule.outputAmount, rule.actions[rule.actions.length - 1].toToken);
         emit Redeemed(ruleHash);
     }
 
-    function addCollateral(bytes32 ruleHash, uint256 amount) public payable onlyRuleOwner(ruleHash) {
+    function addCollateral(bytes32 ruleHash, uint256 amount)
+        public
+        payable
+        ruleExists(ruleHash)
+        onlyRuleOwner(ruleHash)
+    {
         Rule storage rule = rules[ruleHash];
         require(
             rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.PAUSED,
@@ -126,11 +136,9 @@ contract RuleExecutor is Ownable {
         emit CollateralReduced(ruleHash, amount);
     }
 
-    function increaseReward(bytes32 ruleHash) public payable {
+    function increaseReward(bytes32 ruleHash) public payable ruleExists(ruleHash) {
         Rule storage rule = rules[ruleHash];
-        if (rule.owner != address(0)) {
-            rule.reward += msg.value;
-        }
+        rule.reward += msg.value;
     }
 
     function createRule(Trigger[] calldata triggers, Action[] calldata actions)
@@ -162,17 +170,17 @@ contract RuleExecutor is Ownable {
         return ruleHash;
     }
 
-    function activateRule(bytes32 ruleHash) public onlyRuleOwner(ruleHash) {
+    function activateRule(bytes32 ruleHash) public ruleExists(ruleHash) onlyRuleOwner(ruleHash) {
         rules[ruleHash].status = RuleStatus.ACTIVE;
         emit Activated(ruleHash);
     }
 
-    function pauseRule(bytes32 ruleHash) public onlyRuleOwner(ruleHash) {
+    function pauseRule(bytes32 ruleHash) public ruleExists(ruleHash) onlyRuleOwner(ruleHash) {
         rules[ruleHash].status = RuleStatus.PAUSED;
         emit Paused(ruleHash);
     }
 
-    function cancelRule(bytes32 ruleHash) public onlyRuleOwner(ruleHash) {
+    function cancelRule(bytes32 ruleHash) public ruleExists(ruleHash) onlyRuleOwner(ruleHash) {
         Rule storage rule = rules[ruleHash];
         require(rule.status != RuleStatus.CANCELLED, "Rule is already cancelled!");
         rule.status = RuleStatus.CANCELLED;
@@ -197,9 +205,8 @@ contract RuleExecutor is Ownable {
         (valid, ) = _checkTriggers(rules[ruleHash].triggers);
     }
 
-    function executeRule(bytes32 ruleHash) public {
+    function executeRule(bytes32 ruleHash) public ruleExists(ruleHash) {
         Rule storage rule = rules[ruleHash];
-        require(rule.actions[0].callee != address(0), "Rule not found!");
         require(rule.status == RuleStatus.ACTIVE, "Rule is not active!");
         (bool valid, uint256 triggerData) = _checkTriggers(rule.triggers);
         require(valid, "One (or more) trigger(s) not satisfied");

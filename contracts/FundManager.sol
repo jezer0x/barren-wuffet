@@ -15,24 +15,29 @@ contract FundManager is ISubscription {
 
     mapping(bytes32 => Fund) funds;
 
-    modifier onlyActiveSubscriber(bytes32 hash, uint256 subscriptionIdx) {
-        require(funds[hash].subscriptions[subscriptionIdx].subscriber == msg.sender, "You're not the subscriber!");
+    modifier onlyActiveSubscriber(bytes32 fundHash, uint256 subscriptionIdx) {
+        require(funds[fundHash].subscriptions[subscriptionIdx].subscriber == msg.sender, "You're not the subscriber!");
         require(
-            funds[hash].subscriptions[subscriptionIdx].status == SubscriptionStatus.ACTIVE,
+            funds[fundHash].subscriptions[subscriptionIdx].status == SubscriptionStatus.ACTIVE,
             "This subscription is not active!"
         );
         _;
     }
 
+    modifier fundExists(bytes32 fundHash) {
+        require(funds[fundHash].manager != address(0));
+        _;
+    }
+
     function subscribe(
-        bytes32 hash,
+        bytes32 fundHash,
         address collateralToken,
         uint256 collateralAmount
-    ) external payable {}
+    ) external payable fundExists(fundHash) {}
 
-    function unsubscribe(bytes32 hash, uint256 subscriptionIdx) external {}
+    function unsubscribe(bytes32 fundHash, uint256 subscriptionIdx) external fundExists(fundHash) {}
 
-    function redeemSubscriptionCollateral(bytes32 hash, uint256 subscriptionIdx) external {}
+    function redeemSubscriptionCollateral(bytes32 fundHash, uint256 subscriptionIdx) external fundExists(fundHash) {}
 
-    function redeemSubscriptionOutput(bytes32 hash, uint256 subscriptionIdx) external {}
+    function redeemSubscriptionOutput(bytes32 fundHash, uint256 subscriptionIdx) external fundExists(fundHash) {}
 }
