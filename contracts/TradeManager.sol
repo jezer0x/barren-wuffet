@@ -3,42 +3,20 @@ pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./ISubscription.sol";
 import "./RETypes.sol";
 import "./REConstants.sol";
 import "./RuleExecutor.sol";
 import "./Utils.sol";
 
-contract TradeManager is Ownable {
+contract TradeManager is Ownable, ISubscription {
     event TradeCreated(bytes32 indexed tradeHash);
-    event Subscribed(bytes32 indexed tradeHash, uint256 subIdx);
-    event Unsubscribed(bytes32 indexed tradeHash, uint256 subIdx);
-    event RedeemedCancelled(bytes32 indexed tradeHash, uint256 subIdx);
-    event RedeemedExecuted(bytes32 indexed tradeHash, uint256 subIdx);
     event Cancelled(bytes32 indexed tradeHash);
-
-    enum SubscriptionStatus {
-        ACTIVE,
-        CANCELLED,
-        REDEEMED
-    }
 
     enum TradeStatus {
         ACTIVE,
         EXECUTED,
         CANCELLED
-    }
-
-    struct Subscription {
-        address subscriber;
-        uint256 collateralAmount;
-        SubscriptionStatus status;
-    }
-
-    struct SubscriptionConstraints {
-        uint256 minCollateralPerSub; // minimum amount needed as collateral to subscribe
-        uint256 maxCollateralPerSub; // max ...
-        uint256 minCollateralTotal;
-        uint256 maxCollateralTotal; // limit on subscription to protect from slippage DOS attacks
     }
 
     struct Trade {
@@ -77,23 +55,23 @@ contract TradeManager is Ownable {
         ruleExecutor = RuleExecutor(ReAddr);
     }
 
-    function getCollateralToken(bytes32 tradeHash) public view {
-        bytes32 ruleHash = trade.ruleHash;
+    function getCollateralToken(bytes32 tradeHash) public view returns (address) {
+        bytes32 ruleHash = trades[tradeHash].ruleHash;
         Rule memory rule = ruleExecutor.getRule(ruleHash);
-        return rule.actions[0].fromToken; 
+        return rule.actions[0].fromToken;
     }
 
-    functiong getOutputToken(bytes32 tradeHash) {
-        bytes32 ruleHash = trade.ruleHash;
+    function getOutputToken(bytes32 tradeHash) public view returns (address) {
+        bytes32 ruleHash = trades[tradeHash].ruleHash;
         Rule memory rule = ruleExecutor.getRule(ruleHash);
-        return rule.actions[rule.actions.length - 1].toToken; 
+        return rule.actions[rule.actions.length - 1].toToken;
     }
 
     function subscribe(
         bytes32 tradeHash,
         address collateralToken,
         uint256 collateralAmount
-    ) public payable {
+    ) external payable {
         Trade storage trade = trades[tradeHash];
         _collectCollateral(trade, collateralToken, collateralAmount);
         Subscription storage newSub = trade.subscriptions.push();
@@ -171,8 +149,8 @@ contract TradeManager is Ownable {
         emit Cancelled(tradeHash);
     }
 
-    function redeemCollateralFromCancelledTrade(bytes32 tradeHash, uint256 subscriptionIdx)
-        public
+    function redeemSubscriptionCollateral(bytes32 tradeHash, uint256 subscriptionIdx)
+        external
         onlyActiveSubscriber(tradeHash, subscriptionIdx)
     {
         Trade storage trade = trades[tradeHash];
@@ -183,11 +161,11 @@ contract TradeManager is Ownable {
         // This contract should have the collateral back already since it was cancelled by trade.manager
         Utils._send(subscription.subscriber, subscription.collateralAmount, rule.actions[0].fromToken);
         subscription.status = SubscriptionStatus.REDEEMED;
-        emit RedeemedCancelled(tradeHash, subscriptionIdx);
+        emit RedeemedCollateral(tradeHash, subscriptionIdx);
     }
 
-    function redeemOutputFromExecutedTrade(bytes32 tradeHash, uint256 subscriptionIdx)
-        public
+    function redeemSubscriptionOutput(bytes32 tradeHash, uint256 subscriptionIdx)
+        external
         onlyActiveSubscriber(tradeHash, subscriptionIdx)
     {
         Trade storage trade = trades[tradeHash];
@@ -208,7 +186,7 @@ contract TradeManager is Ownable {
         uint256 balance = (subscription.collateralAmount * rule.outputAmount) / rule.totalCollateralAmount; // TODO: make sure the math is fine, especially at the boundaries
         Utils._send(subscription.subscriber, balance, rule.actions[rule.actions.length - 1].toToken);
         subscription.status = SubscriptionStatus.REDEEMED;
-        emit RedeemedExecuted(ruleHash, subscriptionIdx);
+        emit RedeemedOutput(ruleHash, subscriptionIdx);
     }
 
     function hashTrade(address manager, bytes32 ruleHash) public pure returns (bytes32) {
