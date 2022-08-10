@@ -122,14 +122,15 @@ contract FundManager is ISubscription, Ownable {
         Fund storage fund = funds[fundHash];
         address inputToken = tradeManager.getCollateralToken(tradeHash);
         uint256 subIdx;
+        _decreaseAssetBalance(fund, inputToken, amount);
+        fund.openPositions.push(Position({tradeHash: tradeHash, subIdx: subIdx}));
+
         if (inputToken == REConstants.ETH) {
             subIdx = tradeManager.deposit{value: amount}(tradeHash, inputToken, amount);
         } else {
             IERC20(inputToken).approve(address(tradeManager), amount);
             subIdx = tradeManager.deposit(tradeHash, inputToken, amount);
         }
-        _decreaseAssetBalance(fund, inputToken, amount);
-        fund.openPositions.push(Position({tradeHash: tradeHash, subIdx: subIdx}));
     }
 
     function closePosition(bytes32 fundHash, uint256 openPositionIdx) public onlyFundManager(fundHash) {
