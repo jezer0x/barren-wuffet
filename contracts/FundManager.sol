@@ -11,8 +11,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract FundManager is ISubscription, Ownable {
-    event FundCreated(bytes32 indexed fundHash);
-    event FundClosed(bytes32 indexed fundHash);
+    event Created(bytes32 indexed fundHash);
+    event Closed(bytes32 indexed fundHash);
 
     struct Position {
         bytes32 tradeHash;
@@ -30,6 +30,7 @@ contract FundManager is ISubscription, Ownable {
         mapping(address => uint256) balances; // tracking balances of assets
         Position[] openPositions;
         uint256 totalCollateral;
+        bool closed;
     }
 
     enum FundStatus {
@@ -82,7 +83,7 @@ contract FundManager is ISubscription, Ownable {
         fund.status = FundStatus.RAISING;
         fund.constraints = constraints;
 
-        emit FundCreated(fundHash);
+        emit Created(fundHash);
         return fundHash;
     }
 
@@ -94,7 +95,7 @@ contract FundManager is ISubscription, Ownable {
             closePosition(fundHash, i);
         }
 
-        emit FundClosed(fundHash);
+        emit Closed(fundHash);
     }
 
     function takeAction(
@@ -197,6 +198,7 @@ contract FundManager is ISubscription, Ownable {
         // TODO: take a fee here
         newSub.collateralAmount = collateralAmount;
         _increaseAssetBalance(fund, collateralToken, collateralAmount);
+        fund.totalCollateral += collateralAmount;
 
         emit Deposit(fundHash, fund.subscriptions.length - 1, collateralToken, collateralAmount);
         return fund.subscriptions.length - 1;
@@ -206,9 +208,29 @@ contract FundManager is ISubscription, Ownable {
         bytes32 fundHash,
         uint256 subscriptionIdx,
         address token
-    ) private returns (uint256) {
+    ) private view returns (uint256) {
         Fund storage fund = funds[fundHash];
         return (fund.subscriptions[subscriptionIdx].collateralAmount * fund.balances[token]) / fund.totalCollateral;
+    }
+
+    function getStatus(bytes32 fundHash) public returns (FundStatus) {
+        Fund storage fund = funds[fundHash];
+        if (fund.closed) {
+            return FundStatus.CLOSED;
+        } else if (block.timestamp >= fund.constraints.lockin) {
+            fund.closed = true;
+            return FundStatus.CLOSED;
+        } else if (
+            fund.totalCollateral >= fund.constraints.maxCollateralTotal || block.timestamp >= fund.constraints.deadline
+        ) {
+            return FundStatus.DEPLOYED;
+        } else if (
+            fund.totalCollateral < fund.constraints.maxCollateralTotal && block.timestamp < fund.constraints.deadline
+        ) {
+            return FundStatus.RAISING;
+        } else {
+            revert("This state should never be reached!");
+        }
     }
 
     function withdraw(bytes32 fundHash, uint256 subscriptionIdx)

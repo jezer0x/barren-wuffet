@@ -122,12 +122,12 @@ contract TradeManager is Ownable, ISubscription {
             return TradeStatus.ACTIVE;
         } else if (rule.status == RuleStatus.CANCELLED) {
             return TradeStatus.CANCELLED;
+        } else if (trade.redeemedOutput) {
+            return TradeStatus.EXECUTED;
         } else if (rule.status == RuleStatus.EXECUTED) {
             // TODO: this is icky!
-            if (!trade.redeemedOutput) {
-                ruleExecutor.redeemBalance(ruleHash);
-                trade.redeemedOutput = true;
-            }
+            ruleExecutor.redeemBalance(ruleHash);
+            trade.redeemedOutput = true;
             return TradeStatus.EXECUTED;
         } else {
             revert("State not covered!");
