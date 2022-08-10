@@ -249,29 +249,33 @@ contract FundManager is ISubscription, Ownable {
         FundStatus status = getStatus(fundHash);
 
         subscription.status = SubscriptionStatus.WITHDRAWN;
-        address[] memory tokens;
-        uint256[] memory balances;
 
         if (status == FundStatus.RAISING) {
             _decreaseAssetBalance(fund, REConstants.ETH, subscription.collateralAmount);
             subscription.status = SubscriptionStatus.WITHDRAWN;
+
+            emit Withdraw(fundHash, subscriptionIdx, REConstants.ETH, subscription.collateralAmount);
+            Utils._send(subscription.subscriber, subscription.collateralAmount, REConstants.ETH);
+
+            address[] memory tokens = new address[](1);
             tokens[0] = REConstants.ETH;
+            uint256[] memory balances = new uint256[](1);
             balances[0] = subscription.collateralAmount;
-            emit Withdraw(fundHash, subscriptionIdx, tokens[0], balances[0]);
-            Utils._send(subscription.subscriber, balances[0], tokens[0]);
+            return (tokens, balances);
         } else if (status == FundStatus.CLOSED) {
+            address[] memory tokens = new address[](fund.assets.length);
+            uint256[] memory balances = new uint256[](fund.assets.length);
             for (uint256 i = 0; i < fund.assets.length; i++) {
                 tokens[i] = fund.assets[i];
                 balances[i] = _getShares(fundHash, subscriptionIdx, fund.assets[i]);
                 emit Withdraw(fundHash, subscriptionIdx, tokens[i], balances[i]);
                 Utils._send(subscription.subscriber, balances[i], tokens[i]);
             }
+            return (tokens, balances);
         } else if (status == FundStatus.DEPLOYED) {
             revert("Can't get money back from deployed fund!");
         } else {
             revert("Should never reach this state!");
         }
-
-        return (tokens, balances);
     }
 }
