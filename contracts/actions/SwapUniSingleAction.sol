@@ -16,7 +16,7 @@ contract SwapUniSingleAction is IAction {
         WETH9 = wethAddress;
     }
 
-    function validate(Action calldata) external view returns (bool) {
+    function validate(Action calldata) external pure returns (bool) {
         // we'll be ignoring action.data in swapUni (?)
         return true;
     }

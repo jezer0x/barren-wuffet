@@ -11,7 +11,7 @@ import "../Utils.sol";
 contract TimestampTrigger is ITrigger, Ownable {
     constructor() {}
 
-    function validate(Trigger calldata) external view returns (bool) {
+    function validate(Trigger calldata) external pure returns (bool) {
         return true;
     }
 
