@@ -31,7 +31,7 @@ library Utils {
         if (token != REConstants.ETH) {
             IERC20(token).safeTransfer(receiver, balance);
         } else {
-            payable(receiver).safeTransfer(balance);
+            payable(receiver).transfer(balance);
         }
     }
 }
