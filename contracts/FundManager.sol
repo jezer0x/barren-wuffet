@@ -135,23 +135,7 @@ contract FundManager is ISubscription, Ownable {
         Position storage position = fund.openPositions[openPositionIdx];
         bytes32 tradeHash = position.tradeHash;
         uint256 subIdx = position.subIdx;
-        TradeStatus status = tradeManager.getStatus(tradeHash);
-        address token;
-        uint256 amount;
-        // TODO: is this complexity better hidden in TradeManager.withdraw() returns (token, amount)?
-        if (status == TradeStatus.ACTIVE) {
-            token = tradeManager.getCollateralToken(tradeHash);
-            amount = tradeManager.withdraw(tradeHash, subIdx);
-        } else if (status == TradeStatus.EXECUTED) {
-            token = tradeManager.getOutputToken(tradeHash);
-            amount = tradeManager.redeemSubscriptionOutput(tradeHash, subIdx);
-        } else if (status == TradeStatus.CANCELLED) {
-            token = tradeManager.getCollateralToken(tradeHash);
-            amount = tradeManager.redeemSubscriptionCollateral(tradeHash, subIdx);
-        } else {
-            revert("trade in unknown status!");
-        }
-
+        (address token, uint256 amount) = tradeManager.withdraw(tradeHash, subIdx);
         removeOpenPosition(fund, openPositionIdx);
         increaseAssetBalance(fund, token, amount);
     }
