@@ -5,6 +5,7 @@ pragma solidity ^0.8.9;
 import "hardhat/console.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./Utils.sol";
 import "./RETypes.sol";
 import "./REConstants.sol";
@@ -12,6 +13,8 @@ import "./actions/IAction.sol";
 import "./triggers/ITrigger.sol";
 
 contract RuleExecutor is Ownable {
+    using SafeERC20 for IERC20;
+
     event Created(bytes32 indexed ruleHash);
     event Activated(bytes32 indexed ruleHash);
     event Paused(bytes32 indexed ruleHash);
@@ -107,7 +110,7 @@ contract RuleExecutor is Ownable {
         );
         if (rule.actions[0].fromToken != REConstants.ETH) {
             // must have been approved first
-            IERC20(rule.actions[0].fromToken).transferFrom(msg.sender, address(this), amount);
+            IERC20(rule.actions[0].fromToken).safeTransferFrom(msg.sender, address(this), amount);
             rule.totalCollateralAmount = rule.totalCollateralAmount + amount;
         } else {
             rule.totalCollateralAmount = rule.totalCollateralAmount + msg.value;
@@ -125,7 +128,7 @@ contract RuleExecutor is Ownable {
         rule.totalCollateralAmount = rule.totalCollateralAmount - amount;
 
         if (rule.actions[0].fromToken != REConstants.ETH) {
-            IERC20(rule.actions[0].fromToken).transfer(msg.sender, amount);
+            IERC20(rule.actions[0].fromToken).safeTransfer(msg.sender, amount);
         } else {
             payable(msg.sender).transfer(amount);
         }
@@ -216,7 +219,7 @@ contract RuleExecutor is Ownable {
         for (uint256 i = 0; i < rule.actions.length; i++) {
             Action storage action = rule.actions[i];
             if (action.fromToken != REConstants.ETH) {
-                IERC20(action.fromToken).approve(action.callee, runtimeParams.totalCollateralAmount);
+                IERC20(action.fromToken).safeApprove(action.callee, runtimeParams.totalCollateralAmount);
                 output = IAction(action.callee).perform(action, runtimeParams);
             } else {
                 output = IAction(action.callee).perform{value: runtimeParams.totalCollateralAmount}(

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./ISubscription.sol";
 import "./RETypes.sol";
@@ -10,6 +11,8 @@ import "./RuleExecutor.sol";
 import "./Utils.sol";
 
 contract TradeManager is Ownable, ISubscription {
+    using SafeERC20 for IERC20;
+
     event TradeCreated(bytes32 indexed tradeHash);
     event Cancelled(bytes32 indexed tradeHash);
 
@@ -85,8 +88,8 @@ contract TradeManager is Ownable, ISubscription {
     ) private {
         _validateCollateral(trade, collateralToken, collateralAmount);
         if (collateralToken != REConstants.ETH) {
-            IERC20(collateralToken).transferFrom(msg.sender, address(this), collateralAmount);
-            IERC20(collateralToken).approve(address(ruleExecutor), collateralAmount);
+            IERC20(collateralToken).safeTransferFrom(msg.sender, address(this), collateralAmount);
+            IERC20(collateralToken).safeApprove(address(ruleExecutor), collateralAmount);
             ruleExecutor.addCollateral(trade.ruleHash, collateralAmount);
         } else {
             // else it should be in our balance already

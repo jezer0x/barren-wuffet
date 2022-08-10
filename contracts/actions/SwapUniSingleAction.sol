@@ -6,8 +6,11 @@ import "./IAction.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "../REConstants.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract SwapUniSingleAction is IAction {
+    using SafeERC20 for IERC20;
+
     ISwapRouter swapRouter;
     address WETH9;
 
@@ -49,8 +52,8 @@ contract SwapUniSingleAction is IAction {
             } else {
                 toToken = action.toToken;
             }
-            IERC20(action.fromToken).transferFrom(msg.sender, address(this), runtimeParams.totalCollateralAmount);
-            IERC20(action.fromToken).approve(address(swapRouter), runtimeParams.totalCollateralAmount);
+            IERC20(action.fromToken).safeTransferFrom(msg.sender, address(this), runtimeParams.totalCollateralAmount);
+            IERC20(action.fromToken).safeApprove(address(swapRouter), runtimeParams.totalCollateralAmount);
             params = ISwapRouter.ExactInputSingleParams({
                 tokenIn: action.fromToken,
                 tokenOut: toToken,
@@ -62,7 +65,7 @@ contract SwapUniSingleAction is IAction {
                 sqrtPriceLimitX96: 0
             });
             amountOut = swapRouter.exactInputSingle(params);
-            IERC20(action.fromToken).approve(address(swapRouter), 0);
+            IERC20(action.fromToken).safeApprove(address(swapRouter), 0);
         }
 
         return (amountOut);

@@ -8,9 +8,12 @@ import "./RETypes.sol";
 import "./actions/IAction.sol";
 import "./TradeManager.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract FundManager is ISubscription, Ownable {
+    using SafeERC20 for IERC20;
+
     event Created(bytes32 indexed fundHash);
     event Closed(bytes32 indexed fundHash);
 
@@ -106,7 +109,7 @@ contract FundManager is ISubscription, Ownable {
         Fund storage fund = funds[fundHash];
         _decreaseAssetBalance(fund, action.fromToken, runtimeParams.totalCollateralAmount);
         if (action.fromToken != REConstants.ETH) {
-            IERC20(action.fromToken).approve(action.callee, runtimeParams.totalCollateralAmount);
+            IERC20(action.fromToken).safeApprove(action.callee, runtimeParams.totalCollateralAmount);
             output = IAction(action.callee).perform(action, runtimeParams);
         } else {
             output = IAction(action.callee).perform{value: runtimeParams.totalCollateralAmount}(action, runtimeParams);
@@ -128,7 +131,7 @@ contract FundManager is ISubscription, Ownable {
         if (inputToken == REConstants.ETH) {
             subIdx = tradeManager.deposit{value: amount}(tradeHash, inputToken, amount);
         } else {
-            IERC20(inputToken).approve(address(tradeManager), amount);
+            IERC20(inputToken).safeApprove(address(tradeManager), amount);
             subIdx = tradeManager.deposit(tradeHash, inputToken, amount);
         }
     }
