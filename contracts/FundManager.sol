@@ -45,7 +45,7 @@ contract FundManager is ISubscription, Ownable {
         tradeManager = TradeManager(TmAddr);
     }
 
-    function setTradeManangerAddress(address TmAddr) public onlyOwner {
+    function setTradeManangerAddress(address TmAddr) external onlyOwner {
         tradeManager = TradeManager(TmAddr);
     }
 
@@ -68,12 +68,12 @@ contract FundManager is ISubscription, Ownable {
         _;
     }
 
-    function hashFund(address manager, string memory name) public pure returns (bytes32) {
+    function getFundHash(address manager, string memory name) public pure returns (bytes32) {
         return keccak256(abi.encode(manager, name));
     }
 
-    function createFund(string calldata name, SubscriptionConstraints calldata constraints) public returns (bytes32) {
-        bytes32 fundHash = hashFund(msg.sender, name);
+    function createFund(string calldata name, SubscriptionConstraints calldata constraints) external returns (bytes32) {
+        bytes32 fundHash = getFundHash(msg.sender, name);
         require(funds[fundHash].manager == address(0), "Fund already exists!");
         Fund storage fund = funds[fundHash];
         fund.fundHash = fundHash;
@@ -86,7 +86,7 @@ contract FundManager is ISubscription, Ownable {
         return fundHash;
     }
 
-    function closeFund(bytes32 fundHash) public onlyFundManager(fundHash) {
+    function closeFund(bytes32 fundHash) external onlyFundManager(fundHash) {
         Fund storage fund = funds[fundHash];
         fund.status = FundStatus.CLOSED;
 
@@ -101,7 +101,7 @@ contract FundManager is ISubscription, Ownable {
         bytes32 fundHash,
         Action calldata action,
         ActionRuntimeParams calldata runtimeParams
-    ) public onlyFundManager(fundHash) returns (uint256 output) {
+    ) external onlyFundManager(fundHash) returns (uint256 output) {
         Fund storage fund = funds[fundHash];
         _decreaseAssetBalance(fund, action.fromToken, runtimeParams.totalCollateralAmount);
         if (action.fromToken != REConstants.ETH) {
@@ -117,7 +117,7 @@ contract FundManager is ISubscription, Ownable {
         bytes32 fundHash,
         bytes32 tradeHash,
         uint256 amount
-    ) public onlyFundManager(fundHash) {
+    ) external onlyFundManager(fundHash) {
         Fund storage fund = funds[fundHash];
         address inputToken = tradeManager.getCollateralToken(tradeHash);
         uint256 subIdx;

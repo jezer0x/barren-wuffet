@@ -42,23 +42,23 @@ contract TradeManager is Ownable, ISubscription {
         ruleExecutor = RuleExecutor(ReAddr);
     }
 
-    function setRuleExecutorAddress(address ReAddr) public onlyOwner {
+    function setRuleExecutorAddress(address ReAddr) external onlyOwner {
         ruleExecutor = RuleExecutor(ReAddr);
     }
 
-    function getCollateralToken(bytes32 tradeHash) public view tradeExists(tradeHash) returns (address) {
+    function getCollateralToken(bytes32 tradeHash) external view tradeExists(tradeHash) returns (address) {
         bytes32 ruleHash = trades[tradeHash].ruleHash;
         Rule memory rule = ruleExecutor.getRule(ruleHash);
         return rule.actions[0].fromToken;
     }
 
-    function getOutputToken(bytes32 tradeHash) public view tradeExists(tradeHash) returns (address) {
+    function getOutputToken(bytes32 tradeHash) external view tradeExists(tradeHash) returns (address) {
         bytes32 ruleHash = trades[tradeHash].ruleHash;
         Rule memory rule = ruleExecutor.getRule(ruleHash);
         return rule.actions[rule.actions.length - 1].toToken;
     }
 
-    function getStatus(bytes32 tradeHash) public view tradeExists(tradeHash) returns (TradeStatus) {
+    function getStatus(bytes32 tradeHash) external view tradeExists(tradeHash) returns (TradeStatus) {
         return trades[tradeHash].status;
     }
 
@@ -172,14 +172,14 @@ contract TradeManager is Ownable, ISubscription {
         return (tokens, balances);
     }
 
-    function cancelTrade(bytes32 tradeHash) public onlyTradeManager(tradeHash) {
+    function cancelTrade(bytes32 tradeHash) external onlyTradeManager(tradeHash) {
         Trade storage trade = trades[tradeHash];
         trade.status = TradeStatus.CANCELLED;
         ruleExecutor.cancelRule(trade.ruleHash);
         emit Cancelled(tradeHash);
     }
 
-    function hashTrade(address manager, bytes32 ruleHash) public pure returns (bytes32) {
+    function getTradeHash(address manager, bytes32 ruleHash) public pure returns (bytes32) {
         return keccak256(abi.encode(manager, ruleHash));
     }
 
@@ -187,10 +187,10 @@ contract TradeManager is Ownable, ISubscription {
         Trigger[] calldata triggers,
         Action[] calldata actions,
         SubscriptionConstraints calldata constraints
-    ) public payable returns (bytes32) {
+    ) external payable returns (bytes32) {
         // Note: Rule is created through TradeManager so that TradeManager is rule.owner
         bytes32 ruleHash = ruleExecutor.createRule{value: msg.value}(triggers, actions);
-        bytes32 tradeHash = hashTrade(msg.sender, ruleHash);
+        bytes32 tradeHash = getTradeHash(msg.sender, ruleHash);
         require(trades[tradeHash].manager == address(0)); // trade does not exist
         Trade storage trade = trades[tradeHash];
         trade.manager = msg.sender;

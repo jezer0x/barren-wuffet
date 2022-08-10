@@ -17,7 +17,7 @@ contract PriceTrigger is ITrigger, Ownable {
 
     constructor() {}
 
-    function addPriceFeed(string calldata asset, address dataSource) public onlyOwner {
+    function addPriceFeed(string calldata asset, address dataSource) external onlyOwner {
         priceFeeds[asset] = dataSource;
     }
 
