@@ -62,7 +62,7 @@ contract TradeManager is Ownable, ISubscription {
         return trades[tradeHash].status;
     }
 
-    function subscribe(
+    function deposit(
         bytes32 tradeHash,
         address collateralToken,
         uint256 collateralAmount
@@ -78,7 +78,7 @@ contract TradeManager is Ownable, ISubscription {
         if (rule.totalCollateralAmount >= trade.constraints.minCollateralTotal) {
             ruleExecutor.activateRule(trade.ruleHash);
         }
-        emit Subscribed(tradeHash, trade.subscriptions.length - 1);
+        emit Deposit(tradeHash, trade.subscriptions.length - 1, collateralToken, collateralAmount);
         return trade.subscriptions.length - 1;
     }
 
@@ -118,27 +118,53 @@ contract TradeManager is Ownable, ISubscription {
         }
     }
 
-    function unsubscribe(bytes32 tradeHash, uint256 subscriptionIdx)
+    function withdraw(bytes32 tradeHash, uint256 subscriptionIdx)
         external
         tradeExists(tradeHash)
         onlyActiveSubscriber(tradeHash, subscriptionIdx)
-        returns (uint256)
+        returns (address, uint256)
     {
         Trade storage trade = trades[tradeHash];
         bytes32 ruleHash = trade.ruleHash;
         Rule memory rule = ruleExecutor.getRule(ruleHash);
         Subscription storage subscription = trade.subscriptions[subscriptionIdx];
-        require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.PAUSED, "unsubscribe failed");
-        ruleExecutor.reduceCollateral(ruleHash, subscription.collateralAmount);
-        subscription.status = SubscriptionStatus.CANCELLED;
 
-        if (rule.status == RuleStatus.ACTIVE && rule.totalCollateralAmount < trade.constraints.minCollateralTotal) {
-            ruleExecutor.pauseRule(ruleHash);
+        address token;
+        uint256 balance;
+
+        if (trade.status == TradeStatus.ACTIVE && rule.status != RuleStatus.EXECUTED) {
+            // rule.status should only be PAUSED / ACTIVE here
+            ruleExecutor.reduceCollateral(ruleHash, subscription.collateralAmount);
+            if (rule.status == RuleStatus.ACTIVE && rule.totalCollateralAmount < trade.constraints.minCollateralTotal) {
+                ruleExecutor.pauseRule(ruleHash);
+            }
+            token = rule.actions[0].fromToken;
+            balance = subscription.collateralAmount;
+        } else if (trade.status == TradeStatus.EXECUTED || rule.status == RuleStatus.EXECUTED) {
+            // Trade may be marked active but rule may be executed
+            // TODO: this may not be needed if we have a callback on rule, but then do we need a callback on trade too for fund?
+            if (trade.status == TradeStatus.ACTIVE) {
+                ruleExecutor.redeemBalance(ruleHash);
+                trade.status = TradeStatus.EXECUTED;
+            } else {
+                revert("Should never reach this state!");
+            }
+            token = rule.actions[rule.actions.length - 1].toToken;
+            balance = (subscription.collateralAmount * rule.outputAmount) / rule.totalCollateralAmount;
+            // TODO: make sure the math is fine, especially at the boundaries
+        } else if (trade.status == TradeStatus.CANCELLED) {
+            // only way to cancel rule is through trade, so don't need to check RuleStatus
+            // redeem collateral
+            token = rule.actions[0].fromToken;
+            balance = subscription.collateralAmount;
+        } else {
+            revert("State not covered!");
         }
 
-        Utils._send(subscription.subscriber, subscription.collateralAmount, rule.actions[0].fromToken);
-        emit Unsubscribed(tradeHash, subscriptionIdx);
-        return subscription.collateralAmount;
+        subscription.status = SubscriptionStatus.WITHDRAWN;
+        Utils._send(subscription.subscriber, balance, token);
+        emit Withdraw(tradeHash, subscriptionIdx, token, balance);
+        return (token, balance);
     }
 
     function cancelTrade(bytes32 tradeHash) public onlyTradeManager(tradeHash) {
@@ -146,54 +172,6 @@ contract TradeManager is Ownable, ISubscription {
         trade.status = TradeStatus.CANCELLED;
         ruleExecutor.cancelRule(trade.ruleHash);
         emit Cancelled(tradeHash);
-    }
-
-    function redeemSubscriptionCollateral(bytes32 tradeHash, uint256 subscriptionIdx)
-        external
-        tradeExists(tradeHash)
-        onlyActiveSubscriber(tradeHash, subscriptionIdx)
-        returns (uint256)
-    {
-        Trade storage trade = trades[tradeHash];
-        bytes32 ruleHash = trade.ruleHash;
-        Rule memory rule = ruleExecutor.getRule(ruleHash);
-        Subscription storage subscription = trade.subscriptions[subscriptionIdx];
-        require(trade.status == TradeStatus.CANCELLED, "Trade is not cancelled!");
-        // This contract should have the collateral back already since it was cancelled by trade.manager
-        subscription.status = SubscriptionStatus.REDEEMED;
-
-        Utils._send(subscription.subscriber, subscription.collateralAmount, rule.actions[0].fromToken);
-        emit RedeemedCollateral(tradeHash, subscriptionIdx);
-        return subscription.collateralAmount;
-    }
-
-    function redeemSubscriptionOutput(bytes32 tradeHash, uint256 subscriptionIdx)
-        external
-        tradeExists(tradeHash)
-        onlyActiveSubscriber(tradeHash, subscriptionIdx)
-        returns (uint256)
-    {
-        Trade storage trade = trades[tradeHash];
-        bytes32 ruleHash = trade.ruleHash;
-        Rule memory rule = ruleExecutor.getRule(ruleHash);
-        Subscription storage subscription = trade.subscriptions[subscriptionIdx];
-
-        if (rule.status == RuleStatus.EXECUTED && trade.status != TradeStatus.EXECUTED) {
-            // When rule was executed but trade doesn't know
-            // first time subscriber wants to get back the output, we change this
-            // TODO: maybe doing it in the ruleExecution->trade callback would be a better idea?
-            ruleExecutor.redeemBalance(ruleHash);
-            trade.status = TradeStatus.EXECUTED;
-        }
-
-        require(trade.status == TradeStatus.EXECUTED, "Rule hasn't been executed yet!");
-
-        uint256 balance = (subscription.collateralAmount * rule.outputAmount) / rule.totalCollateralAmount; // TODO: make sure the math is fine, especially at the boundaries
-        subscription.status = SubscriptionStatus.REDEEMED;
-
-        Utils._send(subscription.subscriber, balance, rule.actions[rule.actions.length - 1].toToken);
-        emit RedeemedOutput(ruleHash, subscriptionIdx);
-        return balance;
     }
 
     function hashTrade(address manager, bytes32 ruleHash) public pure returns (bytes32) {

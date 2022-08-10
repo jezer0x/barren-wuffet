@@ -27,13 +27,13 @@ contract FundManager is ISubscription, Ownable {
         SubscriptionConstraints constraints;
         Subscription[] subscriptions;
         address[] assets; // tracking all the assets this fund has atm, may contain duplicates
-        mapping(address => uint256) balances; // tacking balances of assets
+        mapping(address => uint256) balances; // tracking balances of assets
         Position[] openPositions;
     }
 
     enum FundStatus {
         RAISING,
-        INPROGRESS,
+        DEPLOYED,
         CLOSED
     }
 
@@ -121,10 +121,10 @@ contract FundManager is ISubscription, Ownable {
         address inputToken = tradeManager.getCollateralToken(tradeHash);
         uint256 subIdx;
         if (inputToken == REConstants.ETH) {
-            subIdx = tradeManager.subscribe{value: amount}(tradeHash, inputToken, amount);
+            subIdx = tradeManager.deposit{value: amount}(tradeHash, inputToken, amount);
         } else {
             IERC20(inputToken).approve(address(tradeManager), amount);
-            subIdx = tradeManager.subscribe(tradeHash, inputToken, amount);
+            subIdx = tradeManager.deposit(tradeHash, inputToken, amount);
         }
         decreaseAssetBalance(fund, inputToken, amount);
         fund.openPositions.push(Position({tradeHash: tradeHash, subIdx: subIdx}));
@@ -141,7 +141,7 @@ contract FundManager is ISubscription, Ownable {
         // TODO: is this complexity better hidden in TradeManager.withdraw() returns (token, amount)?
         if (status == TradeStatus.ACTIVE) {
             token = tradeManager.getCollateralToken(tradeHash);
-            amount = tradeManager.unsubscribe(tradeHash, subIdx);
+            amount = tradeManager.withdraw(tradeHash, subIdx);
         } else if (status == TradeStatus.EXECUTED) {
             token = tradeManager.getOutputToken(tradeHash);
             amount = tradeManager.redeemSubscriptionOutput(tradeHash, subIdx);
@@ -183,7 +183,7 @@ contract FundManager is ISubscription, Ownable {
         fund.balances[token] -= amount;
     }
 
-    function subscribe(
+    function deposit(
         bytes32 fundHash,
         address collateralToken,
         uint256 collateralAmount
@@ -200,11 +200,11 @@ contract FundManager is ISubscription, Ownable {
         newSub.collateralAmount = collateralAmount;
         increaseAssetBalance(fund, collateralToken, collateralAmount);
 
-        emit Subscribed(fundHash, fund.subscriptions.length - 1);
+        emit Deposit(fundHash, fund.subscriptions.length - 1);
         return fund.subscriptions.length - 1;
     }
 
-    function unsubscribe(bytes32 fundHash, uint256 subscriptionIdx)
+    function withdraw(bytes32 fundHash, uint256 subscriptionIdx)
         external
         fundExists(fundHash)
         onlyActiveSubscriber(fundHash, subscriptionIdx)
@@ -215,7 +215,7 @@ contract FundManager is ISubscription, Ownable {
         decreaseAssetBalance(fund, REConstants.ETH, subscription.collateralAmount);
         subscription.status = SubscriptionStatus.CANCELLED;
         Utils._send(subscription.subscriber, subscription.collateralAmount, REConstants.ETH);
-        emit Unsubscribed(fundHash, subscriptionIdx);
+        emit Withdraw(fundHash, subscriptionIdx);
         return subscription.collateralAmount;
     }
 
@@ -225,7 +225,8 @@ contract FundManager is ISubscription, Ownable {
         onlyActiveSubscriber(fundHash, subscriptionIdx)
         returns (uint256)
     {
-        // TODO;
+        Fund storage fund = funds[fundHash];
+        if (fund.status == FundStatus.RAISING) {}
     }
 
     function redeemSubscriptionOutput(bytes32 fundHash, uint256 subscriptionIdx)

@@ -58,8 +58,7 @@ struct Trade {
 
 enum SubscriptionStatus {
     ACTIVE,
-    CANCELLED,
-    REDEEMED
+    WITHDRAWN
 }
 
 struct Subscription {
@@ -69,10 +68,10 @@ struct Subscription {
 }
 
 struct SubscriptionConstraints {
-    uint256 minCollateralPerSub; // minimum amount needed as collateral to subscribe
+    uint256 minCollateralPerSub; // minimum amount needed as collateral to deposit
     uint256 maxCollateralPerSub; // max ...
     uint256 minCollateralTotal;
     uint256 maxCollateralTotal; // limit on subscription to protect from slippage DOS attacks
-    uint256 deadline; // a block.timestamp, after which no one can subscribe to this
+    uint256 deadline; // a block.timestamp, after which no one can deposit to this
     uint256 lockin; // a block.timestamp, until which no one can redeem (given trade/fund has been activated)
 }
