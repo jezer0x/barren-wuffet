@@ -238,6 +238,8 @@ contract FundManager is ISubscription, Ownable {
                 emit Withdraw(fundHash, subscriptionIdx, tokens[i], balances[i]);
                 Utils._send(subscription.subscriber, balances[i], tokens[i]);
             }
+        } else if (fund.status == FundStatus.DEPLOYED) {
+            revert("Can't get money back from deployed fund!");
         }
 
         return (tokens, balances);

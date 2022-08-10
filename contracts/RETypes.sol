@@ -51,9 +51,9 @@ enum TradeStatus {
 struct Trade {
     address manager;
     bytes32 ruleHash;
-    TradeStatus status;
     SubscriptionConstraints constraints;
     Subscription[] subscriptions;
+    bool redeemedOutput;
 }
 
 enum SubscriptionStatus {
