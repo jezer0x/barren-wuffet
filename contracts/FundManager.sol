@@ -218,6 +218,7 @@ contract FundManager is ISubscription, Ownable {
         if (fund.closed) {
             return FundStatus.CLOSED;
         } else if (block.timestamp >= fund.constraints.lockin) {
+            //TODO: icky!
             fund.closed = true;
             return FundStatus.CLOSED;
         } else if (
