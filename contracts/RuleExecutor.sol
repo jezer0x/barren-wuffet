@@ -109,9 +109,9 @@ contract RuleExecutor is Ownable {
             "Can't add collateral to this rule"
         );
         if (rule.actions[0].fromToken != REConstants.ETH) {
+            rule.totalCollateralAmount = rule.totalCollateralAmount + amount;
             // must have been approved first
             IERC20(rule.actions[0].fromToken).safeTransferFrom(msg.sender, address(this), amount);
-            rule.totalCollateralAmount = rule.totalCollateralAmount + amount;
         } else {
             rule.totalCollateralAmount = rule.totalCollateralAmount + msg.value;
         }
