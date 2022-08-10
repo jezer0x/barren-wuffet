@@ -215,7 +215,7 @@ contract RuleExecutor is Ownable {
             totalCollateralAmount: rule.totalCollateralAmount
         });
 
-        uint256 output;
+        uint256 output = 0;
         for (uint256 i = 0; i < rule.actions.length; i++) {
             Action storage action = rule.actions[i];
             if (action.fromToken != REConstants.ETH) {
