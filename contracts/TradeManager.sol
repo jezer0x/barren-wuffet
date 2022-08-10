@@ -144,24 +144,25 @@ contract TradeManager is Ownable, ISubscription {
         bytes32 ruleHash = trade.ruleHash;
         Rule memory rule = ruleExecutor.getRule(ruleHash);
         Subscription storage subscription = trade.subscriptions[subscriptionIdx];
+        TradeStatus status = getStatus(tradeHash);
 
         address token;
         uint256 balance;
 
         subscription.status = SubscriptionStatus.WITHDRAWN;
 
-        if (getStatus(tradeHash) == TradeStatus.ACTIVE) {
+        if (status == TradeStatus.ACTIVE) {
             ruleExecutor.reduceCollateral(ruleHash, subscription.collateralAmount);
             if (rule.status == RuleStatus.ACTIVE && rule.totalCollateralAmount < trade.constraints.minCollateralTotal) {
                 ruleExecutor.pauseRule(ruleHash);
             }
             token = rule.actions[0].fromToken;
             balance = subscription.collateralAmount;
-        } else if (getStatus(tradeHash) == TradeStatus.EXECUTED) {
+        } else if (status == TradeStatus.EXECUTED) {
             token = rule.actions[rule.actions.length - 1].toToken;
             balance = (subscription.collateralAmount * rule.outputAmount) / rule.totalCollateralAmount;
             // TODO: make sure the math is fine, especially at the boundaries
-        } else if (getStatus(tradeHash) == TradeStatus.CANCELLED) {
+        } else if (status == TradeStatus.CANCELLED) {
             token = rule.actions[0].fromToken;
             balance = subscription.collateralAmount;
         } else {
