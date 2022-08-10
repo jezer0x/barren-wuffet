@@ -52,5 +52,13 @@ To create a graphviz summary of all the function calls do,  `surya graph contrac
 
 You can see further instructons for Surya at https://github.com/ConsenSys/surya. 
 
+### Slither
+`pip3 install slither-analyzer`
+`slither .` inside the repo.
+
+Run it after major changes and ensure there arent any warnings / errors.
+
+To disable slither, you can add // slither-disable-next-line <rule>
+
 ## Testing
 

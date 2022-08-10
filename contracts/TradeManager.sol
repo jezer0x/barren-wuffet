@@ -67,6 +67,13 @@ contract TradeManager is Ownable, ISubscription {
         uint256 collateralAmount
     ) external payable tradeExists(tradeHash) returns (uint256) {
         Trade storage trade = trades[tradeHash];
+
+        // _collectCollateral also only forwards funds from the sender so
+        // the net change to this contract will be 0.
+        // Also, we dont want to activate the subscription
+        // till RE has the collateral so the state change has to happen after
+        // the collateral receipt.
+        //slither-disable-next-line reentrancy-eth
         _collectCollateral(trade, collateralToken, collateralAmount);
         Subscription storage newSub = trade.subscriptions.push();
         newSub.subscriber = msg.sender;
