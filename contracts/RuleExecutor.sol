@@ -142,21 +142,21 @@ contract RuleExecutor is Ownable {
         onlyWhitelist(triggers, actions)
         returns (bytes32)
     {
+        bytes32 ruleHash = _getRuleHash(triggers, actions);
+        Rule storage rule = rules[ruleHash];
         for (uint256 i = 0; i < triggers.length; i++) {
             require(ITrigger(triggers[i].callee).validate(triggers[i]), "Invalid trigger provided");
+            rule.triggers.push(triggers[i]);
         }
         for (uint256 i = 0; i < actions.length; i++) {
             require(IAction(actions[i].callee).validate(actions[i]), "Invalid action provided");
             if (i != actions.length - 1) {
                 require(actions[i].toToken == actions[i + 1].fromToken, "check fromToken -> toToken chain is valid");
             }
+            rule.actions.push(actions[i]);
         }
-        bytes32 ruleHash = _getRuleHash(triggers, actions);
-        Rule storage rule = rules[ruleHash];
         require(rule.owner == address(0), "Rule already exists!");
         rule.owner = msg.sender;
-        rule.triggers = triggers;
-        rule.actions = actions;
         rule.status = RuleStatus.PAUSED;
         rule.outputAmount = 0;
         rule.reward = msg.value;
