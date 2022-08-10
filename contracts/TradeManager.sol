@@ -122,7 +122,7 @@ contract TradeManager is Ownable, ISubscription {
         external
         tradeExists(tradeHash)
         onlyActiveSubscriber(tradeHash, subscriptionIdx)
-        returns (address, uint256)
+        returns (address[] memory, uint256[] memory)
     {
         Trade storage trade = trades[tradeHash];
         bytes32 ruleHash = trade.ruleHash;
@@ -165,7 +165,11 @@ contract TradeManager is Ownable, ISubscription {
 
         Utils._send(subscription.subscriber, balance, token);
         emit Withdraw(tradeHash, subscriptionIdx, token, balance);
-        return (token, balance);
+        address[] memory tokens;
+        uint256[] memory balances;
+        tokens[0] = token;
+        balances[0] = balance;
+        return (tokens, balances);
     }
 
     function cancelTrade(bytes32 tradeHash) public onlyTradeManager(tradeHash) {

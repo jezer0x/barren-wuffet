@@ -29,6 +29,7 @@ contract FundManager is ISubscription, Ownable {
         address[] assets; // tracking all the assets this fund has atm
         mapping(address => uint256) balances; // tracking balances of assets
         Position[] openPositions;
+        uint256 totalCollateral;
     }
 
     enum FundStatus {
@@ -102,14 +103,14 @@ contract FundManager is ISubscription, Ownable {
         ActionRuntimeParams calldata runtimeParams
     ) public onlyFundManager(fundHash) returns (uint256 output) {
         Fund storage fund = funds[fundHash];
-        decreaseAssetBalance(fund, action.fromToken, runtimeParams.totalCollateralAmount);
+        _decreaseAssetBalance(fund, action.fromToken, runtimeParams.totalCollateralAmount);
         if (action.fromToken != REConstants.ETH) {
             IERC20(action.fromToken).approve(action.callee, runtimeParams.totalCollateralAmount);
             output = IAction(action.callee).perform(action, runtimeParams);
         } else {
             output = IAction(action.callee).perform{value: runtimeParams.totalCollateralAmount}(action, runtimeParams);
         }
-        increaseAssetBalance(fund, action.toToken, output);
+        _increaseAssetBalance(fund, action.toToken, output);
     }
 
     function openPosition(
@@ -126,7 +127,7 @@ contract FundManager is ISubscription, Ownable {
             IERC20(inputToken).approve(address(tradeManager), amount);
             subIdx = tradeManager.deposit(tradeHash, inputToken, amount);
         }
-        decreaseAssetBalance(fund, inputToken, amount);
+        _decreaseAssetBalance(fund, inputToken, amount);
         fund.openPositions.push(Position({tradeHash: tradeHash, subIdx: subIdx}));
     }
 
@@ -135,17 +136,17 @@ contract FundManager is ISubscription, Ownable {
         Position storage position = fund.openPositions[openPositionIdx];
         bytes32 tradeHash = position.tradeHash;
         uint256 subIdx = position.subIdx;
-        (address token, uint256 amount) = tradeManager.withdraw(tradeHash, subIdx);
-        removeOpenPosition(fund, openPositionIdx);
-        increaseAssetBalance(fund, token, amount);
+        (address[] memory tokens, uint256[] memory amounts) = tradeManager.withdraw(tradeHash, subIdx);
+        _removeOpenPosition(fund, openPositionIdx);
+        _increaseAssetBalance(fund, tokens[0], amounts[0]);
     }
 
-    function removeOpenPosition(Fund storage fund, uint256 openPositionIdx) private {
+    function _removeOpenPosition(Fund storage fund, uint256 openPositionIdx) private {
         fund.openPositions[openPositionIdx] = fund.openPositions[fund.openPositions.length - 1];
         fund.openPositions.pop();
     }
 
-    function increaseAssetBalance(
+    function _increaseAssetBalance(
         Fund storage fund,
         address token,
         uint256 amount
@@ -158,7 +159,7 @@ contract FundManager is ISubscription, Ownable {
         }
     }
 
-    function decreaseAssetBalance(
+    function _decreaseAssetBalance(
         Fund storage fund,
         address token,
         uint256 amount
@@ -185,7 +186,7 @@ contract FundManager is ISubscription, Ownable {
         // For now we'll only allow subscribing with ETH
         require(collateralToken == REConstants.ETH);
         require(collateralAmount == msg.value);
-        
+
         // TODO: check against all constraints here
 
         Fund storage fund = funds[fundHash];
@@ -195,42 +196,50 @@ contract FundManager is ISubscription, Ownable {
         newSub.status = SubscriptionStatus.ACTIVE;
         // TODO: take a fee here
         newSub.collateralAmount = collateralAmount;
-        increaseAssetBalance(fund, collateralToken, collateralAmount);
+        _increaseAssetBalance(fund, collateralToken, collateralAmount);
 
         emit Deposit(fundHash, fund.subscriptions.length - 1, collateralToken, collateralAmount);
         return fund.subscriptions.length - 1;
+    }
+
+    function _getShares(
+        bytes32 fundHash,
+        uint256 subscriptionIdx,
+        address token
+    ) private returns (uint256) {
+        Fund storage fund = funds[fundHash];
+        return (fund.subscriptions[subscriptionIdx].collateralAmount * fund.balances[token]) / fund.totalCollateral;
     }
 
     function withdraw(bytes32 fundHash, uint256 subscriptionIdx)
         external
         fundExists(fundHash)
         onlyActiveSubscriber(fundHash, subscriptionIdx)
-        returns (address, uint256)
+        returns (address[] memory, uint256[] memory)
     {
         Fund storage fund = funds[fundHash];
         Subscription storage subscription = fund.subscriptions[subscriptionIdx];
 
-        address token;
-        uint256 balance;
-
         subscription.status = SubscriptionStatus.WITHDRAWN;
+        address[] memory tokens;
+        uint256[] memory balances;
 
         if (fund.status == FundStatus.RAISING) {
-            decreaseAssetBalance(fund, REConstants.ETH, subscription.collateralAmount);
+            _decreaseAssetBalance(fund, REConstants.ETH, subscription.collateralAmount);
             subscription.status = SubscriptionStatus.WITHDRAWN;
-            token = REConstants.ETH;
-            balance = subscription.collateralAmount;
+            tokens[0] = REConstants.ETH;
+            balances[0] = subscription.collateralAmount;
+            emit Withdraw(fundHash, subscriptionIdx, tokens[0], balances[0]);
+            Utils._send(subscription.subscriber, balances[0], tokens[0]);
         } else if (fund.status == FundStatus.CLOSED) {
             for (uint256 i = 0; i < fund.assets.length; i++) {
-                // Use UNISWAP to swap everything into a single asset
-                // TODO: else, we need to change the semantics of withdraw to return (address[], balance[] in ISubscription)
+                tokens[i] = fund.assets[i];
+                balances[i] = _getShares(fundHash, subscriptionIdx, fund.assets[i]);
+                emit Withdraw(fundHash, subscriptionIdx, tokens[i], balances[i]);
+                Utils._send(subscription.subscriber, balances[i], tokens[i]);
             }
-        } else if () {
-
         }
 
-        Utils._send(subscription.subscriber, balance, token);
-        emit Withdraw(fundHash, subscriptionIdx, token, balance);
-        return (token, balance);
+        return (tokens, balances);
     }
 }

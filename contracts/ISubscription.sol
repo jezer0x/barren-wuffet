@@ -11,5 +11,5 @@ interface ISubscription {
         uint256 collateralAmount
     ) external payable returns (uint256);
 
-    function withdraw(bytes32 hash, uint256 subscriptionIdx) external returns (address, uint256);
+    function withdraw(bytes32 hash, uint256 subscriptionIdx) external returns (address[] memory, uint256[] memory);
 }
