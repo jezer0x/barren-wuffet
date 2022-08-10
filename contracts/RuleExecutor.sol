@@ -122,12 +122,13 @@ contract RuleExecutor is Ownable {
             "Can't add collateral to this rule"
         );
 
+        rule.totalCollateralAmount = rule.totalCollateralAmount - amount;
+
         if (rule.actions[0].fromToken != REConstants.ETH) {
             IERC20(rule.actions[0].fromToken).transfer(msg.sender, amount);
         } else {
             payable(msg.sender).transfer(amount);
         }
-        rule.totalCollateralAmount = rule.totalCollateralAmount - amount;
         emit CollateralReduced(ruleHash, amount);
     }
 
