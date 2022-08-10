@@ -184,7 +184,7 @@ contract FundManager is ISubscription, Ownable {
         newSub.collateralAmount = collateralAmount;
         increaseAssetBalance(fund, collateralToken, collateralAmount);
 
-        emit Deposit(fundHash, fund.subscriptions.length - 1);
+        emit Deposit(fundHash, fund.subscriptions.length - 1, collateralToken, collateralAmount);
         return fund.subscriptions.length - 1;
     }
 
@@ -192,31 +192,23 @@ contract FundManager is ISubscription, Ownable {
         external
         fundExists(fundHash)
         onlyActiveSubscriber(fundHash, subscriptionIdx)
-        returns (uint256)
+        returns (address, uint256)
     {
         Fund storage fund = funds[fundHash];
         Subscription storage subscription = fund.subscriptions[subscriptionIdx];
-        decreaseAssetBalance(fund, REConstants.ETH, subscription.collateralAmount);
-        subscription.status = SubscriptionStatus.CANCELLED;
-        Utils._send(subscription.subscriber, subscription.collateralAmount, REConstants.ETH);
-        emit Withdraw(fundHash, subscriptionIdx);
-        return subscription.collateralAmount;
-    }
 
-    function redeemSubscriptionCollateral(bytes32 fundHash, uint256 subscriptionIdx)
-        external
-        fundExists(fundHash)
-        onlyActiveSubscriber(fundHash, subscriptionIdx)
-        returns (uint256)
-    {
-        Fund storage fund = funds[fundHash];
-        if (fund.status == FundStatus.RAISING) {}
-    }
+        address token;
+        uint256 balance;
 
-    function redeemSubscriptionOutput(bytes32 fundHash, uint256 subscriptionIdx)
-        external
-        fundExists(fundHash)
-        onlyActiveSubscriber(fundHash, subscriptionIdx)
-        returns (uint256)
-    {}
+        if (fund.status == FundStatus.RAISING) {
+            decreaseAssetBalance(fund, REConstants.ETH, subscription.collateralAmount);
+            subscription.status = SubscriptionStatus.WITHDRAWN;
+            token = REConstants.ETH;
+            balance = subscription.collateralAmount;
+        } // TODO: else if
+
+        Utils._send(subscription.subscriber, balance, token);
+        emit Withdraw(fundHash, subscriptionIdx, token, balance);
+        return (token, balance);
+    }
 }
