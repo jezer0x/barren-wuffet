@@ -132,6 +132,8 @@ contract TradeManager is Ownable, ISubscription {
         address token;
         uint256 balance;
 
+        subscription.status = SubscriptionStatus.WITHDRAWN;
+
         if (trade.status == TradeStatus.ACTIVE && rule.status != RuleStatus.EXECUTED) {
             // rule.status should only be PAUSED / ACTIVE here
             ruleExecutor.reduceCollateral(ruleHash, subscription.collateralAmount);
@@ -161,7 +163,6 @@ contract TradeManager is Ownable, ISubscription {
             revert("State not covered!");
         }
 
-        subscription.status = SubscriptionStatus.WITHDRAWN;
         Utils._send(subscription.subscriber, balance, token);
         emit Withdraw(tradeHash, subscriptionIdx, token, balance);
         return (token, balance);

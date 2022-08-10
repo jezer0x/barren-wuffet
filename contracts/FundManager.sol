@@ -26,7 +26,7 @@ contract FundManager is ISubscription, Ownable {
         FundStatus status;
         SubscriptionConstraints constraints;
         Subscription[] subscriptions;
-        address[] assets; // tracking all the assets this fund has atm, may contain duplicates
+        address[] assets; // tracking all the assets this fund has atm
         mapping(address => uint256) balances; // tracking balances of assets
         Position[] openPositions;
     }
@@ -163,8 +163,18 @@ contract FundManager is ISubscription, Ownable {
         address token,
         uint256 amount
     ) private {
-        // TO DO: worth it to iterate over and remove to avoid dups?
         fund.balances[token] -= amount;
+
+        // TODO: could be made more efficient if we kept token => idx in storage
+        if (fund.balances[token] == 0) {
+            for (uint256 i = 0; i < fund.assets.length; i++) {
+                if (fund.assets[i] == token) {
+                    fund.assets[i] = fund.assets[fund.assets.length - 1];
+                    fund.assets.pop();
+                    break;
+                }
+            }
+        }
     }
 
     function deposit(
@@ -175,6 +185,9 @@ contract FundManager is ISubscription, Ownable {
         // For now we'll only allow subscribing with ETH
         require(collateralToken == REConstants.ETH);
         require(collateralAmount == msg.value);
+        
+        // TODO: check against all constraints here
+
         Fund storage fund = funds[fundHash];
 
         Subscription storage newSub = fund.subscriptions.push();
@@ -200,12 +213,21 @@ contract FundManager is ISubscription, Ownable {
         address token;
         uint256 balance;
 
+        subscription.status = SubscriptionStatus.WITHDRAWN;
+
         if (fund.status == FundStatus.RAISING) {
             decreaseAssetBalance(fund, REConstants.ETH, subscription.collateralAmount);
             subscription.status = SubscriptionStatus.WITHDRAWN;
             token = REConstants.ETH;
             balance = subscription.collateralAmount;
-        } // TODO: else if
+        } else if (fund.status == FundStatus.CLOSED) {
+            for (uint256 i = 0; i < fund.assets.length; i++) {
+                // Use UNISWAP to swap everything into a single asset
+                // TODO: else, we need to change the semantics of withdraw to return (address[], balance[] in ISubscription)
+            }
+        } else if () {
+
+        }
 
         Utils._send(subscription.subscriber, balance, token);
         emit Withdraw(fundHash, subscriptionIdx, token, balance);
