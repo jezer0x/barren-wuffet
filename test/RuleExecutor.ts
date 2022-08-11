@@ -314,7 +314,7 @@ describe("RuleExecutor", () => {
       await expect(ruleExecutor.connect(ruleSubscriberWallet).reduceCollateral(BAD_RULE_HASH, 1000)).to.be.revertedWithoutReason;
     });
 
-    it("should revert if > 0 native isnt sent to addCollateral for an native action", async () => {
+    it("should revert if > 0 native is not sent to addCollateral for an native action", async () => {
       const { ruleHashEth, ruleSubscriberWallet, ruleExecutor } = await loadFixture(deployValidRuleFixture);
 
       await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, 12)).to.be.revertedWith("Collateral not provided");
@@ -322,12 +322,14 @@ describe("RuleExecutor", () => {
 
     it("should revert if > 0 ERC20 isnt sent / approved to addCollateral for an ERC20 rule", async () => {
       const { ruleHashToken, ruleSubscriberWallet, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 0)).to.be.revertedWith("Collateral not provided");
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 0)).to.be.revertedWith("amount must be > 0");
       await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, 6);
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 10)).to.be.revertedWith("Collateral not approved");
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 10)).to.be.revertedWith("ERC20: insufficient allowance");
 
       const balance = await testToken1.connect(ruleSubscriberWallet).balanceOf(ruleSubscriberWallet.address);
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, balance.add(1))).to.be.revertedWith("Insufficient collateral");
+      await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, balance.add(1));
+
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, balance.add(1))).to.be.revertedWith("ERC20: transfer amount exceeds balance");
     });
 
     it("should not allow anyone other than rule owner to add collateral to a rule", async () => {
@@ -360,16 +362,21 @@ describe("RuleExecutor", () => {
         const tokenChange = !isNative ? changeAmounts : [0, 0];
 
         await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHash, collateralAmount, { value: msgValue })).to.emit(ruleExecutor, "CollateralAdded")
-          .withArgs(ruleHash, collateralAmount).and.changeEtherBalances(
-            changeWallets, ethChange).and.changeTokenBalance(
-              testToken1, changeWallets, tokenChange);
+          .withArgs(ruleHash, collateralAmount).and
+          .changeEtherBalances(changeWallets, ethChange).and
+          .changeTokenBalances(testToken1, changeWallets, tokenChange);
 
         // if msg value and collateral amount dont match, msg value takes precedence.
         // also allows adding collateral multiple times
-        await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHash, collateralAmount + 10, { value: msgValue })).to.emit(ruleExecutor, "CollateralAdded")
-          .withArgs(ruleHash, collateralAmount).and.changeEtherBalances(
-            changeWallets, ethChange).and.changeTokenBalance(
-              testToken1, changeWallets, tokenChange);
+        const collateralAmount2 = 19;
+        const ethChange2 = isNative ? [-collateralAmount2, collateralAmount2] : [0, 0];
+        const tokenChange2 = !isNative ? [-(collateralAmount2 - 1), collateralAmount2 - 1] : [0, 0];
+        if (!isNative)
+          await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateralAmount + collateralAmount2 - 1);
+        await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHash, collateralAmount2 - 1, { value: isNative ? collateralAmount2 : 0 })).to.emit(ruleExecutor, "CollateralAdded")
+          .withArgs(ruleHash, collateralAmount2).and
+          .changeEtherBalances(changeWallets, ethChange2).and
+          .changeTokenBalances(testToken1, changeWallets, tokenChange2);
       });
 
       it("should refund token emit CollateralReduced event if reduceCollateral is called successfully: " + assetType, async () => {
@@ -391,8 +398,9 @@ describe("RuleExecutor", () => {
 
 
         await expect(ruleExecutor.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, reduceAmount)).to.emit(ruleExecutor, "CollateralReduced")
-          .withArgs(ruleHash, reduceAmount).and.changeEtherBalances(changeWallets, ethChange)
-          .and.changeTokenBalance(testToken1, changeWallets, tokenChange);
+          .withArgs(ruleHash, reduceAmount).and
+          .changeEtherBalances(changeWallets, ethChange).and
+          .changeTokenBalances(testToken1, changeWallets, tokenChange);
       });
 
       it("Should not allow removing more collateral than available:" + assetType, async () => {
