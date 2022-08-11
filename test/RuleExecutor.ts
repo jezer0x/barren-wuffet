@@ -298,15 +298,8 @@ describe("RuleExecutor", () => {
     ruleExecutor.addTriggerToWhitelist(priceTrigger.address);
     ruleExecutor.addActionToWhitelist(swapUniSingleAction.address);
 
-    const constraints = {
-      minCollateralPerSub: 10,
-      maxCollateralPerSub: 50,
-      minCollateralTotal: 12,
-      maxCollateralTotal: 90,
-    }
-
-    const ruleHashEth = await createRule(ruleExecutor, [passingTrigger], [ethSwapAction], ruleMakerWallet, true);
-    const ruleHashToken = await createRule(ruleExecutor, [passingTrigger], [tokenSwapAction], ruleMakerWallet, true);
+    const ruleHashEth = await createRule(ruleExecutor, [passingTrigger], [ethSwapAction], ruleSubscriberWallet, true);
+    const ruleHashToken = await createRule(ruleExecutor, [passingTrigger], [tokenSwapAction], ruleSubscriberWallet, true);
 
     await testToken1.transfer(ruleSubscriberWallet.address, 200);
     return { ruleHashEth, ruleHashToken, ruleExecutor, ownerWallet, ruleSubscriberWallet, otherWallet1, testToken1 };
@@ -316,7 +309,6 @@ describe("RuleExecutor", () => {
   describe("Execute Rule", () => {
     it("should revert if anyone tries to execute an unknown rule", async () => {
       const { ruleHashToken, otherWallet1, ruleExecutor } = await loadFixture(deployValidRuleFixture);
-      console.log(ruleHashToken);
       await expect(ruleExecutor.connect(otherWallet1).executeRule(BAD_RULE_HASH)).to.be.rejectedWith("Rule not found!");
     });
 
@@ -330,7 +322,7 @@ describe("RuleExecutor", () => {
       // execute valid rule with collateral by someone else. and get a reward.
       const { ruleHashToken, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
       await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, 12);
-      // await ruleExecutor.connect(ruleSubscriberWallet).subscribeToRule(ruleHashToken, testToken1.address, 12);
+      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 12);
       await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.emit(ruleExecutor, "Executed")
         .withArgs(ruleHashToken, otherWallet1.address)
         .and.changeTokenBalances(
@@ -340,7 +332,7 @@ describe("RuleExecutor", () => {
         );
 
       // TODO need to implement caller getting paid.
-      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.be.revertedWith("Not enough collateral for executing");
+      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.be.revertedWith("Rule is not active!");
     });
 
     it("Should allow anyone to execute the rule once (native) and get a reward if gas is paid, and the trigger passes", async () => {
@@ -356,31 +348,18 @@ describe("RuleExecutor", () => {
         );
 
       // TODO need to implement caller getting paid.
-      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashEth)).to.be.revertedWith("Not enough collateral for executing");
+      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashEth)).to.be.revertedWith("Rule is not active!");
     });
 
     it("Should revert if anyone tries to execute the rule twice", async () => {
       // we get here by calling a valid rule, using up the collateral and call again.
       const { ruleHashToken, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
       await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, 11);
-      // await ruleExecutor.connect(ruleSubscriberWallet).subscribeToRule(ruleHashToken, testToken1.address, 6);
+      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 6);
       await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.emit(ruleExecutor, "Executed")
         .withArgs(ruleHashToken, otherWallet1);
 
-      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.be.revertedWith("Not enough collateral for executing");
-
-    });
-
-    it("Should allow a rule to be executed twice if the collateral has been topped up to min threshold", async () => {
-      const { ruleHashToken, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
-      await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, 25);
-      // await ruleExecutor.connect(ruleSubscriberWallet).subscribeToRule(ruleHashToken, testToken1.address, 12);
-      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.emit(ruleExecutor, "Executed")
-        .withArgs(ruleHashToken, otherWallet1.address);
-
-      // await ruleExecutor.connect(ruleSubscriberWallet).subscribeToRule(ruleHashToken, testToken1.address, 13);
-      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.emit(ruleExecutor, "Executed")
-        .withArgs(ruleHashToken, otherWallet1.address);
+      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.be.revertedWith("Rule is not active!");
 
     });
   });
