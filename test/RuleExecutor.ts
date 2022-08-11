@@ -2,10 +2,11 @@ import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { RuleExecutor as RuleExecutorType, TriggerStruct, ActionStruct } from '../typechain-types/contracts/RuleExecutor';
+import { TriggerStruct, ActionStruct } from '../typechain-types/contracts/RuleExecutor';
 import { assert } from "console";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { int } from "hardhat/internal/core/params/argumentTypes";
+import { Contract } from "ethers";
 
 
 const GT = 0;
@@ -48,7 +49,7 @@ function makeSwapAction(swapContract: string,
 
 }
 
-async function createRule(_ruleExecutor: RuleExecutorType, triggers: TriggerStruct[],
+async function createRule(_ruleExecutor: Contract, triggers: TriggerStruct[],
   actions: ActionStruct[], wallet: SignerWithAddress, activate: boolean = false): Promise<string> {
   triggers.map(t => _ruleExecutor.addTriggerToWhitelist(t.callee));
   actions.map(a => _ruleExecutor.addActionToWhitelist(a.callee));
@@ -56,7 +57,7 @@ async function createRule(_ruleExecutor: RuleExecutorType, triggers: TriggerStru
   const tx = await _ruleExecutor.connect(wallet).createRule(triggers, actions);
   const receipt2 = await tx.wait();
 
-  const ruleHash = receipt2.events?.find((x => x.event == "Created"))?.args?.ruleHash
+  const ruleHash = receipt2.events?.find(((x: { event: string; }) => x.event == "Created"))?.args?.ruleHash
   if (activate) {
     const tx2 = await _ruleExecutor.connect(wallet).activateRule(ruleHash);
     await tx2.wait();
