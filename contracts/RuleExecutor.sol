@@ -19,7 +19,7 @@ contract RuleExecutor is Ownable, Pausable, ReentrancyGuard {
 
     event Created(bytes32 indexed ruleHash);
     event Activated(bytes32 indexed ruleHash);
-    event Paused(bytes32 indexed ruleHash);
+    event Deactivated(bytes32 indexed ruleHash);
     event Cancelled(bytes32 indexed ruleHash);
     event Executed(bytes32 indexed ruleHash, address executor);
     event Redeemed(bytes32 indexed ruleHash);
@@ -197,9 +197,9 @@ contract RuleExecutor is Ownable, Pausable, ReentrancyGuard {
         emit Activated(ruleHash);
     }
 
-    function pauseRule(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) {
+    function deactivateRule(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) {
         rules[ruleHash].status = RuleStatus.PAUSED;
-        emit Paused(ruleHash);
+        emit Deactivated(ruleHash);
     }
 
     function cancelRule(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) nonReentrant {
