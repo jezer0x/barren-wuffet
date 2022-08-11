@@ -5,13 +5,14 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./ISubscription.sol";
 import "./RETypes.sol";
 import "./REConstants.sol";
 import "./RuleExecutor.sol";
 import "./Utils.sol";
 
-contract TradeManager is Ownable, ISubscription, Pausable {
+contract TradeManager is Ownable, ISubscription, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     event TradeCreated(bytes32 indexed tradeHash);
@@ -74,7 +75,7 @@ contract TradeManager is Ownable, ISubscription, Pausable {
         bytes32 tradeHash,
         address collateralToken,
         uint256 collateralAmount
-    ) external payable whenNotPaused tradeExists(tradeHash) returns (uint256) {
+    ) external payable whenNotPaused nonReentrant tradeExists(tradeHash) returns (uint256) {
         Trade storage trade = trades[tradeHash];
 
         // _collectCollateral also only forwards funds from the sender so
@@ -156,6 +157,7 @@ contract TradeManager is Ownable, ISubscription, Pausable {
     function withdraw(bytes32 tradeHash, uint256 subscriptionIdx)
         external
         whenNotPaused
+        nonReentrant
         tradeExists(tradeHash)
         onlyActiveSubscriber(tradeHash, subscriptionIdx)
         returns (address[] memory, uint256[] memory)
@@ -198,7 +200,7 @@ contract TradeManager is Ownable, ISubscription, Pausable {
         return (tokens, balances);
     }
 
-    function cancelTrade(bytes32 tradeHash) external whenNotPaused onlyTradeManager(tradeHash) {
+    function cancelTrade(bytes32 tradeHash) external whenNotPaused nonReentrant onlyTradeManager(tradeHash) {
         Trade storage trade = trades[tradeHash];
         ruleExecutor.cancelRule(trade.ruleHash);
         emit Cancelled(tradeHash);

@@ -7,13 +7,14 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./Utils.sol";
 import "./RETypes.sol";
 import "./REConstants.sol";
 import "./actions/IAction.sol";
 import "./triggers/ITrigger.sol";
 
-contract RuleExecutor is Ownable, Pausable {
+contract RuleExecutor is Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     event Created(bytes32 indexed ruleHash);
@@ -104,14 +105,20 @@ contract RuleExecutor is Ownable, Pausable {
         return rules[ruleHash];
     }
 
-    function redeemBalance(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) {
+    function redeemBalance(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) nonReentrant {
         Rule storage rule = rules[ruleHash];
         require(rule.status == RuleStatus.EXECUTED, "Rule not executed yet!");
         Utils._send(rule.owner, rule.outputAmount, rule.actions[rule.actions.length - 1].toToken);
         emit Redeemed(ruleHash);
     }
 
-    function addCollateral(bytes32 ruleHash, uint256 amount) external payable whenNotPaused onlyRuleOwner(ruleHash) {
+    function addCollateral(bytes32 ruleHash, uint256 amount)
+        external
+        payable
+        whenNotPaused
+        onlyRuleOwner(ruleHash)
+        nonReentrant
+    {
         Rule storage rule = rules[ruleHash];
         require(
             rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.PAUSED,
@@ -127,7 +134,12 @@ contract RuleExecutor is Ownable, Pausable {
         emit CollateralAdded(ruleHash, amount);
     }
 
-    function reduceCollateral(bytes32 ruleHash, uint256 amount) external whenNotPaused onlyRuleOwner(ruleHash) {
+    function reduceCollateral(bytes32 ruleHash, uint256 amount)
+        external
+        whenNotPaused
+        onlyRuleOwner(ruleHash)
+        nonReentrant
+    {
         Rule storage rule = rules[ruleHash];
         require(
             rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.PAUSED,
@@ -150,9 +162,10 @@ contract RuleExecutor is Ownable, Pausable {
     }
 
     function createRule(Trigger[] calldata triggers, Action[] calldata actions)
-        public
+        external
         payable
         whenNotPaused
+        nonReentrant
         onlyWhitelist(triggers, actions)
         returns (bytes32)
     {
@@ -189,7 +202,7 @@ contract RuleExecutor is Ownable, Pausable {
         emit Paused(ruleHash);
     }
 
-    function cancelRule(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) {
+    function cancelRule(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) nonReentrant {
         Rule storage rule = rules[ruleHash];
         require(rule.status != RuleStatus.CANCELLED, "Rule is already cancelled!");
         rule.status = RuleStatus.CANCELLED;
@@ -214,7 +227,7 @@ contract RuleExecutor is Ownable, Pausable {
         (valid, ) = _checkTriggers(rules[ruleHash].triggers);
     }
 
-    function executeRule(bytes32 ruleHash) external whenNotPaused ruleExists(ruleHash) {
+    function executeRule(bytes32 ruleHash) external whenNotPaused ruleExists(ruleHash) nonReentrant {
         Rule storage rule = rules[ruleHash];
         require(rule.status == RuleStatus.ACTIVE, "Rule is not active!");
         (bool valid, uint256 triggerData) = _checkTriggers(rule.triggers);
