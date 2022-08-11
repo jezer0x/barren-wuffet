@@ -121,7 +121,7 @@ contract RuleExecutor is Ownable, Pausable, ReentrancyGuard {
     {
         Rule storage rule = rules[ruleHash];
         require(
-            rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.PAUSED,
+            rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE,
             "Can't add collateral to this rule"
         );
 
@@ -146,7 +146,7 @@ contract RuleExecutor is Ownable, Pausable, ReentrancyGuard {
     {
         Rule storage rule = rules[ruleHash];
         require(
-            rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.PAUSED,
+            rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE,
             "Can't reduce collateral from this rule"
         );
 
@@ -189,7 +189,7 @@ contract RuleExecutor is Ownable, Pausable, ReentrancyGuard {
         }
         require(rule.owner == address(0), "Rule already exists!");
         rule.owner = msg.sender;
-        rule.status = RuleStatus.PAUSED;
+        rule.status = RuleStatus.INACTIVE;
         rule.outputAmount = 0;
         rule.reward = msg.value;
 
@@ -198,18 +198,20 @@ contract RuleExecutor is Ownable, Pausable, ReentrancyGuard {
     }
 
     function activateRule(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) {
+        require(rules[ruleHash].status == RuleStatus.INACTIVE);
         rules[ruleHash].status = RuleStatus.ACTIVE;
         emit Activated(ruleHash);
     }
 
     function deactivateRule(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) {
-        rules[ruleHash].status = RuleStatus.PAUSED;
+        require(rules[ruleHash].status == RuleStatus.ACTIVE);
+        rules[ruleHash].status = RuleStatus.INACTIVE;
         emit Deactivated(ruleHash);
     }
 
     function cancelRule(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) nonReentrant {
         Rule storage rule = rules[ruleHash];
-        require(rule.status != RuleStatus.CANCELLED, "Rule is already cancelled!");
+        require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE, "Can't cancel this rule");
         rule.status = RuleStatus.CANCELLED;
         Utils._send(rule.owner, rule.totalCollateralAmount, rule.actions[0].fromToken);
         emit Cancelled(ruleHash);

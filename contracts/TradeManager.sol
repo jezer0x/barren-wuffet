@@ -131,7 +131,7 @@ contract TradeManager is Ownable, ISubscription, Pausable, ReentrancyGuard {
         Trade storage trade = trades[tradeHash];
         bytes32 ruleHash = trade.ruleHash;
         Rule memory rule = ruleExecutor.getRule(ruleHash);
-        if (rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.PAUSED) {
+        if (rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE) {
             return TradeStatus.ACTIVE;
         } else if (rule.status == RuleStatus.CANCELLED) {
             return TradeStatus.CANCELLED;
