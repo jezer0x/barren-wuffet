@@ -169,7 +169,7 @@ contract TradeManager is Ownable, ISubscription, Pausable, ReentrancyGuard {
         if (status == TradeStatus.ACTIVE) {
             ruleExecutor.reduceCollateral(ruleHash, subscription.collateralAmount);
             if (rule.status == RuleStatus.ACTIVE && rule.totalCollateralAmount < trade.constraints.minCollateralTotal) {
-                ruleExecutor.pauseRule(ruleHash);
+                ruleExecutor.deactivateRule(ruleHash);
             }
             token = rule.actions[0].fromToken;
             balance = subscription.collateralAmount;
