@@ -9,10 +9,11 @@ import "./actions/IAction.sol";
 import "./TradeManager.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract FundManager is ISubscription, Ownable, Pausable {
+contract FundManager is ISubscription, Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     event Created(bytes32 indexed fundHash);
@@ -103,12 +104,12 @@ contract FundManager is ISubscription, Ownable, Pausable {
         return fundHash;
     }
 
-    function closeFund(bytes32 fundHash) external onlyFundManager(fundHash) whenNotPaused {
+    function closeFund(bytes32 fundHash) external onlyFundManager(fundHash) nonReentrant whenNotPaused {
         Fund storage fund = funds[fundHash];
         fund.status = FundStatus.CLOSED;
 
         for (uint256 i = 0; i < fund.openPositions.length; i++) {
-            closePosition(fundHash, i);
+            _closePosition(fundHash, i);
         }
 
         emit Closed(fundHash);
@@ -118,7 +119,7 @@ contract FundManager is ISubscription, Ownable, Pausable {
         bytes32 fundHash,
         Action calldata action,
         ActionRuntimeParams calldata runtimeParams
-    ) external onlyFundManager(fundHash) whenNotPaused returns (uint256 output) {
+    ) external onlyFundManager(fundHash) whenNotPaused nonReentrant returns (uint256 output) {
         Fund storage fund = funds[fundHash];
         _decreaseAssetBalance(fund, action.fromToken, runtimeParams.totalCollateralAmount);
         if (action.fromToken != REConstants.ETH) {
@@ -134,7 +135,7 @@ contract FundManager is ISubscription, Ownable, Pausable {
         bytes32 fundHash,
         bytes32 tradeHash,
         uint256 amount
-    ) external onlyFundManager(fundHash) whenNotPaused {
+    ) external onlyFundManager(fundHash) whenNotPaused nonReentrant {
         Fund storage fund = funds[fundHash];
         address inputToken = tradeManager.getCollateralToken(tradeHash);
         uint256 subIdx;
@@ -149,7 +150,16 @@ contract FundManager is ISubscription, Ownable, Pausable {
         }
     }
 
-    function closePosition(bytes32 fundHash, uint256 openPositionIdx) public whenNotPaused onlyFundManager(fundHash) {
+    function closePosition(bytes32 fundHash, uint256 openPositionIdx)
+        external
+        whenNotPaused
+        nonReentrant
+        onlyFundManager(fundHash)
+    {
+        _closePosition(fundHash, openPositionIdx);
+    }
+
+    function _closePosition(bytes32 fundHash, uint256 openPositionIdx) private {
         Fund storage fund = funds[fundHash];
         Position storage position = fund.openPositions[openPositionIdx];
         bytes32 tradeHash = position.tradeHash;
@@ -254,6 +264,7 @@ contract FundManager is ISubscription, Ownable, Pausable {
     function withdraw(bytes32 fundHash, uint256 subscriptionIdx)
         external
         whenNotPaused
+        nonReentrant
         fundExists(fundHash)
         onlyActiveSubscriber(fundHash, subscriptionIdx)
         returns (address[] memory, uint256[] memory)
