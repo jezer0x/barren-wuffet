@@ -80,11 +80,15 @@ describe("RuleExecutor", () => {
     const TestSwapRouter = await ethers.getContractFactory("TestSwapRouter");
     const testSwapRouter = await TestSwapRouter.deploy();
 
+    const TestToken = await ethers.getContractFactory("TestToken");
+    const testToken1 = await TestToken.deploy(100000, "Test1", "TST1");
+    const testToken2 = await TestToken.deploy(100000, "Test2", "TST2");
+    const WETH = await TestToken.deploy(100000, "WETH", "WETH");
+
     const SwapUniSingleAction = await ethers.getContractFactory("SwapUniSingleAction");
 
-    // set WETH to ETH, let our test router handle it.    
     const swapUniSingleAction = await SwapUniSingleAction.deploy(
-      testSwapRouter.address, ethers.constants.AddressZero);
+      testSwapRouter.address, WETH.address);
 
     const TestOracle = await ethers.getContractFactory("TestOracle");
     const testOracleEth = await TestOracle.deploy(ETH_PRICE);
@@ -94,11 +98,6 @@ describe("RuleExecutor", () => {
     const priceTrigger = await PriceTrigger.deploy();
     await priceTrigger.addPriceFeed("eth", testOracleEth.address);
     await priceTrigger.addPriceFeed("uni", testOracleUni.address);
-
-
-    const TestToken = await ethers.getContractFactory("TestToken");
-    const testToken1 = await TestToken.deploy(100000, "Test1", "TST1");
-    const testToken2 = await TestToken.deploy(100000, "Test2", "TST2");
 
     return {
       ruleExecutor, priceTrigger, swapUniSingleAction, testOracleEth, testOracleUni,
@@ -338,6 +337,7 @@ describe("RuleExecutor", () => {
     it("Should allow anyone to execute the rule once (native) and get a reward if gas is paid, and the trigger passes", async () => {
       // execute valid rule with collateral by someone else. and get a reward.
       const { ruleHashEth, ruleSubscriberWallet, otherWallet1, ruleExecutor } = await loadFixture(deployValidRuleFixture);
+      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, 12, { value: 12 });
       await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashEth)).to.emit(ruleExecutor, "Executed")
         .withArgs(ruleHashEth, otherWallet1.address)
         .and.changeEtherBalances(
@@ -357,7 +357,7 @@ describe("RuleExecutor", () => {
       await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, 11);
       await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 6);
       await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.emit(ruleExecutor, "Executed")
-        .withArgs(ruleHashToken, otherWallet1);
+        .withArgs(ruleHashToken, otherWallet1.address);
 
       await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.be.revertedWith("Rule is not active!");
 
