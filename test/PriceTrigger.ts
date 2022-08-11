@@ -76,7 +76,7 @@ describe("PriceTrigger", () => {
         deployEthUniTriggerFixture
       );
 
-      const trigger: RETypes.TriggerStruct = {        
+      const trigger: TriggerStruct = {        
         op: GT,
         param: ethers.utils.defaultAbiCoder.encode([ "string" ], [ "eth" ]),        
         // this is the address of the ITrigger, PriceTrigger.address in this case
@@ -85,7 +85,7 @@ describe("PriceTrigger", () => {
         value: 0
       };
       
-      await expect(priceTrigger.connect(otherAccount).validateTrigger(trigger)).to.be.revertedWithoutReason;;
+      await expect(priceTrigger.connect(otherAccount).validate(trigger)).to.be.revertedWithoutReason;;
     });
     
     it("Should revert if the trigger has 2 assets and the datasource is specified incorrectly", async () => {
@@ -93,14 +93,14 @@ describe("PriceTrigger", () => {
         deployEthUniTriggerFixture
       );
 
-      const trigger: RETypes.TriggerStruct = {        
+      const trigger: TriggerStruct = {        
         op: GT,
         param: ethers.utils.defaultAbiCoder.encode([ "string", "string" ], [ "eth", "sushi" ]),
         callee: ethers.constants.AddressZero,
         value: 0
       };
             
-      await expect(priceTrigger.connect(otherAccount).validateTrigger(trigger)).to.be.revertedWithoutReason;
+      await expect(priceTrigger.connect(otherAccount).validate(trigger)).to.be.revertedWithoutReason;
 
     });
 
@@ -109,14 +109,14 @@ describe("PriceTrigger", () => {
         deployEthUniTriggerFixture
       );
 
-      const trigger: RETypes.TriggerStruct = {        
+      const trigger: TriggerStruct = {        
         op: GT,        
         param: ETH_UNI_PARAM,
         callee: ethers.constants.AddressZero,
         value: 0
       };
 
-      expect(await priceTrigger.connect(otherAccount).validateTrigger(trigger)).to.equal(true);
+      expect(await priceTrigger.connect(otherAccount).validate(trigger)).to.equal(true);
       
     });
   });
@@ -126,28 +126,28 @@ describe("PriceTrigger", () => {
         const { priceTrigger, testOracleEth, otherAccount } = await loadFixture(
           deployEthUniTriggerFixture
         );
-        const trigger: RETypes.TriggerStruct = {        
+        const trigger: TriggerStruct = {        
           op: LT,          
           param: ETH_UNI_PARAM,
           callee: ethers.constants.AddressZero,
           value: (ETH_UNI_PRICE - 1)
         };
         
-        expect(await priceTrigger.connect(otherAccount).checkTrigger(trigger)).to.deep.equal([false, ethers.BigNumber.from(ETH_UNI_PRICE)]);
+        expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([false, ethers.BigNumber.from(ETH_UNI_PRICE)]);
       });
   
       it("Should fail the trigger if eth/uni limit is GT " + (ETH_UNI_PRICE + 1), async () => {
         const { priceTrigger, testOracleEth, otherAccount } = await loadFixture(
           deployEthUniTriggerFixture
         );
-        const trigger: RETypes.TriggerStruct = {        
+        const trigger: TriggerStruct = {        
           op: GT,          
           param: ETH_UNI_PARAM,
           callee: ethers.constants.AddressZero,
           value: (ETH_UNI_PRICE + 1)
         };
                     
-        expect(await priceTrigger.connect(otherAccount).checkTrigger(trigger)).to.deep.equal([false, ethers.BigNumber.from(ETH_UNI_PRICE)]);
+        expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([false, ethers.BigNumber.from(ETH_UNI_PRICE)]);
   
       });
   
@@ -155,14 +155,14 @@ describe("PriceTrigger", () => {
         const { priceTrigger, testOracleEth, otherAccount } = await loadFixture(
           deployEthUniTriggerFixture
         );
-        const trigger: RETypes.TriggerStruct = {        
+        const trigger: TriggerStruct = {        
           op: GT,          
           param: ETH_UNI_PARAM,
           callee: ethers.constants.AddressZero,
           value: (ETH_UNI_PRICE - 1)
         };
                     
-        expect(await priceTrigger.connect(otherAccount).checkTrigger(trigger)).to.deep.equal([true, ethers.BigNumber.from(ETH_UNI_PRICE)]);
+        expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([true, ethers.BigNumber.from(ETH_UNI_PRICE)]);
   
       });
   
@@ -170,14 +170,14 @@ describe("PriceTrigger", () => {
         const { priceTrigger, testOracleEth, otherAccount } = await loadFixture(
           deployEthUniTriggerFixture
         );
-        const trigger: RETypes.TriggerStruct = {        
+        const trigger: TriggerStruct = {        
           op: LT,          
           param: ETH_UNI_PARAM,
           callee: ethers.constants.AddressZero,
           value: (ETH_UNI_PRICE + 1)
         };
                     
-        expect(await priceTrigger.connect(otherAccount).checkTrigger(trigger)).to.deep.equal([true, ethers.BigNumber.from(ETH_UNI_PRICE)]);
+        expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([true, ethers.BigNumber.from(ETH_UNI_PRICE)]);
   
       });
 

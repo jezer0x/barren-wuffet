@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
-import "./RETypes.sol";
+
+import "../RETypes.sol";
 import "./ITrigger.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import "./Utils.sol";
+import "../Utils.sol";
 
 contract PriceTrigger is ITrigger, Ownable {
     // keyword -> fn call to get data
@@ -16,7 +17,7 @@ contract PriceTrigger is ITrigger, Ownable {
 
     constructor() {}
 
-    function addPriceFeed(string calldata asset, address dataSource) public onlyOwner {
+    function addPriceFeed(string calldata asset, address dataSource) external onlyOwner {
         priceFeeds[asset] = dataSource;
     }
 
@@ -28,16 +29,16 @@ contract PriceTrigger is ITrigger, Ownable {
         return uint256(price); // WARNING: feels icky. Why did they not use uint?
     }
 
-    function validateTrigger(RETypes.Trigger calldata trigger) external view returns (bool) {
+    function validate(Trigger calldata trigger) external view returns (bool) {
         (string memory asset1, string memory asset2) = abi.decode(trigger.param, (string, string));
         require(priceFeeds[asset1] != address(0), "asset1 unauthorized");
         require(Utils.strEq(asset2, "usd") || priceFeeds[asset2] != address(0));
         return true;
     }
 
-    function checkTrigger(RETypes.Trigger calldata trigger) external view returns (bool, uint256) {
+    function check(Trigger calldata trigger) external view returns (bool, uint256) {
         // get the val of var, so we can check if it matches trigger
-        (uint256 val, RETypes.Ops op) = (trigger.value, trigger.op);
+        (uint256 val, Ops op) = (trigger.value, trigger.op);
         (string memory asset1, string memory asset2) = abi.decode(trigger.param, (string, string));
         uint256 asset1price = _getPrice(asset1);
         uint256 res;
@@ -49,9 +50,9 @@ contract PriceTrigger is ITrigger, Ownable {
             res = asset1price / asset2price;
         }
 
-        if (op == RETypes.Ops.GT) {
+        if (op == Ops.GT) {
             return (res > val, res);
-        } else if (op == RETypes.Ops.LT) {
+        } else if (op == Ops.LT) {
             return (res < val, res);
         }
         return (false, 0);

@@ -1,29 +1,77 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-library RETypes {
-    struct ActionRuntimeParams {
-        uint256 triggerData;
-        uint256 totalCollateralAmount;
-    }
+enum RuleStatus {
+    ACTIVE,
+    PAUSED,
+    EXECUTED,
+    CANCELLED
+}
 
-    struct Action {
-        address callee; // eg. swapUni
-        bytes data; // any custom param to send to the callee
-        address fromToken; // token to be used to initiate the action
-        address toToken; // token to be gotten as output
-    }
+struct Rule {
+    address owner;
+    Trigger[] triggers;
+    Action[] actions;
+    uint256 totalCollateralAmount;
+    RuleStatus status;
+    uint256 outputAmount;
+    uint256 reward;
+}
 
-    enum Ops {
-        GT,
-        LT
-    }
+struct ActionRuntimeParams {
+    uint256 triggerData;
+    uint256 totalCollateralAmount;
+}
 
-    // If Trigger and RETypes.Action are update, the HashRule needs to be updated
-    struct Trigger {
-        address callee;
-        bytes param; //eg. abi.encode(["string", "string"], ["eth", "uni"])
-        uint256 value; //eg. 1000
-        Ops op; //eg. GT
-    }
+struct Action {
+    address callee; // eg. swapUni
+    bytes data; // any custom param to send to the callee, encoded at compileTime
+    address fromToken; // token to be used to initiate the action
+    address toToken; // token to be gotten as output
+}
+
+enum Ops {
+    GT,
+    LT
+}
+
+struct Trigger {
+    address callee;
+    bytes param; // any custom param to send to the callee, encoded at compileTime
+    uint256 value; //eg. 1000
+    Ops op; //eg. GT
+}
+
+enum TradeStatus {
+    ACTIVE,
+    EXECUTED,
+    CANCELLED
+}
+
+struct Trade {
+    address manager;
+    bytes32 ruleHash;
+    SubscriptionConstraints constraints;
+    Subscription[] subscriptions;
+    bool redeemedOutput;
+}
+
+enum SubscriptionStatus {
+    ACTIVE,
+    WITHDRAWN
+}
+
+struct Subscription {
+    address subscriber;
+    uint256 collateralAmount;
+    SubscriptionStatus status;
+}
+
+struct SubscriptionConstraints {
+    uint256 minCollateralPerSub; // minimum amount needed as collateral to deposit
+    uint256 maxCollateralPerSub; // max ...
+    uint256 minCollateralTotal;
+    uint256 maxCollateralTotal; // limit on subscription to protect from slippage DOS attacks
+    uint256 deadline; // a block.timestamp, after which no one can deposit to this
+    uint256 lockin; // a block.timestamp, until which no one can redeem (given trade/fund has been activated)
 }
