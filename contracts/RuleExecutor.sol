@@ -124,6 +124,7 @@ contract RuleExecutor is Ownable, Pausable, ReentrancyGuard {
             rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.PAUSED,
             "Can't add collateral to this rule"
         );
+        require(amount > 0, "amount must be > 0");
         if (rule.actions[0].fromToken != REConstants.ETH) {
             rule.totalCollateralAmount = rule.totalCollateralAmount + amount;
             // must have been approved first
@@ -146,6 +147,7 @@ contract RuleExecutor is Ownable, Pausable, ReentrancyGuard {
             "Can't add collateral to this rule"
         );
 
+        require(rule.totalCollateralAmount - amount >= 0, "Not enough collateral");
         rule.totalCollateralAmount = rule.totalCollateralAmount - amount;
 
         if (rule.actions[0].fromToken != REConstants.ETH) {
