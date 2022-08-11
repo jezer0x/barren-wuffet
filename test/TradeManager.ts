@@ -89,7 +89,7 @@ describe("TradeManager", () => {
     await priceTrigger.addPriceFeed("uni", testOracleUni.address);
 
     const TradeManager = await ethers.getContractFactory("FundManager");
-    const tradeManager = await TradeManager.deploy(ruleExecutor); 
+    const tradeManager = await TradeManager.deploy(ruleExecutor.address); 
 
     return {
       tradeManager, ruleExecutor, priceTrigger, swapUniSingleAction, testOracleEth, testOracleUni,
