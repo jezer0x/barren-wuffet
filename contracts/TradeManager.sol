@@ -4,13 +4,14 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 import "./ISubscription.sol";
 import "./RETypes.sol";
 import "./REConstants.sol";
 import "./RuleExecutor.sol";
 import "./Utils.sol";
 
-contract TradeManager is Ownable, ISubscription {
+contract TradeManager is Ownable, ISubscription, Pausable {
     using SafeERC20 for IERC20;
 
     event TradeCreated(bytes32 indexed tradeHash);
@@ -41,6 +42,14 @@ contract TradeManager is Ownable, ISubscription {
         _;
     }
 
+    function pause() public onlyOwner {
+        _pause();
+    }
+
+    function unpause() public onlyOwner {
+        _unpause();
+    }
+
     constructor(address ReAddr) {
         ruleExecutor = RuleExecutor(ReAddr);
     }
@@ -65,7 +74,7 @@ contract TradeManager is Ownable, ISubscription {
         bytes32 tradeHash,
         address collateralToken,
         uint256 collateralAmount
-    ) external payable tradeExists(tradeHash) returns (uint256) {
+    ) external payable whenNotPaused tradeExists(tradeHash) returns (uint256) {
         Trade storage trade = trades[tradeHash];
 
         // _collectCollateral also only forwards funds from the sender so
@@ -124,7 +133,7 @@ contract TradeManager is Ownable, ISubscription {
         }
     }
 
-    function getStatus(bytes32 tradeHash) public tradeExists(tradeHash) returns (TradeStatus) {
+    function getStatus(bytes32 tradeHash) public whenNotPaused tradeExists(tradeHash) returns (TradeStatus) {
         Trade storage trade = trades[tradeHash];
         bytes32 ruleHash = trade.ruleHash;
         Rule memory rule = ruleExecutor.getRule(ruleHash);
@@ -146,6 +155,7 @@ contract TradeManager is Ownable, ISubscription {
 
     function withdraw(bytes32 tradeHash, uint256 subscriptionIdx)
         external
+        whenNotPaused
         tradeExists(tradeHash)
         onlyActiveSubscriber(tradeHash, subscriptionIdx)
         returns (address[] memory, uint256[] memory)
@@ -188,7 +198,7 @@ contract TradeManager is Ownable, ISubscription {
         return (tokens, balances);
     }
 
-    function cancelTrade(bytes32 tradeHash) external onlyTradeManager(tradeHash) {
+    function cancelTrade(bytes32 tradeHash) external whenNotPaused onlyTradeManager(tradeHash) {
         Trade storage trade = trades[tradeHash];
         ruleExecutor.cancelRule(trade.ruleHash);
         emit Cancelled(tradeHash);
@@ -202,7 +212,7 @@ contract TradeManager is Ownable, ISubscription {
         Trigger[] calldata triggers,
         Action[] calldata actions,
         SubscriptionConstraints calldata constraints
-    ) external payable returns (bytes32) {
+    ) external payable whenNotPaused returns (bytes32) {
         // Note: Rule is created through TradeManager so that TradeManager is rule.owner
         bytes32 ruleHash = ruleExecutor.createRule{value: msg.value}(triggers, actions);
         bytes32 tradeHash = getTradeHash(msg.sender, ruleHash);
