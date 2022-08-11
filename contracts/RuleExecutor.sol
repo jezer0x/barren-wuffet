@@ -235,7 +235,7 @@ contract RuleExecutor is Ownable {
         // We dont need to check sender here.
         // As long as the execution reaches this point, the reward is there
         // for the taking.
-        //slither-disable-next-line arbitrary-send-eth
+        // slither-disable-next-line arbitrary-send
         payable(msg.sender).transfer(rule.reward);
         emit Executed(ruleHash, msg.sender);
     }
