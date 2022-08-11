@@ -124,7 +124,9 @@ contract RuleExecutor is Ownable, Pausable, ReentrancyGuard {
             rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.PAUSED,
             "Can't add collateral to this rule"
         );
+
         require(amount > 0, "amount must be > 0");
+
         if (rule.actions[0].fromToken != REConstants.ETH) {
             rule.totalCollateralAmount = rule.totalCollateralAmount + amount;
             // must have been approved first
@@ -144,10 +146,10 @@ contract RuleExecutor is Ownable, Pausable, ReentrancyGuard {
         Rule storage rule = rules[ruleHash];
         require(
             rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.PAUSED,
-            "Can't add collateral to this rule"
+            "Can't reduce collateral from this rule"
         );
 
-        require(rule.totalCollateralAmount - amount >= 0, "Not enough collateral");
+        // Note: if totalCollateral = 0 and amount = 1; underflow will cause a revert, so we don't have to do an explicit require here.
         rule.totalCollateralAmount = rule.totalCollateralAmount - amount;
 
         if (rule.actions[0].fromToken != REConstants.ETH) {
