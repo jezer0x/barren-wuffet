@@ -1,19 +1,20 @@
 # Olympus Mons
 
-Olympus Mons is a decentralized fund management platform that allows you to deposit funds into the contract, and tag it to a specific fund manager who can manage your funds on-chain. 
+Olympus Mons is a decentralized fund management platform that allows you to deposit funds into the contract, and tag it to a specific fund manager who can manage your funds on-chain.
 
-The Fund Manager / Trade Manager and Rule Executor contracts are intended to function independently, and can be used by other projects / users if required. 
+The Fund Manager / Trade Manager and Rule Executor contracts are intended to function independently, and can be used by other projects / users if required.
 
 ## Fund Manager
-This contract allows any fund manager to create funds, accept deposits into the fund. They can trigger trades from the funds by subscribing to TradeManager Trades (IFTTT), or take synchronous Actions. 
 
+This contract allows any fund manager to create funds, accept deposits into the fund. They can trigger trades from the funds by subscribing to TradeManager Trades (IFTTT), or take synchronous Actions.
 
 ## Trade Manager
+
 Trades are created by sending a set of Triggers, Actions along with constraints into TradeManager. The Trigger -> Action pair is called a "Rule". TradeManager uses the Rule Executor to set up the Rules, but they are initially deactivated.
 
-After a trade is created, collateral can be deposited into the trade. 
+After a trade is created, collateral can be deposited into the trade.
 
-Constraints are trade-level restrictions (like min-collateral) that the  TradeManager will use to decide when to accept deposits, when to activate the Rules, and when to allow withdrawal of the deposits.
+Constraints are trade-level restrictions (like min-collateral) that the TradeManager will use to decide when to accept deposits, when to activate the Rules, and when to allow withdrawal of the deposits.
 
 ## Rule Executor
 
@@ -31,34 +32,31 @@ This project is written using [Hardhat](https://hardhat.org/)
 
 `yarn` is the package manager used. yarn-lock is included in the repo. Do `yard add package --dev` to install new packages instead of `npm install --save-dev package`.
 
-Try running some of the following tasks:
+### Testing
 
-```shell
-npx hardhat help
-npx hardhat test
-GAS_REPORT=true npx hardhat test
-npx hardhat node
-npx hardhat run scripts/deploy.ts
-```
+`yarn hardhat test`
+
+### Deploying
+
+`yarn hardhat deploy` (`--network localhost` if you're running `yarn hardhat node` in another terminal)
 
 ## Dev tools
 
-### Surya
+### Surya - GraphViz for Architecture
+
 Install Surya using : `npm install -g surya`
 
-To create a graphviz summary of all the function calls do,  `surya graph contracts/**/*.sol > FM_full.dot` and open FM_full.dot using a graphviz plugin on VSCode. 
+To create a graphviz summary of all the function calls do, `surya graph contracts/**/*.sol > FM_full.dot` and open FM_full.dot using a graphviz plugin on VSCode.
 
 `surya describe contracts/**/*.sol` will summarize the contracts and point out fn modifiers / payments. It's useful to get an overview.
 
-You can see further instructons for Surya at https://github.com/ConsenSys/surya. 
+You can see further instructons for Surya at https://github.com/ConsenSys/surya.
 
-### Slither
+### Slither - Security Analyzer
+
 `pip3 install slither-analyzer`
 `slither .` inside the repo.
 
 Run it after major changes and ensure there arent any warnings / errors.
 
 To disable slither, you can add // slither-disable-next-line <rule>
-
-## Testing
-
