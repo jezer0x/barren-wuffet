@@ -49,13 +49,20 @@ function makeSwapAction(swapContract: string,
 }
 
 async function createRule(_ruleExecutor: RuleExecutorType, triggers: TriggerStruct[],
-  actions: ActionStruct[], wallet: SignerWithAddress): Promise<string> {
+  actions: ActionStruct[], wallet: SignerWithAddress, activate: boolean = false): Promise<string> {
   triggers.map(t => _ruleExecutor.addTriggerToWhitelist(t.callee));
   actions.map(a => _ruleExecutor.addActionToWhitelist(a.callee));
 
-  const tx2 = await _ruleExecutor.connect(wallet).createRule(triggers, actions);
-  const receipt2 = await tx2.wait();
-  return receipt2.events?.find((x => x.event == "Created"))?.args?.ruleHash;
+  const tx = await _ruleExecutor.connect(wallet).createRule(triggers, actions);
+  const receipt2 = await tx.wait();
+
+  const ruleHash = receipt2.events?.find((x => x.event == "Created"))?.args?.ruleHash
+  if (activate) {
+    const tx2 = await _ruleExecutor.connect(wallet).activateRule(ruleHash);
+    await tx2.wait();
+  }
+
+  return ruleHash;
 
 }
 
@@ -118,10 +125,10 @@ describe("RuleExecutor", () => {
 
       ruleExecutor.disableTriggerWhitelist();
       ruleExecutor.disableActionWhitelist();
-      await expect(ruleExecutor.connect(ruleMakerWallet).createRule([badTrigger], [executableAction])).to.be.revertedWith("Invalid trigger provided");
+      await expect(ruleExecutor.connect(ruleMakerWallet).createRule([badTrigger], [executableAction])).to.be.revertedWithoutReason;
     });
 
-    it("Should revert if validateTrigger on trigger does not return true", async () => {
+    it.skip("Should revert if validateTrigger on trigger does not return true", async () => {
       // Use BadPriceTrigger. I am yet not sure what damage this can do, and what protection we should have for this.      
     });
 
@@ -200,6 +207,8 @@ describe("RuleExecutor", () => {
       ruleExecutor.addActionToWhitelist(swapUniSingleAction.address);
 
       var rule1Hash: string;
+      // This fails because the block isnt the same across these calls.
+      // We need to find a way to make both txes part of the same block
       await expect(ruleExecutor.connect(ruleMakerWallet).createRule(
         [passingTrigger], [executableAction])).to.emit(ruleExecutor, "Created")
         .withArgs((_hash: string) => { rule1Hash = _hash; return true; });
@@ -271,9 +280,10 @@ describe("RuleExecutor", () => {
 
       const passingTrigger = makeFailingTrigger(priceTrigger.address);
       const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, ethers.constants.AddressZero);
-      const ruleHash = await createRule(ruleExecutor, [passingTrigger], [tokenSwapAction], ruleMakerWallet);
+      const ruleHash = await createRule(ruleExecutor, [passingTrigger], [tokenSwapAction], ruleMakerWallet, true);
 
-      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHash)).to.be.rejectedWith("Trigger not satisfied");
+
+      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHash)).to.be.rejectedWith("One (or more) trigger(s) not satisfied");
 
     });
   });
@@ -295,8 +305,8 @@ describe("RuleExecutor", () => {
       maxCollateralTotal: 90,
     }
 
-    const ruleHashEth = await createRule(ruleExecutor, [passingTrigger], [ethSwapAction], ruleMakerWallet);
-    const ruleHashToken = await createRule(ruleExecutor, [passingTrigger], [tokenSwapAction], ruleMakerWallet);
+    const ruleHashEth = await createRule(ruleExecutor, [passingTrigger], [ethSwapAction], ruleMakerWallet, true);
+    const ruleHashToken = await createRule(ruleExecutor, [passingTrigger], [tokenSwapAction], ruleMakerWallet, true);
 
     await testToken1.transfer(ruleSubscriberWallet.address, 200);
     return { ruleHashEth, ruleHashToken, ruleExecutor, ownerWallet, ruleSubscriberWallet, otherWallet1, testToken1 };
@@ -308,16 +318,6 @@ describe("RuleExecutor", () => {
       const { ruleHashToken, otherWallet1, ruleExecutor } = await loadFixture(deployValidRuleFixture);
       console.log(ruleHashToken);
       await expect(ruleExecutor.connect(otherWallet1).executeRule(BAD_RULE_HASH)).to.be.rejectedWith("Rule not found!");
-    });
-
-    it("should revert if anyone tries to execute the rule, and min total collateral hasnt been added", async () => {
-      const { ruleHashToken, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
-      // NO subscribers
-      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.be.rejectedWith("Not enough collateral for executing");
-      await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, 11);
-      // await ruleExecutor.connect(ruleSubscriberWallet).subscribeToRule(ruleHashToken, testToken1.address, 11);
-      // 1 subscriber but min collateral not met.
-      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.be.rejectedWith("Not enough collateral for executing");
     });
 
     it.skip("Should revert if anyone tries to execute the rule, and action fails", async () => {
@@ -332,15 +332,34 @@ describe("RuleExecutor", () => {
       await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, 12);
       // await ruleExecutor.connect(ruleSubscriberWallet).subscribeToRule(ruleHashToken, testToken1.address, 12);
       await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.emit(ruleExecutor, "Executed")
-        .withArgs(ruleHashToken, otherWallet1);
+        .withArgs(ruleHashToken, otherWallet1.address)
+        .and.changeTokenBalances(
+          testToken1,
+          [otherWallet1, ruleExecutor],
+          [0, -12],
+        );
 
-      // TODO check that that the swap actually happened      
-      // And that the collateral was used up
-      // TODO need to implement caller getting paid.    
-      // TODO check that the caller didnt get any ETH taken out more than the gas fee.  
+      // TODO need to implement caller getting paid.
+      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.be.revertedWith("Not enough collateral for executing");
     });
 
-    it("Should revert if anyone tries to execute the rule twice without topping up collateral", async () => {
+    it("Should allow anyone to execute the rule once (native) and get a reward if gas is paid, and the trigger passes", async () => {
+      // execute valid rule with collateral by someone else. and get a reward.
+      const { ruleHashEth, ruleSubscriberWallet, otherWallet1, ruleExecutor } = await loadFixture(deployValidRuleFixture);
+      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashEth)).to.emit(ruleExecutor, "Executed")
+        .withArgs(ruleHashEth, otherWallet1.address)
+        .and.changeEtherBalances(
+          // we dont care about the balance of the swap contracts, 
+          // because that's a downstream impact we dont care about here.
+          [otherWallet1, ruleSubscriberWallet, ruleExecutor],
+          [0, 0, -12],
+        );
+
+      // TODO need to implement caller getting paid.
+      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashEth)).to.be.revertedWith("Not enough collateral for executing");
+    });
+
+    it("Should revert if anyone tries to execute the rule twice", async () => {
       // we get here by calling a valid rule, using up the collateral and call again.
       const { ruleHashToken, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
       await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, 11);
@@ -357,11 +376,11 @@ describe("RuleExecutor", () => {
       await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, 25);
       // await ruleExecutor.connect(ruleSubscriberWallet).subscribeToRule(ruleHashToken, testToken1.address, 12);
       await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.emit(ruleExecutor, "Executed")
-        .withArgs(ruleHashToken, otherWallet1);
+        .withArgs(ruleHashToken, otherWallet1.address);
 
       // await ruleExecutor.connect(ruleSubscriberWallet).subscribeToRule(ruleHashToken, testToken1.address, 13);
       await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.emit(ruleExecutor, "Executed")
-        .withArgs(ruleHashToken, otherWallet1);
+        .withArgs(ruleHashToken, otherWallet1.address);
 
     });
   });
