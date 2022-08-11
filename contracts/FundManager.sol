@@ -9,9 +9,10 @@ import "./actions/IAction.sol";
 import "./TradeManager.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract FundManager is ISubscription, Ownable {
+contract FundManager is ISubscription, Ownable, Pausable {
     using SafeERC20 for IERC20;
 
     event Created(bytes32 indexed fundHash);
@@ -76,7 +77,19 @@ contract FundManager is ISubscription, Ownable {
         return keccak256(abi.encode(manager, name));
     }
 
-    function createFund(string calldata name, SubscriptionConstraints calldata constraints) external returns (bytes32) {
+    function pause() public onlyOwner {
+        _pause();
+    }
+
+    function unpause() public onlyOwner {
+        _unpause();
+    }
+
+    function createFund(string calldata name, SubscriptionConstraints calldata constraints)
+        external
+        whenNotPaused
+        returns (bytes32)
+    {
         bytes32 fundHash = getFundHash(msg.sender, name);
         require(funds[fundHash].manager == address(0), "Fund already exists!");
         Fund storage fund = funds[fundHash];
@@ -90,7 +103,7 @@ contract FundManager is ISubscription, Ownable {
         return fundHash;
     }
 
-    function closeFund(bytes32 fundHash) external onlyFundManager(fundHash) {
+    function closeFund(bytes32 fundHash) external onlyFundManager(fundHash) whenNotPaused {
         Fund storage fund = funds[fundHash];
         fund.status = FundStatus.CLOSED;
 
@@ -105,7 +118,7 @@ contract FundManager is ISubscription, Ownable {
         bytes32 fundHash,
         Action calldata action,
         ActionRuntimeParams calldata runtimeParams
-    ) external onlyFundManager(fundHash) returns (uint256 output) {
+    ) external onlyFundManager(fundHash) whenNotPaused returns (uint256 output) {
         Fund storage fund = funds[fundHash];
         _decreaseAssetBalance(fund, action.fromToken, runtimeParams.totalCollateralAmount);
         if (action.fromToken != REConstants.ETH) {
@@ -121,7 +134,7 @@ contract FundManager is ISubscription, Ownable {
         bytes32 fundHash,
         bytes32 tradeHash,
         uint256 amount
-    ) external onlyFundManager(fundHash) {
+    ) external onlyFundManager(fundHash) whenNotPaused {
         Fund storage fund = funds[fundHash];
         address inputToken = tradeManager.getCollateralToken(tradeHash);
         uint256 subIdx;
@@ -136,7 +149,7 @@ contract FundManager is ISubscription, Ownable {
         }
     }
 
-    function closePosition(bytes32 fundHash, uint256 openPositionIdx) public onlyFundManager(fundHash) {
+    function closePosition(bytes32 fundHash, uint256 openPositionIdx) public whenNotPaused onlyFundManager(fundHash) {
         Fund storage fund = funds[fundHash];
         Position storage position = fund.openPositions[openPositionIdx];
         bytes32 tradeHash = position.tradeHash;
@@ -187,7 +200,7 @@ contract FundManager is ISubscription, Ownable {
         bytes32 fundHash,
         address collateralToken,
         uint256 collateralAmount
-    ) external payable fundExists(fundHash) returns (uint256) {
+    ) external payable fundExists(fundHash) whenNotPaused returns (uint256) {
         // For now we'll only allow subscribing with ETH
         require(collateralToken == REConstants.ETH);
         require(collateralAmount == msg.value);
@@ -217,7 +230,7 @@ contract FundManager is ISubscription, Ownable {
         return (fund.subscriptions[subscriptionIdx].collateralAmount * fund.balances[token]) / fund.totalCollateral;
     }
 
-    function getStatus(bytes32 fundHash) public returns (FundStatus) {
+    function getStatus(bytes32 fundHash) public whenNotPaused returns (FundStatus) {
         Fund storage fund = funds[fundHash];
         if (fund.closed) {
             return FundStatus.CLOSED;
@@ -240,6 +253,7 @@ contract FundManager is ISubscription, Ownable {
 
     function withdraw(bytes32 fundHash, uint256 subscriptionIdx)
         external
+        whenNotPaused
         fundExists(fundHash)
         onlyActiveSubscriber(fundHash, subscriptionIdx)
         returns (address[] memory, uint256[] memory)
