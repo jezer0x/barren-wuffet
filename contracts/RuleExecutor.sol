@@ -126,13 +126,13 @@ contract RuleExecutor is Ownable, Pausable, ReentrancyGuard {
         );
 
         require(amount > 0, "amount must be > 0");
-        require(amount == msg.value, "amount must be the same as msg.value if sending ETH");
 
         if (rule.actions[0].fromToken != REConstants.ETH) {
             rule.totalCollateralAmount = rule.totalCollateralAmount + amount;
             // must have been approved first
             IERC20(rule.actions[0].fromToken).safeTransferFrom(msg.sender, address(this), amount);
         } else {
+            require(amount == msg.value, "amount must be the same as msg.value if sending ETH");
             rule.totalCollateralAmount = rule.totalCollateralAmount + msg.value;
         }
         emit CollateralAdded(ruleHash, amount);
