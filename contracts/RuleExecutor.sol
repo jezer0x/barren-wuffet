@@ -197,6 +197,14 @@ contract RuleExecutor is Ownable, Pausable, ReentrancyGuard {
         return ruleHash;
     }
 
+    /*
+        Valid State Transitions: (from) => (to)
+
+        ACTIVE => {active, inactive, cancelled}
+        INACTIVE => {active, cancelled}
+        EXECUTED => {}
+        CANCELLED => {} 
+    */
     function activateRule(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) {
         require(rules[ruleHash].status == RuleStatus.INACTIVE);
         rules[ruleHash].status = RuleStatus.ACTIVE;
