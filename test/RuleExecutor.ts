@@ -305,6 +305,118 @@ describe("RuleExecutor", () => {
 
   }
 
+  describe("Add / Reduce Collateral", function () {
+
+    it("should revert if ruleHash doesnt exist", async () => {
+      const { ruleSubscriberWallet, ruleExecutor } = await loadFixture(deployValidRuleFixture);
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(BAD_RULE_HASH, 1000)).to.be.revertedWithoutReason;
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).reduceCollateral(BAD_RULE_HASH, 1000)).to.be.revertedWithoutReason;
+    });
+
+    it("should revert if > 0 native isnt sent to addCollateral for an native action", async () => {
+      const { ruleHashEth, ruleSubscriberWallet, ruleExecutor } = await loadFixture(deployValidRuleFixture);
+
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, 12)).to.be.revertedWith("Collateral not provided");
+    });
+
+    it("should revert if > 0 ERC20 isnt sent / approved to addCollateral for an ERC20 rule", async () => {
+      const { ruleHashToken, ruleSubscriberWallet, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 0)).to.be.revertedWith("Collateral not provided");
+      await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, 6);
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 10)).to.be.revertedWith("Collateral not approved");
+
+      const balance = await testToken1.connect(ruleSubscriberWallet).balanceOf(ruleSubscriberWallet.address);
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, balance.add(1))).to.be.revertedWith("Insufficient collateral");
+    });
+
+    it("should not allow anyone other than rule owner to add collateral to a rule", async () => {
+      const { ruleHashEth, ruleExecutor, otherWallet1 } = await loadFixture(deployValidRuleFixture);
+      await expect(ruleExecutor.connect(otherWallet1).addCollateral(ruleHashEth, 12, { value: 3 })).to.be.revertedWith("You're not the owner of this rule");
+
+      await expect(ruleExecutor.connect(otherWallet1).reduceCollateral(ruleHashEth, 12)).to.be.revertedWith("You're not the owner of this rule");
+    });
+
+
+    [1, 0].forEach((isNative) => {
+      const assetType = isNative ? "native" : "erc20";
+      it("should not allow removing collateral if no collateral has been added" + assetType, async () => {
+        const { ruleHashEth, ruleHashToken, ruleExecutor, ruleSubscriberWallet } = await loadFixture(deployValidRuleFixture);
+        const ruleHash = isNative ? ruleHashEth : ruleHashToken;
+        await expect(ruleExecutor.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, 12)).to.be.revertedWithoutReason;
+      });
+
+      it("should receive token and emit CollateralAdded event if addCollateral is called successfully: " + assetType, async () => {
+        const { ruleHashEth, ruleHashToken, ruleSubscriberWallet, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
+        const collateralAmount = 10;
+        const msgValue = isNative ? collateralAmount : 0;
+        const ruleHash = isNative ? ruleHashEth : ruleHashToken;
+        if (!isNative)
+          await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateralAmount);
+
+        const changeWallets = [ruleSubscriberWallet, ruleExecutor];
+        const changeAmounts = [-collateralAmount, collateralAmount];
+        const ethChange = isNative ? changeAmounts : [0, 0];
+        const tokenChange = !isNative ? changeAmounts : [0, 0];
+
+        await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHash, collateralAmount, { value: msgValue })).to.emit(ruleExecutor, "CollateralAdded")
+          .withArgs(ruleHash, collateralAmount).and.changeEtherBalances(
+            changeWallets, ethChange).and.changeTokenBalance(
+              testToken1, changeWallets, tokenChange);
+
+        // if msg value and collateral amount dont match, msg value takes precedence.
+        // also allows adding collateral multiple times
+        await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHash, collateralAmount + 10, { value: msgValue })).to.emit(ruleExecutor, "CollateralAdded")
+          .withArgs(ruleHash, collateralAmount).and.changeEtherBalances(
+            changeWallets, ethChange).and.changeTokenBalance(
+              testToken1, changeWallets, tokenChange);
+      });
+
+      it("should refund token emit CollateralReduced event if reduceCollateral is called successfully: " + assetType, async () => {
+        const { ruleHashEth, ruleHashToken, ruleSubscriberWallet, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
+        const collateralAmount = 10;
+        const msgValue = isNative ? collateralAmount : 0;
+        const ruleHash = isNative ? ruleHashEth : ruleHashToken;
+
+        if (!isNative)
+          await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateralAmount);
+
+        await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHash, collateralAmount, { value: msgValue });
+
+        const reduceAmount = collateralAmount - 1;
+        const changeWallets = [ruleSubscriberWallet, ruleExecutor];
+        const changeAmounts = [reduceAmount, -reduceAmount];
+        const ethChange = isNative ? changeAmounts : [0, 0];
+        const tokenChange = !isNative ? changeAmounts : [0, 0];
+
+
+        await expect(ruleExecutor.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, reduceAmount)).to.emit(ruleExecutor, "CollateralReduced")
+          .withArgs(ruleHash, reduceAmount).and.changeEtherBalances(changeWallets, ethChange)
+          .and.changeTokenBalance(testToken1, changeWallets, tokenChange);
+      });
+
+      it("Should not allow removing more collateral than available:" + assetType, async () => {
+        const { ruleHashToken, testToken1, ruleHashEth, ruleSubscriberWallet, ruleExecutor } = await loadFixture(deployValidRuleFixture);
+        const collateralAmount = 49;
+        const msgValue = isNative ? collateralAmount : 0;
+        const ruleHash = isNative ? ruleHashEth : ruleHashToken;
+        if (!isNative)
+          await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateralAmount);
+
+        await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHash, collateralAmount, { value: msgValue })
+
+        await expect(ruleExecutor.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, collateralAmount + 1)).to.be.revertedWithoutReason;
+        await ruleExecutor.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, collateralAmount);
+        await expect(ruleExecutor.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, 1)).to.be.revertedWithoutReason;
+      });
+
+    });
+
+    it.skip("should not allow adding collateral to a cancelled or executed rule", () => {
+
+    });
+
+  });
+
   describe("Execute Rule", () => {
     it("should revert if anyone tries to execute an unknown rule", async () => {
       const { ruleHashToken, otherWallet1, ruleExecutor } = await loadFixture(deployValidRuleFixture);
@@ -363,6 +475,7 @@ describe("RuleExecutor", () => {
 
     });
   });
+
 
   describe.skip("Redeem Balance", () => {
     it("should allow redeeming all the collateral provided if the rule is not yet executed", async () => {
