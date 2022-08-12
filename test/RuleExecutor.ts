@@ -38,13 +38,13 @@ function makeFailingTrigger(triggerContract: string): TriggerStruct {
 }
 
 function makeSwapAction(swapContract: string,
-  fromToken: string = ethers.constants.AddressZero,
-  toToken: string = ethers.constants.AddressZero): ActionStruct {
+  inputToken: string = ethers.constants.AddressZero,
+  outputToken: string = ethers.constants.AddressZero): ActionStruct {
   return {
     callee: swapContract,
     data: "0x0000000000000000000000000000000000000000000000000000000000000000",
-    fromToken: fromToken, // eth
-    toToken: toToken
+    inputToken: inputToken, // eth
+    outputToken: outputToken
   };
 
 }
@@ -116,6 +116,12 @@ describe("RuleExecutor", () => {
   });
 
   describe("Add Rule By Anyone", () => {
+
+    it("Should revert if no trigger is specified", async () => {
+    }); 
+
+    it("Should revert if no action is specified", async () => {
+    }); 
 
     it("Should revert if trigger doesnt have a callee with validateTrigger", async () => {
       const { ruleExecutor, swapUniSingleAction, ruleMakerWallet, testToken1 } = await loadFixture(deployRuleExecutorFixture);
@@ -197,7 +203,7 @@ describe("RuleExecutor", () => {
         .withArgs(anyValue);
     });
 
-    it("If trigger, action, constrains, user, block are the same, ruleHash should be the same", async () => {
+    it("If trigger, action, constrains, user, block are the same, ruleHash should be the same -> making the second creation fail", async () => {
       const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1 } = await loadFixture(deployRuleExecutorFixture);
 
       const passingTrigger = makePassingTrigger(priceTrigger.address);
@@ -207,6 +213,7 @@ describe("RuleExecutor", () => {
       ruleExecutor.addActionToWhitelist(swapUniSingleAction.address);
 
       var rule1Hash: string;
+      // TODO: 
       // This fails because the block isnt the same across these calls.
       // We need to find a way to make both txes part of the same block
       await expect(ruleExecutor.connect(ruleMakerWallet).createRule(

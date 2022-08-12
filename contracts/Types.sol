@@ -3,7 +3,7 @@ pragma solidity ^0.8.9;
 
 enum RuleStatus {
     ACTIVE,
-    PAUSED,
+    INACTIVE,
     EXECUTED,
     CANCELLED
 }
@@ -26,8 +26,8 @@ struct ActionRuntimeParams {
 struct Action {
     address callee; // eg. swapUni
     bytes data; // any custom param to send to the callee, encoded at compileTime
-    address fromToken; // token to be used to initiate the action
-    address toToken; // token to be gotten as output
+    address inputToken; // token to be used to initiate the action
+    address outputToken; // token to be gotten as output
 }
 
 enum Ops {
