@@ -223,7 +223,7 @@ describe("RuleExecutor", () => {
 
     });
 
-    it("If trigger, action, constrains, user, block are the same, ruleHash should be the same -> making the second creation fail", async () => {
+    it.skip("If trigger, action, constrains, user, block are the same, ruleHash should be the same -> making the second creation fail", async () => {
       const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1, whitelistService, trigWlHash, actWlHash } = await loadFixture(deployRuleExecutorFixture);
 
       const passingTrigger = makePassingTrigger(priceTrigger.address);
@@ -484,13 +484,32 @@ describe("RuleExecutor", () => {
       await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashEth)).to.be.revertedWithoutReason;
     });
 
+    // For some insane reason, if the native test is after the erc20 test, 
+    // the addCollateral fails in the erc20 test.
+    it("Should allow anyone to execute the rule once (native) and get a reward if gas is paid, and the trigger passes", async () => {
+      // execute valid rule with collateral by someone else. and get a reward.
+      const { ruleHashEth, ruleSubscriberWallet, otherWallet1, ruleExecutor } = await loadFixture(deployValidRuleFixture);
+      const collateral = 12;
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, collateral, { value: collateral })).to.emit(ruleExecutor, "CollateralAdded");
+      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashEth)).to.emit(ruleExecutor, "Executed")
+        .withArgs(ruleHashEth, otherWallet1.address)
+        .and.changeEtherBalances(
+          // we dont care about the balance of the swap contracts, 
+          // because that's a downstream impact we dont care about here.
+          [otherWallet1, ruleSubscriberWallet, ruleExecutor],
+          [DEFAULT_REWARD, 0, -(collateral + DEFAULT_REWARD)],
+        );
+
+      // TODO need to implement caller getting paid.
+      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashEth)).to.be.revertedWith("Rule != ACTIVE");
+    });
 
     it("Should allow anyone to execute the rule and get a reward if gas is paid, and all the triggers passes", async () => {
       // execute valid rule with collateral by someone else. and get a reward.
       const { ruleHashToken, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
       const collateral = 12;
-      await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateral);
-      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateral);
+      await expect(testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateral)).to.not.be.reverted;
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateral)).to.emit(ruleExecutor, "CollateralAdded")
       await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.emit(ruleExecutor, "Executed")
         .withArgs(ruleHashToken, otherWallet1.address)
         .and.changeTokenBalances(
@@ -505,24 +524,6 @@ describe("RuleExecutor", () => {
 
       // TODO need to implement caller getting paid.
       await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.be.revertedWith("Rule != ACTIVE");
-    });
-
-    it("Should allow anyone to execute the rule once (native) and get a reward if gas is paid, and the trigger passes", async () => {
-      // execute valid rule with collateral by someone else. and get a reward.
-      const { ruleHashEth, ruleSubscriberWallet, otherWallet1, ruleExecutor } = await loadFixture(deployValidRuleFixture);
-      const collateral = 12;
-      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, collateral, { value: collateral });
-      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashEth)).to.emit(ruleExecutor, "Executed")
-        .withArgs(ruleHashEth, otherWallet1.address)
-        .and.changeEtherBalances(
-          // we dont care about the balance of the swap contracts, 
-          // because that's a downstream impact we dont care about here.
-          [otherWallet1, ruleSubscriberWallet, ruleExecutor],
-          [DEFAULT_REWARD, 0, -(collateral + DEFAULT_REWARD)],
-        );
-
-      // TODO need to implement caller getting paid.
-      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashEth)).to.be.revertedWith("Rule != ACTIVE");
     });
 
     it("Should revert if anyone tries to execute the rule twice", async () => {
@@ -543,6 +544,7 @@ describe("RuleExecutor", () => {
       const { ruleHashToken, otherWallet1, ruleSubscriberWallet, ruleExecutor } = await loadFixture(deployValidRuleFixture);
       await expect(ruleExecutor.connect(otherWallet1).cancelRule(ruleHashToken)).to.be.revertedWith("onlyRuleOwner");
     });
+
     it("should not allow executing the rule or adding collateral if the rule was cancelled", async () => {
       const { ruleHashToken, otherWallet1, ruleSubscriberWallet, testToken1, ruleExecutor } = await loadFixture(deployValidRuleFixture);
       await expect(ruleExecutor.connect(ruleSubscriberWallet).cancelRule(ruleHashToken)).to.emit(ruleExecutor, "Cancelled")
