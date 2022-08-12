@@ -117,6 +117,12 @@ describe("RuleExecutor", () => {
 
   describe("Add Rule By Anyone", () => {
 
+    it("Should revert if no trigger is specified", async () => {
+    }); 
+
+    it("Should revert if no action is specified", async () => {
+    }); 
+
     it("Should revert if trigger doesnt have a callee with validateTrigger", async () => {
       const { ruleExecutor, swapUniSingleAction, ruleMakerWallet, testToken1 } = await loadFixture(deployRuleExecutorFixture);
 
