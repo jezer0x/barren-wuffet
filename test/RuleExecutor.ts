@@ -203,6 +203,10 @@ describe("RuleExecutor", () => {
         .withArgs(anyValue);
     });
 
+    it.skip("getRule should return the rule if the rule was successfully created", async () => {
+
+    });
+
     it("If trigger, action, constrains, user, block are the same, ruleHash should be the same -> making the second creation fail", async () => {
       const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1 } = await loadFixture(deployRuleExecutorFixture);
 
@@ -431,9 +435,8 @@ describe("RuleExecutor", () => {
 
     });
 
-    it.skip("should not allow adding collateral to a cancelled or executed rule", () => {
-
-    });
+    // should not allow adding collateral to a cancelled or executed rule
+    // this is handled in the rule cancellation section.
 
     it.skip("should allow adding collateral based on the first action, even if subsequent actions have different collateral requirements", () => {
 
@@ -456,6 +459,14 @@ describe("RuleExecutor", () => {
     it.skip("placeholder for multiple triggers / actions", async () => { });
     // TODO Merge this and the native rule
     // Check for single and multiple triggers, and single and multiple actions
+
+    it("should revert if anyone tries to execute a rule with no collateral", async () => {
+      const { ruleHashToken, ruleHashEth, otherWallet1, ruleExecutor } = await loadFixture(deployValidRuleFixture);
+      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.be.revertedWithoutReason;
+      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashEth)).to.be.revertedWithoutReason;
+    });
+
+
     it("Should allow anyone to execute the rule and get a reward if gas is paid, and all the triggers passes", async () => {
       // execute valid rule with collateral by someone else. and get a reward.
       const { ruleHashToken, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
