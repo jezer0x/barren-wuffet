@@ -203,7 +203,7 @@ describe("RuleExecutor", () => {
         .withArgs(anyValue);
     });
 
-    it("If trigger, action, constrains, user, block are the same, ruleHash should be the same", async () => {
+    it("If trigger, action, constrains, user, block are the same, ruleHash should be the same -> making the second creation fail", async () => {
       const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1 } = await loadFixture(deployRuleExecutorFixture);
 
       const passingTrigger = makePassingTrigger(priceTrigger.address);
@@ -213,6 +213,7 @@ describe("RuleExecutor", () => {
       ruleExecutor.addActionToWhitelist(swapUniSingleAction.address);
 
       var rule1Hash: string;
+      // TODO: 
       // This fails because the block isnt the same across these calls.
       // We need to find a way to make both txes part of the same block
       await expect(ruleExecutor.connect(ruleMakerWallet).createRule(
