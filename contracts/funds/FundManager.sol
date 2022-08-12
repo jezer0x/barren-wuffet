@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "./ISubscription.sol";
-import "./REConstants.sol";
-import "./Utils.sol";
-import "./Types.sol";
-import "./actions/IAction.sol";
-import "./TradeManager.sol";
+import "../utils/subscriptions/ISubscription.sol";
+import "../utils/Constants.sol";
+import "../utils/Utils.sol";
+import "../actions/IAction.sol";
+import "../trades/TradeManager.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";

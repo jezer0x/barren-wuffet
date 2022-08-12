@@ -2,18 +2,17 @@
 pragma solidity ^0.8.9;
 
 // Import this file to use console.log
-import "hardhat/console.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "./Utils.sol";
-import "./Types.sol";
-import "./REConstants.sol";
-import "./actions/IAction.sol";
-import "./triggers/ITrigger.sol";
-import "./IAssetIO.sol";
+import "../utils/Utils.sol";
+import "../utils/Constants.sol";
+import "../actions/IAction.sol";
+import "../triggers/ITrigger.sol";
+import "./RuleTypes.sol";
+import "../utils/IAssetIO.sol";
 
 contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -28,17 +27,18 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
     event CollateralReduced(bytes32 indexed ruleHash, uint256 amt);
 
     modifier onlyRuleOwner(bytes32 ruleHash) {
-        require(rules[ruleHash].owner == msg.sender, "You're not the owner of this rule");
+        require(rules[ruleHash].owner == msg.sender, "onlyRuleOwner");
         _;
     }
 
     modifier ruleExists(bytes32 ruleHash) {
-        require(rules[ruleHash].owner != address(0), "Rule not found!");
+        require(rules[ruleHash].owner != address(0), "Rule not found");
         _;
     }
 
     // hash -> Rule
     mapping(bytes32 => Rule) rules;
+    mapping(bytes32 => mapping(address => uint256)) rewardProviders;
 
     mapping(address => bool) whitelistedActions;
     mapping(address => bool) whitelistedTriggers;
@@ -48,13 +48,13 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
     modifier onlyWhitelist(Trigger[] calldata triggers, Action[] calldata actions) {
         if (!_disableTriggerWhitelist) {
             for (uint256 i = 0; i < triggers.length; i++) {
-                require(whitelistedTriggers[triggers[i].callee], "Unauthorized trigger");
+                require(whitelistedTriggers[triggers[i].callee], "Unauthorized Trigger");
             }
         }
 
         if (!_disableActionWhitelist) {
             for (uint256 i = 0; i < actions.length; i++) {
-                require(whitelistedActions[actions[i].callee], "Unauthorized action");
+                require(whitelistedActions[actions[i].callee], "Unauthorized Action");
             }
         }
         _;
@@ -117,7 +117,7 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
 
     function redeemBalance(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) nonReentrant {
         Rule storage rule = rules[ruleHash];
-        require(rule.status == RuleStatus.EXECUTED, "Rule not executed yet!");
+        require(rule.status == RuleStatus.EXECUTED, "Rule != executed");
         Utils._send(rule.owner, rule.outputAmount, getOutputToken(ruleHash));
         emit Redeemed(ruleHash);
     }
@@ -130,19 +130,16 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         nonReentrant
     {
         Rule storage rule = rules[ruleHash];
-        require(
-            rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE,
-            "Can't add collateral to this rule"
-        );
+        require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE, "Can't add collateral");
 
-        require(amount > 0, "amount must be > 0");
+        require(amount > 0, "amount <= 0");
 
         if (getInputToken(ruleHash) != REConstants.ETH) {
             rule.totalCollateralAmount = rule.totalCollateralAmount + amount;
             // must have been approved first
             IERC20(getInputToken(ruleHash)).safeTransferFrom(msg.sender, address(this), amount);
         } else {
-            require(amount == msg.value, "amount must be the same as msg.value if sending ETH");
+            require(amount == msg.value, "ETH: amount != msg.value");
             rule.totalCollateralAmount = rule.totalCollateralAmount + msg.value;
         }
         emit CollateralAdded(ruleHash, amount);
@@ -155,12 +152,10 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         nonReentrant
     {
         Rule storage rule = rules[ruleHash];
-        require(
-            rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE,
-            "Can't reduce collateral from this rule"
-        );
+        require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE, "Can't reduce collateral");
 
-        // Note: if totalCollateral = 0 and amount = 1; underflow will cause a revert, so we don't have to do an explicit require here.
+        // Note: if totalCollateral = 0 and amount = 1; underflow will cause a revert,
+        // so we don't have to do an explicit require here.
         rule.totalCollateralAmount = rule.totalCollateralAmount - amount;
 
         if (getInputToken(ruleHash) != REConstants.ETH) {
@@ -171,9 +166,23 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         emit CollateralReduced(ruleHash, amount);
     }
 
-    function increaseReward(bytes32 ruleHash) external payable whenNotPaused ruleExists(ruleHash) {
+    function increaseReward(bytes32 ruleHash) public payable whenNotPaused ruleExists(ruleHash) {
         Rule storage rule = rules[ruleHash];
+        require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE);
         rule.reward += msg.value;
+        rewardProviders[ruleHash][msg.sender] += msg.value;
+    }
+
+    function decreaseReward(bytes32 ruleHash) external whenNotPaused ruleExists(ruleHash) {
+        Rule storage rule = rules[ruleHash];
+        require(rule.status != RuleStatus.EXECUTED, "Reward paid");
+        uint256 balance = rewardProviders[ruleHash][msg.sender];
+        require(balance > 0);
+        rule.reward -= balance;
+        rewardProviders[ruleHash][msg.sender] = 0;
+
+        // slither-disable-next-line arbitrary-send
+        payable(msg.sender).transfer(balance);
     }
 
     function createRule(Trigger[] calldata triggers, Action[] calldata actions)
@@ -187,24 +196,21 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         bytes32 ruleHash = _getRuleHash(triggers, actions);
         Rule storage rule = rules[ruleHash];
         for (uint256 i = 0; i < triggers.length; i++) {
-            require(ITrigger(triggers[i].callee).validate(triggers[i]), "Invalid trigger provided");
+            require(ITrigger(triggers[i].callee).validate(triggers[i]), "Invalid Trigger");
             rule.triggers.push(triggers[i]);
         }
         for (uint256 i = 0; i < actions.length; i++) {
-            require(IAction(actions[i].callee).validate(actions[i]), "Invalid action provided");
+            require(IAction(actions[i].callee).validate(actions[i]), "Invalid Action");
             if (i != actions.length - 1) {
-                require(
-                    actions[i].outputToken == actions[i + 1].inputToken,
-                    "check inputToken -> outputToken chain is valid"
-                );
+                require(actions[i].outputToken == actions[i + 1].inputToken, "Invalid inputToken->outputToken");
             }
             rule.actions.push(actions[i]);
         }
-        require(rule.owner == address(0), "Rule already exists!");
+        require(rule.owner == address(0), "Duplicate Rule");
         rule.owner = msg.sender;
         rule.status = RuleStatus.INACTIVE;
         rule.outputAmount = 0;
-        rule.reward = msg.value;
+        increaseReward(ruleHash);
 
         emit Created(ruleHash);
         return ruleHash;
@@ -232,7 +238,7 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
 
     function cancelRule(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) nonReentrant {
         Rule storage rule = rules[ruleHash];
-        require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE, "Can't cancel this rule");
+        require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE, "Can't Cancel Rule");
         rule.status = RuleStatus.CANCELLED;
         Utils._send(rule.owner, rule.totalCollateralAmount, getInputToken(ruleHash));
         emit Cancelled(ruleHash);
@@ -257,9 +263,9 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
 
     function executeRule(bytes32 ruleHash) external whenNotPaused ruleExists(ruleHash) nonReentrant {
         Rule storage rule = rules[ruleHash];
-        require(rule.status == RuleStatus.ACTIVE, "Rule is not active!");
+        require(rule.status == RuleStatus.ACTIVE, "Rule != ACTIVE");
         (bool valid, uint256 triggerData) = _checkTriggers(rule.triggers);
-        require(valid, "One (or more) trigger(s) not satisfied");
+        require(valid, "Trigger != Satisfied");
 
         ActionRuntimeParams memory runtimeParams = ActionRuntimeParams({
             triggerData: triggerData,

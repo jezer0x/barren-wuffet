@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "../Types.sol";
 import "./ITrigger.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import "../Utils.sol";
+import "../utils/Utils.sol";
 
 contract TimestampTrigger is ITrigger, Ownable {
     constructor() {}

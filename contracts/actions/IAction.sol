@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "../Types.sol";
+import "./ActionTypes.sol";
 
 interface IAction {
     // unpacks action and triggerdata and creates calldata of the callee
