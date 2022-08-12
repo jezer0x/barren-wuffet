@@ -506,28 +506,28 @@ describe("RuleExecutor", () => {
   describe("Cancel rule", () => {
     it("should not allow anyone other than the rule owner to cancel the rule", async () => {
       const { ruleHashToken, otherWallet1, ruleSubscriberWallet, ruleExecutor } = await loadFixture(deployValidRuleFixture);
-      await expect(ruleExecutor.connect(otherWallet1).cancelRule(ruleHashToken)).to.be.revertedWith("You're not the owner of this rule");
+      await expect(ruleExecutor.connect(otherWallet1).cancelRule(ruleHashToken)).to.be.revertedWith("onlyRuleOwner");
     });
     it("should not allow executing the rule or adding collateral if the rule was cancelled", async () => {
       const { ruleHashToken, otherWallet1, ruleSubscriberWallet, testToken1, ruleExecutor } = await loadFixture(deployValidRuleFixture);
       await expect(ruleExecutor.connect(ruleSubscriberWallet).cancelRule(ruleHashToken)).to.emit(ruleExecutor, "Cancelled")
         .withArgs(ruleHashToken);
 
-      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.be.revertedWith("Rule is not active!");
+      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.be.revertedWith("Rule != ACTIVE");
       await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, 30);
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 30)).to.be.revertedWith("Can't add collateral to this rule");
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 30)).to.be.revertedWith("Can't add collateral");
 
     });
 
     it("should not allow cancelling rule if it's already executed", async () => {
       const { ruleHashToken, ruleSubscriberWallet, otherWallet1, ruleExecutor } = await loadFixture(deployValidRuleFixture);
       await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.emit(ruleExecutor, "Executed");
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).cancelRule(ruleHashToken)).to.be.revertedWith("Can't cancel this rule");
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).cancelRule(ruleHashToken)).to.be.revertedWith("Can't Cancel Rule");
 
     });
     [0, 1].forEach(isActive => {
-      it("should allow cancelling " + isActive ? "active" : "inactive" + " rules, and return all added collateral", async () => {
-        const { ruleHashToken, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
+      it("should allow cancelling " + (isActive ? "active" : "inactive") + " rules, and return all added collateral", async () => {
+        const { ruleHashToken, ruleSubscriberWallet, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
         const collateralAmount = 30;
         await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateralAmount);
         await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
@@ -546,6 +546,7 @@ describe("RuleExecutor", () => {
 
   describe.skip("Deactivate rule", () => {
     it.skip("Should not allow executing a rule that has been deactivated (after it was active)", () => {
+
 
     });
 
