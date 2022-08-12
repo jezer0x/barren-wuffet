@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./ISubscription.sol";
 import "./IAssetIO.sol";
-import "./RETypes.sol";
+import "./Types.sol";
 import "./REConstants.sol";
 import "./RuleExecutor.sol";
 import "./Utils.sol";
@@ -60,11 +60,11 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         ruleExecutor = RuleExecutor(ReAddr);
     }
 
-    function getInputToken(bytes32 tradeHash) external view tradeExists(tradeHash) returns (address) {
+    function getInputToken(bytes32 tradeHash) public view tradeExists(tradeHash) returns (address) {
         return ruleExecutor.getInputToken(trades[tradeHash].ruleHash);
     }
 
-    function getOutputToken(bytes32 tradeHash) external view tradeExists(tradeHash) returns (address) {
+    function getOutputToken(bytes32 tradeHash) public view tradeExists(tradeHash) returns (address) {
         return ruleExecutor.getOutputToken(trades[tradeHash].ruleHash);
     }
 
@@ -74,6 +74,7 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         uint256 collateralAmount
     ) external payable whenNotPaused nonReentrant tradeExists(tradeHash) returns (uint256) {
         Trade storage trade = trades[tradeHash];
+        _validateCollateral(tradeHash, collateralToken, collateralAmount);
         _collectCollateral(trade, collateralToken, collateralAmount);
         Subscription storage newSub = trade.subscriptions.push();
         newSub.subscriber = msg.sender;
@@ -93,7 +94,6 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         address collateralToken,
         uint256 collateralAmount
     ) private {
-        _validateCollateral(trade, collateralToken, collateralAmount);
         if (collateralToken != REConstants.ETH) {
             IERC20(collateralToken).safeTransferFrom(msg.sender, address(this), collateralAmount);
             IERC20(collateralToken).safeApprove(address(ruleExecutor), collateralAmount);
@@ -105,14 +105,15 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
     }
 
     function _validateCollateral(
-        Trade memory trade,
+        bytes32 tradeHash,
         address collateralToken,
         uint256 collateralAmount
     ) private view {
         // TODO: constraints.lockin and constraints.deadline unused in TradeManager
+        Trade storage trade = trades[tradeHash];
         Rule memory rule = ruleExecutor.getRule(trade.ruleHash);
         SubscriptionConstraints memory constraints = trade.constraints;
-        require(ruleExecutor.getInputToken(trade.ruleHash) == collateralToken, "Wrong Collateral Type");
+        require(getInputToken(tradeHash) == collateralToken, "Wrong Collateral Type");
         require(constraints.minCollateralPerSub <= collateralAmount, "Insufficient Collateral for Subscription");
         require(constraints.maxCollateralPerSub >= collateralAmount, "Max Collateral for Subscription exceeded");
         require(
@@ -169,14 +170,14 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
             if (rule.status == RuleStatus.ACTIVE && rule.totalCollateralAmount < trade.constraints.minCollateralTotal) {
                 ruleExecutor.deactivateRule(ruleHash);
             }
-            token = ruleExecutor.getInputToken(ruleHash);
+            token = getInputToken(tradeHash);
             balance = subscription.collateralAmount;
         } else if (status == TradeStatus.EXECUTED) {
-            token = ruleExecutor.getOutputToken(ruleHash);
+            token = getOutputToken(tradeHash);
             balance = (subscription.collateralAmount * rule.outputAmount) / rule.totalCollateralAmount;
             // TODO: make sure the math is fine, especially at the boundaries
         } else if (status == TradeStatus.CANCELLED) {
-            token = ruleExecutor.getInputToken(ruleHash);
+            token = getInputToken(tradeHash);
             balance = subscription.collateralAmount;
         } else {
             revert("State not covered!");

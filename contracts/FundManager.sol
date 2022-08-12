@@ -4,7 +4,7 @@ pragma solidity ^0.8.9;
 import "./ISubscription.sol";
 import "./REConstants.sol";
 import "./Utils.sol";
-import "./RETypes.sol";
+import "./Types.sol";
 import "./actions/IAction.sol";
 import "./TradeManager.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
