@@ -428,6 +428,10 @@ describe("RuleExecutor", () => {
 
     });
 
+    it.skip("should allow adding collateral based on the first action, even if subsequent actions have different collateral requirements", () => {
+
+    });
+
   });
 
   describe("Execute Rule", () => {
@@ -436,13 +440,20 @@ describe("RuleExecutor", () => {
       await expect(ruleExecutor.connect(otherWallet1).executeRule(BAD_RULE_HASH)).to.be.rejectedWith("Rule not found!");
     });
 
+    it.skip("should not execute a cancelled rule", async () => {
+
+    });
+
     it.skip("Should revert if anyone tries to execute the rule, and action fails", async () => {
       // Need to create a dummy action and make it fail
       const { ruleHashToken, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
       await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.be.rejectedWith("Action unsuccessful");
     });
 
-    it("Should allow anyone to execute the rule and get a reward if gas is paid, and the trigger passes", async () => {
+    it.skip("placeholder for multiple triggers / actions", async () => { });
+    // TODO Merge this and the native rule
+    // Check for single and multiple triggers, and single and multiple actions
+    it("Should allow anyone to execute the rule and get a reward if gas is paid, and all the triggers passes", async () => {
       // execute valid rule with collateral by someone else. and get a reward.
       const { ruleHashToken, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
       await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, 12);
@@ -489,7 +500,52 @@ describe("RuleExecutor", () => {
     });
   });
 
+  describe.skip("Cancel rule", () => {
 
+    it.skip("should not allow executing the rule or adding collateral if the rule was cancelled", async () => {
+
+    });
+
+    it.skip("should not allow cancelling rule if it's already executed", async () => {
+
+    });
+
+    it.skip("should allow cancelling deactivated rules, and return all the balance", async () => {
+
+    });
+
+  });
+
+  describe.skip("Deactivate rule", () => {
+    it.skip("Should not allow executing a rule that has been deactivated (after it was active)", () => {
+
+    });
+
+    it.skip("Should not allow deactivating a cancelled or executed rule", () => {
+
+    });
+  });
+
+  describe.skip("Activate rule", () => {
+    it.skip("Should not allow executing a rule that has been deactivated (after it was active)", () => {
+
+    });
+
+    it.skip("Should not allow deactivating a cancelled or executed rule", () => {
+
+    });
+  });
+
+  describe.skip("Check rule", () => {
+    it.skip("should return false if any trigger is invalid", async () => {
+
+    });
+
+    it.skip("should return true if all trigger are valid", async () => {
+
+    });
+
+  });
   describe.skip("Redeem Balance", () => {
     it("should allow redeeming all the collateral provided if the rule is not yet executed", async () => {
 
@@ -502,6 +558,12 @@ describe("RuleExecutor", () => {
     it("should not allow redeeming collateral if the rule was executed and used the collateral", async () => {
 
     });
+
+    it("should not allow redeeming collateral if the collateral was already redeemed", async () => {
+
+    });
+
+
 
     it("should allow redeeming collateral if the rule returned other assets", async () => {
 
