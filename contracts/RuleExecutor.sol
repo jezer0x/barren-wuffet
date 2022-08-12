@@ -13,8 +13,9 @@ import "./RETypes.sol";
 import "./REConstants.sol";
 import "./actions/IAction.sol";
 import "./triggers/ITrigger.sol";
+import "./IAssetIO.sol";
 
-contract RuleExecutor is Ownable, Pausable, ReentrancyGuard {
+contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     event Created(bytes32 indexed ruleHash);
@@ -105,10 +106,19 @@ contract RuleExecutor is Ownable, Pausable, ReentrancyGuard {
         return rules[ruleHash];
     }
 
+    function getInputToken(bytes32 ruleHash) public view ruleExists(ruleHash) returns (address) {
+        return rules[ruleHash].actions[0].inputToken;
+    }
+
+    function getOutputToken(bytes32 ruleHash) public view ruleExists(ruleHash) returns (address) {
+        Rule storage rule = rules[ruleHash];
+        return rule.actions[rule.actions.length - 1].outputToken;
+    }
+
     function redeemBalance(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) nonReentrant {
         Rule storage rule = rules[ruleHash];
         require(rule.status == RuleStatus.EXECUTED, "Rule not executed yet!");
-        Utils._send(rule.owner, rule.outputAmount, rule.actions[rule.actions.length - 1].toToken);
+        Utils._send(rule.owner, rule.outputAmount, getOutputToken(ruleHash));
         emit Redeemed(ruleHash);
     }
 
@@ -127,10 +137,10 @@ contract RuleExecutor is Ownable, Pausable, ReentrancyGuard {
 
         require(amount > 0, "amount must be > 0");
 
-        if (rule.actions[0].fromToken != REConstants.ETH) {
+        if (getInputToken(ruleHash) != REConstants.ETH) {
             rule.totalCollateralAmount = rule.totalCollateralAmount + amount;
             // must have been approved first
-            IERC20(rule.actions[0].fromToken).safeTransferFrom(msg.sender, address(this), amount);
+            IERC20(getInputToken(ruleHash)).safeTransferFrom(msg.sender, address(this), amount);
         } else {
             require(amount == msg.value, "amount must be the same as msg.value if sending ETH");
             rule.totalCollateralAmount = rule.totalCollateralAmount + msg.value;
@@ -153,8 +163,8 @@ contract RuleExecutor is Ownable, Pausable, ReentrancyGuard {
         // Note: if totalCollateral = 0 and amount = 1; underflow will cause a revert, so we don't have to do an explicit require here.
         rule.totalCollateralAmount = rule.totalCollateralAmount - amount;
 
-        if (rule.actions[0].fromToken != REConstants.ETH) {
-            IERC20(rule.actions[0].fromToken).safeTransfer(msg.sender, amount);
+        if (getInputToken(ruleHash) != REConstants.ETH) {
+            IERC20(getInputToken(ruleHash)).safeTransfer(msg.sender, amount);
         } else {
             payable(msg.sender).transfer(amount);
         }
@@ -183,7 +193,10 @@ contract RuleExecutor is Ownable, Pausable, ReentrancyGuard {
         for (uint256 i = 0; i < actions.length; i++) {
             require(IAction(actions[i].callee).validate(actions[i]), "Invalid action provided");
             if (i != actions.length - 1) {
-                require(actions[i].toToken == actions[i + 1].fromToken, "check fromToken -> toToken chain is valid");
+                require(
+                    actions[i].outputToken == actions[i + 1].inputToken,
+                    "check inputToken -> outputToken chain is valid"
+                );
             }
             rule.actions.push(actions[i]);
         }
@@ -221,7 +234,7 @@ contract RuleExecutor is Ownable, Pausable, ReentrancyGuard {
         Rule storage rule = rules[ruleHash];
         require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE, "Can't cancel this rule");
         rule.status = RuleStatus.CANCELLED;
-        Utils._send(rule.owner, rule.totalCollateralAmount, rule.actions[0].fromToken);
+        Utils._send(rule.owner, rule.totalCollateralAmount, getInputToken(ruleHash));
         emit Cancelled(ruleHash);
     }
 
@@ -256,8 +269,8 @@ contract RuleExecutor is Ownable, Pausable, ReentrancyGuard {
         uint256 output = 0;
         for (uint256 i = 0; i < rule.actions.length; i++) {
             Action storage action = rule.actions[i];
-            if (action.fromToken != REConstants.ETH) {
-                IERC20(action.fromToken).safeApprove(action.callee, runtimeParams.totalCollateralAmount);
+            if (action.inputToken != REConstants.ETH) {
+                IERC20(action.inputToken).safeApprove(action.callee, runtimeParams.totalCollateralAmount);
                 output = IAction(action.callee).perform(action, runtimeParams);
             } else {
                 output = IAction(action.callee).perform{value: runtimeParams.totalCollateralAmount}(

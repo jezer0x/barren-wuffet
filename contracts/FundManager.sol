@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract FundManager is ISubscription, Ownable, Pausable, ReentrancyGuard {
+contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     event Created(bytes32 indexed fundHash);
@@ -104,6 +104,14 @@ contract FundManager is ISubscription, Ownable, Pausable, ReentrancyGuard {
         return fundHash;
     }
 
+    function getInputToken(bytes32 fundHash) external view fundExists(fundHash) returns (address) {
+        return REConstants.ETH;
+    }
+
+    function getOutputToken(bytes32) external pure returns (address) {
+        revert("Undefined: Funds may have multiple output tokens, determined only after it's closed.");
+    }
+
     function closeFund(bytes32 fundHash) external onlyFundManager(fundHash) nonReentrant whenNotPaused {
         Fund storage fund = funds[fundHash];
         fund.status = FundStatus.CLOSED;
@@ -121,14 +129,14 @@ contract FundManager is ISubscription, Ownable, Pausable, ReentrancyGuard {
         ActionRuntimeParams calldata runtimeParams
     ) external onlyFundManager(fundHash) whenNotPaused nonReentrant returns (uint256 output) {
         Fund storage fund = funds[fundHash];
-        _decreaseAssetBalance(fund, action.fromToken, runtimeParams.totalCollateralAmount);
-        if (action.fromToken != REConstants.ETH) {
-            IERC20(action.fromToken).safeApprove(action.callee, runtimeParams.totalCollateralAmount);
+        _decreaseAssetBalance(fund, action.inputToken, runtimeParams.totalCollateralAmount);
+        if (action.inputToken != REConstants.ETH) {
+            IERC20(action.inputToken).safeApprove(action.callee, runtimeParams.totalCollateralAmount);
             output = IAction(action.callee).perform(action, runtimeParams);
         } else {
             output = IAction(action.callee).perform{value: runtimeParams.totalCollateralAmount}(action, runtimeParams);
         }
-        _increaseAssetBalance(fund, action.toToken, output);
+        _increaseAssetBalance(fund, action.outputToken, output);
     }
 
     function openPosition(
@@ -137,7 +145,7 @@ contract FundManager is ISubscription, Ownable, Pausable, ReentrancyGuard {
         uint256 amount
     ) external onlyFundManager(fundHash) whenNotPaused nonReentrant {
         Fund storage fund = funds[fundHash];
-        address inputToken = tradeManager.getCollateralToken(tradeHash);
+        address inputToken = tradeManager.getInputToken(tradeHash);
         uint256 subIdx;
         _decreaseAssetBalance(fund, inputToken, amount);
         fund.openPositions.push(Position({tradeHash: tradeHash, subIdx: subIdx}));

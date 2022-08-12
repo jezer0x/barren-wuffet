@@ -7,12 +7,13 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./ISubscription.sol";
+import "./IAssetIO.sol";
 import "./RETypes.sol";
 import "./REConstants.sol";
 import "./RuleExecutor.sol";
 import "./Utils.sol";
 
-contract TradeManager is Ownable, ISubscription, Pausable, ReentrancyGuard {
+contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     event TradeCreated(bytes32 indexed tradeHash);
@@ -59,16 +60,12 @@ contract TradeManager is Ownable, ISubscription, Pausable, ReentrancyGuard {
         ruleExecutor = RuleExecutor(ReAddr);
     }
 
-    function getCollateralToken(bytes32 tradeHash) external view tradeExists(tradeHash) returns (address) {
-        bytes32 ruleHash = trades[tradeHash].ruleHash;
-        Rule memory rule = ruleExecutor.getRule(ruleHash);
-        return rule.actions[0].fromToken;
+    function getInputToken(bytes32 tradeHash) external view tradeExists(tradeHash) returns (address) {
+        return ruleExecutor.getInputToken(trades[tradeHash].ruleHash);
     }
 
     function getOutputToken(bytes32 tradeHash) external view tradeExists(tradeHash) returns (address) {
-        bytes32 ruleHash = trades[tradeHash].ruleHash;
-        Rule memory rule = ruleExecutor.getRule(ruleHash);
-        return rule.actions[rule.actions.length - 1].toToken;
+        return ruleExecutor.getOutputToken(trades[tradeHash].ruleHash);
     }
 
     function deposit(
@@ -115,7 +112,7 @@ contract TradeManager is Ownable, ISubscription, Pausable, ReentrancyGuard {
         // TODO: constraints.lockin and constraints.deadline unused in TradeManager
         Rule memory rule = ruleExecutor.getRule(trade.ruleHash);
         SubscriptionConstraints memory constraints = trade.constraints;
-        require(rule.actions[0].fromToken == collateralToken, "Wrong Collateral Type");
+        require(ruleExecutor.getInputToken(trade.ruleHash) == collateralToken, "Wrong Collateral Type");
         require(constraints.minCollateralPerSub <= collateralAmount, "Insufficient Collateral for Subscription");
         require(constraints.maxCollateralPerSub >= collateralAmount, "Max Collateral for Subscription exceeded");
         require(
@@ -172,14 +169,14 @@ contract TradeManager is Ownable, ISubscription, Pausable, ReentrancyGuard {
             if (rule.status == RuleStatus.ACTIVE && rule.totalCollateralAmount < trade.constraints.minCollateralTotal) {
                 ruleExecutor.deactivateRule(ruleHash);
             }
-            token = rule.actions[0].fromToken;
+            token = ruleExecutor.getInputToken(ruleHash);
             balance = subscription.collateralAmount;
         } else if (status == TradeStatus.EXECUTED) {
-            token = rule.actions[rule.actions.length - 1].toToken;
+            token = ruleExecutor.getOutputToken(ruleHash);
             balance = (subscription.collateralAmount * rule.outputAmount) / rule.totalCollateralAmount;
             // TODO: make sure the math is fine, especially at the boundaries
         } else if (status == TradeStatus.CANCELLED) {
-            token = rule.actions[0].fromToken;
+            token = ruleExecutor.getInputToken(ruleHash);
             balance = subscription.collateralAmount;
         } else {
             revert("State not covered!");

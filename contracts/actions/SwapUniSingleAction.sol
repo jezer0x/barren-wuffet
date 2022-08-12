@@ -33,10 +33,10 @@ contract SwapUniSingleAction is IAction {
         uint256 amountOut;
 
         if (msg.value > 0) {
-            require(action.fromToken == REConstants.ETH, "ETH != fromToken");
+            require(action.inputToken == REConstants.ETH, "ETH != inputToken");
             params = ISwapRouter.ExactInputSingleParams({
                 tokenIn: WETH9,
-                tokenOut: action.toToken,
+                tokenOut: action.outputToken,
                 fee: 3000, // TODO: pass from action.data?
                 recipient: msg.sender,
                 deadline: block.timestamp, // need to do an immediate swap
@@ -46,17 +46,17 @@ contract SwapUniSingleAction is IAction {
             });
             amountOut = swapRouter.exactInputSingle{value: msg.value}(params);
         } else {
-            address toToken;
-            if (action.toToken == REConstants.ETH) {
-                toToken = WETH9;
+            address outputToken;
+            if (action.outputToken == REConstants.ETH) {
+                outputToken = WETH9;
             } else {
-                toToken = action.toToken;
+                outputToken = action.outputToken;
             }
-            IERC20(action.fromToken).safeTransferFrom(msg.sender, address(this), runtimeParams.totalCollateralAmount);
-            IERC20(action.fromToken).safeApprove(address(swapRouter), runtimeParams.totalCollateralAmount);
+            IERC20(action.inputToken).safeTransferFrom(msg.sender, address(this), runtimeParams.totalCollateralAmount);
+            IERC20(action.inputToken).safeApprove(address(swapRouter), runtimeParams.totalCollateralAmount);
             params = ISwapRouter.ExactInputSingleParams({
-                tokenIn: action.fromToken,
-                tokenOut: toToken,
+                tokenIn: action.inputToken,
+                tokenOut: outputToken,
                 fee: 3000, // TODO: pass from action.data?
                 recipient: msg.sender,
                 deadline: block.timestamp, // need to do an immediate swap
@@ -65,7 +65,7 @@ contract SwapUniSingleAction is IAction {
                 sqrtPriceLimitX96: 0
             });
             amountOut = swapRouter.exactInputSingle(params);
-            IERC20(action.fromToken).safeApprove(address(swapRouter), 0);
+            IERC20(action.inputToken).safeApprove(address(swapRouter), 0);
         }
 
         return (amountOut);

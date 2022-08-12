@@ -29,13 +29,13 @@ function makePassingTrigger(triggerContract: string): TriggerStruct {
 }
 
 function makeSwapAction(swapContract: string,
-  fromToken: string = ethers.constants.AddressZero,
-  toToken: string = ethers.constants.AddressZero): ActionStruct {
+  inputToken: string = ethers.constants.AddressZero,
+  outputToken: string = ethers.constants.AddressZero): ActionStruct {
   return {
     callee: swapContract,
     data: "0x0000000000000000000000000000000000000000000000000000000000000000",
-    fromToken: fromToken, // eth
-    toToken: toToken
+    inputToken: inputToken, // eth
+    outputToken: outputToken
   };
 }
 
