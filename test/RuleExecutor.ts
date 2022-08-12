@@ -118,10 +118,10 @@ describe("RuleExecutor", () => {
   describe("Add Rule By Anyone", () => {
 
     it("Should revert if no trigger is specified", async () => {
-    }); 
+    });
 
     it("Should revert if no action is specified", async () => {
-    }); 
+    });
 
     it("Should revert if trigger doesnt have a callee with validateTrigger", async () => {
       const { ruleExecutor, swapUniSingleAction, ruleMakerWallet, testToken1 } = await loadFixture(deployRuleExecutorFixture);
@@ -447,10 +447,6 @@ describe("RuleExecutor", () => {
       await expect(ruleExecutor.connect(otherWallet1).executeRule(BAD_RULE_HASH)).to.be.rejectedWith("Rule not found!");
     });
 
-    it.skip("should not execute a cancelled rule", async () => {
-
-    });
-
     it.skip("Should revert if anyone tries to execute the rule, and action fails", async () => {
       // Need to create a dummy action and make it fail
       const { ruleHashToken, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
@@ -507,18 +503,43 @@ describe("RuleExecutor", () => {
     });
   });
 
-  describe.skip("Cancel rule", () => {
+  describe("Cancel rule", () => {
+    it("should not allow anyone other than the rule owner to cancel the rule", async () => {
+      const { ruleHashToken, otherWallet1, ruleSubscriberWallet, ruleExecutor } = await loadFixture(deployValidRuleFixture);
+      await expect(ruleExecutor.connect(otherWallet1).cancelRule(ruleHashToken)).to.be.revertedWith("You're not the owner of this rule");
+    });
+    it("should not allow executing the rule or adding collateral if the rule was cancelled", async () => {
+      const { ruleHashToken, otherWallet1, ruleSubscriberWallet, testToken1, ruleExecutor } = await loadFixture(deployValidRuleFixture);
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).cancelRule(ruleHashToken)).to.emit(ruleExecutor, "Cancelled")
+        .withArgs(ruleHashToken);
 
-    it.skip("should not allow executing the rule or adding collateral if the rule was cancelled", async () => {
+      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.be.revertedWith("Rule is not active!");
+      await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, 30);
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 30)).to.be.revertedWith("Can't add collateral to this rule");
 
     });
 
-    it.skip("should not allow cancelling rule if it's already executed", async () => {
+    it("should not allow cancelling rule if it's already executed", async () => {
+      const { ruleHashToken, ruleSubscriberWallet, otherWallet1, ruleExecutor } = await loadFixture(deployValidRuleFixture);
+      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.emit(ruleExecutor, "Executed");
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).cancelRule(ruleHashToken)).to.be.revertedWith("Can't cancel this rule");
 
     });
+    [0, 1].forEach(isActive => {
+      it("should allow cancelling " + isActive ? "active" : "inactive" + " rules, and return all added collateral", async () => {
+        const { ruleHashToken, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
+        const collateralAmount = 30;
+        await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateralAmount);
+        await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
+        if (!isActive)
+          await ruleExecutor.connect(ruleSubscriberWallet).deactivateRule(ruleHashToken);
 
-    it.skip("should allow cancelling deactivated rules, and return all the balance", async () => {
-
+        await expect(ruleExecutor.connect(ruleSubscriberWallet).cancelRule(ruleHashToken)).to.emit(ruleExecutor, "Cancelled").and.changeTokenBalances(
+          testToken1,
+          [ruleSubscriberWallet, ruleExecutor],
+          [collateralAmount, -collateralAmount]
+        );
+      });
     });
 
   });
@@ -577,5 +598,17 @@ describe("RuleExecutor", () => {
     });
 
   });
+
+  describe.skip("Change Reward", () => {
+    it("should change the reward provided to the executor, if the reward is changed", async () => {
+
+    });
+
+    it("should not allow increasing the reward of the rule has been executed / is cancelled", async () => {
+
+    });
+
+  });
+
 
 });
