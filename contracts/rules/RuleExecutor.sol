@@ -13,6 +13,7 @@ import "../actions/IAction.sol";
 import "../triggers/ITrigger.sol";
 import "./RuleTypes.sol";
 import "../utils/IAssetIO.sol";
+import "../utils/whitelists/WhitelistService.sol";
 
 contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -40,56 +41,18 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
     mapping(bytes32 => Rule) rules;
     mapping(bytes32 => mapping(address => uint256)) rewardProviders;
 
-    mapping(address => bool) whitelistedActions;
-    mapping(address => bool) whitelistedTriggers;
-    bool _disableActionWhitelist = false;
-    bool _disableTriggerWhitelist = false;
+    bytes32 triggerWhitelistHash;
+    bytes32 actionWhitelistHash;
+    WhitelistService wlService;
 
     modifier onlyWhitelist(Trigger[] calldata triggers, Action[] calldata actions) {
-        if (!_disableTriggerWhitelist) {
-            for (uint256 i = 0; i < triggers.length; i++) {
-                require(whitelistedTriggers[triggers[i].callee], "Unauthorized Trigger");
-            }
+        for (uint256 i = 0; i < triggers.length; i++) {
+            require(wlService.isWhitelisted(triggerWhitelistHash, triggers[i].callee), "Unauthorized Trigger");
         }
-
-        if (!_disableActionWhitelist) {
-            for (uint256 i = 0; i < actions.length; i++) {
-                require(whitelistedActions[actions[i].callee], "Unauthorized Action");
-            }
+        for (uint256 i = 0; i < actions.length; i++) {
+            require(wlService.isWhitelisted(actionWhitelistHash, actions[i].callee), "Unauthorized Action");
         }
         _;
-    }
-
-    function addTriggerToWhitelist(address triggerAddr) external onlyOwner {
-        whitelistedTriggers[triggerAddr] = true;
-    }
-
-    function addActionToWhitelist(address actionAddr) external onlyOwner {
-        whitelistedActions[actionAddr] = true;
-    }
-
-    function removeTriggerFromWhitelist(address triggerAddr) external onlyOwner {
-        whitelistedTriggers[triggerAddr] = false;
-    }
-
-    function removeActionFromWhitelist(address actionAddr) external onlyOwner {
-        whitelistedActions[actionAddr] = false;
-    }
-
-    function disableTriggerWhitelist() external onlyOwner {
-        _disableTriggerWhitelist = true;
-    }
-
-    function disableActionWhitelist() external onlyOwner {
-        _disableActionWhitelist = true;
-    }
-
-    function enableTriggerWhitelist() external onlyOwner {
-        _disableTriggerWhitelist = false;
-    }
-
-    function enableActionWhitelist() external onlyOwner {
-        _disableActionWhitelist = false;
     }
 
     function pause() public onlyOwner {
@@ -100,7 +63,15 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         _unpause();
     }
 
-    constructor() {}
+    constructor(
+        address wlServiceAddr,
+        bytes32 trigWlHash,
+        bytes32 actionWlHash
+    ) {
+        wlService = WhitelistService(wlServiceAddr);
+        triggerWhitelistHash = trigWlHash;
+        actionWhitelistHash = actionWlHash;
+    }
 
     function getRule(bytes32 ruleHash) public view ruleExists(ruleHash) returns (Rule memory) {
         return rules[ruleHash];
@@ -177,7 +148,7 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         Rule storage rule = rules[ruleHash];
         require(rule.status != RuleStatus.EXECUTED, "Reward paid");
         uint256 balance = rewardProviders[ruleHash][msg.sender];
-        require(balance > 0);
+        require(balance > 0, "0 contribution");
         rule.reward -= balance;
         rewardProviders[ruleHash][msg.sender] = 0;
 
@@ -225,13 +196,13 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         CANCELLED => {} 
     */
     function activateRule(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) {
-        require(rules[ruleHash].status == RuleStatus.INACTIVE);
+        require(rules[ruleHash].status == RuleStatus.INACTIVE, "Can't Activate Rule");
         rules[ruleHash].status = RuleStatus.ACTIVE;
         emit Activated(ruleHash);
     }
 
     function deactivateRule(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) {
-        require(rules[ruleHash].status == RuleStatus.ACTIVE);
+        require(rules[ruleHash].status == RuleStatus.ACTIVE, "Can't Deactivate Rule");
         rules[ruleHash].status = RuleStatus.INACTIVE;
         emit Deactivated(ruleHash);
     }

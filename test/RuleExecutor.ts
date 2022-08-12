@@ -6,7 +6,7 @@ import { TriggerStruct, ActionStruct } from '../typechain-types/contracts/rules/
 import { assert } from "console";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { int } from "hardhat/internal/core/params/argumentTypes";
-import { Contract } from "ethers";
+import { Contract, Bytes } from "ethers";
 
 
 const GT = 0;
@@ -51,10 +51,10 @@ function makeSwapAction(swapContract: string,
 
 }
 
-async function createRule(_ruleExecutor: Contract, triggers: TriggerStruct[],
+async function createRule(_whitelistService: Contract, trigWlHash: Bytes, actWlHash: Bytes, _ruleExecutor: Contract, triggers: TriggerStruct[],
   actions: ActionStruct[], wallet: SignerWithAddress, activate: boolean = false): Promise<string> {
-  triggers.map(t => _ruleExecutor.addTriggerToWhitelist(t.callee));
-  actions.map(a => _ruleExecutor.addActionToWhitelist(a.callee));
+  triggers.map(t => _whitelistService.addToWhitelist(trigWlHash, t.callee));
+  actions.map(a => _whitelistService.addToWhitelist(actWlHash, a.callee));
 
   // send 1 eth as reward.
   const tx = await _ruleExecutor.connect(wallet).createRule(triggers, actions, { value: DEFAULT_REWARD });
@@ -78,8 +78,15 @@ describe("RuleExecutor", () => {
     // Contracts are deployed using the first signer/account by default
     const [ownerWallet, ruleMakerWallet, ruleSubscriberWallet, otherWallet1] = await ethers.getSigners();
 
+    const WhitelistService = await ethers.getContractFactory("WhitelistService");
+    const whitelistService = await WhitelistService.deploy();
+    await whitelistService.createWhitelist("triggers");
+    const trigWlHash = await whitelistService.getWhitelistHash(ownerWallet.address, "triggers");
+    await whitelistService.createWhitelist("actions");
+    const actWlHash = await whitelistService.getWhitelistHash(ownerWallet.address, "actions");
+
     const RuleExecutor = await ethers.getContractFactory("RuleExecutor");
-    const ruleExecutor = await RuleExecutor.deploy();
+    const ruleExecutor = await RuleExecutor.deploy(whitelistService.address, trigWlHash, actWlHash);
 
     const TestSwapRouter = await ethers.getContractFactory("TestSwapRouter");
     const testSwapRouter = await TestSwapRouter.deploy();
@@ -105,7 +112,7 @@ describe("RuleExecutor", () => {
 
     return {
       ruleExecutor, priceTrigger, swapUniSingleAction, testOracleEth, testOracleUni,
-      testToken1, testToken2, ownerWallet, ruleMakerWallet, ruleSubscriberWallet, otherWallet1
+      testToken1, testToken2, ownerWallet, ruleMakerWallet, ruleSubscriberWallet, otherWallet1, whitelistService, trigWlHash, actWlHash
     };
   }
 
@@ -127,13 +134,14 @@ describe("RuleExecutor", () => {
     });
 
     it("Should revert if trigger doesnt have a callee with validateTrigger", async () => {
-      const { ruleExecutor, swapUniSingleAction, ruleMakerWallet, testToken1 } = await loadFixture(deployRuleExecutorFixture);
+      const { ruleExecutor, swapUniSingleAction, ruleMakerWallet, testToken1, whitelistService, trigWlHash, actWlHash } = await loadFixture(deployRuleExecutorFixture);
 
       const badTrigger = makePassingTrigger(ethers.constants.AddressZero); // passing trigger with bad address
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
 
-      ruleExecutor.disableTriggerWhitelist();
-      ruleExecutor.disableActionWhitelist();
+
+      whitelistService.disableWhitelist(trigWlHash);
+      whitelistService.disableWhitelist(actWlHash);
       await expect(ruleExecutor.connect(ruleMakerWallet).createRule([badTrigger], [executableAction])).to.be.revertedWithoutReason;
     });
 
@@ -148,12 +156,12 @@ describe("RuleExecutor", () => {
 
 
     it("Should revert if action doesnt have a callee with validate", async () => {
-      const { ruleExecutor, priceTrigger, ruleMakerWallet, testToken1 } = await loadFixture(deployRuleExecutorFixture);
+      const { ruleExecutor, priceTrigger, ruleMakerWallet, testToken1, whitelistService, trigWlHash, actWlHash } = await loadFixture(deployRuleExecutorFixture);
 
       const passingTrigger = makePassingTrigger(priceTrigger.address);
       const badAction = makeSwapAction(ethers.constants.AddressZero, testToken1.address);
-      ruleExecutor.disableTriggerWhitelist();
-      ruleExecutor.disableActionWhitelist();
+      whitelistService.disableWhitelist(trigWlHash);
+      whitelistService.disableWhitelist(actWlHash);
 
       await expect(ruleExecutor.connect(ruleMakerWallet).createRule([passingTrigger], [badAction])).to.be.revertedWithoutReason();
 
@@ -182,10 +190,10 @@ describe("RuleExecutor", () => {
     });
 
     it("Should revert if action has not been whitelisted", async () => {
-      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1 } = await loadFixture(deployRuleExecutorFixture);
+      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1, whitelistService, trigWlHash } = await loadFixture(deployRuleExecutorFixture);
 
       const passingTrigger = makeFailingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
-      ruleExecutor.addTriggerToWhitelist(priceTrigger.address);
+      whitelistService.addToWhitelist(trigWlHash, priceTrigger.address);
 
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
 
@@ -193,13 +201,13 @@ describe("RuleExecutor", () => {
     });
 
     it("Should emit Created event, and consume ETH reward if Trigger and Action are valid", async () => {
-      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1 } = await loadFixture(deployRuleExecutorFixture);
+      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1, whitelistService, trigWlHash, actWlHash } = await loadFixture(deployRuleExecutorFixture);
 
       const passingTrigger = makeFailingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
 
-      ruleExecutor.addTriggerToWhitelist(priceTrigger.address);
-      ruleExecutor.addActionToWhitelist(swapUniSingleAction.address);
+      whitelistService.addToWhitelist(trigWlHash, priceTrigger.address);
+      whitelistService.addToWhitelist(actWlHash, swapUniSingleAction.address)
 
       const reward = 20;
       await expect(ruleExecutor.connect(ruleMakerWallet).createRule(
@@ -216,13 +224,15 @@ describe("RuleExecutor", () => {
     });
 
     it("If trigger, action, constrains, user, block are the same, ruleHash should be the same -> making the second creation fail", async () => {
-      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1 } = await loadFixture(deployRuleExecutorFixture);
+      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1, whitelistService, trigWlHash, actWlHash } = await loadFixture(deployRuleExecutorFixture);
 
       const passingTrigger = makePassingTrigger(priceTrigger.address);
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
 
-      ruleExecutor.addTriggerToWhitelist(priceTrigger.address);
-      ruleExecutor.addActionToWhitelist(swapUniSingleAction.address);
+
+      whitelistService.addToWhitelist(trigWlHash, priceTrigger.address);
+      whitelistService.addToWhitelist(actWlHash, swapUniSingleAction.address)
+
 
       var rule1Hash: string;
       // TODO: 
@@ -239,15 +249,15 @@ describe("RuleExecutor", () => {
 
 
     it("Should be able to create multiple unique rules with the same trigger, action, constraints and a different user", async () => {
-      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, otherWallet1, testToken1, ruleSubscriberWallet } = await loadFixture(deployRuleExecutorFixture);
+      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, otherWallet1, testToken1, ruleSubscriberWallet, whitelistService, trigWlHash, actWlHash } = await loadFixture(deployRuleExecutorFixture);
 
       const ruleMakerWallet2 = otherWallet1;
 
       const passingTrigger = makePassingTrigger(priceTrigger.address);
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
 
-      ruleExecutor.addTriggerToWhitelist(priceTrigger.address);
-      ruleExecutor.addActionToWhitelist(swapUniSingleAction.address);
+      whitelistService.addToWhitelist(trigWlHash, priceTrigger.address);
+      whitelistService.addToWhitelist(actWlHash, swapUniSingleAction.address)
 
       var rule1Hash: string;
       await expect(ruleExecutor.connect(ruleMakerWallet).createRule(
@@ -263,11 +273,11 @@ describe("RuleExecutor", () => {
 
   describe("Check Rule", () => {
     it("should return false if the checkTrigger on the rule denoted by ruleHash returns false", async () => {
-      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, otherWallet1, testToken1 } = await loadFixture(deployRuleExecutorFixture);
+      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, otherWallet1, testToken1, whitelistService, trigWlHash, actWlHash } = await loadFixture(deployRuleExecutorFixture);
 
       const passingTrigger = makeFailingTrigger(priceTrigger.address);
       const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, ethers.constants.AddressZero);
-      const ruleHash = await createRule(ruleExecutor, [passingTrigger], [tokenSwapAction], ruleMakerWallet);
+      const ruleHash = await createRule(whitelistService, trigWlHash, actWlHash, ruleExecutor, [passingTrigger], [tokenSwapAction], ruleMakerWallet);
 
       expect(await ruleExecutor.connect(otherWallet1).checkRule(ruleHash)).to.equal(false);
 
@@ -280,11 +290,11 @@ describe("RuleExecutor", () => {
     });
 
     it("should return true if the checkTrigger on the callee denoted by ruleHash returns true", async () => {
-      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, otherWallet1, testToken1 } = await loadFixture(deployRuleExecutorFixture);
+      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, otherWallet1, testToken1, whitelistService, trigWlHash, actWlHash } = await loadFixture(deployRuleExecutorFixture);
 
       const passingTrigger = makePassingTrigger(priceTrigger.address);
       const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, ethers.constants.AddressZero);
-      const ruleHash = await createRule(ruleExecutor, [passingTrigger], [tokenSwapAction], ruleMakerWallet);
+      const ruleHash = await createRule(whitelistService, trigWlHash, actWlHash, ruleExecutor, [passingTrigger], [tokenSwapAction], ruleMakerWallet);
 
       expect(await ruleExecutor.connect(otherWallet1).checkRule(ruleHash)).to.equal(true);
     });
@@ -295,11 +305,11 @@ describe("RuleExecutor", () => {
       // It appears that this rule has to be placed before the deployValidRuleFixture.
       // since it calls the deployRuleExecutorFixture
       // It causes all tests after it to fail, if it is located after tests that use deployValidRuleFixture
-      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, otherWallet1, testToken1 } = await loadFixture(deployRuleExecutorFixture);
+      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, otherWallet1, testToken1, whitelistService, trigWlHash, actWlHash } = await loadFixture(deployRuleExecutorFixture);
 
       const passingTrigger = makeFailingTrigger(priceTrigger.address);
       const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, ethers.constants.AddressZero);
-      const ruleHash = await createRule(ruleExecutor, [passingTrigger], [tokenSwapAction], ruleMakerWallet, true);
+      const ruleHash = await createRule(whitelistService, trigWlHash, actWlHash, ruleExecutor, [passingTrigger], [tokenSwapAction], ruleMakerWallet, true);
 
 
       await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHash)).to.be.rejectedWith("Trigger != Satisfied");
@@ -308,17 +318,17 @@ describe("RuleExecutor", () => {
   });
 
   async function deployValidRuleFixture() {
-    const { ruleExecutor, swapUniSingleAction, priceTrigger, ownerWallet, ruleMakerWallet, ruleSubscriberWallet, otherWallet1, testToken1 } = await loadFixture(deployRuleExecutorFixture);
+    const { ruleExecutor, swapUniSingleAction, priceTrigger, ownerWallet, ruleMakerWallet, ruleSubscriberWallet, otherWallet1, testToken1, whitelistService, trigWlHash, actWlHash } = await loadFixture(deployRuleExecutorFixture);
 
     const passingTrigger = makePassingTrigger(priceTrigger.address);
     const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, ethers.constants.AddressZero);
     const ethSwapAction = makeSwapAction(swapUniSingleAction.address, ethers.constants.AddressZero, testToken1.address);
 
-    ruleExecutor.addTriggerToWhitelist(priceTrigger.address);
-    ruleExecutor.addActionToWhitelist(swapUniSingleAction.address);
+    whitelistService.addToWhitelist(trigWlHash, priceTrigger.address);
+    whitelistService.addToWhitelist(actWlHash, swapUniSingleAction.address)
 
-    const ruleHashEth = await createRule(ruleExecutor, [passingTrigger], [ethSwapAction], ruleSubscriberWallet, true);
-    const ruleHashToken = await createRule(ruleExecutor, [passingTrigger], [tokenSwapAction], ruleSubscriberWallet, true);
+    const ruleHashEth = await createRule(whitelistService, trigWlHash, actWlHash, ruleExecutor, [passingTrigger], [ethSwapAction], ruleSubscriberWallet, true);
+    const ruleHashToken = await createRule(whitelistService, trigWlHash, actWlHash, ruleExecutor, [passingTrigger], [tokenSwapAction], ruleSubscriberWallet, true);
 
     await testToken1.transfer(ruleSubscriberWallet.address, 200);
     return { ruleHashEth, ruleHashToken, ruleExecutor, ownerWallet, ruleSubscriberWallet, otherWallet1, testToken1 };
