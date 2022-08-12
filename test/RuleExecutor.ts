@@ -641,7 +641,7 @@ describe("RuleExecutor", () => {
           await ruleExecutor.connect(otherWallet1).executeRule(ruleHashEth);
         }
 
-        await expect(ruleExecutor.connect(ruleSubscriberWallet).deactivateRule(ruleHashToken)).to.be.revertedWithoutReason;
+        await expect(ruleExecutor.connect(ruleSubscriberWallet).deactivateRule(ruleHashToken)).to.be.revertedWith("Can't Deactivate Rule");
         await expect(ruleExecutor.connect(ruleSubscriberWallet).activateRule(ruleHashEth)).to.be.revertedWithoutReason;
 
       });
