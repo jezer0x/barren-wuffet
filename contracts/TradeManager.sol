@@ -112,6 +112,7 @@ contract TradeManager is Ownable, ISubscription, Pausable, ReentrancyGuard {
         address collateralToken,
         uint256 collateralAmount
     ) private view {
+        // TODO: constraints.lockin and constraints.deadline unused in TradeManager
         Rule memory rule = ruleExecutor.getRule(trade.ruleHash);
         SubscriptionConstraints memory constraints = trade.constraints;
         require(rule.actions[0].fromToken == collateralToken, "Wrong Collateral Type");
@@ -207,7 +208,7 @@ contract TradeManager is Ownable, ISubscription, Pausable, ReentrancyGuard {
         Trigger[] calldata triggers,
         Action[] calldata actions,
         SubscriptionConstraints calldata constraints
-    ) external payable whenNotPaused returns (bytes32) {
+    ) external payable nonReentrant whenNotPaused returns (bytes32) {
         // Note: Rule is created through TradeManager so that TradeManager is rule.owner
         bytes32 ruleHash = ruleExecutor.createRule{value: msg.value}(triggers, actions);
         bytes32 tradeHash = getTradeHash(msg.sender, ruleHash);
