@@ -542,37 +542,83 @@ describe("RuleExecutor", () => {
         const collateralAmount = 30;
         await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateralAmount);
         await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
-        if (!isActive)
+        if (!isActive) {
           await ruleExecutor.connect(ruleSubscriberWallet).deactivateRule(ruleHashToken);
+        } else {
+          // we activate the rules in the fixture so we dont need to explicitly activate them here.
+          // await ruleExecutor.connect(ruleSubscriberWallet).activateRule(ruleHashToken);
+        }
 
-        await expect(ruleExecutor.connect(ruleSubscriberWallet).cancelRule(ruleHashToken)).to.emit(ruleExecutor, "Cancelled").and.changeTokenBalances(
-          testToken1,
-          [ruleSubscriberWallet, ruleExecutor],
-          [collateralAmount, -collateralAmount]
-        );
+        await expect(ruleExecutor.connect(ruleSubscriberWallet).cancelRule(ruleHashToken)).to
+          .emit(ruleExecutor, "Cancelled").withArgs(ruleHashToken).and
+          .changeTokenBalances(
+            testToken1,
+            [ruleSubscriberWallet, ruleExecutor],
+            [collateralAmount, -collateralAmount]
+          );
       });
     });
 
   });
 
-  describe.skip("Deactivate rule", () => {
-    it.skip("Should not allow executing a rule that has been deactivated (after it was active)", () => {
+  describe("Activate / Deactivate rule", () => {
+    it("Should not allow executing a rule that has been deactivated (after it was active)", async () => {
+      const { ruleHashToken, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
+      const collateralAmount = 30;
+      await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateralAmount);
+      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
 
-
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).deactivateRule(ruleHashToken)).to
+        .emit(ruleExecutor, "Deactivated").withArgs(ruleHashToken);
+      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.be.revertedWith("Rule != ACTIVE");
     });
 
-    it.skip("Should not allow deactivating a cancelled or executed rule", () => {
+    it("Should allow executing a rule that has been activated (after it was deactivated)", async () => {
+      const { ruleHashToken, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
+      const collateralAmount = 30;
+      await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateralAmount);
+      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
 
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).deactivateRule(ruleHashToken)).to
+        .emit(ruleExecutor, "Deactivated").withArgs(ruleHashToken);
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).activateRule(ruleHashToken)).to
+        .emit(ruleExecutor, "Activated").withArgs(ruleHashToken);
+
+      // check that the rule got executed correctly.
+      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.emit(ruleExecutor, "Executed")
+        .withArgs(ruleHashToken, otherWallet1.address)
+        .and.changeTokenBalances(
+          testToken1,
+          [otherWallet1, ruleSubscriberWallet, ruleExecutor],
+          [0, 0, -collateralAmount],
+        );
     });
-  });
 
-  describe.skip("Activate rule", () => {
-    it.skip("Should not allow executing a rule that has been deactivated (after it was active)", () => {
 
-    });
+    [0, 1].forEach((isCancelled) => {
+      it("Should not allow activating / deactivating a " + (isCancelled ? "cancelled" : "executed") + " rule", async () => {
+        const { ruleHashToken, ruleHashEth, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
 
-    it.skip("Should not allow deactivating a cancelled or executed rule", () => {
+        // deactivate the eth rule, so we can try activating it later.
+        if (isCancelled) {
+          await ruleExecutor.connect(ruleSubscriberWallet).cancelRule(ruleHashToken);
+          await ruleExecutor.connect(ruleSubscriberWallet).deactivateRule(ruleHashEth);
+          // Eth should not be "activate"-able.
+          await ruleExecutor.connect(ruleSubscriberWallet).cancelRule(ruleHashEth);
+          // Now Eth should not be "activate"-able.
+        } else {
+          await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, 50);
+          await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 50);
+          await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, 50, { value: 50 });
+          await ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken);
+          // No point deactivating eth here, because then we wont be able to execute it.
+          await ruleExecutor.connect(otherWallet1).executeRule(ruleHashEth);
+        }
 
+        await expect(ruleExecutor.connect(ruleSubscriberWallet).deactivateRule(ruleHashToken)).to.be.revertedWithoutReason;
+        await expect(ruleExecutor.connect(ruleSubscriberWallet).activateRule(ruleHashEth)).to.be.revertedWithoutReason;
+
+      });
     });
   });
 
