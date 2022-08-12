@@ -19,6 +19,8 @@ const ETH_UNI_PRICE = (ETH_PRICE / UNI_PRICE);
 
 const BAD_RULE_HASH = "0x" + "1234".repeat(16);
 
+const DEFAULT_REWARD = 1;
+
 function makePassingTrigger(triggerContract: string): TriggerStruct {
   return {
     op: GT,
@@ -54,7 +56,8 @@ async function createRule(_ruleExecutor: Contract, triggers: TriggerStruct[],
   triggers.map(t => _ruleExecutor.addTriggerToWhitelist(t.callee));
   actions.map(a => _ruleExecutor.addActionToWhitelist(a.callee));
 
-  const tx = await _ruleExecutor.connect(wallet).createRule(triggers, actions);
+  // send 1 eth as reward.
+  const tx = await _ruleExecutor.connect(wallet).createRule(triggers, actions, { value: DEFAULT_REWARD });
   const receipt2 = await tx.wait();
 
   const ruleHash = receipt2.events?.find(((x: { event: string; }) => x.event == "Created"))?.args?.ruleHash
@@ -189,7 +192,7 @@ describe("RuleExecutor", () => {
       await expect(ruleExecutor.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction])).to.be.revertedWith("Unauthorized Action");
     });
 
-    it("Should emit Created event if Trigger and Action are valid", async () => {
+    it("Should emit Created event, and consume ETH reward if Trigger and Action are valid", async () => {
       const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1 } = await loadFixture(deployRuleExecutorFixture);
 
       const passingTrigger = makeFailingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
@@ -198,9 +201,14 @@ describe("RuleExecutor", () => {
       ruleExecutor.addTriggerToWhitelist(priceTrigger.address);
       ruleExecutor.addActionToWhitelist(swapUniSingleAction.address);
 
+      const reward = 20;
       await expect(ruleExecutor.connect(ruleMakerWallet).createRule(
-        [passingTrigger], [executableAction])).to.emit(ruleExecutor, "Created")
-        .withArgs(anyValue);
+        [passingTrigger], [executableAction], { value: reward })).to.emit(ruleExecutor, "Created")
+        .withArgs(anyValue).and
+        .changeEtherBalances(
+          [ruleExecutor, ruleMakerWallet],
+          [reward, -reward]
+        );
     });
 
     it.skip("getRule should return the rule if the rule was successfully created", async () => {
@@ -470,14 +478,19 @@ describe("RuleExecutor", () => {
     it("Should allow anyone to execute the rule and get a reward if gas is paid, and all the triggers passes", async () => {
       // execute valid rule with collateral by someone else. and get a reward.
       const { ruleHashToken, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
-      await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, 12);
-      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 12);
+      const collateral = 12;
+      await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateral);
+      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateral);
       await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.emit(ruleExecutor, "Executed")
         .withArgs(ruleHashToken, otherWallet1.address)
         .and.changeTokenBalances(
           testToken1,
-          [otherWallet1, ruleExecutor],
-          [0, -12],
+          [otherWallet1, ruleSubscriberWallet, ruleExecutor],
+          [0, 0, -collateral],
+        ).and.changeEtherBalances(
+          // this should reflect the rewarD.
+          [otherWallet1, ruleSubscriberWallet, ruleExecutor],
+          [DEFAULT_REWARD, 0, -DEFAULT_REWARD],
         );
 
       // TODO need to implement caller getting paid.
@@ -487,14 +500,15 @@ describe("RuleExecutor", () => {
     it("Should allow anyone to execute the rule once (native) and get a reward if gas is paid, and the trigger passes", async () => {
       // execute valid rule with collateral by someone else. and get a reward.
       const { ruleHashEth, ruleSubscriberWallet, otherWallet1, ruleExecutor } = await loadFixture(deployValidRuleFixture);
-      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, 12, { value: 12 });
+      const collateral = 12;
+      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, collateral, { value: collateral });
       await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashEth)).to.emit(ruleExecutor, "Executed")
         .withArgs(ruleHashEth, otherWallet1.address)
         .and.changeEtherBalances(
           // we dont care about the balance of the swap contracts, 
           // because that's a downstream impact we dont care about here.
           [otherWallet1, ruleSubscriberWallet, ruleExecutor],
-          [0, 0, -12],
+          [DEFAULT_REWARD, 0, -(collateral + DEFAULT_REWARD)],
         );
 
       // TODO need to implement caller getting paid.
