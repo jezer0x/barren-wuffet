@@ -353,7 +353,7 @@ describe("RuleExecutor", () => {
 
   describe("Add / Reduce Collateral", function () {
 
-    it("should revert if ruleHash doesnt exist", async () => {
+    it("should revert if add / reduce collateral is called on a non-existent ruleHash", async () => {
       const { ruleSubscriberWallet, ruleExecutor } = await loadFixture(deployValidRuleFixture);
       await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(BAD_RULE_HASH, 1000)).to.be.revertedWithoutReason;
       await expect(ruleExecutor.connect(ruleSubscriberWallet).reduceCollateral(BAD_RULE_HASH, 1000)).to.be.revertedWithoutReason;
@@ -377,11 +377,20 @@ describe("RuleExecutor", () => {
       await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, balance.add(1))).to.be.revertedWith("ERC20: transfer amount exceeds balance");
     });
 
-    it("should not allow anyone other than rule owner to add collateral to a rule", async () => {
-      const { ruleHashEth, ruleHashToken, ruleExecutor, otherWallet1 } = await loadFixture(deployValidRuleFixture);
-      await expect(ruleExecutor.connect(otherWallet1).addCollateral(ruleHashEth, 12, { value: 3 })).to.be.revertedWith("onlyRuleOwner");
+    it("should not allow anyone other than rule owner to add / reduce collateral to a rule", async () => {
+      const { ruleHashEth, ruleHashToken, ruleExecutor, testToken1, ruleSubscriberWallet, otherWallet1 } = await loadFixture(deployValidRuleFixture);
+      const collateralAmount = 12;
+      await expect(ruleExecutor.connect(otherWallet1).addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount })).to.be.revertedWith("onlyRuleOwner");
 
-      await expect(ruleExecutor.connect(otherWallet1).reduceCollateral(ruleHashToken, 12)).to.be.revertedWith("onlyRuleOwner");
+      // this should work
+      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
+      // now that there is some collateral, we confirm  that it cant be removed to a different user.
+      await expect(ruleExecutor.connect(otherWallet1).reduceCollateral(ruleHashEth, collateralAmount)).to.be.revertedWith("onlyRuleOwner");
+
+      // check for tokens as well. 
+      await testToken1.connect(otherWallet1).approve(ruleExecutor.address, collateralAmount);
+      await expect(ruleExecutor.connect(otherWallet1).addCollateral(ruleHashToken, collateralAmount)).to.be.revertedWith("onlyRuleOwner");
+      await expect(ruleExecutor.connect(otherWallet1).reduceCollateral(ruleHashToken, collateralAmount)).to.be.revertedWith("onlyRuleOwner");
     });
 
     it("should revert if collateral amount does not match msg.value for native actions", async () => {
@@ -553,6 +562,18 @@ describe("RuleExecutor", () => {
       await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.be.revertedWith("Rule != ACTIVE");
 
     });
+
+    it("Should not allow adding / removing collateral after a rule is executed", async () => {
+      const { ruleHashToken, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
+      const collateralAmount = 15;
+      await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateralAmount);
+      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
+      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken)).to.emit(ruleExecutor, "Executed")
+        .withArgs(ruleHashToken, otherWallet1.address);
+
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).reduceCollateral(ruleHashToken, collateralAmount)).to.be.revertedWith("Can't reduce collateral");
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 1)).to.be.revertedWith("Can't add collateral");
+    });
   });
 
   describe("Cancel rule", () => {
@@ -665,25 +686,19 @@ describe("RuleExecutor", () => {
   });
 
   describe.skip("Redeem Balance", () => {
-    it("should allow redeeming all the collateral provided if the rule is not yet executed", async () => {
+    it("should not allow redeeming balance if the rule is not yet executed", async () => {
 
     });
 
-    it("should not allow redeeming collateral if no collateral has been provided by the redeemer", async () => {
-      // provide collateral by someone else.
-    });
-
-    it("should not allow redeeming collateral if the rule was executed and used the collateral", async () => {
+    it("should redeem all the balance if the rule was executed and returned a token", async () => {
 
     });
 
-    it("should not allow redeeming collateral if the collateral was already redeemed", async () => {
+    it("should redeem all the balance if the rule was executed and returned native", async () => {
 
     });
 
-
-
-    it("should allow redeeming collateral if the rule returned other assets", async () => {
+    it("Should redeem balance only from the final action if multiple actions were executed", async () => {
 
     });
 
