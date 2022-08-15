@@ -73,6 +73,11 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
         _;
     }
 
+    modifier onlyDeployedFund(bytes32 fundHash) {
+        require(getStatus(fundHash) == FundStatus.DEPLOYED);
+        _;
+    }
+
     function getFundHash(address manager, string memory name) public pure returns (bytes32) {
         return keccak256(abi.encode(manager, name));
     }
@@ -85,19 +90,20 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
         _unpause();
     }
 
-    function createFund(string calldata name, SubscriptionConstraints calldata constraints)
-        external
-        whenNotPaused
-        returns (bytes32)
-    {
+    function createFund(
+        string calldata name,
+        SubscriptionConstraints calldata constraints,
+        uint256 rewardPercentage
+    ) external whenNotPaused returns (bytes32) {
         bytes32 fundHash = getFundHash(msg.sender, name);
         require(funds[fundHash].manager == address(0), "Fund already exists!");
         Fund storage fund = funds[fundHash];
         fund.fundHash = fundHash;
         fund.manager = msg.sender;
         fund.name = name;
-        fund.status = FundStatus.RAISING;
         fund.constraints = constraints;
+
+        // TODO: take a platform fee here
 
         emit Created(fundHash);
         return fundHash;
@@ -112,12 +118,17 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
     }
 
     function closeFund(bytes32 fundHash) external onlyFundManager(fundHash) nonReentrant whenNotPaused {
+        _closeFund(fundHash);
+    }
+
+    function _closeFund(bytes32 fundHash) internal {
         Fund storage fund = funds[fundHash];
-        fund.status = FundStatus.CLOSED;
 
         for (uint256 i = 0; i < fund.openPositions.length; i++) {
             _closePosition(fundHash, i);
         }
+
+        // TODO: potentially swap back all assets to 1 terminal asset
 
         emit Closed(fundHash);
     }
@@ -126,7 +137,14 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
         bytes32 fundHash,
         Action calldata action,
         ActionRuntimeParams calldata runtimeParams
-    ) external onlyFundManager(fundHash) whenNotPaused nonReentrant returns (uint256 output) {
+    )
+        external
+        onlyDeployedFund(fundHash)
+        onlyFundManager(fundHash)
+        whenNotPaused
+        nonReentrant
+        returns (uint256 output)
+    {
         Fund storage fund = funds[fundHash];
         _decreaseAssetBalance(fund, action.inputToken, runtimeParams.totalCollateralAmount);
         if (action.inputToken != REConstants.ETH) {
@@ -142,7 +160,7 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
         bytes32 fundHash,
         bytes32 tradeHash,
         uint256 amount
-    ) external onlyFundManager(fundHash) whenNotPaused nonReentrant {
+    ) external onlyDeployedFund(fundHash) onlyFundManager(fundHash) whenNotPaused nonReentrant {
         Fund storage fund = funds[fundHash];
         address inputToken = tradeManager.getInputToken(tradeHash);
         uint256 subIdx;
@@ -168,6 +186,7 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
 
     function _closePosition(bytes32 fundHash, uint256 openPositionIdx) private {
         Fund storage fund = funds[fundHash];
+        // Following line should blow up if openPosIdx does not exist
         Position storage position = fund.openPositions[openPositionIdx];
         bytes32 tradeHash = position.tradeHash;
         uint256 subIdx = position.subIdx;
@@ -229,7 +248,7 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
         Subscription storage newSub = fund.subscriptions.push();
         newSub.subscriber = msg.sender;
         newSub.status = SubscriptionStatus.ACTIVE;
-        // TODO: take a fee here
+
         newSub.collateralAmount = collateralAmount;
         _increaseAssetBalance(fund, collateralToken, collateralAmount);
         fund.totalCollateral += collateralAmount;
@@ -252,8 +271,8 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
         if (fund.closed) {
             return FundStatus.CLOSED;
         } else if (block.timestamp >= fund.constraints.lockin) {
-            //TODO: icky!
-            fund.closed = true;
+            //TODO: icky mutation!
+            _closeFund(fundHash);
             return FundStatus.CLOSED;
         } else if (
             fund.totalCollateral >= fund.constraints.maxCollateralTotal || block.timestamp >= fund.constraints.deadline
@@ -295,11 +314,16 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
             balances[0] = subscription.collateralAmount;
             return (tokens, balances);
         } else if (status == FundStatus.CLOSED) {
+            // TODO:
+            // Fundmanager can collect rewards by opening and closing and not doing anything with the funds.
             address[] memory tokens = new address[](fund.assets.length);
             uint256[] memory balances = new uint256[](fund.assets.length);
+
+            // TODO: potentially won't need the loop anymore if closing == swap back to 1 asset
             for (uint256 i = 0; i < fund.assets.length; i++) {
                 tokens[i] = fund.assets[i];
                 balances[i] = _getShares(fundHash, subscriptionIdx, fund.assets[i]);
+                // TODO: keep rewardPercentage here for fundManager.
                 emit Withdraw(fundHash, subscriptionIdx, tokens[i], balances[i]);
                 Utils._send(subscription.subscriber, balances[i], tokens[i]);
             }
@@ -309,5 +333,10 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
         } else {
             revert("Should never reach this state!");
         }
+    }
+
+    function withdrawReward(bytes32 fundHash) public onlyFundManager(fundHash) {
+        require(getStatus(fundHash) == FundStatus.CLOSED, "Fund not closed");
+        // TODO: get rewards from each asset in the fund.
     }
 }
