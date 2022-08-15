@@ -2,11 +2,11 @@ import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { TriggerStruct, ActionStruct } from '../typechain-types/contracts/RuleExecutor';
+import { TriggerStruct, ActionStruct } from '../typechain-types/contracts/rules/RuleExecutor';
 import { assert } from "console";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { int } from "hardhat/internal/core/params/argumentTypes";
-import { Contract } from "ethers";
+import { Contract, Bytes} from "ethers";
 
 
 const GT = 0;
@@ -39,10 +39,10 @@ function makeSwapAction(swapContract: string,
   };
 }
 
-async function createRule(_ruleExecutor: Contract, triggers: TriggerStruct[],
+async function createRule(_whitelistService: Contract, trigWlHash: Bytes , actWlHash: Bytes,  _ruleExecutor: Contract, triggers: TriggerStruct[],
   actions: ActionStruct[], wallet: SignerWithAddress, activate: boolean = false): Promise<string> {
-  triggers.map(t => _ruleExecutor.addTriggerToWhitelist(t.callee));
-  actions.map(a => _ruleExecutor.addActionToWhitelist(a.callee));
+  triggers.map(t => _whitelistService.addToWhitelist(trigWlHash, t.callee));
+  actions.map(a => _whitelistService.addToWhitelist(actWlHash, a.callee));
 
   const tx = await _ruleExecutor.connect(wallet).createRule(triggers, actions);
   const receipt2 = await tx.wait();
@@ -52,7 +52,9 @@ async function createRule(_ruleExecutor: Contract, triggers: TriggerStruct[],
     const tx2 = await _ruleExecutor.connect(wallet).activateRule(ruleHash);
     await tx2.wait();
   }
+
   return ruleHash;
+
 }
 
 describe("TradeManager", () => {
@@ -63,8 +65,15 @@ describe("TradeManager", () => {
     // Contracts are deployed using the first signer/account by default
     const [ownerWallet, traderWallet, tradeSubscriberWallet, someOtherWallet] = await ethers.getSigners();
 
+    const WhitelistService = await ethers.getContractFactory("WhitelistService"); 
+    const whitelistService = await WhitelistService.deploy(); 
+    await whitelistService.createWhitelist("triggers");
+    const trigWlHash = await whitelistService.getWhitelistHash(ownerWallet.address, "triggers"); 
+    await whitelistService.createWhitelist("actions");
+    const actWlHash = await whitelistService.getWhitelistHash(ownerWallet.address, "actions"); 
+
     const RuleExecutor = await ethers.getContractFactory("RuleExecutor");
-    const ruleExecutor = await RuleExecutor.deploy();
+    const ruleExecutor = await RuleExecutor.deploy(whitelistService.address, trigWlHash, actWlHash);
 
     const TestSwapRouter = await ethers.getContractFactory("TestSwapRouter");
     const testSwapRouter = await TestSwapRouter.deploy();
@@ -92,8 +101,8 @@ describe("TradeManager", () => {
     const tradeManager = await TradeManager.deploy(ruleExecutor.address); 
 
     return {
-      tradeManager, ruleExecutor, priceTrigger, swapUniSingleAction, testOracleEth, testOracleUni,
-      testToken1, testToken2, ownerWallet, traderWallet, tradeSubscriberWallet, someOtherWallet
+      ruleExecutor, priceTrigger, swapUniSingleAction, testOracleEth, testOracleUni,
+      testToken1, testToken2, ownerWallet, traderWallet, tradeSubscriberWallet, someOtherWallet, whitelistService, trigWlHash, actWlHash, tradeManager
     };
   }
 
