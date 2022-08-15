@@ -685,20 +685,64 @@ describe("RuleExecutor", () => {
     });
   });
 
-  describe.skip("Redeem Balance", () => {
+  describe("Redeem Balance", () => {
+
     it("should not allow redeeming balance if the rule is not yet executed", async () => {
-
+      const { ruleHashToken, ruleSubscriberWallet, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashToken)).to.be.revertedWith("Rule != executed");
+      const collateralAmount = 30;
+      await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateralAmount);
+      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashToken)).to.be.revertedWith("Rule != executed");
     });
 
-    it("should redeem all the balance if the rule was executed and returned a token", async () => {
 
+    it("should result in no token changes if the rule was executed and did not return a token", async () => {
+      const { ruleHashToken, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
+      const collateralAmount = 30;
+      await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateralAmount);
+      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
+      await ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken);
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashToken)).to
+        .emit(ruleExecutor, "Redeemed").and
+        .changeEtherBalance(ruleExecutor, 0).and
+        .changeTokenBalance(testToken1, ruleExecutor, 0);
     });
 
-    it("should redeem all the balance if the rule was executed and returned native", async () => {
+    it("should redeem all the balance only once if the rule was executed and returned a token", async () => {
+      const { ruleHashToken, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
+      const collateralAmount = 30;
+      await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateralAmount);
+      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
+      await ruleExecutor.connect(otherWallet1).executeRule(ruleHashToken);
 
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashToken)).to
+        .emit(ruleExecutor, "Redeemed").withArgs(ruleHashToken).and
+        .changeEtherBalance(ruleExecutor, 6).and
+        .changeTokenBalance(testToken1, ruleExecutor, 0);
+      // can only redeem once.
+      // await expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashToken)).to.be.revertedWithoutReason;
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashToken)).to.emit(ruleExecutor, "Redeemed").withArgs(ruleHashToken);
+      expect.fail("something wrong with this rule");
     });
 
-    it("Should redeem balance only from the final action if multiple actions were executed", async () => {
+    it("should redeem all the balance only once by the subscriber if the rule was executed and returned native", async () => {
+      const { ruleHashEth, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
+      const collateralAmount = 30;
+      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
+      await ruleExecutor.connect(otherWallet1).executeRule(ruleHashEth);
+      await expect(ruleExecutor.connect(otherWallet1).redeemBalance(ruleHashEth)).to.be.revertedWith("onlyRuleOwner");
+
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashEth)).to
+        .emit(ruleExecutor, "Redeemed").withArgs(ruleHashEth).and
+        .changeEtherBalance(ruleExecutor, [1500]).and
+        .changeTokenBalance(testToken1, ruleExecutor, 0);
+
+      // can only redeem once.
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashEth)).to.be.revertedWithoutReason;
+    });
+
+    it.skip("Should redeem balance only from the final action if multiple actions were executed", async () => {
 
     });
 
