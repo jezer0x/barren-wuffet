@@ -275,9 +275,9 @@ describe("RuleExecutor", () => {
     it("should return false if the checkTrigger on the rule denoted by ruleHash returns false", async () => {
       const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, otherWallet1, testToken1, whitelistService, trigWlHash, actWlHash } = await loadFixture(deployRuleExecutorFixture);
 
-      const passingTrigger = makeFailingTrigger(priceTrigger.address);
+      const failingTrigger = makeFailingTrigger(priceTrigger.address);
       const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, ethers.constants.AddressZero);
-      const ruleHash = await createRule(whitelistService, trigWlHash, actWlHash, ruleExecutor, [passingTrigger], [tokenSwapAction], ruleMakerWallet);
+      const ruleHash = await createRule(whitelistService, trigWlHash, actWlHash, ruleExecutor, [failingTrigger], [tokenSwapAction], ruleMakerWallet);
 
       expect(await ruleExecutor.connect(otherWallet1).checkRule(ruleHash)).to.equal(false);
 
@@ -297,6 +297,22 @@ describe("RuleExecutor", () => {
       const ruleHash = await createRule(whitelistService, trigWlHash, actWlHash, ruleExecutor, [passingTrigger], [tokenSwapAction], ruleMakerWallet);
 
       expect(await ruleExecutor.connect(otherWallet1).checkRule(ruleHash)).to.equal(true);
+    });
+
+    it("should return false if one of multiple triggers is invalid", async () => {
+      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, otherWallet1, testToken1, whitelistService, trigWlHash, actWlHash } = await loadFixture(deployRuleExecutorFixture);
+
+      const passingTrigger = makePassingTrigger(priceTrigger.address);
+      const failingTrigger = makeFailingTrigger(priceTrigger.address);
+      const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, ethers.constants.AddressZero);
+      const ruleHash = await createRule(whitelistService, trigWlHash, actWlHash, ruleExecutor, [passingTrigger, failingTrigger], [tokenSwapAction], ruleMakerWallet);
+
+      expect(await ruleExecutor.connect(otherWallet1).checkRule(ruleHash)).to.equal(false);
+
+    });
+
+    it.skip("should return true if all of multiple triggers are valid", async () => {
+
     });
   });
 
@@ -648,16 +664,6 @@ describe("RuleExecutor", () => {
     });
   });
 
-  describe.skip("Check rule", () => {
-    it.skip("should return false if any trigger is invalid", async () => {
-
-    });
-
-    it.skip("should return true if all trigger are valid", async () => {
-
-    });
-
-  });
   describe.skip("Redeem Balance", () => {
     it("should allow redeeming all the collateral provided if the rule is not yet executed", async () => {
 
