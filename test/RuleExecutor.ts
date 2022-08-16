@@ -367,8 +367,9 @@ describe("RuleExecutor", () => {
 
     it("should revert if add / reduce collateral is called on a non-existent ruleHash", async () => {
       const { ruleSubscriberWallet, ruleExecutor } = await loadFixture(deployValidRuleFixture);
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(BAD_RULE_HASH, 1000)).to.be.revertedWithoutReason();
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).reduceCollateral(BAD_RULE_HASH, 1000)).to.be.revertedWithoutReason();
+      // these error with onlyRuleOwner because the non existent hash doesnt belong to the subscriber
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(BAD_RULE_HASH, 1000)).to.be.revertedWith("onlyRuleOwner");
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).reduceCollateral(BAD_RULE_HASH, 1000)).to.be.revertedWith("onlyRuleOwner");
     });
 
     it("should revert if > 0 native is not sent to addCollateral for an native action", async () => {
@@ -705,7 +706,7 @@ describe("RuleExecutor", () => {
         }
 
         await expect(ruleExecutor.connect(ruleSubscriberWallet).deactivateRule(ruleHashToken)).to.be.revertedWith("Can't Deactivate Rule");
-        await expect(ruleExecutor.connect(ruleSubscriberWallet).activateRule(ruleHashEth)).to.be.revertedWithoutReason();
+        await expect(ruleExecutor.connect(ruleSubscriberWallet).activateRule(ruleHashEth)).to.be.revertedWith("Can't Activate Rule");
 
       });
     });
