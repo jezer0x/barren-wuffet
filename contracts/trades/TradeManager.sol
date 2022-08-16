@@ -52,11 +52,11 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         _unpause();
     }
 
-    constructor(address ReAddr) {
+    constructor(address payable ReAddr) {
         ruleExecutor = RuleExecutor(ReAddr);
     }
 
-    function setRuleExecutorAddress(address ReAddr) external onlyOwner {
+    function setRuleExecutorAddress(address payable ReAddr) external onlyOwner {
         ruleExecutor = RuleExecutor(ReAddr);
     }
 

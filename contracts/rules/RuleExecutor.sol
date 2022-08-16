@@ -267,4 +267,6 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         payable(msg.sender).transfer(rule.reward);
         emit Executed(ruleHash, msg.sender);
     }
+
+    receive() external payable {}
 }
