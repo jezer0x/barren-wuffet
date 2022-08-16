@@ -30,7 +30,7 @@ const ETH_UNI_PRICE = (ETH_PRICE / UNI_PRICE);
 
 const BAD_RULE_HASH = "0x" + "1234".repeat(16);
 
-const DEFAULT_REWARD = 1;
+const DEFAULT_REWARD = 10000;
 
 function makePassingTrigger(triggerContract: string): TriggerStruct {
   return {
@@ -758,7 +758,7 @@ describe("RuleExecutor", () => {
       await expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashToken)).to.be.revertedWithoutReason();
     });
 
-    it("abc should redeem all the balance only once by the subscriber if the rule was executed and returned native", async () => {
+    it("should redeem all the balance only once by the subscriber if the rule was executed and returned native", async () => {
       const { ruleHashEth, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
       const collateralAmount = 30;
       await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
@@ -783,12 +783,38 @@ describe("RuleExecutor", () => {
 
   });
 
-  describe.skip("Change Reward", () => {
-    it("should change the reward provided to the executor, if the reward is changed", async () => {
+  describe("Change Reward", () => {
+    it("should change the reward provided to the executor, if the reward is changed and not be editable after execution", async () => {
+      const { ruleHashEth, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
+      const collateralAmount = 30;
+      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
+
+      await ruleExecutor.connect(ruleSubscriberWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
+      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashEth)).to
+        .changeEtherBalance(otherWallet1, DEFAULT_REWARD * 2);
+
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).increaseReward(ruleHashEth, { value: 1 })).to.be.revertedWithoutReason();
+    });
+
+    it("should allow increasing the reward if the rule has been is inactive", async () => {
+      const { ruleHashEth, ruleSubscriberWallet, otherWallet1, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
+      const collateralAmount = 30;
+      await ruleExecutor.connect(ruleSubscriberWallet).deactivateRule(ruleHashEth);
+
+      await ruleExecutor.connect(ruleSubscriberWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
+      await ruleExecutor.connect(ruleSubscriberWallet).activateRule(ruleHashEth);
+      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
+
+      await expect(ruleExecutor.connect(otherWallet1).executeRule(ruleHashEth)).to
+        .changeEtherBalance(otherWallet1, DEFAULT_REWARD * 2);
 
     });
 
-    it("should not allow increasing the reward of the rule has been executed / is cancelled", async () => {
+    it("should not allow increasing the reward if the rule has been is cancelled", async () => {
+      const { ruleHashEth, ruleSubscriberWallet, ruleExecutor } = await loadFixture(deployValidRuleFixture);
+      await ruleExecutor.connect(ruleSubscriberWallet).cancelRule(ruleHashEth);
+
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD })).to.be.revertedWithoutReason();;
 
     });
 
