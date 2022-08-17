@@ -15,7 +15,7 @@ const ERC20_DECIMALS = BigNumber.from(10).pow(18);
 
 describe("FundManager", () => {
     async function deployFundManagetFixture() {
-        const [ownerWallet, ruleMakerWallet, ruleSubscriberWallet, otherWallet1] = await ethers.getSigners();
+        const [ownerWallet, ruleMakerWallet, ruleSubscriberWallet, bot] = await ethers.getSigners();
 
         const WhitelistService = await ethers.getContractFactory("WhitelistService");
         const whitelistService = await WhitelistService.deploy();
@@ -54,7 +54,7 @@ describe("FundManager", () => {
 
         return {
             ruleExecutor, fundManager, priceTrigger, swapUniSingleAction, testOracleEth, testOracleUni,
-            testToken1, testToken2, ownerWallet, ruleMakerWallet, ruleSubscriberWallet, otherWallet1, whitelistService, trigWlHash, actWlHash
+            testToken1, testToken2, ownerWallet, ruleMakerWallet, ruleSubscriberWallet, bot, whitelistService, trigWlHash, actWlHash
         };
     }
 
