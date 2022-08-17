@@ -908,4 +908,11 @@ describe("RuleExecutor", () => {
     });
 
   });
+
+  describe.skip("Pause Contract", () => {
+    it("prevents executing a bunch of functions when paused and re-allows them when unpaused", () => {
+      // ideally we should wrap all the pausable functions and add some kind of decorator to rerun the tests after vanilla / paused / unpaused.
+      // that's the only way to check that a certain function actually has the whenPaused modifier 
+    })
+  });
 });
