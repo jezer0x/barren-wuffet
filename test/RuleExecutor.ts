@@ -801,41 +801,84 @@ describe("RuleExecutor", () => {
   });
 
   describe("Change Reward", () => {
-    it("should change the reward provided to the executor, if the reward is changed and not be editable after execution", async () => {
-      const { ruleHashEth, ruleSubscriberWallet, bot, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
+
+    it(`should accummulate the reward provided to the executor, as the reward is increased by different wallets and not be editable after execution`, async () => {
+      const { ruleHashEth, ruleSubscriberWallet, bot, ruleExecutor } = await loadFixture(deployValidRuleFixture);
       const collateralAmount = 30;
       await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
 
       await ruleExecutor.connect(ruleSubscriberWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
+      await ruleExecutor.connect(bot).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
       await expect(ruleExecutor.connect(bot).executeRule(ruleHashEth)).to
-        .changeEtherBalance(bot, DEFAULT_REWARD.mul(2));
+        // default reward + the 2 increases above.
+        .changeEtherBalance(bot, DEFAULT_REWARD.mul(3));
 
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).increaseReward(ruleHashEth, { value: 1 })).to.be.revertedWithoutReason();
+      await expect(ruleExecutor.connect(bot).increaseReward(ruleHashEth, { value: 1 })).to.be.revertedWithoutReason();
+      await expect(ruleExecutor.connect(bot).decreaseReward(ruleHashEth)).to.be.revertedWithoutReason();
     });
 
-    it("should allow increasing the reward if the rule has been is inactive", async () => {
-      const { ruleHashEth, ruleSubscriberWallet, bot, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
+    it(`should allow any user to only remove the reward they added`, async () => {
+      const { ruleHashEth, ruleSubscriberWallet, bot, ruleExecutor } = await loadFixture(deployValidRuleFixture);
+      const collateralAmount = 30;
+      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
+
+      await ruleExecutor.connect(ruleSubscriberWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
+      await expect(ruleExecutor.connect(bot).decreaseReward(ruleHashEth)).to.revertedWith("0 contribution");
+
+      await ruleExecutor.connect(bot).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
+      await expect(ruleExecutor.connect(bot).decreaseReward(ruleHashEth)).to.changeEtherBalances(
+        [bot, ruleExecutor],
+        [DEFAULT_REWARD, -DEFAULT_REWARD]
+      );
+      await expect(ruleExecutor.connect(bot).decreaseReward(ruleHashEth)).to.revertedWith("0 contribution");
+
+      await expect(ruleExecutor.connect(bot).executeRule(ruleHashEth)).to
+        .changeEtherBalance(bot, DEFAULT_REWARD.mul(2));
+    });
+
+    it(`should allow any user to change the reward if the rule is inactive`, async () => {
+      const { ruleHashEth, ruleSubscriberWallet, bot, ruleExecutor } = await loadFixture(deployValidRuleFixture);
       const collateralAmount = 30;
       await ruleExecutor.connect(ruleSubscriberWallet).deactivateRule(ruleHashEth);
 
-      await ruleExecutor.connect(ruleSubscriberWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
+      await ruleExecutor.connect(bot).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
+      await expect(ruleExecutor.connect(bot).decreaseReward(ruleHashEth)).changeEtherBalance(bot, DEFAULT_REWARD);
+      // tries to reduce the reward added at the point of rule creation
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).decreaseReward(ruleHashEth)).changeEtherBalance(bot, DEFAULT_REWARD);
+
+      await ruleExecutor.connect(bot).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
+
       await ruleExecutor.connect(ruleSubscriberWallet).activateRule(ruleHashEth);
       await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
 
       await expect(ruleExecutor.connect(bot).executeRule(ruleHashEth)).to
-        .changeEtherBalance(bot, DEFAULT_REWARD.mul(2));
+        .changeEtherBalance(bot, DEFAULT_REWARD);
 
     });
 
-    it("should not allow increasing the reward if the rule has been is cancelled", async () => {
-      const { ruleHashEth, ruleSubscriberWallet, ruleExecutor } = await loadFixture(deployValidRuleFixture);
+    it(`should not allow anyone to increase the reward if the rule has been cancelled`, async () => {
+      const { ruleHashEth, ruleSubscriberWallet, bot, ruleExecutor } = await loadFixture(deployValidRuleFixture);
+
       await ruleExecutor.connect(ruleSubscriberWallet).cancelRule(ruleHashEth);
 
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD })).to.be.revertedWithoutReason();;
+      await expect(ruleExecutor.connect(bot).increaseReward(ruleHashEth, { value: DEFAULT_REWARD })).to.be.revertedWithoutReason();
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD })).to.be.revertedWithoutReason();
 
+    });
+
+    it(`should allow users to remove the reward even if the rule has been cancelled`, async () => {
+      const { ruleHashEth, ruleSubscriberWallet, bot, ruleExecutor } = await loadFixture(deployValidRuleFixture);
+
+      await ruleExecutor.connect(bot).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
+
+      await ruleExecutor.connect(ruleSubscriberWallet).cancelRule(ruleHashEth);
+
+      // we need to allow this, else you cant get the reward out of a cancelled contract.
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).decreaseReward(ruleHashEth)).to
+        .changeEtherBalance(ruleSubscriberWallet, DEFAULT_REWARD);
+      await expect(ruleExecutor.connect(bot).decreaseReward(ruleHashEth)).to
+        .changeEtherBalance(bot, DEFAULT_REWARD);
     });
 
   });
-
-
 });
