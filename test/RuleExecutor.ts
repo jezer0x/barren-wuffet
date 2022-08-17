@@ -26,22 +26,25 @@ import { parseEther } from "ethers/lib/utils";
 const GT = 0;
 const LT = 1;
 
-const ETH_PRICE_IN_USD = 1300 * 10**8;
-const UNI_PRICE_IN_USD = 3 * 10**8;
+const PRICE_TRIGGER_DECIMALS = BigNumber.from(10).pow(8); 
+const ETH_PRICE_IN_USD = BigNumber.from(1300).mul(PRICE_TRIGGER_DECIMALS);
+const UNI_PRICE_IN_USD = BigNumber.from(3).mul(PRICE_TRIGGER_DECIMALS);
 const UNI_PRICE_IN_ETH_PARAM = ethers.utils.defaultAbiCoder.encode(["string", "string"], ["eth", "uni"]);
-const UNI_PRICE_IN_ETH = Math.round(ETH_PRICE_IN_USD * 10**8 / UNI_PRICE_IN_USD); // 43333333333 = ~433 UNI can be bought per ETH
+const UNI_PRICE_IN_ETH = ETH_PRICE_IN_USD.mul(PRICE_TRIGGER_DECIMALS).div(UNI_PRICE_IN_USD); // 43333333333 = ~433 UNI can be bought per ETH
 const ERC20_DECIMALS = BigNumber.from(10).pow(18); 
+
 
 const BAD_RULE_HASH = "0x" + "1234".repeat(16);
 
 const DEFAULT_REWARD = parseEther("0.01");
 
+console.log(UNI_PRICE_IN_ETH.sub(1).toString()); 
 function makePassingTrigger(triggerContract: string): TriggerStruct {
   return {
     op: GT,
     param: UNI_PRICE_IN_ETH_PARAM,
     callee: triggerContract,
-    value: Math.round(UNI_PRICE_IN_ETH - 1)
+    value: UNI_PRICE_IN_ETH.sub(1)
   };
 }
 
@@ -50,7 +53,7 @@ function makeFailingTrigger(triggerContract: string): TriggerStruct {
     op: GT,
     param: UNI_PRICE_IN_ETH_PARAM,
     callee: triggerContract,
-    value: Math.round(UNI_PRICE_IN_ETH + 1)
+    value: UNI_PRICE_IN_ETH.add(1)
   };
 }
 
@@ -111,7 +114,7 @@ describe("RuleExecutor", () => {
     const TestSwapRouter = await ethers.getContractFactory("TestSwapRouter");
     const testSwapRouter = await TestSwapRouter.deploy(WETH.address);
     // this lets us do 10 swaps
-    await testToken1.transfer(testSwapRouter.address, Math.round(UNI_PRICE_IN_ETH / 10**8 * 10));
+    await testToken1.transfer(testSwapRouter.address, UNI_PRICE_IN_ETH.div(PRICE_TRIGGER_DECIMALS).mul(10).mul(ERC20_DECIMALS));
 
     await ethFundWallet.sendTransaction({
       to: testSwapRouter.address,
@@ -372,7 +375,7 @@ describe("RuleExecutor", () => {
     const ruleHashEth = await createRule(whitelistService, trigWlHash, actWlHash, ruleExecutor, [passingTrigger], [ethSwapAction], ruleSubscriberWallet, true);
     const ruleHashToken = await createRule(whitelistService, trigWlHash, actWlHash, ruleExecutor, [passingTrigger], [tokenSwapAction], ruleSubscriberWallet, true);
 
-    await testToken1.transfer(ruleSubscriberWallet.address, 200000);
+    await testToken1.transfer(ruleSubscriberWallet.address, BigNumber.from(200000).mul(ERC20_DECIMALS));
     return { ruleHashEth, ruleHashToken, ruleExecutor, ownerWallet, ruleSubscriberWallet, bot, testToken1, testToken2 };
 
   }
@@ -553,7 +556,7 @@ describe("RuleExecutor", () => {
           // we dont care about the balance of the swap contracts, 
           // because that's a downstream impact we dont care about here.
           [bot, ruleSubscriberWallet, ruleExecutor],
-          [DEFAULT_REWARD, 0, -(collateral.add(DEFAULT_REWARD))],
+          [DEFAULT_REWARD, 0, BigNumber.from(0).sub(collateral.add(DEFAULT_REWARD))],
         ).and.to
         .emit(ruleExecutor, "Executed")
         .withArgs(ruleHashEth, bot.address);
@@ -562,7 +565,7 @@ describe("RuleExecutor", () => {
         testToken1,
         // this should reflect the reward.
         [bot, ruleSubscriberWallet, ruleExecutor],
-        [0, 0, collateral.mul(UNI_PRICE_IN_ETH)],
+        [0, 0, collateral.mul(UNI_PRICE_IN_ETH).div(PRICE_TRIGGER_DECIMALS)],
       );
 
       await expect(ruleExecutor.connect(bot).executeRule(ruleHashEth)).to.be.revertedWith("Rule != ACTIVE");
@@ -587,7 +590,7 @@ describe("RuleExecutor", () => {
       await ex.to.changeEtherBalances(
         // this should reflect the rewarD.
         [bot, ruleSubscriberWallet, ruleExecutor],
-        [DEFAULT_REWARD, 0, collateral.div(UNI_PRICE_IN_ETH).sub(DEFAULT_REWARD)],
+        [DEFAULT_REWARD, 0, collateral.div(UNI_PRICE_IN_ETH.div(PRICE_TRIGGER_DECIMALS)).sub(DEFAULT_REWARD)],
       );
 
       // TODO need to implement caller getting paid.
@@ -759,14 +762,14 @@ describe("RuleExecutor", () => {
 
     it("should redeem all the balance only once by the subscriber if the rule was executed and returned native", async () => {
       const { ruleHashToken, ruleSubscriberWallet, bot, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
-      const collateralAmount = 5000;
+      const collateralAmount = BigNumber.from(5000).mul(ERC20_DECIMALS);
       await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateralAmount);
       await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
       await ruleExecutor.connect(bot).executeRule(ruleHashToken);
       await expect(ruleExecutor.connect(bot).redeemBalance(ruleHashToken)).to.be.revertedWith("onlyRuleOwner");
 
       const ex = expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashToken));
-      await ex.to.changeEtherBalance(ruleExecutor, Math.round(collateralAmount / UNI_PRICE_IN_ETH)).emit(ruleExecutor, "Redeemed").withArgs(ruleHashToken);
+      await ex.to.changeEtherBalance(ruleExecutor, collateralAmount.mul(UNI_PRICE_IN_ETH).div(PRICE_TRIGGER_DECIMALS)).emit(ruleExecutor, "Redeemed").withArgs(ruleHashToken);
 
       await ex.to.changeTokenBalance(testToken1, ruleExecutor, 0);
 
@@ -776,7 +779,7 @@ describe("RuleExecutor", () => {
 
     it("should redeem all the balance only once by the subscriber if the rule was executed and returned token", async () => {
       const { ruleHashEth, ruleSubscriberWallet, bot, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
-      const collateralAmount = 2; // send 1 eth
+      const collateralAmount = parseEther("1"); // send 1 eth
       await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
       await ruleExecutor.connect(bot).executeRule(ruleHashEth);
       await expect(ruleExecutor.connect(bot).redeemBalance(ruleHashEth)).to.be.revertedWith("onlyRuleOwner");
@@ -785,7 +788,7 @@ describe("RuleExecutor", () => {
 
       await ex.to.changeTokenBalances(testToken1,
           [ruleExecutor, ruleSubscriberWallet],
-          [-collateralAmount * UNI_PRICE_IN_ETH, collateralAmount * UNI_PRICE_IN_ETH])
+          [BigNumber.from(0).sub(collateralAmount.mul(UNI_PRICE_IN_ETH).div(PRICE_TRIGGER_DECIMALS)), collateralAmount.mul(UNI_PRICE_IN_ETH).div(PRICE_TRIGGER_DECIMALS)])
         .emit(ruleExecutor, "Redeemed").withArgs(ruleHashEth);
 
       await ex.to.changeEtherBalance(ruleExecutor.address, 0);
