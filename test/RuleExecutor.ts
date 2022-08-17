@@ -841,7 +841,7 @@ describe("RuleExecutor", () => {
         .changeEtherBalance(bot, DEFAULT_REWARD.mul(3));
 
       await expect(ruleExecutor.connect(bot).increaseReward(ruleHashEth, { value: 1 })).to.be.revertedWithoutReason();
-      await expect(ruleExecutor.connect(bot).decreaseReward(ruleHashEth)).to.be.revertedWithoutReason();
+      await expect(ruleExecutor.connect(bot).withdrawReward(ruleHashEth)).to.be.revertedWithoutReason();
     });
 
     it(`should allow any user to only remove the reward they added`, async () => {
@@ -850,14 +850,14 @@ describe("RuleExecutor", () => {
       await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
 
       await ruleExecutor.connect(ruleSubscriberWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
-      await expect(ruleExecutor.connect(bot).decreaseReward(ruleHashEth)).to.revertedWith("0 contribution");
+      await expect(ruleExecutor.connect(bot).withdrawReward(ruleHashEth)).to.revertedWith("0 contribution");
 
       await ruleExecutor.connect(bot).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
-      await expect(ruleExecutor.connect(bot).decreaseReward(ruleHashEth)).to.changeEtherBalances(
+      await expect(ruleExecutor.connect(bot).withdrawReward(ruleHashEth)).to.changeEtherBalances(
         [bot, ruleExecutor],
         [DEFAULT_REWARD, -DEFAULT_REWARD]
       );
-      await expect(ruleExecutor.connect(bot).decreaseReward(ruleHashEth)).to.revertedWith("0 contribution");
+      await expect(ruleExecutor.connect(bot).withdrawReward(ruleHashEth)).to.revertedWith("0 contribution");
 
       await expect(ruleExecutor.connect(bot).executeRule(ruleHashEth)).to
         .changeEtherBalance(bot, DEFAULT_REWARD.mul(2));
@@ -869,9 +869,9 @@ describe("RuleExecutor", () => {
       await ruleExecutor.connect(ruleSubscriberWallet).deactivateRule(ruleHashEth);
 
       await ruleExecutor.connect(bot).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
-      await expect(ruleExecutor.connect(bot).decreaseReward(ruleHashEth)).changeEtherBalance(bot, DEFAULT_REWARD);
+      await expect(ruleExecutor.connect(bot).withdrawReward(ruleHashEth)).changeEtherBalance(bot, DEFAULT_REWARD);
       // tries to reduce the reward added at the point of rule creation
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).decreaseReward(ruleHashEth)).changeEtherBalance(bot, DEFAULT_REWARD);
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).withdrawReward(ruleHashEth)).changeEtherBalance(bot, DEFAULT_REWARD);
 
       await ruleExecutor.connect(bot).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
 
@@ -901,9 +901,9 @@ describe("RuleExecutor", () => {
       await ruleExecutor.connect(ruleSubscriberWallet).cancelRule(ruleHashEth);
 
       // we need to allow this, else you cant get the reward out of a cancelled contract.
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).decreaseReward(ruleHashEth)).to
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).withdrawReward(ruleHashEth)).to
         .changeEtherBalance(ruleSubscriberWallet, DEFAULT_REWARD);
-      await expect(ruleExecutor.connect(bot).decreaseReward(ruleHashEth)).to
+      await expect(ruleExecutor.connect(bot).withdrawReward(ruleHashEth)).to
         .changeEtherBalance(bot, DEFAULT_REWARD);
     });
 
