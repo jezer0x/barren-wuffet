@@ -137,14 +137,16 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
 
     function increaseReward(bytes32 ruleHash) public payable whenNotPaused ruleExists(ruleHash) {
         Rule storage rule = rules[ruleHash];
+        // can't add to cancelled / executed / redeemed rule
         require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE);
         rule.reward += msg.value;
         rewardProviders[ruleHash][msg.sender] += msg.value;
     }
 
-    function decreaseReward(bytes32 ruleHash) external whenNotPaused ruleExists(ruleHash) {
+    function withdrawReward(bytes32 ruleHash) external whenNotPaused ruleExists(ruleHash) {
         Rule storage rule = rules[ruleHash];
-        require(rule.status != RuleStatus.EXECUTED, "Reward paid");
+        // can only decrease reward if it's not been paid out already
+        require(rule.status != RuleStatus.EXECUTED && rule.status != RuleStatus.REDEEMED, "Reward paid");
         uint256 balance = rewardProviders[ruleHash][msg.sender];
         require(balance > 0, "0 contribution");
         rule.reward -= balance;
