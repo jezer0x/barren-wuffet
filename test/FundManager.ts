@@ -9,9 +9,9 @@ import { int } from "hardhat/internal/core/params/argumentTypes";
 import { Contract, Bytes, BigNumber } from "ethers";
 import { EtherscanProvider } from "@ethersproject/providers";
 
-const ETH_PRICE_IN_USD = 1300 * 10**8;
-const UNI_PRICE_IN_USD = 3 * 10**8;
-const ERC20_DECIMALS = BigNumber.from(10).pow(18); 
+const ETH_PRICE_IN_USD = 1300 * 10 ** 8;
+const UNI_PRICE_IN_USD = 3 * 10 ** 8;
+const ERC20_DECIMALS = BigNumber.from(10).pow(18);
 
 describe("FundManager", () => {
     async function deployFundManagetFixture() {
@@ -92,7 +92,7 @@ describe("FundManager", () => {
 
     });
 
-    describe("User Stories", () => {
+    describe.skip("User Stories", () => {
         it("allows creating a fund with profit, lockin and min size", async () => {
             /**
              * Opens call for USD$300,000 fund. 
