@@ -3,7 +3,9 @@ import "@nomicfoundation/hardhat-toolbox";
 
 import "@typechain/hardhat";
 import "@nomiclabs/hardhat-ethers";
-import "hardhat-deploy"; 
+import "hardhat-deploy";
+import "solidity-coverage";
+
 
 const config: HardhatUserConfig = {
   solidity: "0.8.9",

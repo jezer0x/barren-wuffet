@@ -5074,7 +5074,7 @@ solc@0.7.3:
 
 solidity-coverage@^0.7.21:
   version "0.7.21"
-  resolved "https://registry.npmjs.org/solidity-coverage/-/solidity-coverage-0.7.21.tgz"
+  resolved "https://registry.yarnpkg.com/solidity-coverage/-/solidity-coverage-0.7.21.tgz#20c5615a3a543086b243c2ca36e2951a75316b40"
   integrity sha512-O8nuzJ9yXiKUx3NdzVvHrUW0DxoNVcGzq/I7NzewNO9EZE3wYAQ4l8BwcnV64r4aC/HB6Vnw/q2sF0BQHv/3fg==
   dependencies:
     "@solidity-parser/parser" "^0.14.0"

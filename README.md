@@ -36,6 +36,12 @@ This project is written using [Hardhat](https://hardhat.org/)
 
 `yarn hardhat test`
 
+To get code coverage do `npx hardhat coverage`.
+
+The html files inside /coverage folder will tell you what's missing coverage. You can use Coverage Gutter plugin on VSCode to facilitate this.
+
+We want 100% coverage on any smart contract code that gets deployed. If code doesn't need to be used, it should not be there. And whatever code does exist in the smart contract needs to be run by the tests.
+
 ### Deploying
 
 `yarn hardhat deploy` (`--network localhost` if you're running `yarn hardhat node` in another terminal)
