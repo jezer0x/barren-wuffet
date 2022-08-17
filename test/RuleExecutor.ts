@@ -13,11 +13,11 @@ import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { TriggerStruct, ActionStruct } from '../typechain-types/contracts/rules/RuleExecutor';
+import { TriggerStruct, ActionStruct, RuleExecutor } from '../typechain-types/contracts/rules/RuleExecutor';
 import { assert } from "console";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { int } from "hardhat/internal/core/params/argumentTypes";
-import { Contract, Bytes, BigNumber} from "ethers";
+import { Contract, Bytes, BigNumber, Wallet } from "ethers";
 import { token } from "../typechain-types/@openzeppelin/contracts";
 import { exit } from "process";
 import { parseEther } from "ethers/lib/utils";
@@ -26,11 +26,11 @@ import { parseEther } from "ethers/lib/utils";
 const GT = 0;
 const LT = 1;
 
-const ETH_PRICE_IN_USD = 1300 * 10**8;
-const UNI_PRICE_IN_USD = 3 * 10**8;
+const ETH_PRICE_IN_USD = 1300 * 10 ** 8;
+const UNI_PRICE_IN_USD = 3 * 10 ** 8;
 const UNI_PRICE_IN_ETH_PARAM = ethers.utils.defaultAbiCoder.encode(["string", "string"], ["eth", "uni"]);
-const UNI_PRICE_IN_ETH = Math.round(ETH_PRICE_IN_USD * 10**8 / UNI_PRICE_IN_USD); // 43333333333 = ~433 UNI can be bought per ETH
-const ERC20_DECIMALS = BigNumber.from(10).pow(18); 
+const UNI_PRICE_IN_ETH = Math.round(ETH_PRICE_IN_USD * 10 ** 8 / UNI_PRICE_IN_USD); // 43333333333 = ~433 UNI can be bought per ETH
+const ERC20_DECIMALS = BigNumber.from(10).pow(18);
 
 const BAD_RULE_HASH = "0x" + "1234".repeat(16);
 
@@ -111,7 +111,7 @@ describe("RuleExecutor", () => {
     const TestSwapRouter = await ethers.getContractFactory("TestSwapRouter");
     const testSwapRouter = await TestSwapRouter.deploy(WETH.address);
     // this lets us do 10 swaps
-    await testToken1.transfer(testSwapRouter.address, Math.round(UNI_PRICE_IN_ETH / 10**8 * 10));
+    await testToken1.transfer(testSwapRouter.address, Math.round(UNI_PRICE_IN_ETH / 10 ** 8 * 10));
 
     await ethFundWallet.sendTransaction({
       to: testSwapRouter.address,
@@ -242,7 +242,32 @@ describe("RuleExecutor", () => {
         .withArgs(anyValue);
     });
 
-    it.skip("getRule should return the rule if the rule was successfully created", async () => {
+    it("creates rule even without reward, and getRule returns the rule if the rule was successfully created", async () => {
+      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1, whitelistService, trigWlHash, actWlHash } = await loadFixture(deployRuleExecutorFixture);
+
+      const passingTrigger = makeFailingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
+      const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
+
+      whitelistService.addToWhitelist(trigWlHash, priceTrigger.address);
+      whitelistService.addToWhitelist(actWlHash, swapUniSingleAction.address)
+
+      let ruleHash;
+      await expect(ruleExecutor.connect(ruleMakerWallet).createRule(
+        [passingTrigger], [executableAction])).to
+        .changeEtherBalances(
+          [ruleExecutor, ruleMakerWallet],
+          [0, 0]
+        ).and.to
+        .emit(ruleExecutor, "Created")
+        .withArgs((h: string) => { ruleHash = h; return h; });
+
+      await expect(ruleExecutor.getRule(BAD_RULE_HASH)).to.be.revertedWith("Rule not found");
+
+      expect(await ruleExecutor.getRule(ruleHash)).to.satisfy((data: any) => {
+        // console.log(data); 
+        return false;
+        // TODO need to check if data is right
+      });
 
     });
 
@@ -784,8 +809,8 @@ describe("RuleExecutor", () => {
       const ex = expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashEth));
 
       await ex.to.changeTokenBalances(testToken1,
-          [ruleExecutor, ruleSubscriberWallet],
-          [-collateralAmount * UNI_PRICE_IN_ETH, collateralAmount * UNI_PRICE_IN_ETH])
+        [ruleExecutor, ruleSubscriberWallet],
+        [-collateralAmount * UNI_PRICE_IN_ETH, collateralAmount * UNI_PRICE_IN_ETH])
         .emit(ruleExecutor, "Redeemed").withArgs(ruleHashEth);
 
       await ex.to.changeEtherBalance(ruleExecutor.address, 0);
