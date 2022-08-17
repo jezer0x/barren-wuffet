@@ -8,6 +8,7 @@ enum RuleStatus {
     ACTIVE,
     INACTIVE,
     EXECUTED,
+    REDEEMED,
     CANCELLED
 }
 

@@ -88,9 +88,8 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
 
     function redeemBalance(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) nonReentrant {
         Rule storage rule = rules[ruleHash];
-        require(rule.status == RuleStatus.EXECUTED, "Rule != executed");
+        _setRuleStatus(ruleHash, RuleStatus.REDEEMED);
         Utils._send(rule.owner, rule.outputAmount, getOutputToken(ruleHash));
-        emit Redeemed(ruleHash);
     }
 
     function addCollateral(bytes32 ruleHash, uint256 amount)
@@ -189,29 +188,46 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
     /*
         Valid State Transitions: (from) => (to)
 
-        ACTIVE => {active, inactive, cancelled}
+        ACTIVE => {inactive, cancelled, executed}
         INACTIVE => {active, cancelled}
-        EXECUTED => {}
+        EXECUTED => {redeemed}
         CANCELLED => {} 
+        REDEEMED => {}
     */
+    function _setRuleStatus(bytes32 ruleHash, RuleStatus newStatus) private {
+        Rule storage rule = rules[ruleHash];
+        if (newStatus == RuleStatus.ACTIVE) {
+            require(rule.status == RuleStatus.INACTIVE, "Can't Activate Rule");
+            emit Activated(ruleHash);
+        } else if (newStatus == RuleStatus.INACTIVE) {
+            require(rule.status == RuleStatus.ACTIVE, "Can't Deactivate Rule");
+            emit Deactivated(ruleHash);
+        } else if (newStatus == RuleStatus.CANCELLED) {
+            require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE, "Can't Cancel Rule");
+            emit Cancelled(ruleHash);
+        } else if (newStatus == RuleStatus.EXECUTED) {
+            require(rule.status == RuleStatus.ACTIVE, "Rule isn't Activated");
+            emit Executed(ruleHash, msg.sender);
+        } else if (newStatus == RuleStatus.REDEEMED) {
+            require(rule.status == RuleStatus.EXECUTED, "Rule isn't pending redemption");
+            emit Redeemed(ruleHash);
+        }
+
+        rule.status = newStatus;
+    }
+
     function activateRule(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) {
-        require(rules[ruleHash].status == RuleStatus.INACTIVE, "Can't Activate Rule");
-        rules[ruleHash].status = RuleStatus.ACTIVE;
-        emit Activated(ruleHash);
+        _setRuleStatus(ruleHash, RuleStatus.ACTIVE);
     }
 
     function deactivateRule(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) {
-        require(rules[ruleHash].status == RuleStatus.ACTIVE, "Can't Deactivate Rule");
-        rules[ruleHash].status = RuleStatus.INACTIVE;
-        emit Deactivated(ruleHash);
+        _setRuleStatus(ruleHash, RuleStatus.INACTIVE);
     }
 
     function cancelRule(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) nonReentrant {
         Rule storage rule = rules[ruleHash];
-        require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE, "Can't Cancel Rule");
-        rule.status = RuleStatus.CANCELLED;
+        _setRuleStatus(ruleHash, RuleStatus.CANCELLED);
         Utils._send(rule.owner, rule.totalCollateralAmount, getInputToken(ruleHash));
-        emit Cancelled(ruleHash);
     }
 
     function _getRuleHash(Trigger[] calldata triggers, Action[] calldata actions) private view returns (bytes32) {
@@ -233,7 +249,7 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
 
     function executeRule(bytes32 ruleHash) external whenNotPaused ruleExists(ruleHash) nonReentrant {
         Rule storage rule = rules[ruleHash];
-        require(rule.status == RuleStatus.ACTIVE, "Rule != ACTIVE");
+        _setRuleStatus(ruleHash, RuleStatus.EXECUTED);
         (bool valid, uint256 triggerData) = _checkTriggers(rule.triggers);
         require(valid, "Trigger != Satisfied");
 
@@ -258,13 +274,11 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         }
 
         rule.outputAmount = output;
-        rule.status = RuleStatus.EXECUTED;
         // We dont need to check sender here.
         // As long as the execution reaches this point, the reward is there
         // for the taking.
         // slither-disable-next-line arbitrary-send
         payable(msg.sender).transfer(rule.reward);
-        emit Executed(ruleHash, msg.sender);
     }
 
     receive() external payable {}
