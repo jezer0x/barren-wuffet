@@ -134,7 +134,7 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
             return TradeStatus.ACTIVE;
         } else if (rule.status == RuleStatus.CANCELLED) {
             return TradeStatus.CANCELLED;
-        } else if (trade.redeemedOutput) {
+        } else if (trade.redeemedOutput || rule.status == RuleStatus.REDEEMED) {
             return TradeStatus.EXECUTED;
         } else if (rule.status == RuleStatus.EXECUTED) {
             // TODO: this is icky!
