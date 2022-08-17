@@ -6,25 +6,26 @@ import { TriggerStruct, ActionStruct } from '../typechain-types/contracts/rules/
 import { assert } from "console";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { int } from "hardhat/internal/core/params/argumentTypes";
-import { Contract, Bytes} from "ethers";
+import { Contract, Bytes, BigNumber } from "ethers";
 
 
 const GT = 0;
 const LT = 1;
 
-const ETH_PRICE = 1300;
-const UNI_PRICE = 3;
-const ETH_UNI_PARAM = ethers.utils.defaultAbiCoder.encode(["string", "string"], ["eth", "uni"]);
-const ETH_UNI_PRICE = (ETH_PRICE / UNI_PRICE);
+const ETH_PRICE_IN_USD = 1300;
+const UNI_PRICE_IN_USD = 3;
+const UNI_PRICE_IN_ETH_PARAM = ethers.utils.defaultAbiCoder.encode(["string", "string"], ["eth", "uni"]);
+const UNI_PRICE_IN_ETH = (ETH_PRICE_IN_USD / UNI_PRICE_IN_USD);
+const ERC20_DECIMALS = BigNumber.from(10).pow(18); 
 
 const BAD_RULE_HASH = "0x" + "1234".repeat(16);
 
 function makePassingTrigger(triggerContract: string): TriggerStruct {
   return {
     op: GT,
-    param: ETH_UNI_PARAM,
+    param: UNI_PRICE_IN_ETH_PARAM,
     callee: triggerContract,
-    value: Math.round(ETH_UNI_PRICE - 1)
+    value: Math.round(UNI_PRICE_IN_ETH - 1)
   };
 }
 
@@ -79,9 +80,9 @@ describe("TradeManager", () => {
     const testSwapRouter = await TestSwapRouter.deploy();
 
     const TestToken = await ethers.getContractFactory("TestToken");
-    const testToken1 = await TestToken.deploy(100000, "Test1", "TST1");
-    const testToken2 = await TestToken.deploy(100000, "Test2", "TST2");
-    const WETH = await TestToken.deploy(100000, "WETH", "WETH");
+    const testToken1 = await TestToken.deploy(BigNumber.from("1000000").mul(ERC20_DECIMALS), "Test1", "TST1");
+    const testToken2 = await TestToken.deploy(BigNumber.from("1000000").mul(ERC20_DECIMALS), "Test2", "TST2");
+    const WETH = await TestToken.deploy(BigNumber.from("1000000").mul(ERC20_DECIMALS), "WETH", "WETH");
 
     const SwapUniSingleAction = await ethers.getContractFactory("SwapUniSingleAction");
 
@@ -89,8 +90,8 @@ describe("TradeManager", () => {
       testSwapRouter.address, WETH.address);
 
     const TestOracle = await ethers.getContractFactory("TestOracle");
-    const testOracleEth = await TestOracle.deploy(ETH_PRICE);
-    const testOracleUni = await TestOracle.deploy(UNI_PRICE);
+    const testOracleEth = await TestOracle.deploy(ETH_PRICE_IN_USD);
+    const testOracleUni = await TestOracle.deploy(UNI_PRICE_IN_USD);
 
     const PriceTrigger = await ethers.getContractFactory("PriceTrigger");
     const priceTrigger = await PriceTrigger.deploy();

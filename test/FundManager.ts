@@ -6,15 +6,16 @@ import { TriggerStruct, ActionStruct } from '../typechain-types/contracts/rules/
 import { assert } from "console";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { int } from "hardhat/internal/core/params/argumentTypes";
-import { Contract, Bytes } from "ethers";
+import { Contract, Bytes, BigNumber } from "ethers";
 import { EtherscanProvider } from "@ethersproject/providers";
 
-const ETH_PRICE = 1300;
-const UNI_PRICE = 3;
+const ETH_PRICE_IN_USD = 1300 * 10**8;
+const UNI_PRICE_IN_USD = 3 * 10**8;
+const ERC20_DECIMALS = BigNumber.from(10).pow(18); 
 
 describe("FundManager", () => {
     async function deployFundManagetFixture() {
-        const [ownerWallet, ruleMakerWallet, ruleSubscriberWallet, otherWallet1] = await ethers.getSigners();
+        const [ownerWallet, ruleMakerWallet, ruleSubscriberWallet, bot] = await ethers.getSigners();
 
         const WhitelistService = await ethers.getContractFactory("WhitelistService");
         const whitelistService = await WhitelistService.deploy();
@@ -33,9 +34,9 @@ describe("FundManager", () => {
         const testSwapRouter = await TestSwapRouter.deploy();
 
         const TestToken = await ethers.getContractFactory("TestToken");
-        const testToken1 = await TestToken.deploy(100000, "Test1", "TST1");
-        const testToken2 = await TestToken.deploy(100000, "Test2", "TST2");
-        const WETH = await TestToken.deploy(100000, "WETH", "WETH");
+        const testToken1 = await TestToken.deploy(BigNumber.from("1000000").mul(ERC20_DECIMALS), "Test1", "TST1");
+        const testToken2 = await TestToken.deploy(BigNumber.from("1000000").mul(ERC20_DECIMALS), "Test2", "TST2");
+        const WETH = await TestToken.deploy(BigNumber.from("1000000").mul(ERC20_DECIMALS), "WETH", "WETH");
 
         const SwapUniSingleAction = await ethers.getContractFactory("SwapUniSingleAction");
 
@@ -43,8 +44,8 @@ describe("FundManager", () => {
             testSwapRouter.address, WETH.address);
 
         const TestOracle = await ethers.getContractFactory("TestOracle");
-        const testOracleEth = await TestOracle.deploy(ETH_PRICE);
-        const testOracleUni = await TestOracle.deploy(UNI_PRICE);
+        const testOracleEth = await TestOracle.deploy(ETH_PRICE_IN_USD);
+        const testOracleUni = await TestOracle.deploy(UNI_PRICE_IN_USD);
 
         const PriceTrigger = await ethers.getContractFactory("PriceTrigger");
         const priceTrigger = await PriceTrigger.deploy();
@@ -53,7 +54,7 @@ describe("FundManager", () => {
 
         return {
             ruleExecutor, fundManager, priceTrigger, swapUniSingleAction, testOracleEth, testOracleUni,
-            testToken1, testToken2, ownerWallet, ruleMakerWallet, ruleSubscriberWallet, otherWallet1, whitelistService, trigWlHash, actWlHash
+            testToken1, testToken2, ownerWallet, ruleMakerWallet, ruleSubscriberWallet, bot, whitelistService, trigWlHash, actWlHash
         };
     }
 
