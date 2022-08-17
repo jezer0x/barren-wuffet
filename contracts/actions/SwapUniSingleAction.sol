@@ -7,6 +7,9 @@ import "../utils/Constants.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+/*
+    runtimeParams.triggerData must be in decimals = 8
+ */
 contract SwapUniSingleAction is IAction {
     using SafeERC20 for IERC20;
 
@@ -40,7 +43,7 @@ contract SwapUniSingleAction is IAction {
                 recipient: msg.sender,
                 deadline: block.timestamp, // need to do an immediate swap
                 amountIn: msg.value,
-                amountOutMinimum: runtimeParams.triggerData,
+                amountOutMinimum: (runtimeParams.triggerData * msg.value) / 10**8, // assumption: triggerData in the form of tokenOut/ETH.
                 sqrtPriceLimitX96: 0
             });
             amountOut = swapRouter.exactInputSingle{value: msg.value}(params);
@@ -60,7 +63,7 @@ contract SwapUniSingleAction is IAction {
                 recipient: msg.sender,
                 deadline: block.timestamp, // need to do an immediate swap
                 amountIn: runtimeParams.totalCollateralAmount,
-                amountOutMinimum: runtimeParams.triggerData,
+                amountOutMinimum: (runtimeParams.triggerData * runtimeParams.totalCollateralAmount) / 10**8, // assumption: triggerData in the form of tokenOut/tokenIn.
                 sqrtPriceLimitX96: 0
             });
             amountOut = swapRouter.exactInputSingle(params);

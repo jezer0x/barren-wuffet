@@ -7,10 +7,10 @@ import { Types } from '../typechain-types/contracts/PriceTrigger';
 const GT = 0;
 const LT = 1;
 // TODO: this whole setup wont work if eth / uni is < 1
-const ETH_PRICE = 1700;
-const UNI_PRICE = 3;
-const ETH_UNI_PARAM = ethers.utils.defaultAbiCoder.encode([ "string", "string" ], [ "eth", "uni" ]);
-const ETH_UNI_PRICE = Math.floor(ETH_PRICE/ UNI_PRICE);
+const ETH_PRICE_IN_USD = 1700;
+const UNI_PRICE_IN_USD = 3;
+const UNI_PRICE_IN_ETH_PARAM = ethers.utils.defaultAbiCoder.encode([ "string", "string" ], [ "eth", "uni" ]);
+const UNI_PRICE_IN_ETH = Math.floor(ETH_PRICE_IN_USD/ UNI_PRICE_IN_USD);
 
 describe("PriceTrigger", () => {
   // We define a fixture to reuse the same setup in every test.
@@ -24,8 +24,8 @@ describe("PriceTrigger", () => {
     const priceTrigger = await PriceTrigger.deploy();
 
     const TestOracle = await ethers.getContractFactory("TestOracle");
-    const testOracleEth = await TestOracle.deploy(ETH_PRICE);
-    const testOracleUni = await TestOracle.deploy(UNI_PRICE);
+    const testOracleEth = await TestOracle.deploy(ETH_PRICE_IN_USD);
+    const testOracleUni = await TestOracle.deploy(UNI_PRICE_IN_USD);
     return { priceTrigger, testOracleEth, testOracleUni, owner, otherAccount };
   }
 
@@ -111,7 +111,7 @@ describe("PriceTrigger", () => {
 
       const trigger: TriggerStruct = {        
         op: GT,        
-        param: ETH_UNI_PARAM,
+        param: UNI_PRICE_IN_ETH_PARAM,
         callee: ethers.constants.AddressZero,
         value: 0
       };
@@ -121,63 +121,63 @@ describe("PriceTrigger", () => {
     });
   });
   describe("Check Trigger", () => {        
-    describe("Should pass / fail the trigger based on eth/uni limit price. Current eth/uni is " + ETH_UNI_PRICE, () => {      
-      it("Should fail the trigger if eth/uni trigger is LT " + (ETH_UNI_PRICE - 1), async () => {
+    describe("Should pass / fail the trigger based on eth/uni limit price. Current eth/uni is " + UNI_PRICE_IN_ETH, () => {      
+      it("Should fail the trigger if eth/uni trigger is LT " + (UNI_PRICE_IN_ETH - 1), async () => {
         const { priceTrigger, testOracleEth, otherAccount } = await loadFixture(
           deployEthUniTriggerFixture
         );
         const trigger: TriggerStruct = {        
           op: LT,          
-          param: ETH_UNI_PARAM,
+          param: UNI_PRICE_IN_ETH_PARAM,
           callee: ethers.constants.AddressZero,
-          value: (ETH_UNI_PRICE - 1)
+          value: (UNI_PRICE_IN_ETH - 1)
         };
         
-        expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([false, ethers.BigNumber.from(ETH_UNI_PRICE)]);
+        expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([false, ethers.BigNumber.from(UNI_PRICE_IN_ETH)]);
       });
   
-      it("Should fail the trigger if eth/uni limit is GT " + (ETH_UNI_PRICE + 1), async () => {
+      it("Should fail the trigger if eth/uni limit is GT " + (UNI_PRICE_IN_ETH + 1), async () => {
         const { priceTrigger, testOracleEth, otherAccount } = await loadFixture(
           deployEthUniTriggerFixture
         );
         const trigger: TriggerStruct = {        
           op: GT,          
-          param: ETH_UNI_PARAM,
+          param: UNI_PRICE_IN_ETH_PARAM,
           callee: ethers.constants.AddressZero,
-          value: (ETH_UNI_PRICE + 1)
+          value: (UNI_PRICE_IN_ETH + 1)
         };
                     
-        expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([false, ethers.BigNumber.from(ETH_UNI_PRICE)]);
+        expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([false, ethers.BigNumber.from(UNI_PRICE_IN_ETH)]);
   
       });
   
-      it("Should pass the trigger if eth/uni limit is GT " + (ETH_UNI_PRICE - 1), async () => {
+      it("Should pass the trigger if eth/uni limit is GT " + (UNI_PRICE_IN_ETH - 1), async () => {
         const { priceTrigger, testOracleEth, otherAccount } = await loadFixture(
           deployEthUniTriggerFixture
         );
         const trigger: TriggerStruct = {        
           op: GT,          
-          param: ETH_UNI_PARAM,
+          param: UNI_PRICE_IN_ETH_PARAM,
           callee: ethers.constants.AddressZero,
-          value: (ETH_UNI_PRICE - 1)
+          value: (UNI_PRICE_IN_ETH - 1)
         };
                     
-        expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([true, ethers.BigNumber.from(ETH_UNI_PRICE)]);
+        expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([true, ethers.BigNumber.from(UNI_PRICE_IN_ETH)]);
   
       });
   
-      it("Should pass the trigger if eth/uni limit is LT " + (ETH_UNI_PRICE + 1), async () => {
+      it("Should pass the trigger if eth/uni limit is LT " + (UNI_PRICE_IN_ETH + 1), async () => {
         const { priceTrigger, testOracleEth, otherAccount } = await loadFixture(
           deployEthUniTriggerFixture
         );
         const trigger: TriggerStruct = {        
           op: LT,          
-          param: ETH_UNI_PARAM,
+          param: UNI_PRICE_IN_ETH_PARAM,
           callee: ethers.constants.AddressZero,
-          value: (ETH_UNI_PRICE + 1)
+          value: (UNI_PRICE_IN_ETH + 1)
         };
                     
-        expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([true, ethers.BigNumber.from(ETH_UNI_PRICE)]);
+        expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([true, ethers.BigNumber.from(UNI_PRICE_IN_ETH)]);
   
       });
 

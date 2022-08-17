@@ -125,8 +125,7 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         Rule storage rule = rules[ruleHash];
         require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE, "Can't reduce collateral");
 
-        // Note: if totalCollateral = 0 and amount = 1; underflow will cause a revert,
-        // so we don't have to do an explicit require here.
+        require(rule.totalCollateralAmount >= amount, "Not enough collateral.");
         rule.totalCollateralAmount = rule.totalCollateralAmount - amount;
 
         if (getInputToken(ruleHash) != REConstants.ETH) {

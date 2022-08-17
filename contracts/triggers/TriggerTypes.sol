@@ -9,6 +9,6 @@ enum Ops {
 struct Trigger {
     address callee;
     bytes param; // any custom param to send to the callee, encoded at compileTime
-    uint256 value; //eg. 1000
+    uint256 value; // Must be in decimals = 8 (i.e. 1 = 1e8)
     Ops op; //eg. GT
 }
