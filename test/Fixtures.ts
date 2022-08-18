@@ -1,8 +1,18 @@
 import { ethers } from "hardhat";
-import { TriggerStruct, ActionStruct, RuleExecutor } from '../typechain-types/contracts/rules/RuleExecutor';
+import { TriggerStruct, ActionStruct, RuleExecutor } from "../typechain-types/contracts/rules/RuleExecutor";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Contract, Bytes, BigNumber } from "ethers";
-import { GT, ERC20_DECIMALS, UNI_PRICE_IN_ETH, UNI_PRICE_IN_ETH_PARAM, DEFAULT_REWARD, ETH_PRICE_IN_USD, PRICE_TRIGGER_DECIMALS, UNI_PRICE_IN_USD, ETH_PRICE_IN_UNI } from "./Constants";
+import {
+  GT,
+  ERC20_DECIMALS,
+  UNI_PRICE_IN_ETH,
+  UNI_PRICE_IN_ETH_PARAM,
+  DEFAULT_REWARD,
+  ETH_PRICE_IN_USD,
+  PRICE_TRIGGER_DECIMALS,
+  UNI_PRICE_IN_USD,
+  ETH_PRICE_IN_UNI,
+} from "./Constants";
 
 export async function deployTestTokens() {
   const TestToken = await ethers.getContractFactory("TestToken");
@@ -17,7 +27,7 @@ export function makePassingTrigger(triggerContract: string): TriggerStruct {
     op: GT,
     param: UNI_PRICE_IN_ETH_PARAM,
     callee: triggerContract,
-    value: UNI_PRICE_IN_ETH.sub(1)
+    value: UNI_PRICE_IN_ETH.sub(1),
   };
 }
 
@@ -26,39 +36,47 @@ export function makeFailingTrigger(triggerContract: string): TriggerStruct {
     op: GT,
     param: UNI_PRICE_IN_ETH_PARAM,
     callee: triggerContract,
-    value: UNI_PRICE_IN_ETH.add(1)
+    value: UNI_PRICE_IN_ETH.add(1),
   };
 }
 
-export function makeSwapAction(swapContract: string,
+export function makeSwapAction(
+  swapContract: string,
   inputToken: string = ethers.constants.AddressZero,
-  outputToken: string = ethers.constants.AddressZero): ActionStruct {
+  outputToken: string = ethers.constants.AddressZero
+): ActionStruct {
   return {
     callee: swapContract,
     data: "0x0000000000000000000000000000000000000000000000000000000000000000",
     inputToken: inputToken, // eth
-    outputToken: outputToken
+    outputToken: outputToken,
   };
-
 }
 
-export async function createRule(_whitelistService: Contract, trigWlHash: Bytes, actWlHash: Bytes, _ruleExecutor: Contract, triggers: TriggerStruct[],
-  actions: ActionStruct[], wallet: SignerWithAddress, activate: boolean = false): Promise<string> {
-  triggers.map(t => _whitelistService.addToWhitelist(trigWlHash, t.callee));
-  actions.map(a => _whitelistService.addToWhitelist(actWlHash, a.callee));
+export async function createRule(
+  _whitelistService: Contract,
+  trigWlHash: Bytes,
+  actWlHash: Bytes,
+  _ruleExecutor: Contract,
+  triggers: TriggerStruct[],
+  actions: ActionStruct[],
+  wallet: SignerWithAddress,
+  activate: boolean = false
+): Promise<string> {
+  triggers.map((t) => _whitelistService.addToWhitelist(trigWlHash, t.callee));
+  actions.map((a) => _whitelistService.addToWhitelist(actWlHash, a.callee));
 
   // send 1 eth as reward.
   const tx = await _ruleExecutor.connect(wallet).createRule(triggers, actions, { value: DEFAULT_REWARD });
   const receipt2 = await tx.wait();
 
-  const ruleHash = receipt2.events?.find(((x: { event: string; }) => x.event == "Created"))?.args?.ruleHash
+  const ruleHash = receipt2.events?.find((x: { event: string }) => x.event == "Created")?.args?.ruleHash;
   if (activate) {
     const tx2 = await _ruleExecutor.connect(wallet).activateRule(ruleHash);
     await tx2.wait();
   }
 
   return ruleHash;
-
 }
 
 async function deployTestOracle() {
@@ -72,7 +90,7 @@ async function deployTestOracle() {
 
 export async function setupPriceTrigger() {
   const [ownerWallet] = await ethers.getSigners();
-  const priceTrigger = await ethers.getContract("PriceTrigger")
+  const priceTrigger = await ethers.getContract("PriceTrigger");
   return { priceTrigger, ownerWallet };
 }
 
@@ -94,11 +112,14 @@ export async function setupSwapUniSingleAction(testToken: Contract, WETH: Contra
   const testSwapRouter = await TestSwapRouter.deploy(WETH.address);
 
   // this lets us do 10 swaps of 2 eth each
-  await testToken.transfer(testSwapRouter.address, ETH_PRICE_IN_UNI.mul(20).mul(ERC20_DECIMALS).div(PRICE_TRIGGER_DECIMALS));
+  await testToken.transfer(
+    testSwapRouter.address,
+    ETH_PRICE_IN_UNI.mul(20).mul(ERC20_DECIMALS).div(PRICE_TRIGGER_DECIMALS)
+  );
 
   await ethFundWallet.sendTransaction({
     to: testSwapRouter.address,
-    value: ethers.utils.parseEther('100'), // send 100 ether
+    value: ethers.utils.parseEther("100"), // send 100 ether
   });
 
   const swapUniSingleAction = await ethers.getContract("SwapUniSingleAction");
@@ -119,7 +140,6 @@ export async function getWhitelistService() {
   return { whitelistService, trigWlHash, actWlHash };
 }
 
-
 export async function setupRuleExecutor() {
   // Contracts are deployed using the first signer/account by default
   const [ownerWallet, ruleMakerWallet, ruleSubscriberWallet, botWallet, ethFundWallet] = await ethers.getSigners();
@@ -133,18 +153,55 @@ export async function setupRuleExecutor() {
 
   const ruleExecutor = await ethers.getContract("RuleExecutor");
   return {
-    ruleExecutor, priceTrigger, swapUniSingleAction, testOracleEth, testOracleUni,
-    testToken1, testToken2, WETH, ownerWallet, ruleMakerWallet, ruleSubscriberWallet,
-    botWallet, whitelistService, trigWlHash, actWlHash
+    ruleExecutor,
+    priceTrigger,
+    swapUniSingleAction,
+    testOracleEth,
+    testOracleUni,
+    testToken1,
+    testToken2,
+    WETH,
+    ownerWallet,
+    ruleMakerWallet,
+    ruleSubscriberWallet,
+    botWallet,
+    whitelistService,
+    trigWlHash,
+    actWlHash,
   };
 }
-  export async function setupTradeManager() {
-    const [ownerWallet, traderWallet, tradeSubscriberWallet, someOtherWallet] = await ethers.getSigners();
+export async function setupTradeManager() {
+  const [ownerWallet, traderWallet, tradeSubscriberWallet, someOtherWallet] = await ethers.getSigners();
 
-    const { ruleExecutor, priceTrigger, swapUniSingleAction, testOracleEth, testOracleUni,
-      testToken1, testToken2,  whitelistService, trigWlHash, actWlHash } = await setupRuleExecutor(); 
-    const tradeManager = await ethers.getContract("TradeManager"); 
-    
-    return { ruleExecutor, priceTrigger, swapUniSingleAction, testOracleEth, testOracleUni,
-      testToken1, testToken2, ownerWallet, traderWallet, tradeSubscriberWallet, someOtherWallet, whitelistService, trigWlHash, actWlHash, tradeManager}; 
-  }
+  const {
+    ruleExecutor,
+    priceTrigger,
+    swapUniSingleAction,
+    testOracleEth,
+    testOracleUni,
+    testToken1,
+    testToken2,
+    whitelistService,
+    trigWlHash,
+    actWlHash,
+  } = await setupRuleExecutor();
+  const tradeManager = await ethers.getContract("TradeManager");
+
+  return {
+    ruleExecutor,
+    priceTrigger,
+    swapUniSingleAction,
+    testOracleEth,
+    testOracleUni,
+    testToken1,
+    testToken2,
+    ownerWallet,
+    traderWallet,
+    tradeSubscriberWallet,
+    someOtherWallet,
+    whitelistService,
+    trigWlHash,
+    actWlHash,
+    tradeManager,
+  };
+}
