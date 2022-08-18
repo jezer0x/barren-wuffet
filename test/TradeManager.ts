@@ -20,50 +20,45 @@ describe("TradeManager", () => {
   });
 
   describe.skip("Admin functions", () => {
-    it("Owner should be able to X", async function () {});
-    it("Others should not be able to X", async function () {});
+    it("Should be able to X if owner", async function () {});
+    it("Should not be able to X if not owner", async function () {});
   });
 
   describe.skip("Anyone can open a trade", () => {
-    it("Bad constraints.*TotalCollateral should revert", async function () {});
-    it("Bad constraints.*CollateralPerSub should revert", async function () {});
+    it.skip("Should revert if bad constraints", async function () {
+      // TODO: not sure if we should test this here or have a separate utils test
+    });
     it("Should emit the Created event properly", async function () {});
     it("Should set the right manager for the trade", async function () {});
-    it("Trader can't open duplicate trade in the same block", async function () {});
-    it("Trader can open duplicate trade in different block", async function () {});
+    it("Should revert if tries to open duplicate trade in same block", async function () {});
+    it("Should succeed if tries to open duplicate trade in a different block", async function () {});
   });
 
   describe.skip("Cancelling a Trade", () => {
-    it("Someone else can't cancel your trade", async function () {});
-    it("Manager can cancel trade, emits Cancelled", async function () {});
-    it("Trying to cancel a non-existing trade", async function () {});
-    it("Manager can't cancel same trade twice", async function () {});
+    it("Should revert if non-owner tries to cancel your trade", async function () {});
+    it("Should succeed if manager wants to cancel trade", async function () {});
+    it("Should revert if trying to cancel non-existing trade", async function () {});
+    it("Should revert if manager tries to cancel same trade twice", async function () {});
   });
 
   describe.skip("Subscriber depositing", () => {
-    it("Depositing wrong asset", async function () {});
-    it("Depositing too much in a single Sub", async function () {});
-    it("Depositing too little in a single Sub", async function () {});
-    it("Depositing beyond maxCollateral", async function () {});
-    it("Depositing ETH properly, should emit Deposit", async function () {});
-    it("Depositing ERC20 properly, should emit Deposit", async function () {});
-    it("Multiple subscriptions from same person allowed", async function () {});
-    it("Multiple subscriptions from different people allowed", async function () {});
-    it("Hitting minCollateral activates rule", async function () {});
+    it("Should revert if subscriber deposits wrong asset", async function () {});
+    it("Should revert if subscriber deposits too much at once", async function () {});
+    it("Should revert if subscriber deposits too little at once", async function () {});
+    it("Should revert if deposits take it beyond maxCollateral", async function () {});
+    it("Should succeed in depositing ETH properly", async function () {});
+    it("Should succeed in depositing ERC20 properly", async function () {});
+    it("Should succeed if same acccount subscribes multiple times", async function () {});
+    it("Should allow multiple subscriptions from multiple people", async function () {});
+    it("Should activate rule if minCollateral for trade is reached", async function () {});
   });
 
   describe.skip("Subscriber withdrawing", () => {
-    it("Withdraw someone else's asset should fail", async function () {});
-    it("Withdraw twice should fail", async function () {});
-    it("Withdraw before rule is active should give back collateral, should emit withdraw", async function () {});
-    it("Withdraw after rule is active should give back collateral", async function () {});
-    it("Withdraw after rule is active and totalCollateral falls below min should rule.deactivate", async function () {});
-    it("Withdraw after rule is active and totalCollateral falls below min should rule.deactivate", async function () {});
-    it("Withdraw after rule.executed should give back output", async function () {});
+    it("Should revert if non-subscriber is trying to withdraw collateral", async function () {});
+    it("Should revert if subscriber tries to withdraw second time", async function () {});
+    it("Should succeed if subscriber tries to withdraw if rule is inactive", async function () {});
+    it("Should succeed id subscriber tries to withdtaw if rule is active", async function () {});
+    it("Should deactivate rule if withdrawal takes it below minCollateral", async function () {});
+    it("Should succeed in giving back output after trade is completed", async function () {});
   });
-
-  // describe.skip("Anyone can open a trade", () =>  {
-  //   it("", async function () {});
-  //   it("", async function () {});
-  // });
 });
