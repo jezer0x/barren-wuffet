@@ -476,7 +476,7 @@ describe("RuleExecutor", () => {
           // we dont care about the balance of the swap contracts, 
           // because that's a downstream impact we dont care about here.
           [botWallet, ruleSubscriberWallet, ruleExecutor],
-          [DEFAULT_REWARD, 0, BigNumber.from(0).sub(collateral.add(DEFAULT_REWARD))],
+          [DEFAULT_REWARD, 0, collateral.add(DEFAULT_REWARD).mul(-1)],
         ).and.to
         .emit(ruleExecutor, "Executed")
         .withArgs(ruleHashEth, botWallet.address);
@@ -485,7 +485,7 @@ describe("RuleExecutor", () => {
         testToken1,
         // this should reflect the reward.
         [botWallet, ruleSubscriberWallet, ruleExecutor],
-        [0, 0, collateral.div(UNI_PRICE_IN_ETH).div(PRICE_TRIGGER_DECIMALS)],
+        [0, 0, collateral.mul(ETH_PRICE_IN_UNI).div(PRICE_TRIGGER_DECIMALS)],
       );
 
       await expect(ruleExecutor.connect(botWallet).executeRule(ruleHashEth)).to.be.revertedWith("Rule isn't Activated");
@@ -699,7 +699,7 @@ describe("RuleExecutor", () => {
 
     it("should redeem all the balance only once by the subscriber if the rule was executed and returned token", async () => {
       const { ruleHashEth, ruleSubscriberWallet, botWallet, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
-      const collateralAmount = utils.parseEther("1"); // send 1 eth
+      const collateralAmount = utils.parseEther("2"); // send 2 eth
       await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
       await ruleExecutor.connect(botWallet).executeRule(ruleHashEth);
       await expect(ruleExecutor.connect(botWallet).redeemBalance(ruleHashEth)).to.be.revertedWith("onlyRuleOwner");
