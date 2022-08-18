@@ -1,7 +1,7 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers } from "hardhat";
-import { deployPriceTriggerFixture, deployEthUniTriggerFixture } from "./Fixtures"; 
+import { deployments, ethers } from "hardhat";
+import { setupPriceTrigger, setupEthUniPriceTrigger } from "./Fixtures"; 
 import { TriggerStruct } from '../typechain-types/contracts/rules/RuleExecutor';
 import { GT, LT, UNI_PRICE_IN_ETH_PARAM, UNI_PRICE_IN_ETH } from "./Constants"
 
@@ -9,6 +9,16 @@ describe("PriceTrigger", () => {
   // We define a fixture to reuse the same setup in every test.
   // We use loadFixture to run this setup once, snapshot that state,
   // and reset Hardhat Network to that snapshopt in every test.
+
+  async function deployPriceTriggerFixture() {
+    await deployments.fixture(['PriceTrigger']); 
+    return await setupPriceTrigger(); 
+  }
+
+  async function deployEthUniTriggerFixture() {
+    await deployments.fixture(['PriceTrigger']); 
+    return await setupEthUniPriceTrigger(); 
+  }
 
   describe("Deployment", () => {
 

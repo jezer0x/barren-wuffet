@@ -13,14 +13,19 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
 import { BigNumber, constants, utils } from "ethers";
-import { deployRuleExecutorFixture, makePassingTrigger, makeFailingTrigger, makeSwapAction, createRule } from "./Fixtures"
+import { setupRuleExecutor, makePassingTrigger, makeFailingTrigger, makeSwapAction, createRule } from "./Fixtures"
 import { BAD_RULE_HASH, ERC20_DECIMALS, DEFAULT_REWARD, PRICE_TRIGGER_DECIMALS, UNI_PRICE_IN_ETH } from "./Constants"
+import { deployments } from "hardhat";
 
 
 describe("RuleExecutor", () => {
 
-  describe("Deployment", () => {
+  async function deployRuleExecutorFixture() {
+    await deployments.fixture(); 
+    return await setupRuleExecutor(); 
+  }
 
+  describe("Deployment", () => {
     it("Should set the right owner", async function () {
       const { ruleExecutor, ownerWallet } = await loadFixture(deployRuleExecutorFixture);
 

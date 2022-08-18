@@ -70,17 +70,16 @@ export function makePassingTrigger(triggerContract: string): TriggerStruct {
     return {testOracleEth, testOracleUni, ownerWallet }; 
   }
 
-  export async function deployPriceTriggerFixture() {
+  export async function setupPriceTrigger() {
     const [ownerWallet] = await ethers.getSigners();
-    await deployments.fixture(['PriceTrigger']); 
     const priceTrigger = await ethers.getContract("PriceTrigger")
     return { priceTrigger, ownerWallet };
   }
 
-  export async function deployEthUniTriggerFixture() {
+  export async function setupEthUniPriceTrigger() {
     const [ownerWallet, otherWallet] = await ethers.getSigners();
 
-    const { priceTrigger } = await deployPriceTriggerFixture();
+    const { priceTrigger } = await setupPriceTrigger();
     const { testOracleUni, testOracleEth } = await deployTestOracle(); 
     await priceTrigger.addPriceFeed("eth", testOracleEth.address);
     await priceTrigger.addPriceFeed("uni", testOracleUni.address);
@@ -88,7 +87,7 @@ export function makePassingTrigger(triggerContract: string): TriggerStruct {
     return { priceTrigger, testOracleEth, testOracleUni, ownerWallet, otherWallet};
   }
 
-  export async function deploySwapUniSingleActionFixture(testToken: Contract, WETH: Contract) {
+  export async function setupSwapUniSingleAction(testToken: Contract, WETH: Contract) {
     const [ownerWallet, ruleMakerWallet, ruleSubscriberWallet, botWallet, ethFundWallet] = await ethers.getSigners();
 
     const TestSwapRouter = await ethers.getContractFactory("TestSwapRouter");
@@ -102,19 +101,17 @@ export function makePassingTrigger(triggerContract: string): TriggerStruct {
       value: ethers.utils.parseEther('100'), // send 100 ether
     });
 
-    await deployments.fixture(['SwapUniSingleAction']); 
     const swapUniSingleAction = await ethers.getContract("SwapUniSingleAction");
     swapUniSingleAction.changeContractAddresses(testSwapRouter.address, WETH.address); 
 
     return swapUniSingleAction; 
   }
 
-  export async function deployWhitelistServiceFixtures() {
+  export async function getWhitelistService() {
     const [ownerWallet] = await ethers.getSigners();
 
     // WhitelistService deployment already creates trigWlHash and actWlHash
     // TODO: is that the right approach?
-    await deployments.fixture(['WhitelistService']); 
     const whitelistService = await ethers.getContract("WhitelistService");
     const trigWlHash = await whitelistService.getWhitelistHash(ownerWallet.address, "triggers");
     const actWlHash = await whitelistService.getWhitelistHash(ownerWallet.address, "actions");
@@ -122,23 +119,20 @@ export function makePassingTrigger(triggerContract: string): TriggerStruct {
     return {whitelistService, trigWlHash, actWlHash}; 
     }
 
-  // We define a fixture to reuse the same setup in every test.
-  // We use loadFixture to run this setup once, snapshot that state,
-  // and reset Hardhat Network to that snapshopt in every test.
-  export async function deployRuleExecutorFixture() {
+
+  export async function setupRuleExecutor() {
     // Contracts are deployed using the first signer/account by default
     const [ownerWallet, ruleMakerWallet, ruleSubscriberWallet, botWallet, ethFundWallet] = await ethers.getSigners();
 
     const { testToken1, testToken2, WETH } = await deployTestTokens(); 
-    const { testOracleEth, testOracleUni, priceTrigger } = await deployEthUniTriggerFixture();
+    const { testOracleEth, testOracleUni, priceTrigger } = await setupEthUniPriceTrigger();
 
-    const swapUniSingleAction = await deploySwapUniSingleActionFixture(testToken1, WETH); 
+    const swapUniSingleAction = await setupSwapUniSingleAction(testToken1, WETH); 
 
-    const {whitelistService, trigWlHash, actWlHash} = await deployWhitelistServiceFixtures(); 
+    const {whitelistService, trigWlHash, actWlHash} = await getWhitelistService(); 
 
-    //await deployments.fixture(['RuleExecutor']);  // TODO: bugs out by deploying everything all over again
-    const RuleExecutor = await ethers.getContractFactory("RuleExecutor");
-    const ruleExecutor = await RuleExecutor.deploy(whitelistService.address, trigWlHash, actWlHash); 
+    const ruleExecutor = await ethers.getContract("RuleExecutor"); 
+    
 
     return {
       ruleExecutor, priceTrigger, swapUniSingleAction, testOracleEth, testOracleUni,
