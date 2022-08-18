@@ -1,7 +1,7 @@
-import { ethers, deployments } from "hardhat";
+import { ethers } from "hardhat";
 import { TriggerStruct, ActionStruct, RuleExecutor } from '../typechain-types/contracts/rules/RuleExecutor';
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { Contract, Bytes, BigNumber, Wallet } from "ethers";
+import { Contract, Bytes, BigNumber } from "ethers";
 import { GT, ERC20_DECIMALS, UNI_PRICE_IN_ETH, UNI_PRICE_IN_ETH_PARAM, DEFAULT_REWARD, ETH_PRICE_IN_USD, PRICE_TRIGGER_DECIMALS, UNI_PRICE_IN_USD } from "./Constants";
 
 export async function deployTestTokens() {
