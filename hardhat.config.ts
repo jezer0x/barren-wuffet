@@ -6,6 +6,7 @@ import "@nomiclabs/hardhat-ethers";
 import "hardhat-deploy";
 import "solidity-coverage";
 import "hardhat-contract-sizer";
+import "hardhat-gas-reporter";
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -17,6 +18,9 @@ const config: HardhatUserConfig = {
   },
   paths: {
     sources: "contracts",
+  },
+  gasReporter: {
+    enabled: true,
   },
 };
 
