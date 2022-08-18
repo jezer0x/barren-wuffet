@@ -269,7 +269,7 @@ describe("RuleExecutor", () => {
 
     const passingTrigger = makePassingTrigger(priceTrigger.address);
     // to get ETH from uniswap, you need to set the output token as WETH.
-    const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, WETH.address);
+    const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, constants.AddressZero);
     const ethSwapAction = makeSwapAction(swapUniSingleAction.address, constants.AddressZero, testToken1.address);
 
     whitelistService.addToWhitelist(trigWlHash, priceTrigger.address);
