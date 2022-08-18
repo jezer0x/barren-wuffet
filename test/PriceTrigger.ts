@@ -13,7 +13,7 @@ const PRICE_TRIGGER_DECIMALS = BigNumber.from(10).pow(8);
 const ETH_PRICE_IN_USD = BigNumber.from(1700).mul(PRICE_TRIGGER_DECIMALS);
 const UNI_PRICE_IN_USD = BigNumber.from(3).mul(PRICE_TRIGGER_DECIMALS);
 const UNI_PRICE_IN_ETH_PARAM = ethers.utils.defaultAbiCoder.encode(["string", "string"], ["eth", "uni"]);
-const UNI_PRICE_IN_ETH = ETH_PRICE_IN_USD.mul(PRICE_TRIGGER_DECIMALS).div(UNI_PRICE_IN_USD); // 56666666667 = ~566 UNI 
+const UNI_PRICE_IN_ETH = ETH_PRICE_IN_USD.mul(PRICE_TRIGGER_DECIMALS).div(UNI_PRICE_IN_USD); // 56666666666 = ~566 UNI 
 
 describe("PriceTrigger", () => {
   // We define a fixture to reuse the same setup in every test.
@@ -53,7 +53,7 @@ describe("PriceTrigger", () => {
 
   describe("Add Triggers", () => {
     it("Should revert with the right error if called from another account", async () => {
-      const { priceTrigger, owner, otherAccount } = await loadFixture(
+      const { priceTrigger, otherAccount } = await loadFixture(
         deployPriceTriggerFixture
       );
 
@@ -75,7 +75,7 @@ describe("PriceTrigger", () => {
 
   describe("Validate Trigger", () => {
     it("Should revert if the trigger has only 1 asset", async () => {
-      const { priceTrigger, testOracleEth, otherAccount } = await loadFixture(
+      const { priceTrigger, otherAccount } = await loadFixture(
         deployEthUniTriggerFixture
       );
 
@@ -108,7 +108,7 @@ describe("PriceTrigger", () => {
     });
 
     it("Should pass if the trigger has 2 assets and the datasource is specified", async () => {
-      const { priceTrigger, testOracleEth, otherAccount } = await loadFixture(
+      const { priceTrigger, otherAccount } = await loadFixture(
         deployEthUniTriggerFixture
       );
 
@@ -135,10 +135,7 @@ describe("PriceTrigger", () => {
           callee: ethers.constants.AddressZero,
           value: UNI_PRICE_IN_ETH.sub(1)
         };
-        const val = await priceTrigger.connect(otherAccount).check(trigger);
-        console.log(val.toString());
-        console.log(UNI_PRICE_IN_ETH);
-        expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([false, ethers.BigNumber.from(UNI_PRICE_IN_ETH)]);
+        expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([false, UNI_PRICE_IN_ETH]);
       });
 
       it("Should fail the trigger if eth/uni limit is GT " + (UNI_PRICE_IN_ETH.add(1)), async () => {
@@ -152,7 +149,7 @@ describe("PriceTrigger", () => {
           value: (UNI_PRICE_IN_ETH.add(1))
         };
 
-        expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([false, ethers.BigNumber.from(UNI_PRICE_IN_ETH)]);
+        expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([false, UNI_PRICE_IN_ETH]);
 
       });
 
@@ -167,7 +164,7 @@ describe("PriceTrigger", () => {
           value: (UNI_PRICE_IN_ETH.sub(1))
         };
 
-        expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([true, ethers.BigNumber.from(UNI_PRICE_IN_ETH)]);
+        expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([true, UNI_PRICE_IN_ETH]);
 
       });
 
@@ -182,7 +179,7 @@ describe("PriceTrigger", () => {
           value: (UNI_PRICE_IN_ETH.add(1))
         };
 
-        expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([true, ethers.BigNumber.from(UNI_PRICE_IN_ETH)]);
+        expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([true, UNI_PRICE_IN_ETH]);
 
       });
 
