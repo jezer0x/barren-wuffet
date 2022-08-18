@@ -17,6 +17,7 @@ import { BigNumber, constants, utils } from "ethers";
 import { setupRuleExecutor, makePassingTrigger, makeFailingTrigger, makeSwapAction, createRule } from "./Fixtures"
 import { BAD_RULE_HASH, ERC20_DECIMALS, DEFAULT_REWARD, PRICE_TRIGGER_DECIMALS, UNI_PRICE_IN_ETH, ETH_PRICE_IN_UNI, UNI_PRICE_IN_ETH_PARAM, LT, ETH_PRICE_IN_UNI_PARAM, GT } from "./Constants"
 import { deployments } from "hardhat";
+import { RuleStructOutput } from "../typechain-types/contracts/rules/RuleExecutor";
 
 
 describe("RuleExecutor", () => {
@@ -143,12 +144,12 @@ describe("RuleExecutor", () => {
     it("creates rule even without reward, and getRule returns the rule if the rule was successfully created", async () => {
       const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1, whitelistService, trigWlHash, actWlHash } = await loadFixture(deployRuleExecutorFixture);
 
-      const passingTrigger = makeFailingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
+      const failingTrigger = makeFailingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
 
       let ruleHash;
       await expect(ruleExecutor.connect(ruleMakerWallet).createRule(
-        [passingTrigger], [executableAction])).to
+        [failingTrigger], [executableAction])).to
         .changeEtherBalances(
           [ruleExecutor, ruleMakerWallet],
           [0, 0]
@@ -158,10 +159,9 @@ describe("RuleExecutor", () => {
 
       await expect(ruleExecutor.getRule(BAD_RULE_HASH)).to.be.revertedWith("Rule not found");
 
-      expect(await ruleExecutor.getRule(ruleHash)).to.satisfy((data: any) => {
-        // console.log(data); 
-        return false;
-        // TODO need to check if data is right
+      expect(await ruleExecutor.getRule(ruleHash)).to.satisfy((rule: RuleStructOutput) => {
+        // some basic rule checks
+        return (rule.owner == ruleMakerWallet.address) && (rule.triggers[0].callee == failingTrigger.callee) && (rule.actions[0].callee == executableAction.callee) && (rule.reward.eq(BigNumber.from(0)));
       });
 
     });
