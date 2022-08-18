@@ -29,6 +29,7 @@
   "dependencies": {
     "@chainlink/contracts": "^0.4.2",
     "@openzeppelin/contracts": "^4.7.1",
-    "@uniswap/v3-periphery": "^1.4.1"
+    "@uniswap/v3-periphery": "^1.4.1",
+    "istanbul-badges-readme": "^1.8.2"
   }
 }
