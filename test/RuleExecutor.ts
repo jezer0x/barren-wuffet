@@ -12,6 +12,7 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
+import { ethers } from "hardhat";
 import { BigNumber, constants, utils } from "ethers";
 import { setupRuleExecutor, makePassingTrigger, makeFailingTrigger, makeSwapAction, createRule } from "./Fixtures"
 import { BAD_RULE_HASH, ERC20_DECIMALS, DEFAULT_REWARD, PRICE_TRIGGER_DECIMALS, UNI_PRICE_IN_ETH, ETH_PRICE_IN_UNI, UNI_PRICE_IN_ETH_PARAM, LT, ETH_PRICE_IN_UNI_PARAM, GT } from "./Constants"
@@ -54,14 +55,23 @@ describe("RuleExecutor", () => {
       await expect(ruleExecutor.connect(ruleMakerWallet).createRule([badTrigger], [executableAction])).to.be.revertedWithoutReason();
     });
 
-    it.skip("Should revert if validateTrigger on trigger does not return true", async () => {
-      // Use BadPriceTrigger. I am yet not sure what damage this can do, and what protection we should have for this.      
+    it("Should revert if validateTrigger on trigger does not return true", async () => {
+      const { ruleExecutor, swapUniSingleAction, ruleMakerWallet, testToken1, whitelistService, trigWlHash, actWlHash } = await loadFixture(deployRuleExecutorFixture);
+
+      const BadPriceTrigger = await ethers.getContractFactory("BadPriceTrigger");
+      const badPriceTrigger = await BadPriceTrigger.deploy();
+
+      const badTrigger = makePassingTrigger(badPriceTrigger.address);
+      const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
+
+      whitelistService.disableWhitelist(trigWlHash);
+      whitelistService.disableWhitelist(actWlHash);
+      await expect(ruleExecutor.connect(ruleMakerWallet).createRule([badTrigger], [executableAction])).to.be.revertedWith("Invalid Trigger");
+
     });
 
-    it.skip("Should revert if validateTrigger on trigger is not a view fn", async () => {
-      // Use BadPriceTrigger. I am yet not sure what damage this can do, and what protection we should have for this.
-
-    });
+    // We dont need to check that validate is a view fn. solidity enforces that    
+    // if the interface is used.
 
     it("Should revert if no action is specified", async () => {
       const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1, whitelistService, trigWlHash, actWlHash } = await loadFixture(deployRuleExecutorFixture);
@@ -91,11 +101,8 @@ describe("RuleExecutor", () => {
 
     });
 
-    it.skip("Should revert if validate on action is not a view fn", async () => {
-      // KIV. Need to create a bad action. I am yet not sure what damage this can do, and what protection we should have for this.
-
-
-    });
+    // We dont need to check that validate is a view fn. solidity enforces that    
+    // if the interface is used.    
 
     it("Should revert if trigger has not been whitelisted", async () => {
       const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1, whitelistService, trigWlHash } = await loadFixture(deployRuleExecutorFixture);
