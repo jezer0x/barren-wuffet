@@ -6,17 +6,23 @@ import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "../utils/Constants.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /*
     runtimeParams.triggerData must be in decimals = 8
  */
-contract SwapUniSingleAction is IAction {
+contract SwapUniSingleAction is IAction, Ownable {
     using SafeERC20 for IERC20;
 
     ISwapRouter swapRouter;
     address WETH9;
 
     constructor(address swapRouterAddress, address wethAddress) {
+        swapRouter = ISwapRouter(swapRouterAddress);
+        WETH9 = wethAddress;
+    }
+
+    function changeContractAddresses(address swapRouterAddress, address wethAddress) public onlyOwner {
         swapRouter = ISwapRouter(swapRouterAddress);
         WETH9 = wethAddress;
     }

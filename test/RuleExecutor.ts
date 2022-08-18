@@ -30,10 +30,10 @@ describe("RuleExecutor", () => {
 
   describe("Add Rule By Anyone", () => {
 
-    it("Should revert if no trigger is specified", async () => {
+    it.skip("Should revert if no trigger is specified", async () => {
     });
 
-    it("Should revert if no action is specified", async () => {
+    it.skip("Should revert if no action is specified", async () => {
     });
 
     it("Should revert if trigger doesnt have a callee with validateTrigger", async () => {
@@ -41,7 +41,6 @@ describe("RuleExecutor", () => {
 
       const badTrigger = makePassingTrigger(constants.AddressZero); // passing trigger with bad address
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
-
 
       whitelistService.disableWhitelist(trigWlHash);
       whitelistService.disableWhitelist(actWlHash);

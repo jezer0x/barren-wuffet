@@ -1,11 +1,6 @@
-import { ethers } from "hardhat";
-import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
-import { expect } from "chai";
+import { ethers, deployments } from "hardhat";
 import { TriggerStruct, ActionStruct, RuleExecutor } from '../typechain-types/contracts/rules/RuleExecutor';
-import { assert } from "console";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { int } from "hardhat/internal/core/params/argumentTypes";
 import { Contract, Bytes, BigNumber, Wallet } from "ethers";
 import {GT, ERC20_DECIMALS, UNI_PRICE_IN_ETH, UNI_PRICE_IN_ETH_PARAM, DEFAULT_REWARD, ETH_PRICE_IN_USD, PRICE_TRIGGER_DECIMALS, UNI_PRICE_IN_USD }  from "./Constants"; 
 
@@ -77,16 +72,15 @@ export function makePassingTrigger(triggerContract: string): TriggerStruct {
 
   export async function deployPriceTriggerFixture() {
     const [ownerWallet] = await ethers.getSigners();
-
-    const PriceTrigger = await ethers.getContractFactory("PriceTrigger");
-    const priceTrigger = await PriceTrigger.deploy();
+    await deployments.fixture(['PriceTrigger']); 
+    const priceTrigger = await ethers.getContract("PriceTrigger")
     return { priceTrigger, ownerWallet };
   }
 
   export async function deployEthUniTriggerFixture() {
     const [ownerWallet, otherWallet] = await ethers.getSigners();
 
-    const { priceTrigger } = await deployPriceTriggerFixture()
+    const { priceTrigger } = await deployPriceTriggerFixture();
     const { testOracleUni, testOracleEth } = await deployTestOracle(); 
     await priceTrigger.addPriceFeed("eth", testOracleEth.address);
     await priceTrigger.addPriceFeed("uni", testOracleUni.address);
@@ -94,18 +88,38 @@ export function makePassingTrigger(triggerContract: string): TriggerStruct {
     return { priceTrigger, testOracleEth, testOracleUni, ownerWallet, otherWallet};
   }
 
+  export async function deploySwapUniSingleActionFixture(testToken: Contract, WETH: Contract) {
+    const [ownerWallet, ruleMakerWallet, ruleSubscriberWallet, botWallet, ethFundWallet] = await ethers.getSigners();
+
+    const TestSwapRouter = await ethers.getContractFactory("TestSwapRouter");
+    const testSwapRouter = await TestSwapRouter.deploy(WETH.address);
+
+    // this lets us do 10 swaps
+    await testToken.transfer(testSwapRouter.address, UNI_PRICE_IN_ETH.div(PRICE_TRIGGER_DECIMALS).mul(10).mul(ERC20_DECIMALS));
+
+    await ethFundWallet.sendTransaction({
+      to: testSwapRouter.address,
+      value: ethers.utils.parseEther('100'), // send 100 ether
+    });
+
+    await deployments.fixture(['SwapUniSingleAction']); 
+    const swapUniSingleAction = await ethers.getContract("SwapUniSingleAction");
+    swapUniSingleAction.changeContractAddresses(testSwapRouter.address, WETH.address); 
+
+    return swapUniSingleAction; 
+  }
+
   export async function deployWhitelistServiceFixtures() {
     const [ownerWallet] = await ethers.getSigners();
 
-    const WhitelistService = await ethers.getContractFactory("WhitelistService");
-    const whitelistService = await WhitelistService.deploy();
-    await whitelistService.createWhitelist("triggers");
+    // WhitelistService deployment already creates trigWlHash and actWlHash
+    // TODO: is that the right approach?
+    await deployments.fixture(['WhitelistService']); 
+    const whitelistService = await ethers.getContract("WhitelistService");
     const trigWlHash = await whitelistService.getWhitelistHash(ownerWallet.address, "triggers");
-    await whitelistService.createWhitelist("actions");
     const actWlHash = await whitelistService.getWhitelistHash(ownerWallet.address, "actions");
 
     return {whitelistService, trigWlHash, actWlHash}; 
-
     }
 
   // We define a fixture to reuse the same setup in every test.
@@ -115,28 +129,17 @@ export function makePassingTrigger(triggerContract: string): TriggerStruct {
     // Contracts are deployed using the first signer/account by default
     const [ownerWallet, ruleMakerWallet, ruleSubscriberWallet, botWallet, ethFundWallet] = await ethers.getSigners();
 
+    const { testToken1, testToken2, WETH } = await deployTestTokens(); 
+    const { testOracleEth, testOracleUni, priceTrigger } = await deployEthUniTriggerFixture();
+
+    const swapUniSingleAction = await deploySwapUniSingleActionFixture(testToken1, WETH); 
+
     const {whitelistService, trigWlHash, actWlHash} = await deployWhitelistServiceFixtures(); 
 
+    //await deployments.fixture(['RuleExecutor']);  // TODO: bugs out by deploying everything all over again
     const RuleExecutor = await ethers.getContractFactory("RuleExecutor");
-    const ruleExecutor = await RuleExecutor.deploy(whitelistService.address, trigWlHash, actWlHash);
-  
-    const { testToken1, testToken2, WETH } = await deployTestTokens(); 
-    const TestSwapRouter = await ethers.getContractFactory("TestSwapRouter");
-    const testSwapRouter = await TestSwapRouter.deploy(WETH.address);
-    // this lets us do 10 swaps
-    await testToken1.transfer(testSwapRouter.address, UNI_PRICE_IN_ETH.div(PRICE_TRIGGER_DECIMALS).mul(10).mul(ERC20_DECIMALS));
+    const ruleExecutor = await RuleExecutor.deploy(whitelistService.address, trigWlHash, actWlHash); 
 
-    await ethFundWallet.sendTransaction({
-      to: testSwapRouter.address,
-      value: ethers.utils.parseEther('100'), // send 100 ether
-    });
-
-    const SwapUniSingleAction = await ethers.getContractFactory("SwapUniSingleAction");
-    const swapUniSingleAction = await SwapUniSingleAction.deploy(
-      testSwapRouter.address, WETH.address);
-
-    const { testOracleEth, testOracleUni, priceTrigger } = await deployEthUniTriggerFixture(); 
-    
     return {
       ruleExecutor, priceTrigger, swapUniSingleAction, testOracleEth, testOracleUni,
       testToken1, testToken2, WETH, ownerWallet, ruleMakerWallet, ruleSubscriberWallet,
