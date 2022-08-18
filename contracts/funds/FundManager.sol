@@ -90,13 +90,14 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
         _unpause();
     }
 
-    function createFund(
-        string calldata name,
-        SubscriptionConstraints calldata constraints,
-        uint256 rewardPercentage
-    ) external whenNotPaused returns (bytes32) {
+    function createFund(string calldata name, SubscriptionConstraints calldata constraints)
+        external
+        whenNotPaused
+        returns (bytes32)
+    {
         bytes32 fundHash = getFundHash(msg.sender, name);
         require(funds[fundHash].manager == address(0), "Fund already exists!");
+        Utils._validateSubscriptionConstraintsBasic(constraints);
         Fund storage fund = funds[fundHash];
         fund.fundHash = fundHash;
         fund.manager = msg.sender;

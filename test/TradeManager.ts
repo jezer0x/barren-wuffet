@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { deployments } from "hardhat";
 import { setupTradeManager } from "./Fixtures";
 
-describe.skip("TradeManager", () => {
+describe("TradeManager", () => {
   // We define a fixture to reuse the same setup in every test.
   // We use loadFixture to run this setup once, snapshot that state,
   // and reset Hardhat Network to that snapshopt in every test.

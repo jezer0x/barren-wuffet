@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 import "./Constants.sol";
+import "./subscriptions/SubscriptionTypes.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -33,5 +34,15 @@ library Utils {
         } else {
             payable(receiver).transfer(balance);
         }
+    }
+
+    function _validateSubscriptionConstraintsBasic(SubscriptionConstraints calldata constraints) internal view {
+        require(constraints.minCollateralPerSub <= constraints.maxCollateralPerSub);
+        require(constraints.minCollateralTotal <= constraints.maxCollateralTotal);
+        require(constraints.minCollateralTotal >= constraints.minCollateralPerSub);
+        require(constraints.maxCollateralTotal >= constraints.maxCollateralPerSub);
+        require(constraints.deadline >= block.timestamp); // deadline can't be in the past
+        require(constraints.lockin >= block.timestamp); // lockin can't be in the past
+        require(constraints.rewardPercentage <= 100 * 100); // can't be above 100%
     }
 }

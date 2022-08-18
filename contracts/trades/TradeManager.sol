@@ -211,6 +211,7 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         bytes32 ruleHash = ruleExecutor.createRule{value: msg.value}(triggers, actions);
         bytes32 tradeHash = getTradeHash(msg.sender, ruleHash);
         require(trades[tradeHash].manager == address(0)); // trade does not exist
+        Utils._validateSubscriptionConstraintsBasic(constraints);
         Trade storage trade = trades[tradeHash];
         trade.manager = msg.sender;
         trade.ruleHash = ruleHash;
