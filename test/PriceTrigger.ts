@@ -1,16 +1,19 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
+import { BigNumber } from "ethers";
+
 import { TriggerStruct } from '../typechain-types/contracts/rules/RuleExecutor';
 
 
 const GT = 0;
 const LT = 1;
 // TODO: this whole setup wont work if eth / uni is < 1
-const ETH_PRICE_IN_USD = 1700;
-const UNI_PRICE_IN_USD = 3;
+const PRICE_TRIGGER_DECIMALS = BigNumber.from(10).pow(8);
+const ETH_PRICE_IN_USD = BigNumber.from(1700).mul(PRICE_TRIGGER_DECIMALS);
+const UNI_PRICE_IN_USD = BigNumber.from(3).mul(PRICE_TRIGGER_DECIMALS);
 const UNI_PRICE_IN_ETH_PARAM = ethers.utils.defaultAbiCoder.encode(["string", "string"], ["eth", "uni"]);
-const UNI_PRICE_IN_ETH = Math.floor(ETH_PRICE_IN_USD / UNI_PRICE_IN_USD);
+const UNI_PRICE_IN_ETH = ETH_PRICE_IN_USD.mul(PRICE_TRIGGER_DECIMALS).div(UNI_PRICE_IN_USD); // 56666666667 = ~566 UNI 
 
 describe("PriceTrigger", () => {
   // We define a fixture to reuse the same setup in every test.
@@ -122,7 +125,7 @@ describe("PriceTrigger", () => {
   });
   describe("Check Trigger", () => {
     describe("Should pass / fail the trigger based on eth/uni limit price. Current eth/uni is " + UNI_PRICE_IN_ETH, () => {
-      it("Should fail the trigger if eth/uni trigger is LT " + (UNI_PRICE_IN_ETH - 1), async () => {
+      it("Should fail the trigger if eth/uni trigger is LT " + (UNI_PRICE_IN_ETH.sub(1)), async () => {
         const { priceTrigger, testOracleEth, otherAccount } = await loadFixture(
           deployEthUniTriggerFixture
         );
@@ -130,13 +133,15 @@ describe("PriceTrigger", () => {
           op: LT,
           param: UNI_PRICE_IN_ETH_PARAM,
           callee: ethers.constants.AddressZero,
-          value: (UNI_PRICE_IN_ETH - 1)
+          value: UNI_PRICE_IN_ETH.sub(1)
         };
-
+        const val = await priceTrigger.connect(otherAccount).check(trigger);
+        console.log(val.toString());
+        console.log(UNI_PRICE_IN_ETH);
         expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([false, ethers.BigNumber.from(UNI_PRICE_IN_ETH)]);
       });
 
-      it("Should fail the trigger if eth/uni limit is GT " + (UNI_PRICE_IN_ETH + 1), async () => {
+      it("Should fail the trigger if eth/uni limit is GT " + (UNI_PRICE_IN_ETH.add(1)), async () => {
         const { priceTrigger, testOracleEth, otherAccount } = await loadFixture(
           deployEthUniTriggerFixture
         );
@@ -144,14 +149,14 @@ describe("PriceTrigger", () => {
           op: GT,
           param: UNI_PRICE_IN_ETH_PARAM,
           callee: ethers.constants.AddressZero,
-          value: (UNI_PRICE_IN_ETH + 1)
+          value: (UNI_PRICE_IN_ETH.add(1))
         };
 
         expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([false, ethers.BigNumber.from(UNI_PRICE_IN_ETH)]);
 
       });
 
-      it("Should pass the trigger if eth/uni limit is GT " + (UNI_PRICE_IN_ETH - 1), async () => {
+      it("Should pass the trigger if eth/uni limit is GT " + (UNI_PRICE_IN_ETH.sub(1)), async () => {
         const { priceTrigger, testOracleEth, otherAccount } = await loadFixture(
           deployEthUniTriggerFixture
         );
@@ -159,14 +164,14 @@ describe("PriceTrigger", () => {
           op: GT,
           param: UNI_PRICE_IN_ETH_PARAM,
           callee: ethers.constants.AddressZero,
-          value: (UNI_PRICE_IN_ETH - 1)
+          value: (UNI_PRICE_IN_ETH.sub(1))
         };
 
         expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([true, ethers.BigNumber.from(UNI_PRICE_IN_ETH)]);
 
       });
 
-      it("Should pass the trigger if eth/uni limit is LT " + (UNI_PRICE_IN_ETH + 1), async () => {
+      it("Should pass the trigger if eth/uni limit is LT " + (UNI_PRICE_IN_ETH.add(1)), async () => {
         const { priceTrigger, testOracleEth, otherAccount } = await loadFixture(
           deployEthUniTriggerFixture
         );
@@ -174,7 +179,7 @@ describe("PriceTrigger", () => {
           op: LT,
           param: UNI_PRICE_IN_ETH_PARAM,
           callee: ethers.constants.AddressZero,
-          value: (UNI_PRICE_IN_ETH + 1)
+          value: (UNI_PRICE_IN_ETH.add(1))
         };
 
         expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([true, ethers.BigNumber.from(UNI_PRICE_IN_ETH)]);
