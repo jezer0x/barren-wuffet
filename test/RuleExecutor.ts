@@ -466,7 +466,7 @@ describe("RuleExecutor", () => {
         testToken1,
         // this should reflect the reward.
         [botWallet, ruleSubscriberWallet, ruleExecutor],
-        [0, 0, collateral.mul(UNI_PRICE_IN_ETH).div(PRICE_TRIGGER_DECIMALS)],
+        [0, 0, collateral.mul(ETH_PRICE_IN_UNI).div(PRICE_TRIGGER_DECIMALS)],
       );
 
       await expect(ruleExecutor.connect(botWallet).executeRule(ruleHashEth)).to.be.revertedWith("Rule isn't Activated");
