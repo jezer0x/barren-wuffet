@@ -273,8 +273,8 @@ describe("RuleExecutor", () => {
     // to get ETH from uniswap, you need to set the output token as WETH.
     const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, constants.AddressZero);
     const ethSwapAction = makeSwapAction(swapUniSingleAction.address, constants.AddressZero, testToken1.address);
-    const ruleHashEth = await createRule(whitelistService, trigWlHash, actWlHash, ruleExecutor, [uniEthPassingTrigger], [ethSwapAction], ruleSubscriberWallet, true);
-    const ruleHashToken = await createRule(whitelistService, trigWlHash, actWlHash, ruleExecutor, [ethUniPassingTrigger], [tokenSwapAction], ruleSubscriberWallet, true);
+    const ruleHashEth = await createRule(whitelistService, trigWlHash, actWlHash, ruleExecutor, [ethUniPassingTrigger], [ethSwapAction], ruleSubscriberWallet, true);
+    const ruleHashToken = await createRule(whitelistService, trigWlHash, actWlHash, ruleExecutor, [uniEthPassingTrigger], [tokenSwapAction], ruleSubscriberWallet, true);
 
     await testToken1.transfer(ruleSubscriberWallet.address, BigNumber.from(200000).mul(ERC20_DECIMALS));
     return { ruleHashEth, ruleHashToken, ruleExecutor, ownerWallet, ruleSubscriberWallet, botWallet, testToken1, testToken2 };
@@ -687,7 +687,8 @@ describe("RuleExecutor", () => {
 
       const ex = expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashEth));
 
-      const tokenReceived = collateralAmount.div(UNI_PRICE_IN_ETH).div(PRICE_TRIGGER_DECIMALS);
+      const tokenReceived = collateralAmount.mul(ETH_PRICE_IN_UNI).div(PRICE_TRIGGER_DECIMALS);
+
 
       await ex.to.changeTokenBalances(testToken1,
         [ruleExecutor, ruleSubscriberWallet],

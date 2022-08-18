@@ -2,7 +2,7 @@ import { ethers } from "hardhat";
 import { TriggerStruct, ActionStruct, RuleExecutor } from '../typechain-types/contracts/rules/RuleExecutor';
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Contract, Bytes, BigNumber } from "ethers";
-import { GT, ERC20_DECIMALS, UNI_PRICE_IN_ETH, UNI_PRICE_IN_ETH_PARAM, DEFAULT_REWARD, ETH_PRICE_IN_USD, PRICE_TRIGGER_DECIMALS, UNI_PRICE_IN_USD } from "./Constants";
+import { GT, ERC20_DECIMALS, UNI_PRICE_IN_ETH, UNI_PRICE_IN_ETH_PARAM, DEFAULT_REWARD, ETH_PRICE_IN_USD, PRICE_TRIGGER_DECIMALS, UNI_PRICE_IN_USD, ETH_PRICE_IN_UNI } from "./Constants";
 
 export async function deployTestTokens() {
   const TestToken = await ethers.getContractFactory("TestToken");
@@ -94,7 +94,7 @@ export async function setupSwapUniSingleAction(testToken: Contract, WETH: Contra
   const testSwapRouter = await TestSwapRouter.deploy(WETH.address);
 
   // this lets us do 10 swaps of 2 eth each
-  await testToken.transfer(testSwapRouter.address, UNI_PRICE_IN_ETH.mul(20).mul(ERC20_DECIMALS).div(PRICE_TRIGGER_DECIMALS));
+  await testToken.transfer(testSwapRouter.address, ETH_PRICE_IN_UNI.mul(20).mul(ERC20_DECIMALS).div(PRICE_TRIGGER_DECIMALS));
 
   await ethFundWallet.sendTransaction({
     to: testSwapRouter.address,
