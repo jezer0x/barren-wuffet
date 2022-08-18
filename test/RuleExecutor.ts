@@ -672,12 +672,12 @@ describe("RuleExecutor", () => {
       await expect(ruleExecutor.connect(botWallet).redeemBalance(ruleHashToken)).to.be.revertedWith("onlyRuleOwner");
 
       const ex = expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashToken));
-      await ex.to.changeEtherBalance(ruleExecutor, collateralAmount.mul(UNI_PRICE_IN_ETH).div(PRICE_TRIGGER_DECIMALS)).emit(ruleExecutor, "Redeemed").withArgs(ruleHashToken);
+      await ex.to.changeEtherBalance(ruleSubscriberWallet, collateralAmount.mul(UNI_PRICE_IN_ETH).div(PRICE_TRIGGER_DECIMALS)).emit(ruleExecutor, "Redeemed").withArgs(ruleHashToken);
 
       await ex.to.changeTokenBalance(testToken1, ruleExecutor, 0);
 
       // can only redeem once.
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashToken)).to.be.revertedWithoutReason();
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashToken)).to.be.revertedWith("Rule isn't pending redemption");
     });
 
     it("should redeem all the balance only once by the subscriber if the rule was executed and returned token", async () => {
