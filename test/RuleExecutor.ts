@@ -831,7 +831,7 @@ describe("RuleExecutor", () => {
 
     it(`should accummulate the reward provided to the executor, as the reward is increased by different wallets and not be editable after execution`, async () => {
       const { ruleHashEth, ruleSubscriberWallet, bot, ruleExecutor } = await loadFixture(deployValidRuleFixture);
-      const collateralAmount = BigNumber.from(30).mul(ERC20_DECIMALS);
+      const collateralAmount = BigNumber.from(3).mul(ERC20_DECIMALS);
       await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
 
       await ruleExecutor.connect(ruleSubscriberWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
@@ -841,12 +841,12 @@ describe("RuleExecutor", () => {
         .changeEtherBalance(bot, DEFAULT_REWARD.mul(3));
 
       await expect(ruleExecutor.connect(bot).increaseReward(ruleHashEth, { value: 1 })).to.be.revertedWithoutReason();
-      await expect(ruleExecutor.connect(bot).withdrawReward(ruleHashEth)).to.be.revertedWithoutReason();
+      await expect(ruleExecutor.connect(bot).withdrawReward(ruleHashEth)).to.be.revertedWith("Reward paid");
     });
 
     it(`should allow any user to only remove the reward they added`, async () => {
       const { ruleHashEth, ruleSubscriberWallet, bot, ruleExecutor } = await loadFixture(deployValidRuleFixture);
-      const collateralAmount = BigNumber.from(30).mul(ERC20_DECIMALS);
+      const collateralAmount = BigNumber.from(3).mul(ERC20_DECIMALS);
       await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
 
       await ruleExecutor.connect(ruleSubscriberWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
@@ -855,7 +855,7 @@ describe("RuleExecutor", () => {
       await ruleExecutor.connect(bot).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
       await expect(ruleExecutor.connect(bot).withdrawReward(ruleHashEth)).to.changeEtherBalances(
         [bot, ruleExecutor],
-        [DEFAULT_REWARD, -DEFAULT_REWARD]
+        [DEFAULT_REWARD, DEFAULT_REWARD.mul(-1)]
       );
       await expect(ruleExecutor.connect(bot).withdrawReward(ruleHashEth)).to.revertedWith("0 contribution");
 
@@ -865,13 +865,13 @@ describe("RuleExecutor", () => {
 
     it(`should allow any user to change the reward if the rule is inactive`, async () => {
       const { ruleHashEth, ruleSubscriberWallet, bot, ruleExecutor } = await loadFixture(deployValidRuleFixture);
-      const collateralAmount = BigNumber.from(30).mul(ERC20_DECIMALS);
+      const collateralAmount = BigNumber.from(3).mul(ERC20_DECIMALS);
       await ruleExecutor.connect(ruleSubscriberWallet).deactivateRule(ruleHashEth);
 
       await ruleExecutor.connect(bot).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
       await expect(ruleExecutor.connect(bot).withdrawReward(ruleHashEth)).changeEtherBalance(bot, DEFAULT_REWARD);
       // tries to reduce the reward added at the point of rule creation
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).withdrawReward(ruleHashEth)).changeEtherBalance(bot, DEFAULT_REWARD);
+      await expect(ruleExecutor.connect(ruleSubscriberWallet).withdrawReward(ruleHashEth)).changeEtherBalance(ruleSubscriberWallet, DEFAULT_REWARD);
 
       await ruleExecutor.connect(bot).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
 
