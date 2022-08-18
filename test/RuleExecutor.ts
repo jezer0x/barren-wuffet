@@ -451,7 +451,7 @@ describe("RuleExecutor", () => {
     it("Should allow anyone to execute the rule once (native) and get a reward if gas is paid, and the trigger passes", async () => {
       // execute valid rule with collateral by someone else. and get a reward.
       const { ruleHashEth, ruleSubscriberWallet, botWallet, ruleExecutor, testToken1 } = await loadFixture(deployValidRuleFixture);
-      const collateral = utils.parseEther("1");
+      const collateral = utils.parseEther("2");
       await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, collateral, { value: collateral })).to.emit(ruleExecutor, "CollateralAdded");
       const ex = expect(ruleExecutor.connect(botWallet).executeRule(ruleHashEth));
       await ex.to
@@ -468,7 +468,7 @@ describe("RuleExecutor", () => {
         testToken1,
         // this should reflect the reward.
         [botWallet, ruleSubscriberWallet, ruleExecutor],
-        [0, 0, collateral.mul(UNI_PRICE_IN_ETH).div(PRICE_TRIGGER_DECIMALS)],
+        [0, 0, collateral.div(UNI_PRICE_IN_ETH).div(PRICE_TRIGGER_DECIMALS)],
       );
 
       await expect(ruleExecutor.connect(botWallet).executeRule(ruleHashEth)).to.be.revertedWith("Rule isn't Activated");
@@ -485,7 +485,7 @@ describe("RuleExecutor", () => {
         .changeTokenBalances(
           testToken1,
           [botWallet, ruleSubscriberWallet, ruleExecutor],
-          [0, 0, BigNumber.from(0).sub(collateral)],
+          [0, 0, collateral.mul(-1)],
         ).and
         .emit(ruleExecutor, "Executed")
         .withArgs(ruleHashToken, botWallet.address);
@@ -493,7 +493,7 @@ describe("RuleExecutor", () => {
       await ex.to.changeEtherBalances(
         // this should reflect the rewarD.
         [botWallet, ruleSubscriberWallet, ruleExecutor],
-        [DEFAULT_REWARD, 0, collateral.div(UNI_PRICE_IN_ETH.div(PRICE_TRIGGER_DECIMALS)).sub(DEFAULT_REWARD)],
+        [DEFAULT_REWARD, 0, collateral.mul(UNI_PRICE_IN_ETH).div(PRICE_TRIGGER_DECIMALS).sub(DEFAULT_REWARD)],
       );
 
       // TODO need to implement caller getting paid.
@@ -689,9 +689,11 @@ describe("RuleExecutor", () => {
 
       const ex = expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashEth));
 
+      const tokenReceived = collateralAmount.div(UNI_PRICE_IN_ETH).div(PRICE_TRIGGER_DECIMALS);
+
       await ex.to.changeTokenBalances(testToken1,
         [ruleExecutor, ruleSubscriberWallet],
-        [BigNumber.from(0).sub(collateralAmount.mul(UNI_PRICE_IN_ETH).div(PRICE_TRIGGER_DECIMALS)), collateralAmount.mul(UNI_PRICE_IN_ETH).div(PRICE_TRIGGER_DECIMALS)])
+        [tokenReceived.mul(-1), tokenReceived])
         .emit(ruleExecutor, "Redeemed").withArgs(ruleHashEth);
 
       await ex.to.changeEtherBalance(ruleExecutor.address, 0);
