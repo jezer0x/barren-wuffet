@@ -38,6 +38,8 @@ describe("RuleExecutor", () => {
     it("Should revert if no trigger is specified", async () => {
       const { ruleExecutor, swapUniSingleAction, ruleMakerWallet, testToken1, whitelistService, trigWlHash, actWlHash } = await loadFixture(deployRuleExecutorFixture);
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
+      whitelistService.disableWhitelist(trigWlHash);
+      whitelistService.disableWhitelist(actWlHash);
       await expect(ruleExecutor.connect(ruleMakerWallet).createRule([], [executableAction])).to.be.revertedWithoutReason();
     });
 
@@ -64,6 +66,8 @@ describe("RuleExecutor", () => {
     it("Should revert if no action is specified", async () => {
       const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1, whitelistService, trigWlHash, actWlHash } = await loadFixture(deployRuleExecutorFixture);
       const passingTrigger = makePassingTrigger(priceTrigger.address);
+      whitelistService.disableWhitelist(trigWlHash);
+      whitelistService.disableWhitelist(actWlHash);
       await expect(ruleExecutor.connect(ruleMakerWallet).createRule([passingTrigger], [])).to.be.revertedWithoutReason();
 
     });
