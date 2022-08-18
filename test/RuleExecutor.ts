@@ -35,10 +35,10 @@ describe("RuleExecutor", () => {
 
   describe("Add Rule By Anyone", () => {
 
-    it.skip("Should revert if no trigger is specified", async () => {
-    });
-
-    it.skip("Should revert if no action is specified", async () => {
+    it("Should revert if no trigger is specified", async () => {
+      const { ruleExecutor, swapUniSingleAction, ruleMakerWallet, testToken1, whitelistService, trigWlHash, actWlHash } = await loadFixture(deployRuleExecutorFixture);
+      const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
+      await expect(ruleExecutor.connect(ruleMakerWallet).createRule([], [executableAction])).to.be.revertedWithoutReason();
     });
 
     it("Should revert if trigger doesnt have a callee with validateTrigger", async () => {
@@ -61,6 +61,12 @@ describe("RuleExecutor", () => {
 
     });
 
+    it("Should revert if no action is specified", async () => {
+      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1, whitelistService, trigWlHash, actWlHash } = await loadFixture(deployRuleExecutorFixture);
+      const passingTrigger = makePassingTrigger(priceTrigger.address);
+      await expect(ruleExecutor.connect(ruleMakerWallet).createRule([passingTrigger], [])).to.be.revertedWithoutReason();
+
+    });
 
     it("Should revert if action doesnt have a callee with validate", async () => {
       const { ruleExecutor, priceTrigger, ruleMakerWallet, testToken1, whitelistService, trigWlHash, actWlHash } = await loadFixture(deployRuleExecutorFixture);
