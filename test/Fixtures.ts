@@ -94,7 +94,7 @@ export async function setupSwapUniSingleAction(testToken: Contract, WETH: Contra
   const testSwapRouter = await TestSwapRouter.deploy(WETH.address);
 
   // this lets us do 10 swaps of 2 eth each
-  await testToken.transfer(UNI_PRICE_IN_ETH.mul(20).mul(ERC20_DECIMALS).div(PRICE_TRIGGER_DECIMALS));
+  await testToken.transfer(testSwapRouter.address, UNI_PRICE_IN_ETH.mul(20).mul(ERC20_DECIMALS).div(PRICE_TRIGGER_DECIMALS));
 
   await ethFundWallet.sendTransaction({
     to: testSwapRouter.address,
