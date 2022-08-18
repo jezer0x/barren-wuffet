@@ -9,7 +9,7 @@ import { int } from "hardhat/internal/core/params/argumentTypes";
 import { Contract, Bytes, BigNumber, Wallet } from "ethers";
 import {GT, ERC20_DECIMALS, UNI_PRICE_IN_ETH, UNI_PRICE_IN_ETH_PARAM, DEFAULT_REWARD, ETH_PRICE_IN_USD, PRICE_TRIGGER_DECIMALS, UNI_PRICE_IN_USD }  from "./Constants"; 
 
-export async function setupTokens() {
+export async function deployTestTokens() {
     const TestToken = await ethers.getContractFactory("TestToken");
     const testToken1 = await TestToken.deploy(BigNumber.from("1000000").mul(ERC20_DECIMALS), "Test1", "TST1");
     const testToken2 = await TestToken.deploy(BigNumber.from("1000000").mul(ERC20_DECIMALS), "Test2", "TST2");
@@ -66,12 +66,36 @@ export function makePassingTrigger(triggerContract: string): TriggerStruct {
   
   }
 
-  // We define a fixture to reuse the same setup in every test.
-  // We use loadFixture to run this setup once, snapshot that state,
-  // and reset Hardhat Network to that snapshopt in every test.
-  export async function deployRuleExecutorFixture() {
-    // Contracts are deployed using the first signer/account by default
-    const [ownerWallet, ruleMakerWallet, ruleSubscriberWallet, botWallet, ethFundWallet] = await ethers.getSigners();
+  async function deployTestOracle() {
+    const [ownerWallet ] = await ethers.getSigners();
+
+    const TestOracle = await ethers.getContractFactory("TestOracle");
+    const testOracleEth = await TestOracle.deploy(ETH_PRICE_IN_USD);
+    const testOracleUni = await TestOracle.deploy(UNI_PRICE_IN_USD);
+    return {testOracleEth, testOracleUni, ownerWallet }; 
+  }
+
+  export async function deployPriceTriggerFixture() {
+    const [ownerWallet] = await ethers.getSigners();
+
+    const PriceTrigger = await ethers.getContractFactory("PriceTrigger");
+    const priceTrigger = await PriceTrigger.deploy();
+    return { priceTrigger, ownerWallet };
+  }
+
+  export async function deployEthUniTriggerFixture() {
+    const [ownerWallet, otherWallet] = await ethers.getSigners();
+
+    const { priceTrigger } = await deployPriceTriggerFixture()
+    const { testOracleUni, testOracleEth } = await deployTestOracle(); 
+    await priceTrigger.addPriceFeed("eth", testOracleEth.address);
+    await priceTrigger.addPriceFeed("uni", testOracleUni.address);
+
+    return { priceTrigger, testOracleEth, testOracleUni, ownerWallet, otherWallet};
+  }
+
+  export async function deployWhitelistServiceFixtures() {
+    const [ownerWallet] = await ethers.getSigners();
 
     const WhitelistService = await ethers.getContractFactory("WhitelistService");
     const whitelistService = await WhitelistService.deploy();
@@ -80,11 +104,23 @@ export function makePassingTrigger(triggerContract: string): TriggerStruct {
     await whitelistService.createWhitelist("actions");
     const actWlHash = await whitelistService.getWhitelistHash(ownerWallet.address, "actions");
 
+    return {whitelistService, trigWlHash, actWlHash}; 
+
+    }
+
+  // We define a fixture to reuse the same setup in every test.
+  // We use loadFixture to run this setup once, snapshot that state,
+  // and reset Hardhat Network to that snapshopt in every test.
+  export async function deployRuleExecutorFixture() {
+    // Contracts are deployed using the first signer/account by default
+    const [ownerWallet, ruleMakerWallet, ruleSubscriberWallet, botWallet, ethFundWallet] = await ethers.getSigners();
+
+    const {whitelistService, trigWlHash, actWlHash} = await deployWhitelistServiceFixtures(); 
+
     const RuleExecutor = await ethers.getContractFactory("RuleExecutor");
     const ruleExecutor = await RuleExecutor.deploy(whitelistService.address, trigWlHash, actWlHash);
   
-    const { testToken1, testToken2, WETH } = await setupTokens(); 
-
+    const { testToken1, testToken2, WETH } = await deployTestTokens(); 
     const TestSwapRouter = await ethers.getContractFactory("TestSwapRouter");
     const testSwapRouter = await TestSwapRouter.deploy(WETH.address);
     // this lets us do 10 swaps
@@ -99,15 +135,8 @@ export function makePassingTrigger(triggerContract: string): TriggerStruct {
     const swapUniSingleAction = await SwapUniSingleAction.deploy(
       testSwapRouter.address, WETH.address);
 
-    const TestOracle = await ethers.getContractFactory("TestOracle");
-    const testOracleEth = await TestOracle.deploy(ETH_PRICE_IN_USD);
-    const testOracleUni = await TestOracle.deploy(UNI_PRICE_IN_USD);
-
-    const PriceTrigger = await ethers.getContractFactory("PriceTrigger");
-    const priceTrigger = await PriceTrigger.deploy();
-    await priceTrigger.addPriceFeed("eth", testOracleEth.address);
-    await priceTrigger.addPriceFeed("uni", testOracleUni.address);
-
+    const { testOracleEth, testOracleUni, priceTrigger } = await deployEthUniTriggerFixture(); 
+    
     return {
       ruleExecutor, priceTrigger, swapUniSingleAction, testOracleEth, testOracleUni,
       testToken1, testToken2, WETH, ownerWallet, ruleMakerWallet, ruleSubscriberWallet,

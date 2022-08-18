@@ -1,70 +1,39 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { BigNumber } from "ethers";
-
+import { deployPriceTriggerFixture, deployEthUniTriggerFixture } from "./Fixtures"; 
 import { TriggerStruct } from '../typechain-types/contracts/rules/RuleExecutor';
-
-
-const GT = 0;
-const LT = 1;
-
-const PRICE_TRIGGER_DECIMALS = BigNumber.from(10).pow(8);
-const ETH_PRICE_IN_USD = BigNumber.from(1700).mul(PRICE_TRIGGER_DECIMALS);
-const UNI_PRICE_IN_USD = BigNumber.from(3).mul(PRICE_TRIGGER_DECIMALS);
-const UNI_PRICE_IN_ETH_PARAM = ethers.utils.defaultAbiCoder.encode(["string", "string"], ["eth", "uni"]);
-const UNI_PRICE_IN_ETH = ETH_PRICE_IN_USD.mul(PRICE_TRIGGER_DECIMALS).div(UNI_PRICE_IN_USD); // 56666666666 = ~566 UNI 
+import { GT, LT, UNI_PRICE_IN_ETH_PARAM, UNI_PRICE_IN_ETH } from "./Constants"
 
 describe("PriceTrigger", () => {
   // We define a fixture to reuse the same setup in every test.
   // We use loadFixture to run this setup once, snapshot that state,
   // and reset Hardhat Network to that snapshopt in every test.
-  async function deployPriceTriggerFixture() {
-    // Contracts are deployed using the first signer/account by default
-    const [owner, otherAccount] = await ethers.getSigners();
-
-    const PriceTrigger = await ethers.getContractFactory("PriceTrigger");
-    const priceTrigger = await PriceTrigger.deploy();
-
-    const TestOracle = await ethers.getContractFactory("TestOracle");
-    const testOracleEth = await TestOracle.deploy(ETH_PRICE_IN_USD);
-    const testOracleUni = await TestOracle.deploy(UNI_PRICE_IN_USD);
-    return { priceTrigger, testOracleEth, testOracleUni, owner, otherAccount };
-  }
-
-  async function deployEthUniTriggerFixture() {
-    const { priceTrigger, testOracleEth, testOracleUni, otherAccount } = await loadFixture(
-      deployPriceTriggerFixture
-    );
-    await priceTrigger.addPriceFeed("eth", testOracleEth.address);
-    await priceTrigger.addPriceFeed("uni", testOracleUni.address);
-
-    return { priceTrigger, testOracleEth, testOracleUni, otherAccount };
-  }
 
   describe("Deployment", () => {
 
-    it("Should set the right owner", async function () {
-      const { priceTrigger, owner } = await loadFixture(deployPriceTriggerFixture);
-
-      expect(await priceTrigger.owner()).to.equal(owner.address);
+    it("Should set the right ownerWallet", async function () {
+      const { priceTrigger, ownerWallet } = await loadFixture(deployPriceTriggerFixture);
+      expect(await priceTrigger.owner()).to.equal(ownerWallet.address);
     });
   });
 
   describe("Add Triggers", () => {
     it("Should revert with the right error if called from another account", async () => {
-      const { priceTrigger, otherAccount } = await loadFixture(
+      const [_, otherWallet] = await ethers.getSigners(); // TODO: better way to do this?
+
+      const { priceTrigger } = await loadFixture(
         deployPriceTriggerFixture
       );
 
       // We use lock.connect() to send a transaction from another account
-      await expect(priceTrigger.connect(otherAccount).addPriceFeed("eth", "0xc0ffee254729296a45a3885639AC7E10F9d54979")).to.be.revertedWith(
+      await expect(priceTrigger.connect(otherWallet).addPriceFeed("eth", "0xc0ffee254729296a45a3885639AC7E10F9d54979")).to.be.revertedWith(
         "Ownable: caller is not the owner"
       );
     });
 
-    it("Should add a trigger feed if called by the owner", async () => {
-      const { priceTrigger, owner } = await loadFixture(
+    it("Should add a trigger feed if called by the ownerWallet", async () => {
+      const { priceTrigger, ownerWallet } = await loadFixture(
         deployPriceTriggerFixture
       );
 
@@ -75,7 +44,7 @@ describe("PriceTrigger", () => {
 
   describe("Validate Trigger", () => {
     it("Should revert if the trigger has only 1 asset", async () => {
-      const { priceTrigger, otherAccount } = await loadFixture(
+      const { priceTrigger, otherWallet } = await loadFixture(
         deployEthUniTriggerFixture
       );
 
@@ -88,11 +57,11 @@ describe("PriceTrigger", () => {
         value: 0
       };
 
-      await expect(priceTrigger.connect(otherAccount).validate(trigger)).to.be.revertedWithoutReason;;
+      await expect(priceTrigger.connect(otherWallet).validate(trigger)).to.be.revertedWithoutReason;;
     });
 
     it("Should revert if the trigger has 2 assets and the datasource is specified incorrectly", async () => {
-      const { priceTrigger, otherAccount } = await loadFixture(
+      const { priceTrigger, otherWallet } = await loadFixture(
         deployEthUniTriggerFixture
       );
 
@@ -103,12 +72,12 @@ describe("PriceTrigger", () => {
         value: 0
       };
 
-      await expect(priceTrigger.connect(otherAccount).validate(trigger)).to.be.revertedWithoutReason;
+      await expect(priceTrigger.connect(otherWallet).validate(trigger)).to.be.revertedWithoutReason;
 
     });
 
     it("Should pass if the trigger has 2 assets and the datasource is specified", async () => {
-      const { priceTrigger, otherAccount } = await loadFixture(
+      const { priceTrigger, otherWallet } = await loadFixture(
         deployEthUniTriggerFixture
       );
 
@@ -119,14 +88,14 @@ describe("PriceTrigger", () => {
         value: 0
       };
 
-      expect(await priceTrigger.connect(otherAccount).validate(trigger)).to.equal(true);
+      expect(await priceTrigger.connect(otherWallet).validate(trigger)).to.equal(true);
 
     });
   });
   describe("Check Trigger", () => {
     describe("Should pass / fail the trigger based on eth/uni limit price. Current eth/uni is " + UNI_PRICE_IN_ETH, () => {
       it("Should fail the trigger if eth/uni trigger is LT " + (UNI_PRICE_IN_ETH.sub(1)), async () => {
-        const { priceTrigger, testOracleEth, otherAccount } = await loadFixture(
+        const { priceTrigger, testOracleEth, otherWallet } = await loadFixture(
           deployEthUniTriggerFixture
         );
         const trigger: TriggerStruct = {
@@ -135,11 +104,11 @@ describe("PriceTrigger", () => {
           callee: ethers.constants.AddressZero,
           value: UNI_PRICE_IN_ETH.sub(1)
         };
-        expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([false, UNI_PRICE_IN_ETH]);
+        expect(await priceTrigger.connect(otherWallet).check(trigger)).to.deep.equal([false, UNI_PRICE_IN_ETH]);
       });
 
       it("Should fail the trigger if eth/uni limit is GT " + (UNI_PRICE_IN_ETH.add(1)), async () => {
-        const { priceTrigger, testOracleEth, otherAccount } = await loadFixture(
+        const { priceTrigger, testOracleEth, otherWallet } = await loadFixture(
           deployEthUniTriggerFixture
         );
         const trigger: TriggerStruct = {
@@ -149,12 +118,12 @@ describe("PriceTrigger", () => {
           value: (UNI_PRICE_IN_ETH.add(1))
         };
 
-        expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([false, UNI_PRICE_IN_ETH]);
+        expect(await priceTrigger.connect(otherWallet).check(trigger)).to.deep.equal([false, UNI_PRICE_IN_ETH]);
 
       });
 
       it("Should pass the trigger if eth/uni limit is GT " + (UNI_PRICE_IN_ETH.sub(1)), async () => {
-        const { priceTrigger, testOracleEth, otherAccount } = await loadFixture(
+        const { priceTrigger, testOracleEth, otherWallet } = await loadFixture(
           deployEthUniTriggerFixture
         );
         const trigger: TriggerStruct = {
@@ -164,12 +133,12 @@ describe("PriceTrigger", () => {
           value: (UNI_PRICE_IN_ETH.sub(1))
         };
 
-        expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([true, UNI_PRICE_IN_ETH]);
+        expect(await priceTrigger.connect(otherWallet).check(trigger)).to.deep.equal([true, UNI_PRICE_IN_ETH]);
 
       });
 
       it("Should pass the trigger if eth/uni limit is LT " + (UNI_PRICE_IN_ETH.add(1)), async () => {
-        const { priceTrigger, testOracleEth, otherAccount } = await loadFixture(
+        const { priceTrigger, testOracleEth, otherWallet } = await loadFixture(
           deployEthUniTriggerFixture
         );
         const trigger: TriggerStruct = {
@@ -179,7 +148,7 @@ describe("PriceTrigger", () => {
           value: (UNI_PRICE_IN_ETH.add(1))
         };
 
-        expect(await priceTrigger.connect(otherAccount).check(trigger)).to.deep.equal([true, UNI_PRICE_IN_ETH]);
+        expect(await priceTrigger.connect(otherWallet).check(trigger)).to.deep.equal([true, UNI_PRICE_IN_ETH]);
 
       });
 
