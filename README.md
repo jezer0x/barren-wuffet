@@ -43,6 +43,8 @@ The html files inside /coverage folder will tell you what's missing coverage. Yo
 
 We want 100% coverage on any smart contract code that gets deployed. If code doesn't need to be used, it should not be there. And whatever code does exist in the smart contract needs to be run by the tests.
 
+To generate the coverage badge, run `yarn run istanbul-badges-readme` after running coverage. It generates the badge from `coverage/coverage-summary.json`
+
 ### Deploying
 
 `yarn hardhat deploy` (`--network localhost` if you're running `yarn hardhat node` in another terminal)
