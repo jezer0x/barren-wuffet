@@ -132,11 +132,19 @@ export async function setupRuleExecutor() {
   const { whitelistService, trigWlHash, actWlHash } = await getWhitelistService();
 
   const ruleExecutor = await ethers.getContract("RuleExecutor");
-
-
   return {
     ruleExecutor, priceTrigger, swapUniSingleAction, testOracleEth, testOracleUni,
     testToken1, testToken2, WETH, ownerWallet, ruleMakerWallet, ruleSubscriberWallet,
     botWallet, whitelistService, trigWlHash, actWlHash
   };
 }
+  export async function setupTradeManager() {
+    const [ownerWallet, traderWallet, tradeSubscriberWallet, someOtherWallet] = await ethers.getSigners();
+
+    const { ruleExecutor, priceTrigger, swapUniSingleAction, testOracleEth, testOracleUni,
+      testToken1, testToken2,  whitelistService, trigWlHash, actWlHash } = await setupRuleExecutor(); 
+    const tradeManager = await ethers.getContract("TradeManager"); 
+    
+    return { ruleExecutor, priceTrigger, swapUniSingleAction, testOracleEth, testOracleUni,
+      testToken1, testToken2, ownerWallet, traderWallet, tradeSubscriberWallet, someOtherWallet, whitelistService, trigWlHash, actWlHash, tradeManager}; 
+  }
