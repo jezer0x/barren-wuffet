@@ -8,7 +8,7 @@ import { TriggerStruct } from '../typechain-types/contracts/rules/RuleExecutor';
 
 const GT = 0;
 const LT = 1;
-// TODO: this whole setup wont work if eth / uni is < 1
+
 const PRICE_TRIGGER_DECIMALS = BigNumber.from(10).pow(8);
 const ETH_PRICE_IN_USD = BigNumber.from(1700).mul(PRICE_TRIGGER_DECIMALS);
 const UNI_PRICE_IN_USD = BigNumber.from(3).mul(PRICE_TRIGGER_DECIMALS);
