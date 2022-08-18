@@ -166,6 +166,8 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
     {
         bytes32 ruleHash = _getRuleHash(triggers, actions);
         Rule storage rule = rules[ruleHash];
+        require(rule.owner == address(0), "Duplicate Rule");
+        require(triggers.length > 0 && actions.length > 0);
         for (uint256 i = 0; i < triggers.length; i++) {
             require(ITrigger(triggers[i].callee).validate(triggers[i]), "Invalid Trigger");
             rule.triggers.push(triggers[i]);
@@ -177,7 +179,6 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
             }
             rule.actions.push(actions[i]);
         }
-        require(rule.owner == address(0), "Duplicate Rule");
         rule.owner = msg.sender;
         rule.status = RuleStatus.INACTIVE;
         rule.outputAmount = 0;

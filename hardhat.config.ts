@@ -5,15 +5,18 @@ import "@typechain/hardhat";
 import "@nomiclabs/hardhat-ethers";
 import "hardhat-deploy";
 import "solidity-coverage";
-
+import "hardhat-contract-sizer";
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.9",
+  solidity: {
+    version: "0.8.9",
+    settings: { optimizer: { enabled: true, runs: 50000 } },
+  },
   namedAccounts: {
     deployer: 0,
   },
   paths: {
-    sources: 'contracts',
+    sources: "contracts",
   },
 };
 
