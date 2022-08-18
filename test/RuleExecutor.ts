@@ -14,15 +14,15 @@ import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
 import { BigNumber, constants, utils } from "ethers";
 import { setupRuleExecutor, makePassingTrigger, makeFailingTrigger, makeSwapAction, createRule } from "./Fixtures"
-import { BAD_RULE_HASH, ERC20_DECIMALS, DEFAULT_REWARD, PRICE_TRIGGER_DECIMALS, UNI_PRICE_IN_ETH } from "./Constants"
+import { BAD_RULE_HASH, ERC20_DECIMALS, DEFAULT_REWARD, PRICE_TRIGGER_DECIMALS, UNI_PRICE_IN_ETH, ETH_PRICE_IN_UNI, UNI_PRICE_IN_ETH_PARAM, LT, ETH_PRICE_IN_UNI_PARAM, GT } from "./Constants"
 import { deployments } from "hardhat";
 
 
 describe("RuleExecutor", () => {
 
   async function deployRuleExecutorFixture() {
-    await deployments.fixture(); 
-    return await setupRuleExecutor(); 
+    await deployments.fixture();
+    return await setupRuleExecutor();
   }
 
   describe("Deployment", () => {
@@ -271,7 +271,20 @@ describe("RuleExecutor", () => {
       ruleSubscriberWallet, botWallet, testToken1, testToken2, WETH, whitelistService,
       trigWlHash, actWlHash } = await loadFixture(deployRuleExecutorFixture);
 
-    const passingTrigger = makePassingTrigger(priceTrigger.address);
+    const ethUniPassingTrigger = {
+      op: GT,
+      param: ETH_PRICE_IN_UNI_PARAM,
+      callee: priceTrigger.address,
+      value: ETH_PRICE_IN_UNI.sub(1)
+    };
+
+    const uniEthPassingTrigger = {
+      op: LT,
+      param: UNI_PRICE_IN_ETH_PARAM,
+      callee: priceTrigger.address,
+      value: UNI_PRICE_IN_ETH.add(1)
+    }
+
     // to get ETH from uniswap, you need to set the output token as WETH.
     const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, constants.AddressZero);
     const ethSwapAction = makeSwapAction(swapUniSingleAction.address, constants.AddressZero, testToken1.address);
@@ -279,8 +292,8 @@ describe("RuleExecutor", () => {
     whitelistService.addToWhitelist(trigWlHash, priceTrigger.address);
     whitelistService.addToWhitelist(actWlHash, swapUniSingleAction.address)
 
-    const ruleHashEth = await createRule(whitelistService, trigWlHash, actWlHash, ruleExecutor, [passingTrigger], [ethSwapAction], ruleSubscriberWallet, true);
-    const ruleHashToken = await createRule(whitelistService, trigWlHash, actWlHash, ruleExecutor, [passingTrigger], [tokenSwapAction], ruleSubscriberWallet, true);
+    const ruleHashEth = await createRule(whitelistService, trigWlHash, actWlHash, ruleExecutor, [uniEthPassingTrigger], [ethSwapAction], ruleSubscriberWallet, true);
+    const ruleHashToken = await createRule(whitelistService, trigWlHash, actWlHash, ruleExecutor, [ethUniPassingTrigger], [tokenSwapAction], ruleSubscriberWallet, true);
 
     await testToken1.transfer(ruleSubscriberWallet.address, BigNumber.from(200000).mul(ERC20_DECIMALS));
     return { ruleHashEth, ruleHashToken, ruleExecutor, ownerWallet, ruleSubscriberWallet, botWallet, testToken1, testToken2 };

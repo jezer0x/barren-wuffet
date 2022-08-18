@@ -12,6 +12,9 @@ export const UNI_PRICE_IN_USD = BigNumber.from(3).mul(PRICE_TRIGGER_DECIMALS);
 export const UNI_PRICE_IN_ETH_PARAM = utils.defaultAbiCoder.encode(["string", "string"], ["uni", "eth"]);
 export const UNI_PRICE_IN_ETH = UNI_PRICE_IN_USD.mul(PRICE_TRIGGER_DECIMALS).div(ETH_PRICE_IN_USD); // 230769 = 1 UNI costs ~0.00230769 ETH
 
+export const ETH_PRICE_IN_UNI_PARAM = utils.defaultAbiCoder.encode(["string", "string"], ["eth", "uni"]);
+export const ETH_PRICE_IN_UNI = ETH_PRICE_IN_USD.mul(PRICE_TRIGGER_DECIMALS).div(UNI_PRICE_IN_USD); // 43333333333 = 1 ETH costs ~433 UNI
+
 export const BAD_RULE_HASH = "0x" + "1234".repeat(16);
 
 export const DEFAULT_REWARD = utils.parseEther("0.01");
