@@ -230,4 +230,6 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         emit Created(tradeHash);
         return tradeHash;
     }
+
+    receive() external payable {}
 }

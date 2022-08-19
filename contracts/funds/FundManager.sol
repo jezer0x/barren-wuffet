@@ -340,4 +340,6 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
         require(getStatus(fundHash) == FundStatus.CLOSED, "Fund not closed");
         // TODO: get rewards from each asset in the fund.
     }
+
+    receive() external payable {}
 }
