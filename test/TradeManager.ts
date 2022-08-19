@@ -29,9 +29,11 @@ describe("TradeManager", () => {
 
   async function deployValidTradeFixture() {
     const {
+      ownerWallet,
       priceTrigger,
       swapUniSingleAction,
       testToken1,
+      testToken2,
       tradeManager,
       traderWallet,
       someOtherWallet,
@@ -53,7 +55,9 @@ describe("TradeManager", () => {
       (x: { event: string; address: string }) => x.event == "Created" && x.address == tradeManager.address
     )?.args?.tradeHash;
     return {
+      ownerWallet,
       testToken1,
+      testToken2,
       tradeManager,
       traderWallet,
       someOtherWallet,
@@ -191,16 +195,63 @@ describe("TradeManager", () => {
     it.skip("Should revert if manager tries to cancel a trade that is completed", async function () {});
   });
 
-  describe.skip("Subscriber depositing", () => {
-    it("Should revert if subscriber deposits wrong asset", async function () {});
-    it("Should revert if subscriber deposits too much at once", async function () {});
-    it("Should revert if subscriber deposits too little at once", async function () {});
-    it("Should revert if deposits take it beyond maxCollateral", async function () {});
-    it("Should succeed in depositing ETH properly", async function () {});
-    it("Should succeed in depositing ERC20 properly", async function () {});
-    it("Should succeed if same acccount subscribes multiple times", async function () {});
-    it("Should allow multiple subscriptions from multiple people", async function () {});
-    it("Should activate rule if minCollateral for trade is reached", async function () {});
+  describe("Subscriber depositing", () => {
+    it("Should revert if subscriber deposits wrong asset", async function () {
+      const { ownerWallet, tradeHash, tradeManager, traderWallet, tradeSubscriberWallet, testToken2 } =
+        await loadFixture(deployValidTradeFixture);
+      const collateralAmount = BigNumber.from(15).mul(ERC20_DECIMALS);
+      await testToken2.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
+      await testToken2.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount);
+      await expect(
+        tradeManager.connect(tradeSubscriberWallet).deposit(tradeHash, testToken2.address, collateralAmount)
+      ).to.be.revertedWith("Wrong Collateral Type");
+    });
+
+    it("Should revert if subscriber deposits too little / much at once", async function () {
+      const { ownerWallet, tradeHash, tradeManager, traderWallet, tradeSubscriberWallet, testToken1 } =
+        await loadFixture(deployValidTradeFixture);
+      const collateralAmount = BigNumber.from(600).mul(ERC20_DECIMALS);
+      await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
+      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount);
+
+      await expect(
+        tradeManager
+          .connect(tradeSubscriberWallet)
+          .deposit(tradeHash, testToken1.address, BigNumber.from(150).mul(ERC20_DECIMALS))
+      ).to.be.revertedWith("Max Collateral for Subscription exceeded");
+
+      await expect(
+        tradeManager
+          .connect(tradeSubscriberWallet)
+          .deposit(tradeHash, testToken1.address, BigNumber.from(5).mul(ERC20_DECIMALS))
+      ).to.be.revertedWith("Insufficient Collateral for Subscription");
+    });
+
+    it("Should revert if deposits take it beyond maxCollateral", async function () {
+      const { ownerWallet, tradeHash, tradeManager, traderWallet, tradeSubscriberWallet, testToken1 } =
+        await loadFixture(deployValidTradeFixture);
+      const collateralAmount = BigNumber.from(600).mul(ERC20_DECIMALS);
+      await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
+      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount);
+
+      for (var i = 0; i < 5; i++) {
+        await tradeManager
+          .connect(tradeSubscriberWallet)
+          .deposit(tradeHash, testToken1.address, BigNumber.from(100).mul(ERC20_DECIMALS));
+      }
+
+      await expect(
+        tradeManager
+          .connect(tradeSubscriberWallet)
+          .deposit(tradeHash, testToken1.address, BigNumber.from(10).mul(ERC20_DECIMALS))
+      ).to.be.revertedWith("Max Collateral for Trade exceeded");
+    });
+
+    it.skip("Should succeed in depositing ETH properly", async function () {});
+    it.skip("Should succeed in depositing ERC20 properly", async function () {});
+    it.skip("Should succeed if same acccount subscribes multiple times", async function () {});
+    it.skip("Should allow multiple subscriptions from multiple people", async function () {});
+    it.skip("Should activate rule if minCollateral for trade is reached", async function () {});
   });
 
   describe.skip("Subscriber withdrawing", () => {
