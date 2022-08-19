@@ -1193,38 +1193,30 @@ describe("RuleExecutor", () => {
       expectEthersObjDeepEqual(expectedRule, actualRule);
     });
   });
-  describe("xx Pause Contract", () => {
-    async function testPauseAuthorization(contract: Contract, ownerWallet: SignerWithAddress, otherWallet: SignerWithAddress) {
-      const ownerCon = contract.connect(ownerWallet);
-      const otherCon = contract.connect(otherWallet);
 
-      await expect(otherCon.pause()).to.be.revertedWith("Ownable: caller is not the owner");
-      await expect(ownerCon.pause()).to.emit(contract, "Paused");
-      await expect(otherCon.unpause()).to.be.revertedWith("Ownable: caller is not the owner");
-      await expect(ownerCon.unpause()).to.emit(contract, "Unpaused");
-    }
+  async function testPauseAuthorization(contract: Contract, ownerWallet: SignerWithAddress, otherWallet: SignerWithAddress) {
+    const ownerCon = contract.connect(ownerWallet);
+    const otherCon = contract.connect(otherWallet);
 
-    // If we want to make sure that certain works even after pausing, 
-    // that needs to be tested separately.
-    const reSuite = (fixtureVars: any) => {
-      const { ruleHashEth, ruleHashToken, ruleSubscriberWallet, priceTrigger, swapUniSingleAction, ruleExecutor, testToken1 } = fixtureVars;
-      const collateralAmount = utils.parseEther("2");
-      const reSub = ruleExecutor.connect(ruleSubscriberWallet);
+    await expect(otherCon.pause()).to.be.revertedWith("Ownable: caller is not the owner");
+    await expect(ownerCon.pause()).to.emit(contract, "Paused");
+    await expect(otherCon.unpause()).to.be.revertedWith("Ownable: caller is not the owner");
+    await expect(ownerCon.unpause()).to.emit(contract, "Unpaused");
+  }
 
-      return [
-        reSub.createRule([makePassingTrigger(priceTrigger.address)], [makeSwapAction(swapUniSingleAction.address, testToken1.address)]),
-        reSub.deactivateRule(ruleHashEth),
-        reSub.activateRule(ruleHashEth),
-        reSub.addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount }),
-        reSub.reduceCollateral(ruleHashEth, utils.parseEther("1.5")),
-        reSub.increaseReward(ruleHashEth, { value: DEFAULT_REWARD }),
-        reSub.withdrawReward(ruleHashEth),
-        reSub.executeRule(ruleHashEth),
-        reSub.redeemBalance(ruleHashEth),
-        reSub.cancelRule(ruleHashToken),
-      ]
-    }
+  async function testPauseFunctionality(connectedContract: Contract, fnSuite: () => Promise<any>[]) {
+    await connectedContract.pause();
 
+    const promisesPre = fnSuite();
+    await Promise.all(promisesPre.map(p => expect(p).to.be.revertedWith("Pausable: paused")));
+
+    await connectedContract.unpause();
+
+    const promisesPost = fnSuite();
+    await Promise.all(promisesPost.map(p => expect(p).to.not.be.reverted));
+  }
+
+  describe("Pause Contract", () => {
     it("should revert if anyone but the owner tries to pause/ unpause the contract", async () => {
       const { ownerWallet, ruleSubscriberWallet, ruleExecutor } = await loadFixture(deployValidRuleFixture);
       testPauseAuthorization(ruleExecutor, ownerWallet, ruleSubscriberWallet);
@@ -1234,15 +1226,29 @@ describe("RuleExecutor", () => {
     it("should prevent a bunch of functions from being executed when paused and re-allows them when unpaused", async () => {
       const fixtureVars = await loadFixture(deployValidRuleFixture);
       const { ownerWallet, ruleExecutor } = fixtureVars;
-      await ruleExecutor.connect(ownerWallet).pause();
 
-      const promisesPre = reSuite(fixtureVars);
-      await Promise.all(promisesPre.map(p => expect(p).to.be.revertedWith("Pausable: paused")));
+      // If we want to make sure that certain works even after pausing, 
+      // that needs to be tested separately.
+      const reSuite = (_fixtureVars: any) => {
+        const { ruleHashEth, ruleHashToken, ruleSubscriberWallet, priceTrigger, swapUniSingleAction, ruleExecutor, testToken1 } = _fixtureVars;
+        const collateralAmount = utils.parseEther("2");
+        const reSub = ruleExecutor.connect(ruleSubscriberWallet);
 
-      await ruleExecutor.connect(ownerWallet).unpause();
+        return [
+          reSub.createRule([makePassingTrigger(priceTrigger.address)], [makeSwapAction(swapUniSingleAction.address, testToken1.address)]),
+          reSub.deactivateRule(ruleHashEth),
+          reSub.activateRule(ruleHashEth),
+          reSub.addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount }),
+          reSub.reduceCollateral(ruleHashEth, utils.parseEther("1.5")),
+          reSub.increaseReward(ruleHashEth, { value: DEFAULT_REWARD }),
+          reSub.withdrawReward(ruleHashEth),
+          reSub.executeRule(ruleHashEth),
+          reSub.redeemBalance(ruleHashEth),
+          reSub.cancelRule(ruleHashToken),
+        ]
+      }
 
-      const promisesPost = reSuite(fixtureVars);
-      await Promise.all(promisesPost.map(p => expect(p).to.not.be.reverted));
+      await testPauseFunctionality(ruleExecutor.connect(ownerWallet), () => reSuite(fixtureVars));
 
     });
   });
