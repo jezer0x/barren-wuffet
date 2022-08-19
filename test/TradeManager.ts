@@ -1,8 +1,8 @@
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { BigNumber } from "ethers";
+import { BigNumber, Bytes } from "ethers";
 import { deployments, ethers } from "hardhat";
-import { SubscriptionConstraintsStruct } from "../typechain-types/contracts/funds/FundManager";
+import { SubscriptionConstraintsStruct, TradeStructOutput } from "../typechain-types/contracts/trades/TradeManager";
 import { DEFAULT_REWARD, ERC20_DECIMALS } from "./Constants";
 import { makePassingTrigger, makeSwapAction, setupTradeManager } from "./Fixtures";
 
@@ -25,6 +25,41 @@ describe("TradeManager", () => {
   async function deployTradeManagerFixture() {
     await deployments.fixture();
     return setupTradeManager();
+  }
+
+  async function deployValidTradeFixture() {
+    const {
+      priceTrigger,
+      swapUniSingleAction,
+      testToken1,
+      tradeManager,
+      traderWallet,
+      someOtherWallet,
+      tradeSubscriberWallet,
+    } = await loadFixture(deployTradeManagerFixture);
+    const passingTrigger = makePassingTrigger(priceTrigger.address);
+    const executableAction = makeSwapAction(
+      swapUniSingleAction.address,
+      testToken1.address,
+      ethers.constants.AddressZero
+    );
+    const properContraints = await makeSubConstraints();
+
+    const tx = await tradeManager
+      .connect(traderWallet)
+      .createTrade([passingTrigger], [executableAction], properContraints, { value: DEFAULT_REWARD });
+    const receipt = await tx.wait();
+    const tradeHash: Bytes = receipt.events?.find(
+      (x: { event: string; address: string }) => x.event == "Created" && x.address == tradeManager.address
+    )?.args?.tradeHash;
+    return {
+      testToken1,
+      tradeManager,
+      traderWallet,
+      someOtherWallet,
+      tradeSubscriberWallet,
+      tradeHash,
+    };
   }
 
   describe("Deployment", () => {
@@ -59,7 +94,12 @@ describe("TradeManager", () => {
       ).to.emit(tradeManager, "Created");
     });
 
-    it.skip("Should set the right manager for the trade", async function () {});
+    it("Should set the right manager for the trade", async function () {
+      const { tradeHash, tradeManager, traderWallet } = await loadFixture(deployValidTradeFixture);
+      const trade: TradeStructOutput = await tradeManager.getTrade(tradeHash);
+      expect(trade.manager).to.equal(traderWallet.address);
+    });
+
     it.skip("Should revert if tries to open duplicate trade in same block", async function () {});
     it.skip("Should succeed if tries to open duplicate trade in a different block", async function () {});
   });

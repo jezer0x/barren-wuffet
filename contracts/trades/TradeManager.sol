@@ -192,6 +192,10 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         return (tokens, balances);
     }
 
+    function getTrade(bytes32 tradeHash) public view tradeExists(tradeHash) returns (Trade memory) {
+        return trades[tradeHash];
+    }
+
     function cancelTrade(bytes32 tradeHash) external whenNotPaused nonReentrant onlyTradeManager(tradeHash) {
         Trade storage trade = trades[tradeHash];
         ruleExecutor.cancelRule(trade.ruleHash);

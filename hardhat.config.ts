@@ -20,7 +20,7 @@ const config: HardhatUserConfig = {
     sources: "contracts",
   },
   gasReporter: {
-    enabled: true,
+    enabled: false,
   },
 };
 
