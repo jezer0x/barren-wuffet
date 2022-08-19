@@ -214,6 +214,8 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         } else if (newStatus == RuleStatus.REDEEMED) {
             require(rule.status == RuleStatus.EXECUTED, "Rule isn't pending redemption");
             emit Redeemed(ruleHash);
+        } else {
+            revert("Status not covered!");
         }
 
         rule.status = newStatus;
