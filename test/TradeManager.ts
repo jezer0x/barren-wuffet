@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { BigNumber, Bytes } from "ethers";
 import { deployments, ethers, network } from "hardhat";
 import { SubscriptionConstraintsStruct, TradeStructOutput } from "../typechain-types/contracts/trades/TradeManager";
-import { DEFAULT_REWARD, ERC20_DECIMALS } from "./Constants";
+import { BAD_RULE_HASH, DEFAULT_REWARD, ERC20_DECIMALS } from "./Constants";
 import { makePassingTrigger, makeSwapAction, setupTradeManager } from "./Fixtures";
 
 async function makeSubConstraints(): Promise<SubscriptionConstraintsStruct> {
@@ -36,7 +36,7 @@ describe("TradeManager", () => {
       traderWallet,
       someOtherWallet,
       tradeSubscriberWallet,
-    } = await loadFixture(deployTradeManagerFixture);
+    } = await deployTradeManagerFixture();
     const passingTrigger = makePassingTrigger(priceTrigger.address);
     const executableAction = makeSwapAction(
       swapUniSingleAction.address,
@@ -74,7 +74,7 @@ describe("TradeManager", () => {
     it("Should not be able to X if not owner", async function () {});
   });
 
-  describe("Anyone can open a trade", () => {
+  describe("Opening a Trade", () => {
     it("Should emit the Created event properly", async function () {
       const { priceTrigger, swapUniSingleAction, testToken1, tradeManager, traderWallet } = await loadFixture(
         deployTradeManagerFixture
@@ -92,13 +92,6 @@ describe("TradeManager", () => {
           .connect(traderWallet)
           .createTrade([passingTrigger], [executableAction], properContraints, { value: DEFAULT_REWARD })
       ).to.emit(tradeManager, "Created");
-    });
-
-    // TODO: maybe should if the entire trade/rule chain was proper?
-    it("Should set the right manager for the trade", async function () {
-      const { tradeHash, tradeManager, traderWallet } = await loadFixture(deployValidTradeFixture);
-      const trade: TradeStructOutput = await tradeManager.getTrade(tradeHash);
-      expect(trade.manager).to.equal(traderWallet.address);
     });
 
     it("Should revert if tries to open duplicate trades in same block", async function () {
@@ -162,13 +155,40 @@ describe("TradeManager", () => {
           .createTrade([passingTrigger], [executableAction], properContraints, { value: DEFAULT_REWARD })
       ).to.emit(tradeManager, "Created");
     });
+
+    // TODO: maybe should if the entire trade/rule chain was proper?
+    it("Should set the right manager for the trade", async function () {
+      const { tradeHash, tradeManager, traderWallet } = await loadFixture(deployValidTradeFixture);
+      const trade: TradeStructOutput = await tradeManager.getTrade(tradeHash);
+      expect(trade.manager).to.equal(traderWallet.address);
+    });
   });
 
-  describe.skip("Cancelling a Trade", () => {
-    it("Should revert if non-owner tries to cancel your trade", async function () {});
-    it("Should succeed if manager wants to cancel trade", async function () {});
-    it("Should revert if trying to cancel non-existing trade", async function () {});
-    it("Should revert if manager tries to cancel same trade twice", async function () {});
+  describe("Cancelling a Trade", () => {
+    it("Should revert if non-owner tries to cancel your trade", async function () {
+      const { tradeHash, tradeManager, someOtherWallet } = await loadFixture(deployValidTradeFixture);
+      const trade: TradeStructOutput = await tradeManager.getTrade(tradeHash);
+      await expect(tradeManager.connect(someOtherWallet).cancelTrade(tradeHash)).to.be.revertedWith("onlyManager");
+    });
+    it("Should succeed if manager wants to cancel trade", async function () {
+      const { tradeHash, tradeManager, traderWallet } = await loadFixture(deployValidTradeFixture);
+      await expect(tradeManager.connect(traderWallet).cancelTrade(tradeHash))
+        .to.emit(tradeManager, "Cancelled")
+        .withArgs(tradeHash);
+    });
+    it("Should revert if trying to cancel non-existing trade", async function () {
+      const { tradeHash, tradeManager, traderWallet } = await loadFixture(deployValidTradeFixture);
+      await expect(tradeManager.connect(traderWallet).cancelTrade(BAD_RULE_HASH)).to.be.reverted;
+    });
+    it("Should revert if manager tries to cancel same trade twice", async function () {
+      const { tradeHash, tradeManager, traderWallet } = await loadFixture(deployValidTradeFixture);
+      await expect(tradeManager.connect(traderWallet).cancelTrade(tradeHash))
+        .to.emit(tradeManager, "Cancelled")
+        .withArgs(tradeHash);
+
+      await expect(tradeManager.connect(traderWallet).cancelTrade(tradeHash)).to.be.reverted;
+    });
+    it.skip("Should revert if manager tries to cancel a trade that is completed", async function () {});
   });
 
   describe.skip("Subscriber depositing", () => {

@@ -35,7 +35,7 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
     }
 
     modifier onlyTradeManager(bytes32 tradeHash) {
-        require(trades[tradeHash].manager == msg.sender);
+        require(trades[tradeHash].manager == msg.sender, "onlyManager");
         _;
     }
 
