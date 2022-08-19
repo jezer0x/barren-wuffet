@@ -2,7 +2,7 @@ import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
 import { ethers, deployments } from "hardhat";
-import { BigNumber } from "ethers";
+import { BigNumber, constants } from "ethers";
 import {
   setupFundManager,
   makePassingTrigger,
@@ -12,6 +12,7 @@ import {
   expectEthersObjDeepEqual,
 } from "./Fixtures";
 import { SubscriptionConstraintsStruct } from "../typechain-types/contracts/funds/FundManager";
+import { BAD_FUND_HASH } from "./Constants";
 
 const ETH_PRICE_IN_USD = 1300 * 10 ** 8;
 const UNI_PRICE_IN_USD = 3 * 10 ** 8;
@@ -89,20 +90,34 @@ describe("FundManager", () => {
     })
   });
 
-  describe.skip("Input and Output Tokens", () => {
-    it("Should return eth as the input token for any fund", () => {
+  describe("xx Input and Output Tokens", () => {
+    it("Should return eth as the input token for any fund", async () => {
       // we only support ETH as the input token for now. 
       // As this functionality is extended, this test needs to expand
+      const { fundManager, fundCreatorWallet } = await loadFixture(deployFundManagerFixture);
+      const validConstraints = await makeSubConstraints();
+      let fundHash;
+      await expect(fundManager.connect(fundCreatorWallet).createFund("Fund1", validConstraints)).to.emit(fundManager, "Created").withArgs(
+        (hash: string) => { fundHash = hash; return true; });
+      await expect(fundManager.connect(fundCreatorWallet).getInputToken(BAD_FUND_HASH)).to.be.revertedWithoutReason();
 
+      expect(await fundManager.connect(fundCreatorWallet).getInputToken(fundHash)).to.be.equal(constants.AddressZero);
 
     });
 
 
-    it("Should revert on getOutputToken", () => {
+    it("Should revert on getOutputToken", async () => {
       // This functionality can potentially support converting all tokens into a single token
       // before it's returned to the user. 
       // This is as yet unimplemented, so the function should revert.
 
+      const { fundManager, fundCreatorWallet } = await loadFixture(deployFundManagerFixture);
+      const validConstraints = await makeSubConstraints();
+      let fundHash;
+      await expect(fundManager.connect(fundCreatorWallet).createFund("Fund1", validConstraints)).to.emit(fundManager, "Created").withArgs(
+        (hash: string) => { fundHash = hash; return true; });
+
+      await expect(fundManager.connect(fundCreatorWallet).getOutputToken(fundHash)).to.be.revertedWith("Undefined: Funds may have multiple output tokens, determined only after it's closed.");
 
     })
   })
