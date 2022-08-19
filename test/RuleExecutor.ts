@@ -1195,10 +1195,10 @@ describe("RuleExecutor", () => {
     });
   });
 
-  describe("xx Pause Contract", () => {
+  describe("Pause Contract", () => {
     it("should revert if anyone but the owner tries to pause/ unpause the contract", async () => {
       const { ownerWallet, ruleSubscriberWallet, ruleExecutor } = await loadFixture(deployValidRuleFixture);
-      testPauseAuthorization(ruleExecutor, ownerWallet, ruleSubscriberWallet);
+      await testPauseAuthorization(ruleExecutor, ownerWallet, ruleSubscriberWallet);
     });
     // TODO: Would it make more sense to just tag some tests a decorator, such that those test will execute with / without pause? We could do the same for other decorators. Downside is that you cant summarize the pause tests in one place.
     // OR perhaps we could be even more generic and check that unless excluded, all state-changing external / public fns do get blocked on pause.
