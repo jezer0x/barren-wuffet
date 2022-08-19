@@ -1,4 +1,4 @@
-Branch Coverage: ![Branches](https://img.shields.io/badge/branches-44.15%25-red.svg?style=flat)
+Branch Coverage: ![Branches](https://img.shields.io/badge/branches-52.94%25-red.svg?style=flat)
 # Olympus Mons
 
 Olympus Mons is a decentralized fund management platform that allows you to deposit funds into the contract, and tag it to a specific fund manager who can manage your funds on-chain.
