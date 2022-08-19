@@ -1193,10 +1193,58 @@ describe("RuleExecutor", () => {
       expectEthersObjDeepEqual(expectedRule, actualRule);
     });
   });
-  describe.skip("Pause Contract", () => {
-    it("prevents executing a bunch of functions when paused and re-allows them when unpaused", () => {
-      // ideally we should wrap all the pausable functions and add some kind of decorator to rerun the tests after vanilla / paused / unpaused.
-      // that's the only way to check that a certain function actually has the whenPaused modifier
+  describe("Pause Contract", () => {
+    // If we want to make sure that certain works even after pausing, 
+    // that needs to be tested separately.
+    const reSuite = (fixtureVars: any) => {
+      const { ruleHashEth, ruleHashToken, ruleSubscriberWallet, priceTrigger, swapUniSingleAction, ruleExecutor, testToken1 } = fixtureVars;
+      const collateralAmount = utils.parseEther("2");
+      const reSub = ruleExecutor.connect(ruleSubscriberWallet);
+
+      return [
+        reSub.createRule([makePassingTrigger(priceTrigger.address)], [makeSwapAction(swapUniSingleAction.address, testToken1.address)]),
+        reSub.deactivateRule(ruleHashEth),
+        reSub.activateRule(ruleHashEth),
+        reSub.addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount }),
+        reSub.reduceCollateral(ruleHashEth, utils.parseEther("1.5")),
+        reSub.increaseReward(ruleHashEth, { value: DEFAULT_REWARD }),
+        reSub.withdrawReward(ruleHashEth),
+        reSub.executeRule(ruleHashEth),
+        reSub.redeemBalance(ruleHashEth),
+        reSub.cancelRule(ruleHashToken),
+      ]
+    }
+
+    it("should revert if anyone but the owner tries to pause/ unpause the contract", async () => {
+      const { ruleHashEth, ownerWallet, ruleSubscriberWallet, botWallet, ruleExecutor } = await loadFixture(deployValidRuleFixture);
+      await expect(ruleExecutor
+        .connect(ruleSubscriberWallet).pause()).to.be.revertedWith("Ownable: caller is not the owner");
+
+      await expect(ruleExecutor
+        .connect(ownerWallet).pause()).to.emit(ruleExecutor, "Paused");
+
+      await expect(ruleExecutor
+        .connect(ruleSubscriberWallet).unpause()).to.be.revertedWith("Ownable: caller is not the owner");
+
+      await expect(ruleExecutor
+        .connect(ownerWallet).unpause()).to.emit(ruleExecutor, "Unpaused");
+
+    });
+    // TODO: Would it make more sense to just tag some tests a decorator, such that those test will execute with / without pause? We could do the same for other decorators. Downside is that you cant summarize the pause tests in one place.
+    // OR perhaps we could be even more generic and check that unless excluded, all state-changing external / public fns do get blocked on pause.
+    it("should prevent a bunch of functions from being executed when paused and re-allows them when unpaused", async () => {
+      const fixtureVars = await loadFixture(deployValidRuleFixture);
+      const { ruleHashEth, ownerWallet, ruleSubscriberWallet, botWallet, ruleExecutor } = fixtureVars;
+      await ruleExecutor.connect(ownerWallet).pause();
+
+      const promisesPre = reSuite(fixtureVars);
+      await Promise.all(promisesPre.map(p => expect(p).to.be.revertedWith("Pausable: paused")));
+
+      await ruleExecutor.connect(ownerWallet).unpause();
+
+      const promisesPost = reSuite(fixtureVars);
+      await Promise.all(promisesPost.map(p => expect(p).to.not.be.reverted));
+
     });
   });
 });
