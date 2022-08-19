@@ -1163,7 +1163,7 @@ describe("RuleExecutor", () => {
     });
 
     it("getRule returns the rule with all details and collateral amount", async () => {
-      const { ruleHashEth, ruleMakerWallet, ruleSubscriberWallet, priceTrigger, swapUniSingleAction, ruleExecutor } =
+      const { ruleHashEth, ruleSubscriberWallet, ruleExecutor, ethUniPassingTrigger, ethSwapAction } =
         await loadFixture(deployValidRuleFixture);
 
       const collateralAmount = BigNumber.from(3).mul(ERC20_DECIMALS);
