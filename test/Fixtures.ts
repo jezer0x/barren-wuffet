@@ -13,6 +13,7 @@ import {
   UNI_PRICE_IN_USD,
   ETH_PRICE_IN_UNI,
 } from "./Constants";
+import { expect } from "chai";
 
 export async function deployTestTokens() {
   const TestToken = await ethers.getContractFactory("TestToken");
@@ -77,6 +78,26 @@ export async function createRule(
   }
 
   return ruleHash;
+}
+
+export function expectEthersObjDeepEqual(_expectedResult: Array<any> & object, _actualResult: Array<any> & object) {
+  Object.entries(_expectedResult).map(([k, v]) => {
+    // @ts-ignore
+    const actualObj: any = _actualResult[k];
+
+    if (v !== null && typeof v === 'object') {
+      if (Object.keys(actualObj).length === actualObj.length) {
+        // a normal array
+        v.map((_vItem: any, _i: number) => expectEthersObjDeepEqual(_vItem, actualObj[_i]));
+        return;
+      } else if (Object.keys(actualObj).length === actualObj.length * 2) {
+        // ethers object-array hybrid
+        expectEthersObjDeepEqual(v, actualObj);
+        return;
+      }
+    }
+    expect(actualObj).to.be.deep.equal(v);
+  })
 }
 
 async function deployTestOracle() {

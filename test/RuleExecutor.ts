@@ -13,7 +13,7 @@ import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { BigNumber, constants, utils } from "ethers";
-import { setupRuleExecutor, makePassingTrigger, makeFailingTrigger, makeSwapAction, createRule } from "./Fixtures";
+import { setupRuleExecutor, makePassingTrigger, makeFailingTrigger, makeSwapAction, createRule, expectEthersObjDeepEqual } from "./Fixtures";
 import {
   BAD_RULE_HASH,
   ERC20_DECIMALS,
@@ -489,7 +489,11 @@ describe("RuleExecutor", () => {
       testToken1,
       testToken2,
       swapUniSingleAction,
-      priceTrigger
+      priceTrigger,
+      ethUniPassingTrigger,
+      uniEthPassingTrigger,
+      tokenSwapAction,
+      ethSwapAction
     };
   }
 
@@ -1147,8 +1151,8 @@ describe("RuleExecutor", () => {
       await expect(ruleExecutor.getRule(BAD_RULE_HASH)).to.be.revertedWith("Rule not found");
     });
 
-    it("getRule returns the rule with all details and collateral amount", async () => {
-      const { ruleHashEth, ruleMakerWallet, ruleSubscriberWallet, priceTrigger, swapUniSingleAction, ruleExecutor } = await loadFixture(deployValidRuleFixture);
+    it("xx getRule returns the rule with all details and collateral amount", async () => {
+      const { ruleHashEth, ruleSubscriberWallet, ruleExecutor, ethUniPassingTrigger, ethSwapAction } = await loadFixture(deployValidRuleFixture);
 
       const collateralAmount = BigNumber.from(3).mul(ERC20_DECIMALS);
 
@@ -1156,38 +1160,24 @@ describe("RuleExecutor", () => {
         .connect(ruleSubscriberWallet)
         .addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
 
-      // const expectedRule: RuleStructOutput = {
-      //   owner: ruleMakerWallet.address;
-      //   triggers: [{
-      //     callee: string;
-      //     param: string;
-      //     value: BigNumber;
-      //     op: number;
-      //   }];
-      //   actions: [{
-      //     callee: string;
-      //     data: string;
-      //     inputToken: string;
-      //     outputToken: string;
-      //   }];
-      //   totalCollateralAmount: collateralAmount;
-      //   status: number;
-      //   outputAmount: BigNumber;
-      //   reward: reward;
-      // }
 
+      // The return value is a nested object contain both array and object representations
+      // We need a nested compar
+      const expectedRule: Partial<RuleStructOutput> = {
+        owner: ruleSubscriberWallet.address,
+        totalCollateralAmount: collateralAmount,
+        // @ts-ignore
+        triggers: [ethUniPassingTrigger],
+        // @ts-ignore
+        actions: [ethSwapAction],
+        status: 0,
+        outputAmount: BigNumber.from(0),
+        reward: DEFAULT_REWARD,
+      }
 
-
-      expect(await ruleExecutor.getRule(ruleHashEth)).to.satisfy((rule: RuleStructOutput) => {
-        // some basic rule checks
-
-        return (
-          rule.owner == ruleSubscriberWallet.address &&
-          rule.triggers[0].callee == priceTrigger.address &&
-          rule.actions[0].callee == swapUniSingleAction.address &&
-          rule.reward.eq(DEFAULT_REWARD)
-        );
-      });
+      const actualRule = await ruleExecutor.getRule(ruleHashEth);
+      // @ts-ignore
+      expectEthersObjDeepEqual(expectedRule, actualRule);
     });
   })
   describe.skip("Pause Contract", () => {
