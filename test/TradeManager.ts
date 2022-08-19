@@ -1,7 +1,22 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { deployments } from "hardhat";
-import { setupTradeManager } from "./Fixtures";
+import { BigNumber } from "ethers";
+import { deployments, ethers } from "hardhat";
+import { SubscriptionConstraintsStruct } from "../typechain-types/contracts/funds/FundManager";
+import { DEFAULT_REWARD, ERC20_DECIMALS } from "./Constants";
+import { makePassingTrigger, makeSwapAction, setupTradeManager } from "./Fixtures";
+
+async function makeSubConstraints(): Promise<SubscriptionConstraintsStruct> {
+  return {
+    minCollateralPerSub: BigNumber.from(10).mul(ERC20_DECIMALS),
+    maxCollateralPerSub: BigNumber.from(100).mul(ERC20_DECIMALS),
+    minCollateralTotal: BigNumber.from(200).mul(ERC20_DECIMALS),
+    maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
+    deadline: (await time.latest()) + 86400,
+    lockin: (await time.latest()) + 86400 * 10,
+    rewardPercentage: 100,
+  };
+}
 
 describe("TradeManager", () => {
   // We define a fixture to reuse the same setup in every test.
@@ -24,11 +39,29 @@ describe("TradeManager", () => {
     it("Should not be able to X if not owner", async function () {});
   });
 
-  describe.skip("Anyone can open a trade", () => {
-    it("Should emit the Created event properly", async function () {});
-    it("Should set the right manager for the trade", async function () {});
-    it("Should revert if tries to open duplicate trade in same block", async function () {});
-    it("Should succeed if tries to open duplicate trade in a different block", async function () {});
+  describe("Anyone can open a trade", () => {
+    it("Should emit the Created event properly", async function () {
+      const { priceTrigger, swapUniSingleAction, testToken1, tradeManager, traderWallet } = await loadFixture(
+        deployTradeManagerFixture
+      );
+      const passingTrigger = makePassingTrigger(priceTrigger.address);
+      const executableAction = makeSwapAction(
+        swapUniSingleAction.address,
+        testToken1.address,
+        ethers.constants.AddressZero
+      );
+      const properContraints = await makeSubConstraints();
+
+      await expect(
+        await tradeManager
+          .connect(traderWallet)
+          .createTrade([passingTrigger], [executableAction], properContraints, { value: DEFAULT_REWARD })
+      ).to.emit(tradeManager, "Created");
+    });
+
+    it.skip("Should set the right manager for the trade", async function () {});
+    it.skip("Should revert if tries to open duplicate trade in same block", async function () {});
+    it.skip("Should succeed if tries to open duplicate trade in a different block", async function () {});
   });
 
   describe.skip("Cancelling a Trade", () => {
