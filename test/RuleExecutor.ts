@@ -268,7 +268,7 @@ describe("RuleExecutor", () => {
         tx2Success = true;
       } catch { }
 
-      return tx1Success != tx2Success;
+      expect(tx1Success).to.not.equal(tx2Success);
     });
 
     it("Should be able to create multiple unique rules with the same trigger, action, constraints and a different user", async () => {

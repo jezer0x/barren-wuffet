@@ -1,7 +1,7 @@
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { BigNumber, Bytes } from "ethers";
-import { deployments, ethers } from "hardhat";
+import { deployments, ethers, network } from "hardhat";
 import { SubscriptionConstraintsStruct, TradeStructOutput } from "../typechain-types/contracts/trades/TradeManager";
 import { DEFAULT_REWARD, ERC20_DECIMALS } from "./Constants";
 import { makePassingTrigger, makeSwapAction, setupTradeManager } from "./Fixtures";
@@ -101,7 +101,42 @@ describe("TradeManager", () => {
       expect(trade.manager).to.equal(traderWallet.address);
     });
 
-    it.skip("Should revert if tries to open duplicate trade in same block", async function () {});
+    it("Should revert if tries to open duplicate trades in same block", async function () {
+      const { priceTrigger, swapUniSingleAction, testToken1, tradeManager, traderWallet } = await loadFixture(
+        deployTradeManagerFixture
+      );
+      const passingTrigger = makePassingTrigger(priceTrigger.address);
+      const executableAction = makeSwapAction(
+        swapUniSingleAction.address,
+        testToken1.address,
+        ethers.constants.AddressZero
+      );
+      const properContraints = await makeSubConstraints();
+
+      await network.provider.send("evm_setAutomine", [false]);
+      const tx1 = await await tradeManager
+        .connect(traderWallet)
+        .createTrade([passingTrigger], [executableAction], properContraints, { value: DEFAULT_REWARD });
+      const tx2 = await tradeManager
+        .connect(traderWallet)
+        .createTrade([passingTrigger], [executableAction], properContraints, { value: DEFAULT_REWARD });
+      await network.provider.send("evm_mine", []);
+      await network.provider.send("evm_setAutomine", [true]);
+
+      var tx1Success: Boolean = false;
+      var tx2Success: Boolean = false;
+      try {
+        await tx1.wait();
+        tx1Success = true;
+      } catch {}
+
+      try {
+        await tx2.wait();
+        tx2Success = true;
+      } catch {}
+
+      expect(tx1Success).to.not.equal(tx2Success);
+    });
 
     it("Should succeed if tries to open duplicate trade in a different block", async function () {
       const { priceTrigger, swapUniSingleAction, testToken1, tradeManager, traderWallet } = await loadFixture(
