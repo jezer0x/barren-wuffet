@@ -234,16 +234,14 @@ describe("RuleExecutor", () => {
       );
     });
 
-    it("If trigger, action, constrains, user, block are the same, ruleHash should be the same -> making the second creation fail", async () => {
+    it("If trigger, action, user, block are the same, ruleHash should be the same -> making the second creation fail", async () => {
       const {
         ruleExecutor,
         swapUniSingleAction,
         priceTrigger,
         ruleMakerWallet,
+        ruleSubscriberWallet,
         testToken1,
-        whitelistService,
-        trigWlHash,
-        actWlHash,
       } = await loadFixture(deployRuleExecutorFixture);
 
       const passingTrigger = makePassingTrigger(priceTrigger.address);
@@ -254,22 +252,28 @@ describe("RuleExecutor", () => {
       await network.provider.send("evm_setAutomine", [false]);
       const tx1 = await ruleExecutor.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction]);
       const tx2 = await ruleExecutor.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction]);
+      // different user, so this 3rd rule should work
+      const tx3 = await ruleExecutor.connect(ruleSubscriberWallet).createRule([passingTrigger], [executableAction]);
       await network.provider.send("evm_mine", []);
       await network.provider.send("evm_setAutomine", [true]);
 
-      var tx1Success: Boolean = false;
-      var tx2Success: Boolean = false;
       try {
         await tx1.wait();
-        tx1Success = true;
-      } catch { }
+      } catch { expect.fail(); }
 
       try {
         await tx2.wait();
-        tx2Success = true;
-      } catch { }
+        // cant figure how to confirm whether the error is a duplicate rule error.
+        // this will suffice for now.                
+        expect.fail();
+      } catch (err) {/* pass */ }
 
-      expect(tx1Success).to.not.equal(tx2Success);
+      try {
+        await tx3.wait();
+      } catch (err) {
+        // this acts as a control to ensure the error wasnt due to the evm_mine stuff
+        expect.fail();
+      }
     });
 
     it("Should be able to create multiple unique rules with the same trigger, action, constraints and a different user", async () => {
