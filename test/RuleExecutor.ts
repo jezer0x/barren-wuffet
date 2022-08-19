@@ -28,6 +28,7 @@ import {
 } from "./Constants";
 import { deployments } from "hardhat";
 import { RuleStructOutput } from "../typechain-types/contracts/rules/RuleExecutor";
+import { PriceTrigger } from "../typechain-types";
 
 describe("RuleExecutor", () => {
   async function deployRuleExecutorFixture() {
@@ -213,41 +214,19 @@ describe("RuleExecutor", () => {
         .withArgs(anyValue);
     });
 
-    it("creates rule even without reward, and getRule returns the rule if the rule was successfully created", async () => {
+    it("creates rule without reward", async () => {
       const {
         ruleExecutor,
         swapUniSingleAction,
         priceTrigger,
         ruleMakerWallet,
         testToken1,
-        whitelistService,
-        trigWlHash,
-        actWlHash,
       } = await loadFixture(deployRuleExecutorFixture);
 
       const failingTrigger = makeFailingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
+      await expect(ruleExecutor.connect(ruleMakerWallet).createRule([failingTrigger], [executableAction])).to.emit(ruleExecutor, "Created")
 
-      let ruleHash;
-      await expect(ruleExecutor.connect(ruleMakerWallet).createRule([failingTrigger], [executableAction], { value: utils.parseEther("0.02") }))
-        .to.changeEtherBalances([ruleExecutor, ruleMakerWallet], [0, 0])
-        .and.to.emit(ruleExecutor, "Created")
-        .withArgs((h: string) => {
-          ruleHash = h;
-          return h;
-        });
-
-      await expect(ruleExecutor.getRule(BAD_RULE_HASH)).to.be.revertedWith("Rule not found");
-
-      expect(await ruleExecutor.getRule(ruleHash)).to.satisfy((rule: RuleStructOutput) => {
-        // some basic rule checks
-        return (
-          rule.owner == ruleMakerWallet.address &&
-          rule.triggers[0].callee == failingTrigger.callee &&
-          rule.actions[0].callee == executableAction.callee &&
-          rule.reward.eq(utils.parseEther("0.02"))
-        );
-      });
     });
 
     it.skip("If trigger, action, constrains, user, block are the same, ruleHash should be the same -> making the second creation fail", async () => {
@@ -504,10 +483,13 @@ describe("RuleExecutor", () => {
       ruleHashToken,
       ruleExecutor,
       ownerWallet,
+      ruleMakerWallet,
       ruleSubscriberWallet,
       botWallet,
       testToken1,
       testToken2,
+      swapUniSingleAction,
+      priceTrigger
     };
   }
 
@@ -1159,6 +1141,55 @@ describe("RuleExecutor", () => {
     });
   });
 
+  describe("Get Rule", () => {
+    it("revert getRule if rule doesnt exist", async () => {
+      const { ruleExecutor } = await loadFixture(deployValidRuleFixture);
+      await expect(ruleExecutor.getRule(BAD_RULE_HASH)).to.be.revertedWith("Rule not found");
+    });
+
+    it("getRule returns the rule with all details and collateral amount", async () => {
+      const { ruleHashEth, ruleMakerWallet, ruleSubscriberWallet, priceTrigger, swapUniSingleAction, ruleExecutor } = await loadFixture(deployValidRuleFixture);
+
+      const collateralAmount = BigNumber.from(3).mul(ERC20_DECIMALS);
+
+      await ruleExecutor
+        .connect(ruleSubscriberWallet)
+        .addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
+
+      // const expectedRule: RuleStructOutput = {
+      //   owner: ruleMakerWallet.address;
+      //   triggers: [{
+      //     callee: string;
+      //     param: string;
+      //     value: BigNumber;
+      //     op: number;
+      //   }];
+      //   actions: [{
+      //     callee: string;
+      //     data: string;
+      //     inputToken: string;
+      //     outputToken: string;
+      //   }];
+      //   totalCollateralAmount: collateralAmount;
+      //   status: number;
+      //   outputAmount: BigNumber;
+      //   reward: reward;
+      // }
+
+
+
+      expect(await ruleExecutor.getRule(ruleHashEth)).to.satisfy((rule: RuleStructOutput) => {
+        // some basic rule checks
+
+        return (
+          rule.owner == ruleSubscriberWallet.address &&
+          rule.triggers[0].callee == priceTrigger.address &&
+          rule.actions[0].callee == swapUniSingleAction.address &&
+          rule.reward.eq(DEFAULT_REWARD)
+        );
+      });
+    });
+  })
   describe.skip("Pause Contract", () => {
     it("prevents executing a bunch of functions when paused and re-allows them when unpaused", () => {
       // ideally we should wrap all the pausable functions and add some kind of decorator to rerun the tests after vanilla / paused / unpaused.
