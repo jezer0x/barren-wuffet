@@ -46,11 +46,11 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
     mapping(bytes32 => Fund) funds;
     TradeManager tradeManager;
 
-    constructor(address TmAddr) {
+    constructor(address payable TmAddr) {
         tradeManager = TradeManager(TmAddr);
     }
 
-    function setTradeManangerAddress(address TmAddr) external onlyOwner {
+    function setTradeManangerAddress(address payable TmAddr) external onlyOwner {
         tradeManager = TradeManager(TmAddr);
     }
 
