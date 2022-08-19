@@ -25,9 +25,6 @@ describe("TradeManager", () => {
   });
 
   describe.skip("Anyone can open a trade", () => {
-    it.skip("Should revert if bad constraints", async function () {
-      // TODO: not sure if we should test this here or have a separate utils test
-    });
     it("Should emit the Created event properly", async function () {});
     it("Should set the right manager for the trade", async function () {});
     it("Should revert if tries to open duplicate trade in same block", async function () {});
