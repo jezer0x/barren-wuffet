@@ -334,10 +334,9 @@ describe("TradeManager", () => {
       );
     });
 
-    it.skip("Should revert if subscriber tries to withdraw second time", async function () {});
     it.skip("Should succeed if subscriber tries to withdraw if rule is active (ERC20)", async function () {});
 
-    it("Should succeed if subscriber tries to withdraw if rule is inactive (ERC20)", async function () {
+    it("Should succeed if subscriber tries to withdraw if rule is inactive (ERC20), but a second time will revert", async function () {
       const { ownerWallet, tradeHash, tradeManager, traderWallet, tradeSubscriberWallet, testToken1, ruleExecutor } =
         await loadFixture(deployValidTradeFixture);
       const collateralAmount = BigNumber.from(100).mul(ERC20_DECIMALS);
@@ -348,9 +347,36 @@ describe("TradeManager", () => {
       await expect(tradeManager.connect(tradeSubscriberWallet).withdraw(tradeHash, 0))
         .to.emit(tradeManager, "Withdraw")
         .withArgs(tradeHash, 0, testToken1.address, collateralAmount);
+
+      await expect(tradeManager.connect(tradeSubscriberWallet).withdraw(tradeHash, 0)).to.be.revertedWith(
+        "This subscription is not active!"
+      );
     });
 
-    it.skip("Should deactivate rule if withdrawal takes it below minCollateral", async function () {});
-    it.skip("Should succeed in giving back output after trade is completed", async function () {});
+    it("Should deactivate rule if withdrawal takes it below minCollateral", async function () {
+      const { ownerWallet, tradeHash, tradeManager, traderWallet, tradeSubscriberWallet, testToken1, ruleExecutor } =
+        await loadFixture(deployValidTradeFixture);
+      const collateralAmount = BigNumber.from(100).mul(ERC20_DECIMALS);
+      await testToken1
+        .connect(ownerWallet)
+        .transfer(tradeSubscriberWallet.address, BigNumber.from(600).mul(ERC20_DECIMALS));
+      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount.mul(2));
+
+      const trade: TradeStructOutput = await tradeManager.getTrade(tradeHash);
+
+      await tradeManager.connect(tradeSubscriberWallet).deposit(tradeHash, testToken1.address, collateralAmount);
+      await expect(tradeManager.connect(tradeSubscriberWallet).deposit(tradeHash, testToken1.address, collateralAmount))
+        .to.emit(ruleExecutor, "Activated")
+        .withArgs(trade.ruleHash);
+
+      await expect(tradeManager.connect(tradeSubscriberWallet).withdraw(tradeHash, 0))
+        .to.emit(tradeManager, "Withdraw")
+        .withArgs(tradeHash, 0, testToken1.address, collateralAmount)
+        .to.emit(ruleExecutor, "Deactivated")
+        .withArgs(trade.ruleHash);
+    });
+
+    it.skip("Should succeed in giving back output after trade is completed (ERC20)", async function () {});
+    it.skip("Should succeed in giving back output after trade is completed (ETH)", async function () {});
   });
 });
