@@ -317,12 +317,40 @@ describe("TradeManager", () => {
     it.skip("Should succeed in depositing ETH properly", async function () {});
   });
 
-  describe.skip("Subscriber withdrawing", () => {
-    it("Should revert if non-subscriber is trying to withdraw collateral", async function () {});
-    it("Should revert if subscriber tries to withdraw second time", async function () {});
-    it("Should succeed if subscriber tries to withdraw if rule is inactive", async function () {});
-    it("Should succeed id subscriber tries to withdtaw if rule is active", async function () {});
-    it("Should deactivate rule if withdrawal takes it below minCollateral", async function () {});
-    it("Should succeed in giving back output after trade is completed", async function () {});
+  describe("Subscriber withdrawing", () => {
+    it("Should revert if non-subscriber is trying to withdraw collateral", async function () {
+      const { ownerWallet, tradeHash, tradeManager, traderWallet, tradeSubscriberWallet, testToken1, ruleExecutor } =
+        await loadFixture(deployValidTradeFixture);
+      const collateralAmount = BigNumber.from(600).mul(ERC20_DECIMALS);
+      await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
+      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount);
+
+      await tradeManager
+        .connect(tradeSubscriberWallet)
+        .deposit(tradeHash, testToken1.address, BigNumber.from(100).mul(ERC20_DECIMALS));
+
+      await expect(tradeManager.connect(ownerWallet).withdraw(tradeHash, 0)).to.be.revertedWith(
+        "You're not the subscriber!"
+      );
+    });
+
+    it.skip("Should revert if subscriber tries to withdraw second time", async function () {});
+    it.skip("Should succeed if subscriber tries to withdraw if rule is active (ERC20)", async function () {});
+
+    it("Should succeed if subscriber tries to withdraw if rule is inactive (ERC20)", async function () {
+      const { ownerWallet, tradeHash, tradeManager, traderWallet, tradeSubscriberWallet, testToken1, ruleExecutor } =
+        await loadFixture(deployValidTradeFixture);
+      const collateralAmount = BigNumber.from(100).mul(ERC20_DECIMALS);
+      await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
+      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount);
+      await tradeManager.connect(tradeSubscriberWallet).deposit(tradeHash, testToken1.address, collateralAmount);
+
+      await expect(tradeManager.connect(tradeSubscriberWallet).withdraw(tradeHash, 0))
+        .to.emit(tradeManager, "Withdraw")
+        .withArgs(tradeHash, 0, testToken1.address, collateralAmount);
+    });
+
+    it.skip("Should deactivate rule if withdrawal takes it below minCollateral", async function () {});
+    it.skip("Should succeed in giving back output after trade is completed", async function () {});
   });
 });
