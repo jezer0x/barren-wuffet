@@ -261,12 +261,12 @@ describe("RuleExecutor", () => {
       try {
         await tx1.wait();
         tx1Success = true;
-      } catch {}
+      } catch { }
 
       try {
         await tx2.wait();
         tx2Success = true;
-      } catch {}
+      } catch { }
 
       return tx1Success != tx2Success;
     });
@@ -396,7 +396,7 @@ describe("RuleExecutor", () => {
       expect(await ruleExecutor.connect(botWallet).checkRule(ruleHash)).to.equal(false);
     });
 
-    it.skip("should return true if all of multiple triggers are valid", async () => {});
+    it.skip("should return true if all of multiple triggers are valid", async () => { });
   });
 
   describe("Execute Rule with Failing Trigger", () => {
@@ -699,7 +699,7 @@ describe("RuleExecutor", () => {
     // should not allow adding collateral to a cancelled or executed rule
     // this is handled in the rule cancellation section.
 
-    it.skip("should allow adding collateral based on the first action, even if subsequent actions have different collateral requirements", () => {});
+    it.skip("should allow adding collateral based on the first action, even if subsequent actions have different collateral requirements", () => { });
   });
 
   describe("Execute Rule", () => {
@@ -718,11 +718,11 @@ describe("RuleExecutor", () => {
       );
     });
 
-    it.skip("placeholder for multiple triggers / actions", async () => {});
+    it.skip("placeholder for multiple triggers / actions", async () => { });
     // TODO Merge this and the native rule
     // Check for single and multiple triggers, and single and multiple actions
 
-    it.skip("should not revert if anyone tries to execute a rule with no collateral", async () => {});
+    it.skip("should not revert if anyone tries to execute a rule with no collateral", async () => { });
 
     // For some insane reason, if the native test is after the erc20 test,
     // the addCollateral fails in the erc20 test.
@@ -1049,7 +1049,7 @@ describe("RuleExecutor", () => {
       );
     });
 
-    it.skip("Should redeem balance only from the final action if multiple actions were executed", async () => {});
+    it.skip("Should redeem balance only from the final action if multiple actions were executed", async () => { });
   });
 
   describe("Change Reward", () => {
@@ -1163,7 +1163,7 @@ describe("RuleExecutor", () => {
     });
 
     it("getRule returns the rule with all details and collateral amount", async () => {
-      const { ruleHashEth, ruleSubscriberWallet, ruleExecutor, ethUniPassingTrigger, ethSwapAction } =
+      const { ruleHashEth, ruleSubscriberWallet, botWallet, ruleExecutor, ethUniPassingTrigger, ethSwapAction } =
         await loadFixture(deployValidRuleFixture);
 
       const collateralAmount = BigNumber.from(3).mul(ERC20_DECIMALS);
@@ -1171,6 +1171,8 @@ describe("RuleExecutor", () => {
       await ruleExecutor
         .connect(ruleSubscriberWallet)
         .addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
+
+      await ruleExecutor.connect(botWallet).executeRule(ruleHashEth);
 
       // The return value is a nested object contain both array and object representations
       // We need a nested compar
@@ -1181,8 +1183,8 @@ describe("RuleExecutor", () => {
         triggers: [ethUniPassingTrigger],
         // @ts-ignore
         actions: [ethSwapAction],
-        status: 0,
-        outputAmount: BigNumber.from(0),
+        status: 2,
+        outputAmount: collateralAmount.mul(ETH_PRICE_IN_UNI).div(PRICE_TRIGGER_DECIMALS),
         reward: DEFAULT_REWARD,
       };
 
