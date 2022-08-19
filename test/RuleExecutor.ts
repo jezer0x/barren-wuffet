@@ -8,10 +8,10 @@
  * await ex.to.changeEtherBalance(contract, val);
  */
 
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import { BigNumber, constants, utils } from "ethers";
 import { setupRuleExecutor, makePassingTrigger, makeFailingTrigger, makeSwapAction, createRule, expectEthersObjDeepEqual } from "./Fixtures";
 import {
@@ -28,7 +28,6 @@ import {
 } from "./Constants";
 import { deployments } from "hardhat";
 import { RuleStructOutput } from "../typechain-types/contracts/rules/RuleExecutor";
-import { PriceTrigger } from "../typechain-types";
 
 describe("RuleExecutor", () => {
   async function deployRuleExecutorFixture() {
@@ -215,21 +214,19 @@ describe("RuleExecutor", () => {
     });
 
     it("creates rule without reward", async () => {
-      const {
-        ruleExecutor,
-        swapUniSingleAction,
-        priceTrigger,
-        ruleMakerWallet,
-        testToken1,
-      } = await loadFixture(deployRuleExecutorFixture);
+      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1 } = await loadFixture(
+        deployRuleExecutorFixture
+      );
 
       const failingTrigger = makeFailingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
-      await expect(ruleExecutor.connect(ruleMakerWallet).createRule([failingTrigger], [executableAction])).to.emit(ruleExecutor, "Created")
-
+      await expect(ruleExecutor.connect(ruleMakerWallet).createRule([failingTrigger], [executableAction])).to.emit(
+        ruleExecutor,
+        "Created"
+      );
     });
 
-    it.skip("If trigger, action, constrains, user, block are the same, ruleHash should be the same -> making the second creation fail", async () => {
+    it("If trigger, action, constrains, user, block are the same, ruleHash should be the same -> making the second creation fail", async () => {
       const {
         ruleExecutor,
         swapUniSingleAction,
@@ -245,19 +242,26 @@ describe("RuleExecutor", () => {
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
 
       var rule1Hash: string;
-      // TODO:
-      // This fails because the block isnt the same across these calls.
-      // We need to find a way to make both txes part of the same block
-      await expect(ruleExecutor.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction]))
-        .to.emit(ruleExecutor, "Created")
-        .withArgs((_hash: string) => {
-          rule1Hash = _hash;
-          return true;
-        });
 
-      await expect(ruleExecutor.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction]))
-        .to.emit(ruleExecutor, "Created")
-        .withArgs((_hash2: string) => rule1Hash == _hash2);
+      await network.provider.send("evm_setAutomine", [false]);
+      const tx1 = await ruleExecutor.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction]);
+      const tx2 = await ruleExecutor.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction]);
+      await network.provider.send("evm_mine", []);
+      await network.provider.send("evm_setAutomine", [true]);
+
+      var tx1Success: Boolean = false;
+      var tx2Success: Boolean = false;
+      try {
+        await tx1.wait();
+        tx1Success = true;
+      } catch {}
+
+      try {
+        await tx2.wait();
+        tx2Success = true;
+      } catch {}
+
+      return tx1Success != tx2Success;
     });
 
     it("Should be able to create multiple unique rules with the same trigger, action, constraints and a different user", async () => {
@@ -385,7 +389,7 @@ describe("RuleExecutor", () => {
       expect(await ruleExecutor.connect(botWallet).checkRule(ruleHash)).to.equal(false);
     });
 
-    it.skip("should return true if all of multiple triggers are valid", async () => { });
+    it.skip("should return true if all of multiple triggers are valid", async () => {});
   });
 
   describe("Execute Rule with Failing Trigger", () => {
@@ -688,7 +692,7 @@ describe("RuleExecutor", () => {
     // should not allow adding collateral to a cancelled or executed rule
     // this is handled in the rule cancellation section.
 
-    it.skip("should allow adding collateral based on the first action, even if subsequent actions have different collateral requirements", () => { });
+    it.skip("should allow adding collateral based on the first action, even if subsequent actions have different collateral requirements", () => {});
   });
 
   describe("Execute Rule", () => {
@@ -707,11 +711,11 @@ describe("RuleExecutor", () => {
       );
     });
 
-    it.skip("placeholder for multiple triggers / actions", async () => { });
+    it.skip("placeholder for multiple triggers / actions", async () => {});
     // TODO Merge this and the native rule
     // Check for single and multiple triggers, and single and multiple actions
 
-    it.skip("should not revert if anyone tries to execute a rule with no collateral", async () => { });
+    it.skip("should not revert if anyone tries to execute a rule with no collateral", async () => {});
 
     // For some insane reason, if the native test is after the erc20 test,
     // the addCollateral fails in the erc20 test.
@@ -1038,7 +1042,7 @@ describe("RuleExecutor", () => {
       );
     });
 
-    it.skip("Should redeem balance only from the final action if multiple actions were executed", async () => { });
+    it.skip("Should redeem balance only from the final action if multiple actions were executed", async () => {});
   });
 
   describe("Change Reward", () => {
@@ -1151,8 +1155,14 @@ describe("RuleExecutor", () => {
       await expect(ruleExecutor.getRule(BAD_RULE_HASH)).to.be.revertedWith("Rule not found");
     });
 
+<<<<<<< HEAD
     it("xx getRule returns the rule with all details and collateral amount", async () => {
       const { ruleHashEth, ruleSubscriberWallet, ruleExecutor, ethUniPassingTrigger, ethSwapAction } = await loadFixture(deployValidRuleFixture);
+=======
+    it("getRule returns the rule with all details and collateral amount", async () => {
+      const { ruleHashEth, ruleMakerWallet, ruleSubscriberWallet, priceTrigger, swapUniSingleAction, ruleExecutor } =
+        await loadFixture(deployValidRuleFixture);
+>>>>>>> 411f019 (use RPC methods to control mining; one of the tx should fail but we don't know which)
 
       const collateralAmount = BigNumber.from(3).mul(ERC20_DECIMALS);
 
@@ -1179,7 +1189,7 @@ describe("RuleExecutor", () => {
       // @ts-ignore
       expectEthersObjDeepEqual(expectedRule, actualRule);
     });
-  })
+  });
   describe.skip("Pause Contract", () => {
     it("prevents executing a bunch of functions when paused and re-allows them when unpaused", () => {
       // ideally we should wrap all the pausable functions and add some kind of decorator to rerun the tests after vanilla / paused / unpaused.
