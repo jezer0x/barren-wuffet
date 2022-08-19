@@ -170,7 +170,10 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
 
         if (status == TradeStatus.ACTIVE) {
             ruleExecutor.reduceCollateral(ruleHash, subscription.collateralAmount);
-            if (rule.status == RuleStatus.ACTIVE && rule.totalCollateralAmount < trade.constraints.minCollateralTotal) {
+            if (
+                rule.status == RuleStatus.ACTIVE &&
+                rule.totalCollateralAmount - subscription.collateralAmount < trade.constraints.minCollateralTotal
+            ) {
                 ruleExecutor.deactivateRule(ruleHash);
             }
             token = getInputToken(tradeHash);
@@ -188,8 +191,8 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
 
         Utils._send(subscription.subscriber, balance, token);
         emit Withdraw(tradeHash, subscriptionIdx, token, balance);
-        address[] memory tokens;
-        uint256[] memory balances;
+        address[] memory tokens = new address[](1);
+        uint256[] memory balances = new uint256[](1);
         tokens[0] = token;
         balances[0] = balance;
         return (tokens, balances);
