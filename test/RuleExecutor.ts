@@ -13,7 +13,14 @@ import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
 import { BigNumber, constants, utils } from "ethers";
-import { setupRuleExecutor, makePassingTrigger, makeFailingTrigger, makeSwapAction, createRule, expectEthersObjDeepEqual } from "./Fixtures";
+import {
+  setupRuleExecutor,
+  makePassingTrigger,
+  makeFailingTrigger,
+  makeSwapAction,
+  createRule,
+  expectEthersObjDeepEqual,
+} from "./Fixtures";
 import {
   BAD_RULE_HASH,
   ERC20_DECIMALS,
@@ -497,7 +504,7 @@ describe("RuleExecutor", () => {
       ethUniPassingTrigger,
       uniEthPassingTrigger,
       tokenSwapAction,
-      ethSwapAction
+      ethSwapAction,
     };
   }
 
@@ -1155,21 +1162,15 @@ describe("RuleExecutor", () => {
       await expect(ruleExecutor.getRule(BAD_RULE_HASH)).to.be.revertedWith("Rule not found");
     });
 
-<<<<<<< HEAD
-    it("xx getRule returns the rule with all details and collateral amount", async () => {
-      const { ruleHashEth, ruleSubscriberWallet, ruleExecutor, ethUniPassingTrigger, ethSwapAction } = await loadFixture(deployValidRuleFixture);
-=======
     it("getRule returns the rule with all details and collateral amount", async () => {
       const { ruleHashEth, ruleMakerWallet, ruleSubscriberWallet, priceTrigger, swapUniSingleAction, ruleExecutor } =
         await loadFixture(deployValidRuleFixture);
->>>>>>> 411f019 (use RPC methods to control mining; one of the tx should fail but we don't know which)
 
       const collateralAmount = BigNumber.from(3).mul(ERC20_DECIMALS);
 
       await ruleExecutor
         .connect(ruleSubscriberWallet)
         .addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
-
 
       // The return value is a nested object contain both array and object representations
       // We need a nested compar
@@ -1183,7 +1184,7 @@ describe("RuleExecutor", () => {
         status: 0,
         outputAmount: BigNumber.from(0),
         reward: DEFAULT_REWARD,
-      }
+      };
 
       const actualRule = await ruleExecutor.getRule(ruleHashEth);
       // @ts-ignore
