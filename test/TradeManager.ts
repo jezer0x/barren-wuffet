@@ -94,6 +94,7 @@ describe("TradeManager", () => {
       ).to.emit(tradeManager, "Created");
     });
 
+    // TODO: maybe should if the entire trade/rule chain was proper?
     it("Should set the right manager for the trade", async function () {
       const { tradeHash, tradeManager, traderWallet } = await loadFixture(deployValidTradeFixture);
       const trade: TradeStructOutput = await tradeManager.getTrade(tradeHash);
@@ -101,7 +102,31 @@ describe("TradeManager", () => {
     });
 
     it.skip("Should revert if tries to open duplicate trade in same block", async function () {});
-    it.skip("Should succeed if tries to open duplicate trade in a different block", async function () {});
+
+    it("Should succeed if tries to open duplicate trade in a different block", async function () {
+      const { priceTrigger, swapUniSingleAction, testToken1, tradeManager, traderWallet } = await loadFixture(
+        deployTradeManagerFixture
+      );
+      const passingTrigger = makePassingTrigger(priceTrigger.address);
+      const executableAction = makeSwapAction(
+        swapUniSingleAction.address,
+        testToken1.address,
+        ethers.constants.AddressZero
+      );
+      const properContraints = await makeSubConstraints();
+
+      await expect(
+        await tradeManager
+          .connect(traderWallet)
+          .createTrade([passingTrigger], [executableAction], properContraints, { value: DEFAULT_REWARD })
+      ).to.emit(tradeManager, "Created");
+
+      await expect(
+        await tradeManager
+          .connect(traderWallet)
+          .createTrade([passingTrigger], [executableAction], properContraints, { value: DEFAULT_REWARD })
+      ).to.emit(tradeManager, "Created");
+    });
   });
 
   describe.skip("Cancelling a Trade", () => {
