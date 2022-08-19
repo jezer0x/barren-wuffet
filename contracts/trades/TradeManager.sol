@@ -16,7 +16,7 @@ import "./TradeTypes.sol";
 contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    event TradeCreated(bytes32 indexed tradeHash);
+    event Created(bytes32 indexed tradeHash);
     event Cancelled(bytes32 indexed tradeHash);
 
     mapping(bytes32 => Trade) trades;
@@ -217,7 +217,7 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         trade.ruleHash = ruleHash;
         trade.constraints = constraints;
 
-        emit TradeCreated(tradeHash);
+        emit Created(tradeHash);
         return tradeHash;
     }
 }

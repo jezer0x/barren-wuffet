@@ -37,12 +37,19 @@ library Utils {
     }
 
     function _validateSubscriptionConstraintsBasic(SubscriptionConstraints calldata constraints) internal view {
-        require(constraints.minCollateralPerSub <= constraints.maxCollateralPerSub);
-        require(constraints.minCollateralTotal <= constraints.maxCollateralTotal);
-        require(constraints.minCollateralTotal >= constraints.minCollateralPerSub);
-        require(constraints.maxCollateralTotal >= constraints.maxCollateralPerSub);
-        require(constraints.deadline >= block.timestamp); // deadline can't be in the past
-        require(constraints.lockin >= block.timestamp); // lockin can't be in the past
-        require(constraints.rewardPercentage <= 100 * 100); // can't be above 100%
+        require(
+            constraints.minCollateralPerSub <= constraints.maxCollateralPerSub,
+            "minCollateralPerSub > maxCollateralPerSub"
+        );
+        require(
+            constraints.minCollateralTotal <= constraints.maxCollateralTotal,
+            "minTotalCollaterl > maxTotalCollateral"
+        );
+        require(constraints.minCollateralTotal >= constraints.minCollateralPerSub, "mininmums don't make sense");
+        require(constraints.maxCollateralTotal >= constraints.maxCollateralPerSub, "maximums don't make sense");
+        require(constraints.deadline >= block.timestamp, "deadline is in the past");
+        require(constraints.lockin >= block.timestamp, "lockin is in the past");
+        require(constraints.lockin > constraints.deadline, "lockin <= dealdine");
+        require(constraints.rewardPercentage <= 100 * 100, "reward > 100%");
     }
 }
