@@ -31,6 +31,23 @@ describe("FundManager", () => {
   });
 
   describe.skip("Create fund", () => { });
+  describe("Input and Output Tokens", () => {
+    it("Should return eth as the input token for any fund", () => {
+      // we only support ETH as the input token for now. 
+      // As this functionality is extended, this test needs to expand
+
+
+    });
+
+
+    it("Should revert on getOutputToken", () => {
+      // This functionality can potentially support converting all tokens into a single token
+      // before it's returned to the user. 
+      // This is as yet unimplemented, so the function should revert.
+
+
+    })
+  })
 
   describe.skip("Open and close positions", () => { });
 
@@ -41,6 +58,36 @@ describe("FundManager", () => {
   describe.skip("Take Action", () => { });
 
   describe.skip("Status changes", () => { });
+
+  describe.skip("Close fund", () => {
+    it("should revert if an unknown fund or closed fund is closed", () => {
+
+    });
+
+    it("should close all open positions and emit a closed event if the fund is closed", () => {
+
+    });
+  });
+
+  describe.skip("Rewards", () => {
+    it("should return the correct value of reward to the fund manager", async () => {
+
+    });
+
+    it("should not allow access to rewards of a different fund manager", async () => {
+
+    });
+
+    it("should not allow multiple withdrawals of the reward", async () => {
+
+    });
+
+    it("revert if withdrawal is attempted on a fund that has not been closed", async () => {
+
+    });
+
+  });
+
 
   describe.skip("User Stories", () => {
     it("allows creating a fund with profit, lockin and min size", async () => {
