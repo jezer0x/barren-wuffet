@@ -11,10 +11,23 @@ import {
   createRule,
   expectEthersObjDeepEqual,
 } from "./Fixtures";
+import { SubscriptionConstraintsStruct } from "../typechain-types/contracts/funds/FundManager";
 
 const ETH_PRICE_IN_USD = 1300 * 10 ** 8;
 const UNI_PRICE_IN_USD = 3 * 10 ** 8;
 const ERC20_DECIMALS = BigNumber.from(10).pow(18);
+
+async function makeSubConstraints(): Promise<SubscriptionConstraintsStruct> {
+  return {
+    minCollateralPerSub: BigNumber.from(10).mul(ERC20_DECIMALS),
+    maxCollateralPerSub: BigNumber.from(100).mul(ERC20_DECIMALS),
+    minCollateralTotal: BigNumber.from(200).mul(ERC20_DECIMALS),
+    maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
+    deadline: (await time.latest()) + 86400,
+    lockin: (await time.latest()) + 86400 * 10,
+    rewardPercentage: 100,
+  };
+}
 
 describe("FundManager", () => {
   async function deployFundManagerFixture() {
@@ -30,8 +43,53 @@ describe("FundManager", () => {
     });
   });
 
-  describe.skip("Create fund", () => { });
-  describe("Input and Output Tokens", () => {
+  describe("Create fund", () => {
+    it("should allow anyone to create a fund and emit Created event with the fund hash", async () => {
+      const { fundManager, fundCreatorWallet } = await loadFixture(deployFundManagerFixture);
+      const validConstraints = await makeSubConstraints();
+      await expect(fundManager.connect(fundCreatorWallet).createFund("Fund1", validConstraints)).to.emit(fundManager, "Created")
+        .withArgs(anyValue);
+    });
+
+    it.skip("Should revert if a fund is created with inconsistent subscription constraints", async () => {
+      // We will test Utils separately. We want to check here if Utils was called
+      /**
+        const contractFactory = await this.env.ethers.getContractFactory("Example", {
+          libraries: {
+            ExampleLib: "0x...",
+          },
+        });
+       */
+
+
+    });
+
+    it("should revert if the same user creates 2 funds with the same name", async () => {
+      const { fundManager, fundCreatorWallet } = await loadFixture(deployFundManagerFixture);
+      const validConstraints = await makeSubConstraints();
+      await fundManager.connect(fundCreatorWallet).createFund("Fund1", validConstraints);
+      await expect(fundManager.connect(fundCreatorWallet).createFund("Fund1", validConstraints)).to.be.revertedWith("Fund already exists!")
+
+    });
+
+    it("should allow the same user to create 2 funds with different names", async () => {
+      const { fundManager, fundCreatorWallet } = await loadFixture(deployFundManagerFixture);
+      const validConstraints = await makeSubConstraints();
+      await fundManager.connect(fundCreatorWallet).createFund("Fund1", validConstraints);
+      await expect(fundManager.connect(fundCreatorWallet).createFund("Fund2", validConstraints)).to.emit(fundManager, "Created")
+        .withArgs(anyValue);
+    })
+
+    it("should allow 2 different users to create funds with the same name", async () => {
+      const { fundManager, fundCreatorWallet, fundCreator2Wallet } = await loadFixture(deployFundManagerFixture);
+      const validConstraints = await makeSubConstraints();
+      await fundManager.connect(fundCreatorWallet).createFund("Fund1", validConstraints);
+      await expect(fundManager.connect(fundCreator2Wallet).createFund("Fund1", validConstraints)).to.emit(fundManager, "Created")
+        .withArgs(anyValue);
+    })
+  });
+
+  describe.skip("Input and Output Tokens", () => {
     it("Should return eth as the input token for any fund", () => {
       // we only support ETH as the input token for now. 
       // As this functionality is extended, this test needs to expand

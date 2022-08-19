@@ -228,13 +228,43 @@ export async function setupTradeManager() {
 }
 
 export async function setupFundManager() {
-  const [ownerWallet, ruleMakerWallet, ruleSubscriberWallet, botWallet] = await ethers.getSigners();
+  // these wallets maybe reused to create trader / rule executor.
+  // which shouldnt be a problem
+  const [ownerWallet, fundCreatorWallet, fundCreator2Wallet, fundSubscriberWallet, fundSubscriber2Wallet, botWallet] = await ethers.getSigners();
 
-  const tradeManagerParams = (await setupTradeManager());
+  const {
+    ruleExecutor,
+    priceTrigger,
+    swapUniSingleAction,
+    testOracleEth,
+    testOracleUni,
+    testToken1,
+    testToken2,
+    whitelistService,
+    trigWlHash,
+    actWlHash,
+    tradeManager,
+  } = (await setupTradeManager());
   const fundManager = await ethers.getContract("FundManager");
 
   return {
-    ...tradeManagerParams,
+    ownerWallet,
+    ruleExecutor,
+    priceTrigger,
+    swapUniSingleAction,
+    testOracleEth,
+    testOracleUni,
+    testToken1,
+    testToken2,
+    fundCreatorWallet,
+    fundCreator2Wallet,
+    fundSubscriberWallet,
+    fundSubscriber2Wallet,
+    botWallet,
+    whitelistService,
+    trigWlHash,
+    actWlHash,
+    tradeManager,
     fundManager
   };
 }
