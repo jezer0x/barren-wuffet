@@ -82,7 +82,10 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         // TODO: take a fee here
         newSub.collateralAmount = collateralAmount;
         Rule memory rule = ruleExecutor.getRule(trade.ruleHash);
-        if (rule.totalCollateralAmount >= trade.constraints.minCollateralTotal) {
+        if (
+            rule.totalCollateralAmount >= trade.constraints.minCollateralTotal &&
+            rule.totalCollateralAmount - collateralAmount < trade.constraints.minCollateralTotal
+        ) {
             ruleExecutor.activateRule(trade.ruleHash);
         }
         emit Deposit(tradeHash, trade.subscriptions.length - 1, collateralToken, collateralAmount);
@@ -118,7 +121,7 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         require(constraints.maxCollateralPerSub >= collateralAmount, "Max Collateral for Subscription exceeded");
         require(
             constraints.maxCollateralTotal >= (rule.totalCollateralAmount + collateralAmount),
-            "Max Collateral for Rule exceeded"
+            "Max Collateral for Trade exceeded"
         );
 
         if (collateralToken == REConstants.ETH) {
