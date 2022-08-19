@@ -229,7 +229,7 @@ describe("RuleExecutor", () => {
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
 
       let ruleHash;
-      await expect(ruleExecutor.connect(ruleMakerWallet).createRule([failingTrigger], [executableAction]))
+      await expect(ruleExecutor.connect(ruleMakerWallet).createRule([failingTrigger], [executableAction], { value: utils.parseEther("0.02") }))
         .to.changeEtherBalances([ruleExecutor, ruleMakerWallet], [0, 0])
         .and.to.emit(ruleExecutor, "Created")
         .withArgs((h: string) => {
@@ -245,7 +245,7 @@ describe("RuleExecutor", () => {
           rule.owner == ruleMakerWallet.address &&
           rule.triggers[0].callee == failingTrigger.callee &&
           rule.actions[0].callee == executableAction.callee &&
-          rule.reward.eq(BigNumber.from(0))
+          rule.reward.eq(utils.parseEther("0.02"))
         );
       });
     });
@@ -406,7 +406,7 @@ describe("RuleExecutor", () => {
       expect(await ruleExecutor.connect(botWallet).checkRule(ruleHash)).to.equal(false);
     });
 
-    it.skip("should return true if all of multiple triggers are valid", async () => {});
+    it.skip("should return true if all of multiple triggers are valid", async () => { });
   });
 
   describe("Execute Rule with Failing Trigger", () => {
@@ -702,7 +702,7 @@ describe("RuleExecutor", () => {
     // should not allow adding collateral to a cancelled or executed rule
     // this is handled in the rule cancellation section.
 
-    it.skip("should allow adding collateral based on the first action, even if subsequent actions have different collateral requirements", () => {});
+    it.skip("should allow adding collateral based on the first action, even if subsequent actions have different collateral requirements", () => { });
   });
 
   describe("Execute Rule", () => {
@@ -721,11 +721,11 @@ describe("RuleExecutor", () => {
       );
     });
 
-    it.skip("placeholder for multiple triggers / actions", async () => {});
+    it.skip("placeholder for multiple triggers / actions", async () => { });
     // TODO Merge this and the native rule
     // Check for single and multiple triggers, and single and multiple actions
 
-    it.skip("should not revert if anyone tries to execute a rule with no collateral", async () => {});
+    it.skip("should not revert if anyone tries to execute a rule with no collateral", async () => { });
 
     // For some insane reason, if the native test is after the erc20 test,
     // the addCollateral fails in the erc20 test.
@@ -1052,7 +1052,7 @@ describe("RuleExecutor", () => {
       );
     });
 
-    it.skip("Should redeem balance only from the final action if multiple actions were executed", async () => {});
+    it.skip("Should redeem balance only from the final action if multiple actions were executed", async () => { });
   });
 
   describe("Change Reward", () => {
