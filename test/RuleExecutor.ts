@@ -11,7 +11,7 @@
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
-import { ethers, network } from "hardhat";
+import { ethers, network, deployments } from "hardhat";
 import { BigNumber, constants, utils } from "ethers";
 import {
   setupRuleExecutor,
@@ -33,7 +33,6 @@ import {
   ETH_PRICE_IN_UNI_PARAM,
   GT,
 } from "./Constants";
-import { deployments } from "hardhat";
 import { RuleStructOutput } from "../typechain-types/contracts/rules/RuleExecutor";
 
 describe("RuleExecutor", () => {

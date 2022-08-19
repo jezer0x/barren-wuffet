@@ -1,94 +1,46 @@
 import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
-import { ethers } from "hardhat";
-import { TriggerStruct, ActionStruct } from "../typechain-types/contracts/rules/RuleExecutor";
-import { assert } from "console";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { int } from "hardhat/internal/core/params/argumentTypes";
-import { Contract, Bytes, BigNumber } from "ethers";
-import { EtherscanProvider } from "@ethersproject/providers";
+import { ethers, deployments } from "hardhat";
+import { BigNumber } from "ethers";
+import {
+  setupFundManager,
+  makePassingTrigger,
+  makeFailingTrigger,
+  makeSwapAction,
+  createRule,
+  expectEthersObjDeepEqual,
+} from "./Fixtures";
 
 const ETH_PRICE_IN_USD = 1300 * 10 ** 8;
 const UNI_PRICE_IN_USD = 3 * 10 ** 8;
 const ERC20_DECIMALS = BigNumber.from(10).pow(18);
 
 describe("FundManager", () => {
-  async function deployFundManagetFixture() {
-    const [ownerWallet, ruleMakerWallet, ruleSubscriberWallet, botWallet] = await ethers.getSigners();
-
-    const WhitelistService = await ethers.getContractFactory("WhitelistService");
-    const whitelistService = await WhitelistService.deploy();
-    await whitelistService.createWhitelist("triggers");
-    const trigWlHash = await whitelistService.getWhitelistHash(ownerWallet.address, "triggers");
-    await whitelistService.createWhitelist("actions");
-    const actWlHash = await whitelistService.getWhitelistHash(ownerWallet.address, "actions");
-
-    const RuleExecutor = await ethers.getContractFactory("RuleExecutor");
-    const ruleExecutor = await RuleExecutor.deploy(whitelistService.address, trigWlHash, actWlHash);
-
-    const FundManager = await ethers.getContractFactory("FundManager");
-    const fundManager = await FundManager.deploy();
-
-    const TestSwapRouter = await ethers.getContractFactory("TestSwapRouter");
-    const testSwapRouter = await TestSwapRouter.deploy();
-
-    const TestToken = await ethers.getContractFactory("TestToken");
-    const testToken1 = await TestToken.deploy(BigNumber.from("1000000").mul(ERC20_DECIMALS), "Test1", "TST1");
-    const testToken2 = await TestToken.deploy(BigNumber.from("1000000").mul(ERC20_DECIMALS), "Test2", "TST2");
-    const WETH = await TestToken.deploy(BigNumber.from("1000000").mul(ERC20_DECIMALS), "WETH", "WETH");
-
-    const SwapUniSingleAction = await ethers.getContractFactory("SwapUniSingleAction");
-
-    const swapUniSingleAction = await SwapUniSingleAction.deploy(testSwapRouter.address, WETH.address);
-
-    const TestOracle = await ethers.getContractFactory("TestOracle");
-    const testOracleEth = await TestOracle.deploy(ETH_PRICE_IN_USD);
-    const testOracleUni = await TestOracle.deploy(UNI_PRICE_IN_USD);
-
-    const PriceTrigger = await ethers.getContractFactory("PriceTrigger");
-    const priceTrigger = await PriceTrigger.deploy();
-    await priceTrigger.addPriceFeed("eth", testOracleEth.address);
-    await priceTrigger.addPriceFeed("uni", testOracleUni.address);
-
-    return {
-      ruleExecutor,
-      fundManager,
-      priceTrigger,
-      swapUniSingleAction,
-      testOracleEth,
-      testOracleUni,
-      testToken1,
-      testToken2,
-      ownerWallet,
-      ruleMakerWallet,
-      ruleSubscriberWallet,
-      botWallet,
-      whitelistService,
-      trigWlHash,
-      actWlHash,
-    };
+  async function deployFundManagerFixture() {
+    await deployments.fixture();
+    return await setupFundManager();
   }
 
   describe("Deployment", () => {
     it("Should set the right owner", async function () {
-      const { fundManager, ownerWallet } = await loadFixture(deployFundManagetFixture);
+      const { fundManager, ownerWallet } = await loadFixture(deployFundManagerFixture);
 
       expect(await fundManager.owner()).to.equal(ownerWallet.address);
     });
   });
 
-  describe.skip("Create fund", () => {});
+  describe.skip("Create fund", () => { });
 
-  describe.skip("Open and close positions", () => {});
+  describe.skip("Open and close positions", () => { });
 
-  describe.skip("Deposit", () => {});
+  describe.skip("Deposit", () => { });
 
-  describe.skip("Withdraw", () => {});
+  describe.skip("Withdraw", () => { });
 
-  describe.skip("Take Action", () => {});
+  describe.skip("Take Action", () => { });
 
-  describe.skip("Status changes", () => {});
+  describe.skip("Status changes", () => { });
 
   describe.skip("User Stories", () => {
     it("allows creating a fund with profit, lockin and min size", async () => {

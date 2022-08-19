@@ -226,3 +226,15 @@ export async function setupTradeManager() {
     tradeManager,
   };
 }
+
+export async function setupFundManager() {
+  const [ownerWallet, ruleMakerWallet, ruleSubscriberWallet, botWallet] = await ethers.getSigners();
+
+  const tradeManagerParams = (await setupTradeManager());
+  const fundManager = await ethers.getContract("FundManager");
+
+  return {
+    ...tradeManagerParams,
+    fundManager
+  };
+}
