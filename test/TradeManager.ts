@@ -660,6 +660,55 @@ describe("TradeManager", () => {
       }
     });
 
-    it.skip("Should succeed in giving back output after trade is completed (get back ERC20)", async function () {});
+    it("Should succeed in giving back output after trade is completed (get back ERC20)", async function () {
+      const {
+        ownerWallet,
+        tradeETHforTST1Hash,
+        tradeManager,
+        traderWallet,
+        tradeSubscriberWallet,
+        testToken1,
+        botWallet,
+        ruleExecutor,
+      } = await loadFixture(deployValidTradeFixture);
+      const collateralAmount = MAX_COLLATERAL_PER_SUB;
+      const times = MIN_COLLATERAL_TOTAL.div(collateralAmount);
+
+      for (var i = 0; i < times.toNumber() - 1; i++) {
+        await tradeManager
+          .connect(tradeSubscriberWallet)
+          .deposit(tradeETHforTST1Hash, ethers.constants.AddressZero, collateralAmount, { value: collateralAmount });
+      }
+
+      await expect(
+        tradeManager
+          .connect(tradeSubscriberWallet)
+          .deposit(tradeETHforTST1Hash, ethers.constants.AddressZero, collateralAmount, { value: collateralAmount })
+      ).to.emit(ruleExecutor, "Activated");
+
+      // throw in another trade with a separate amount to see if ratio of reward output is fine
+      await tradeManager
+        .connect(tradeSubscriberWallet)
+        .deposit(tradeETHforTST1Hash, ethers.constants.AddressZero, MIN_COLLATERAL_PER_SUB, {
+          value: MIN_COLLATERAL_PER_SUB,
+        });
+
+      const trade: TradeStructOutput = await tradeManager.getTrade(tradeETHforTST1Hash);
+
+      // now a bot will snipe this, making it an EXECUTED rule
+      await expect(ruleExecutor.connect(botWallet).executeRule(trade.ruleHash)).to.emit(ruleExecutor, "Executed");
+
+      const rule: RuleStructOutput = await ruleExecutor.getRule(trade.ruleHash);
+
+      for (var i = 0; i < times.toNumber() + 1; i++) {
+        var expected_output = trade.subscriptions[i].collateralAmount
+          .mul(rule.outputAmount)
+          .div(rule.totalCollateralAmount);
+
+        await expect(tradeManager.connect(tradeSubscriberWallet).withdraw(tradeETHforTST1Hash, i))
+          .to.emit(tradeManager, "Withdraw")
+          .withArgs(tradeETHforTST1Hash, i, testToken1.address, expected_output);
+      }
+    });
   });
 });
