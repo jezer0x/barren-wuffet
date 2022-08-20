@@ -2,6 +2,7 @@ import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { BigNumber, Bytes } from "ethers";
 import { deployments, ethers, network } from "hardhat";
+import { RuleStructOutput } from "../typechain-types/contracts/rules/RuleExecutor";
 import { SubscriptionConstraintsStruct, TradeStructOutput } from "../typechain-types/contracts/trades/TradeManager";
 import {
   BAD_RULE_HASH,
@@ -53,6 +54,7 @@ describe("TradeManager", () => {
       someOtherWallet,
       tradeSubscriberWallet,
       ruleExecutor,
+      botWallet,
     } = await deployTradeManagerFixture();
 
     const ETHtoTST1SwapPriceTrigger = {
@@ -110,6 +112,7 @@ describe("TradeManager", () => {
       tradeTST1forETHHash,
       tradeETHforTST1Hash,
       ruleExecutor,
+      botWallet,
     };
   }
 
@@ -241,7 +244,43 @@ describe("TradeManager", () => {
 
       await expect(tradeManager.connect(traderWallet).cancelTrade(tradeTST1forETHHash)).to.be.reverted;
     });
-    it.skip("Should revert if manager tries to cancel a trade that is completed", async function () {});
+
+    it("Should revert if manager tries to cancel a trade that is completed", async function () {
+      const {
+        ownerWallet,
+        tradeTST1forETHHash,
+        tradeManager,
+        traderWallet,
+        tradeSubscriberWallet,
+        testToken1,
+        botWallet,
+        ruleExecutor,
+      } = await loadFixture(deployValidTradeFixture);
+      const collateralAmount = MAX_COLLATERAL_PER_SUB;
+      const times = MIN_COLLATERAL_TOTAL.div(collateralAmount);
+      await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount.mul(times));
+      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount.mul(times));
+
+      const trade: TradeStructOutput = await tradeManager.getTrade(tradeTST1forETHHash);
+
+      for (var i = 0; i < times.toNumber() - 1; i++) {
+        await tradeManager
+          .connect(tradeSubscriberWallet)
+          .deposit(tradeTST1forETHHash, testToken1.address, collateralAmount);
+      }
+
+      await expect(
+        tradeManager.connect(tradeSubscriberWallet).deposit(tradeTST1forETHHash, testToken1.address, collateralAmount)
+      )
+        .to.emit(ruleExecutor, "Activated")
+        .withArgs(trade.ruleHash);
+
+      // now a bot will snipe this, making it an EXECUTED rule
+      await expect(ruleExecutor.connect(botWallet).executeRule(trade.ruleHash)).to.emit(ruleExecutor, "Executed");
+      await expect(tradeManager.connect(traderWallet).cancelTrade(tradeTST1forETHHash)).to.be.revertedWith(
+        "Can't Cancel Rule"
+      );
+    });
   });
 
   describe("Subscriber depositing", () => {
@@ -405,7 +444,49 @@ describe("TradeManager", () => {
       ).to.be.revertedWith("Max Collateral for Trade exceeded");
     });
 
-    it.skip("Should succeed in depositing ETH properly", async function () {});
+    it("Should succeed in depositing ETH properly", async function () {
+      // anything between MIN_COLLATERAL_PER_SUB and MAX_COLLATERAL_PER_SUB should work (inclusive)
+      const { ownerWallet, tradeETHforTST1Hash, tradeManager, traderWallet, tradeSubscriberWallet, testToken1 } =
+        await loadFixture(deployValidTradeFixture);
+
+      await expect(
+        tradeManager
+          .connect(tradeSubscriberWallet)
+          .deposit(tradeETHforTST1Hash, ethers.constants.AddressZero, MIN_COLLATERAL_PER_SUB, {
+            value: MIN_COLLATERAL_PER_SUB,
+          })
+      )
+        .to.emit(tradeManager, "Deposit")
+        .withArgs(tradeETHforTST1Hash, 0, ethers.constants.AddressZero, MIN_COLLATERAL_PER_SUB);
+
+      await expect(
+        tradeManager
+          .connect(tradeSubscriberWallet)
+          .deposit(tradeETHforTST1Hash, ethers.constants.AddressZero, MAX_COLLATERAL_PER_SUB, {
+            value: MAX_COLLATERAL_PER_SUB,
+          })
+      )
+        .to.emit(tradeManager, "Deposit")
+        .withArgs(tradeETHforTST1Hash, 1, ethers.constants.AddressZero, MAX_COLLATERAL_PER_SUB);
+
+      await expect(
+        tradeManager
+          .connect(tradeSubscriberWallet)
+          .deposit(
+            tradeETHforTST1Hash,
+            ethers.constants.AddressZero,
+            MIN_COLLATERAL_PER_SUB.add(MAX_COLLATERAL_PER_SUB).div(2),
+            { value: MIN_COLLATERAL_PER_SUB.add(MAX_COLLATERAL_PER_SUB).div(2) }
+          )
+      )
+        .to.emit(tradeManager, "Deposit")
+        .withArgs(
+          tradeETHforTST1Hash,
+          2,
+          ethers.constants.AddressZero,
+          MIN_COLLATERAL_PER_SUB.add(MAX_COLLATERAL_PER_SUB).div(2)
+        );
+    });
   });
 
   describe("Subscriber withdrawing", () => {
@@ -522,7 +603,63 @@ describe("TradeManager", () => {
         .withArgs(trade.ruleHash);
     });
 
-    it.skip("Should succeed in giving back output after trade is completed (ERC20)", async function () {});
-    it.skip("Should succeed in giving back output after trade is completed (ETH)", async function () {});
+    it("Should succeed in giving back output after trade is completed (get back ETH)", async function () {
+      const {
+        ownerWallet,
+        tradeTST1forETHHash,
+        tradeManager,
+        traderWallet,
+        tradeSubscriberWallet,
+        testToken1,
+        botWallet,
+        ruleExecutor,
+      } = await loadFixture(deployValidTradeFixture);
+      const collateralAmount = MAX_COLLATERAL_PER_SUB;
+      const times = MIN_COLLATERAL_TOTAL.div(collateralAmount);
+      await testToken1
+        .connect(ownerWallet)
+        .transfer(tradeSubscriberWallet.address, collateralAmount.mul(times).add(MIN_COLLATERAL_PER_SUB));
+      await testToken1
+        .connect(tradeSubscriberWallet)
+        .approve(tradeManager.address, collateralAmount.mul(times).add(MIN_COLLATERAL_PER_SUB));
+
+      for (var i = 0; i < times.toNumber() - 1; i++) {
+        await tradeManager
+          .connect(tradeSubscriberWallet)
+          .deposit(tradeTST1forETHHash, testToken1.address, collateralAmount);
+      }
+
+      await expect(
+        tradeManager.connect(tradeSubscriberWallet).deposit(tradeTST1forETHHash, testToken1.address, collateralAmount)
+      ).to.emit(ruleExecutor, "Activated");
+
+      // throw in another trade with a separate amount to see if ratio of reward output is fine
+      await tradeManager
+        .connect(tradeSubscriberWallet)
+        .deposit(tradeTST1forETHHash, testToken1.address, MIN_COLLATERAL_PER_SUB);
+
+      const trade: TradeStructOutput = await tradeManager.getTrade(tradeTST1forETHHash);
+
+      // now a bot will snipe this, making it an EXECUTED rule
+      await expect(ruleExecutor.connect(botWallet).executeRule(trade.ruleHash)).to.emit(ruleExecutor, "Executed");
+
+      const rule: RuleStructOutput = await ruleExecutor.getRule(trade.ruleHash);
+
+      for (var i = 0; i < times.toNumber() + 1; i++) {
+        var prev_balance = await ethers.provider.getBalance(trade.subscriptions[i].subscriber);
+        var expected_output = trade.subscriptions[i].collateralAmount
+          .mul(rule.outputAmount)
+          .div(rule.totalCollateralAmount);
+        await expect(tradeManager.connect(tradeSubscriberWallet).withdraw(tradeTST1forETHHash, i))
+          .to.emit(tradeManager, "Withdraw")
+          .withArgs(tradeTST1forETHHash, i, ethers.constants.AddressZero, expected_output);
+        var post_balance = await ethers.provider.getBalance(trade.subscriptions[i].subscriber);
+
+        // TODO: won't be equal because gas fees
+        //await expect(post_balance.sub(prev_balance)).to.equal(expected_output);
+      }
+    });
+
+    it.skip("Should succeed in giving back output after trade is completed (get back ERC20)", async function () {});
   });
 });

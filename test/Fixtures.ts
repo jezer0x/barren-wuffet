@@ -205,6 +205,7 @@ export async function setupTradeManager() {
     whitelistService,
     trigWlHash,
     actWlHash,
+    botWallet,
   } = await setupRuleExecutor();
   const tradeManager = await ethers.getContract("TradeManager");
 
@@ -224,6 +225,7 @@ export async function setupTradeManager() {
     trigWlHash,
     actWlHash,
     tradeManager,
+    botWallet,
   };
 }
 
