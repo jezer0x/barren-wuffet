@@ -5,13 +5,13 @@ import { Contract, Bytes, BigNumber } from "ethers";
 import {
   GT,
   ERC20_DECIMALS,
-  UNI_PRICE_IN_ETH,
-  UNI_PRICE_IN_ETH_PARAM,
+  TST1_PRICE_IN_ETH,
+  TST1_PRICE_IN_ETH_PARAM,
   DEFAULT_REWARD,
   ETH_PRICE_IN_USD,
   PRICE_TRIGGER_DECIMALS,
-  UNI_PRICE_IN_USD,
-  ETH_PRICE_IN_UNI,
+  TST1_PRICE_IN_USD,
+  ETH_PRICE_IN_TST1,
 } from "./Constants";
 import { expect } from "chai";
 
@@ -26,18 +26,18 @@ export async function deployTestTokens() {
 export function makePassingTrigger(triggerContract: string): TriggerStruct {
   return {
     op: GT,
-    param: UNI_PRICE_IN_ETH_PARAM,
+    param: TST1_PRICE_IN_ETH_PARAM,
     callee: triggerContract,
-    value: UNI_PRICE_IN_ETH.sub(1),
+    value: TST1_PRICE_IN_ETH.sub(1),
   };
 }
 
 export function makeFailingTrigger(triggerContract: string): TriggerStruct {
   return {
     op: GT,
-    param: UNI_PRICE_IN_ETH_PARAM,
+    param: TST1_PRICE_IN_ETH_PARAM,
     callee: triggerContract,
-    value: UNI_PRICE_IN_ETH.add(1),
+    value: TST1_PRICE_IN_ETH.add(1),
   };
 }
 
@@ -85,7 +85,7 @@ export function expectEthersObjDeepEqual(_expectedResult: Array<any> & object, _
     // @ts-ignore
     const actualObj: any = _actualResult[k];
 
-    if (v !== null && typeof v === 'object') {
+    if (v !== null && typeof v === "object") {
       if (Object.keys(actualObj).length === actualObj.length) {
         // a normal array
         v.map((_vItem: any, _i: number) => expectEthersObjDeepEqual(_vItem, actualObj[_i]));
@@ -97,7 +97,7 @@ export function expectEthersObjDeepEqual(_expectedResult: Array<any> & object, _
       }
     }
     expect(actualObj).to.be.deep.equal(v);
-  })
+  });
 }
 
 async function deployTestOracle() {
@@ -105,8 +105,8 @@ async function deployTestOracle() {
 
   const TestOracle = await ethers.getContractFactory("TestOracle");
   const testOracleEth = await TestOracle.deploy(ETH_PRICE_IN_USD);
-  const testOracleUni = await TestOracle.deploy(UNI_PRICE_IN_USD);
-  return { testOracleEth, testOracleUni, ownerWallet };
+  const testOracleTst1 = await TestOracle.deploy(TST1_PRICE_IN_USD);
+  return { testOracleEth, testOracleTst1, ownerWallet };
 }
 
 export async function setupPriceTrigger() {
@@ -115,15 +115,15 @@ export async function setupPriceTrigger() {
   return { priceTrigger, ownerWallet };
 }
 
-export async function setupEthUniPriceTrigger() {
+export async function setupEthToTst1PriceTrigger() {
   const [ownerWallet, otherWallet] = await ethers.getSigners();
 
   const { priceTrigger } = await setupPriceTrigger();
-  const { testOracleUni, testOracleEth } = await deployTestOracle();
+  const { testOracleTst1, testOracleEth } = await deployTestOracle();
   await priceTrigger.addPriceFeed("eth", testOracleEth.address);
-  await priceTrigger.addPriceFeed("uni", testOracleUni.address);
+  await priceTrigger.addPriceFeed("tst1", testOracleTst1.address);
 
-  return { priceTrigger, testOracleEth, testOracleUni, ownerWallet, otherWallet };
+  return { priceTrigger, testOracleEth, testOracleTst1, ownerWallet, otherWallet };
 }
 
 export async function setupSwapUniSingleAction(testToken: Contract, WETH: Contract) {
@@ -135,7 +135,7 @@ export async function setupSwapUniSingleAction(testToken: Contract, WETH: Contra
   // this lets us do 10 swaps of 2 eth each
   await testToken.transfer(
     testSwapRouter.address,
-    ETH_PRICE_IN_UNI.mul(20).mul(ERC20_DECIMALS).div(PRICE_TRIGGER_DECIMALS)
+    ETH_PRICE_IN_TST1.mul(20).mul(ERC20_DECIMALS).div(PRICE_TRIGGER_DECIMALS)
   );
 
   await ethFundWallet.sendTransaction({
@@ -166,7 +166,7 @@ export async function setupRuleExecutor() {
   const [ownerWallet, ruleMakerWallet, ruleSubscriberWallet, botWallet, ethFundWallet] = await ethers.getSigners();
 
   const { testToken1, testToken2, WETH } = await deployTestTokens();
-  const { testOracleEth, testOracleUni, priceTrigger } = await setupEthUniPriceTrigger();
+  const { testOracleEth, testOracleTst1, priceTrigger } = await setupEthToTst1PriceTrigger();
 
   const swapUniSingleAction = await setupSwapUniSingleAction(testToken1, WETH);
 
@@ -178,7 +178,7 @@ export async function setupRuleExecutor() {
     priceTrigger,
     swapUniSingleAction,
     testOracleEth,
-    testOracleUni,
+    testOracleTst1,
     testToken1,
     testToken2,
     WETH,
@@ -199,7 +199,7 @@ export async function setupTradeManager() {
     priceTrigger,
     swapUniSingleAction,
     testOracleEth,
-    testOracleUni,
+    testOracleTst1,
     testToken1,
     testToken2,
     whitelistService,
@@ -213,7 +213,7 @@ export async function setupTradeManager() {
     priceTrigger,
     swapUniSingleAction,
     testOracleEth,
-    testOracleUni,
+    testOracleTst1,
     testToken1,
     testToken2,
     ownerWallet,
@@ -230,21 +230,22 @@ export async function setupTradeManager() {
 export async function setupFundManager() {
   // these wallets maybe reused to create trader / rule executor.
   // which shouldnt be a problem
-  const [ownerWallet, fundCreatorWallet, fundCreator2Wallet, fundSubscriberWallet, fundSubscriber2Wallet, botWallet] = await ethers.getSigners();
+  const [ownerWallet, fundCreatorWallet, fundCreator2Wallet, fundSubscriberWallet, fundSubscriber2Wallet, botWallet] =
+    await ethers.getSigners();
 
   const {
     ruleExecutor,
     priceTrigger,
     swapUniSingleAction,
     testOracleEth,
-    testOracleUni,
+    testOracleTst1,
     testToken1,
     testToken2,
     whitelistService,
     trigWlHash,
     actWlHash,
     tradeManager,
-  } = (await setupTradeManager());
+  } = await setupTradeManager();
   const fundManager = await ethers.getContract("FundManager");
 
   return {
@@ -253,7 +254,7 @@ export async function setupFundManager() {
     priceTrigger,
     swapUniSingleAction,
     testOracleEth,
-    testOracleUni,
+    testOracleTst1,
     testToken1,
     testToken2,
     fundCreatorWallet,
@@ -265,6 +266,6 @@ export async function setupFundManager() {
     trigWlHash,
     actWlHash,
     tradeManager,
-    fundManager
+    fundManager,
   };
 }

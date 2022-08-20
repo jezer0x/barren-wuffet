@@ -15,7 +15,7 @@ import { SubscriptionConstraintsStruct } from "../typechain-types/contracts/fund
 import { BAD_FUND_HASH } from "./Constants";
 
 const ETH_PRICE_IN_USD = 1300 * 10 ** 8;
-const UNI_PRICE_IN_USD = 3 * 10 ** 8;
+const TST1_PRICE_IN_USD = 3 * 10 ** 8;
 const ERC20_DECIMALS = BigNumber.from(10).pow(18);
 
 async function makeSubConstraints(): Promise<SubscriptionConstraintsStruct> {
@@ -48,7 +48,8 @@ describe("FundManager", () => {
     it("should allow anyone to create a fund and emit Created event with the fund hash", async () => {
       const { fundManager, fundCreatorWallet } = await loadFixture(deployFundManagerFixture);
       const validConstraints = await makeSubConstraints();
-      await expect(fundManager.connect(fundCreatorWallet).createFund("Fund1", validConstraints)).to.emit(fundManager, "Created")
+      await expect(fundManager.connect(fundCreatorWallet).createFund("Fund1", validConstraints))
+        .to.emit(fundManager, "Created")
         .withArgs(anyValue);
     });
 
@@ -61,106 +62,100 @@ describe("FundManager", () => {
           },
         });
        */
-
-
     });
 
     it("should revert if the same user creates 2 funds with the same name", async () => {
       const { fundManager, fundCreatorWallet } = await loadFixture(deployFundManagerFixture);
       const validConstraints = await makeSubConstraints();
       await fundManager.connect(fundCreatorWallet).createFund("Fund1", validConstraints);
-      await expect(fundManager.connect(fundCreatorWallet).createFund("Fund1", validConstraints)).to.be.revertedWith("Fund already exists!")
-
+      await expect(fundManager.connect(fundCreatorWallet).createFund("Fund1", validConstraints)).to.be.revertedWith(
+        "Fund already exists!"
+      );
     });
 
     it("should allow the same user to create 2 funds with different names", async () => {
       const { fundManager, fundCreatorWallet } = await loadFixture(deployFundManagerFixture);
       const validConstraints = await makeSubConstraints();
       await fundManager.connect(fundCreatorWallet).createFund("Fund1", validConstraints);
-      await expect(fundManager.connect(fundCreatorWallet).createFund("Fund2", validConstraints)).to.emit(fundManager, "Created")
+      await expect(fundManager.connect(fundCreatorWallet).createFund("Fund2", validConstraints))
+        .to.emit(fundManager, "Created")
         .withArgs(anyValue);
-    })
+    });
 
     it("should allow 2 different users to create funds with the same name", async () => {
       const { fundManager, fundCreatorWallet, fundCreator2Wallet } = await loadFixture(deployFundManagerFixture);
       const validConstraints = await makeSubConstraints();
       await fundManager.connect(fundCreatorWallet).createFund("Fund1", validConstraints);
-      await expect(fundManager.connect(fundCreator2Wallet).createFund("Fund1", validConstraints)).to.emit(fundManager, "Created")
+      await expect(fundManager.connect(fundCreator2Wallet).createFund("Fund1", validConstraints))
+        .to.emit(fundManager, "Created")
         .withArgs(anyValue);
-    })
+    });
   });
 
   describe("xx Input and Output Tokens", () => {
     it("Should return eth as the input token for any fund", async () => {
-      // we only support ETH as the input token for now. 
+      // we only support ETH as the input token for now.
       // As this functionality is extended, this test needs to expand
       const { fundManager, fundCreatorWallet } = await loadFixture(deployFundManagerFixture);
       const validConstraints = await makeSubConstraints();
       let fundHash;
-      await expect(fundManager.connect(fundCreatorWallet).createFund("Fund1", validConstraints)).to.emit(fundManager, "Created").withArgs(
-        (hash: string) => { fundHash = hash; return true; });
+      await expect(fundManager.connect(fundCreatorWallet).createFund("Fund1", validConstraints))
+        .to.emit(fundManager, "Created")
+        .withArgs((hash: string) => {
+          fundHash = hash;
+          return true;
+        });
       await expect(fundManager.connect(fundCreatorWallet).getInputToken(BAD_FUND_HASH)).to.be.revertedWithoutReason();
 
       expect(await fundManager.connect(fundCreatorWallet).getInputToken(fundHash)).to.be.equal(constants.AddressZero);
-
     });
-
 
     it("Should revert on getOutputToken", async () => {
       // This functionality can potentially support converting all tokens into a single token
-      // before it's returned to the user. 
+      // before it's returned to the user.
       // This is as yet unimplemented, so the function should revert.
 
       const { fundManager, fundCreatorWallet } = await loadFixture(deployFundManagerFixture);
       const validConstraints = await makeSubConstraints();
       let fundHash;
-      await expect(fundManager.connect(fundCreatorWallet).createFund("Fund1", validConstraints)).to.emit(fundManager, "Created").withArgs(
-        (hash: string) => { fundHash = hash; return true; });
+      await expect(fundManager.connect(fundCreatorWallet).createFund("Fund1", validConstraints))
+        .to.emit(fundManager, "Created")
+        .withArgs((hash: string) => {
+          fundHash = hash;
+          return true;
+        });
 
-      await expect(fundManager.connect(fundCreatorWallet).getOutputToken(fundHash)).to.be.revertedWith("Undefined: Funds may have multiple output tokens, determined only after it's closed.");
+      await expect(fundManager.connect(fundCreatorWallet).getOutputToken(fundHash)).to.be.revertedWith(
+        "Undefined: Funds may have multiple output tokens, determined only after it's closed."
+      );
+    });
+  });
 
-    })
-  })
+  describe.skip("Open and close positions", () => {});
 
-  describe.skip("Open and close positions", () => { });
+  describe.skip("Deposit", () => {});
 
-  describe.skip("Deposit", () => { });
+  describe.skip("Withdraw", () => {});
 
-  describe.skip("Withdraw", () => { });
+  describe.skip("Take Action", () => {});
 
-  describe.skip("Take Action", () => { });
-
-  describe.skip("Status changes", () => { });
+  describe.skip("Status changes", () => {});
 
   describe.skip("Close fund", () => {
-    it("should revert if an unknown fund or closed fund is closed", () => {
+    it("should revert if an unknown fund or closed fund is closed", () => {});
 
-    });
-
-    it("should close all open positions and emit a closed event if the fund is closed", () => {
-
-    });
+    it("should close all open positions and emit a closed event if the fund is closed", () => {});
   });
 
   describe.skip("Rewards", () => {
-    it("should return the correct value of reward to the fund manager", async () => {
+    it("should return the correct value of reward to the fund manager", async () => {});
 
-    });
+    it("should not allow access to rewards of a different fund manager", async () => {});
 
-    it("should not allow access to rewards of a different fund manager", async () => {
+    it("should not allow multiple withdrawals of the reward", async () => {});
 
-    });
-
-    it("should not allow multiple withdrawals of the reward", async () => {
-
-    });
-
-    it("revert if withdrawal is attempted on a fund that has not been closed", async () => {
-
-    });
-
+    it("revert if withdrawal is attempted on a fund that has not been closed", async () => {});
   });
-
 
   describe.skip("User Stories", () => {
     it("allows creating a fund with profit, lockin and min size", async () => {

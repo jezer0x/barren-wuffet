@@ -1,9 +1,9 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { deployments, ethers } from "hardhat";
-import { setupPriceTrigger, setupEthUniPriceTrigger } from "./Fixtures";
+import { setupPriceTrigger, setupEthToTst1PriceTrigger } from "./Fixtures";
 import { TriggerStruct } from "../typechain-types/contracts/rules/RuleExecutor";
-import { GT, LT, UNI_PRICE_IN_ETH_PARAM, UNI_PRICE_IN_ETH } from "./Constants";
+import { GT, LT, TST1_PRICE_IN_ETH_PARAM, TST1_PRICE_IN_ETH } from "./Constants";
 
 describe("PriceTrigger", () => {
   // We define a fixture to reuse the same setup in every test.
@@ -15,9 +15,9 @@ describe("PriceTrigger", () => {
     return await setupPriceTrigger();
   }
 
-  async function deployEthUniTriggerFixture() {
+  async function deployEthtoTst1TriggerFixture() {
     await deployments.fixture(["PriceTrigger"]);
-    return await setupEthUniPriceTrigger();
+    return await setupEthToTst1PriceTrigger();
   }
 
   describe("Deployment", () => {
@@ -48,7 +48,7 @@ describe("PriceTrigger", () => {
 
   describe("Validate Trigger", () => {
     it("Should revert if the trigger has only 1 asset", async () => {
-      const { priceTrigger, otherWallet } = await loadFixture(deployEthUniTriggerFixture);
+      const { priceTrigger, otherWallet } = await loadFixture(deployEthtoTst1TriggerFixture);
 
       const trigger: TriggerStruct = {
         op: GT,
@@ -63,7 +63,7 @@ describe("PriceTrigger", () => {
     });
 
     it("Should revert if the trigger has 2 assets and the datasource is specified incorrectly", async () => {
-      const { priceTrigger, otherWallet } = await loadFixture(deployEthUniTriggerFixture);
+      const { priceTrigger, otherWallet } = await loadFixture(deployEthtoTst1TriggerFixture);
 
       const trigger: TriggerStruct = {
         op: GT,
@@ -76,11 +76,11 @@ describe("PriceTrigger", () => {
     });
 
     it("Should pass if the trigger has 2 assets and the datasource is specified", async () => {
-      const { priceTrigger, otherWallet } = await loadFixture(deployEthUniTriggerFixture);
+      const { priceTrigger, otherWallet } = await loadFixture(deployEthtoTst1TriggerFixture);
 
       const trigger: TriggerStruct = {
         op: GT,
-        param: UNI_PRICE_IN_ETH_PARAM,
+        param: TST1_PRICE_IN_ETH_PARAM,
         callee: ethers.constants.AddressZero,
         value: 0,
       };
@@ -90,53 +90,53 @@ describe("PriceTrigger", () => {
   });
   describe("Check Trigger", () => {
     describe(
-      "Should pass / fail the trigger based on eth/uni limit price. Current eth/uni is " + UNI_PRICE_IN_ETH,
+      "Should pass / fail the trigger based on eth/tst1 limit price. Current eth/tst1 is " + TST1_PRICE_IN_ETH,
       () => {
-        it("Should fail the trigger if eth/uni trigger is LT " + UNI_PRICE_IN_ETH.sub(1), async () => {
-          const { priceTrigger, testOracleEth, otherWallet } = await loadFixture(deployEthUniTriggerFixture);
+        it("Should fail the trigger if eth/tst1 trigger is LT " + TST1_PRICE_IN_ETH.sub(1), async () => {
+          const { priceTrigger, testOracleEth, otherWallet } = await loadFixture(deployEthtoTst1TriggerFixture);
           const trigger: TriggerStruct = {
             op: LT,
-            param: UNI_PRICE_IN_ETH_PARAM,
+            param: TST1_PRICE_IN_ETH_PARAM,
             callee: ethers.constants.AddressZero,
-            value: UNI_PRICE_IN_ETH.sub(1),
+            value: TST1_PRICE_IN_ETH.sub(1),
           };
-          expect(await priceTrigger.connect(otherWallet).check(trigger)).to.deep.equal([false, UNI_PRICE_IN_ETH]);
+          expect(await priceTrigger.connect(otherWallet).check(trigger)).to.deep.equal([false, TST1_PRICE_IN_ETH]);
         });
 
-        it("Should fail the trigger if eth/uni limit is GT " + UNI_PRICE_IN_ETH.add(1), async () => {
-          const { priceTrigger, testOracleEth, otherWallet } = await loadFixture(deployEthUniTriggerFixture);
+        it("Should fail the trigger if eth/tst1 limit is GT " + TST1_PRICE_IN_ETH.add(1), async () => {
+          const { priceTrigger, testOracleEth, otherWallet } = await loadFixture(deployEthtoTst1TriggerFixture);
           const trigger: TriggerStruct = {
             op: GT,
-            param: UNI_PRICE_IN_ETH_PARAM,
+            param: TST1_PRICE_IN_ETH_PARAM,
             callee: ethers.constants.AddressZero,
-            value: UNI_PRICE_IN_ETH.add(1),
+            value: TST1_PRICE_IN_ETH.add(1),
           };
 
-          expect(await priceTrigger.connect(otherWallet).check(trigger)).to.deep.equal([false, UNI_PRICE_IN_ETH]);
+          expect(await priceTrigger.connect(otherWallet).check(trigger)).to.deep.equal([false, TST1_PRICE_IN_ETH]);
         });
 
-        it("Should pass the trigger if eth/uni limit is GT " + UNI_PRICE_IN_ETH.sub(1), async () => {
-          const { priceTrigger, testOracleEth, otherWallet } = await loadFixture(deployEthUniTriggerFixture);
+        it("Should pass the trigger if eth/tst1 limit is GT " + TST1_PRICE_IN_ETH.sub(1), async () => {
+          const { priceTrigger, testOracleEth, otherWallet } = await loadFixture(deployEthtoTst1TriggerFixture);
           const trigger: TriggerStruct = {
             op: GT,
-            param: UNI_PRICE_IN_ETH_PARAM,
+            param: TST1_PRICE_IN_ETH_PARAM,
             callee: ethers.constants.AddressZero,
-            value: UNI_PRICE_IN_ETH.sub(1),
+            value: TST1_PRICE_IN_ETH.sub(1),
           };
 
-          expect(await priceTrigger.connect(otherWallet).check(trigger)).to.deep.equal([true, UNI_PRICE_IN_ETH]);
+          expect(await priceTrigger.connect(otherWallet).check(trigger)).to.deep.equal([true, TST1_PRICE_IN_ETH]);
         });
 
-        it("Should pass the trigger if eth/uni limit is LT " + UNI_PRICE_IN_ETH.add(1), async () => {
-          const { priceTrigger, testOracleEth, otherWallet } = await loadFixture(deployEthUniTriggerFixture);
+        it("Should pass the trigger if eth/tst1 limit is LT " + TST1_PRICE_IN_ETH.add(1), async () => {
+          const { priceTrigger, testOracleEth, otherWallet } = await loadFixture(deployEthtoTst1TriggerFixture);
           const trigger: TriggerStruct = {
             op: LT,
-            param: UNI_PRICE_IN_ETH_PARAM,
+            param: TST1_PRICE_IN_ETH_PARAM,
             callee: ethers.constants.AddressZero,
-            value: UNI_PRICE_IN_ETH.add(1),
+            value: TST1_PRICE_IN_ETH.add(1),
           };
 
-          expect(await priceTrigger.connect(otherWallet).check(trigger)).to.deep.equal([true, UNI_PRICE_IN_ETH]);
+          expect(await priceTrigger.connect(otherWallet).check(trigger)).to.deep.equal([true, TST1_PRICE_IN_ETH]);
         });
       }
     );

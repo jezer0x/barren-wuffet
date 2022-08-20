@@ -7,10 +7,10 @@ import {
   BAD_RULE_HASH,
   DEFAULT_REWARD,
   ERC20_DECIMALS,
-  ETH_PRICE_IN_UNI,
-  UNI_PRICE_IN_ETH,
-  ETH_PRICE_IN_UNI_PARAM,
-  UNI_PRICE_IN_ETH_PARAM,
+  ETH_PRICE_IN_TST1,
+  TST1_PRICE_IN_ETH,
+  ETH_PRICE_IN_TST1_PARAM,
+  TST1_PRICE_IN_ETH_PARAM,
   GT,
 } from "./Constants";
 import { makePassingTrigger, makeSwapAction, setupTradeManager } from "./Fixtures";
@@ -57,16 +57,16 @@ describe("TradeManager", () => {
 
     const ETHtoTST1SwapPriceTrigger = {
       op: GT,
-      param: ETH_PRICE_IN_UNI_PARAM,
+      param: ETH_PRICE_IN_TST1_PARAM,
       callee: priceTrigger.address,
-      value: ETH_PRICE_IN_UNI.sub(1),
+      value: ETH_PRICE_IN_TST1.sub(1),
     };
 
     const TST1toETHSwapPriceTrigger = {
       op: GT,
-      param: UNI_PRICE_IN_ETH_PARAM,
+      param: TST1_PRICE_IN_ETH_PARAM,
       callee: priceTrigger.address,
-      value: UNI_PRICE_IN_ETH.sub(1),
+      value: TST1_PRICE_IN_ETH.sub(1),
     };
 
     const swapTST1ToETHAction = makeSwapAction(

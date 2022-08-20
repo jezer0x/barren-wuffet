@@ -26,11 +26,11 @@ import {
   ERC20_DECIMALS,
   DEFAULT_REWARD,
   PRICE_TRIGGER_DECIMALS,
-  UNI_PRICE_IN_ETH,
-  ETH_PRICE_IN_UNI,
-  UNI_PRICE_IN_ETH_PARAM,
+  TST1_PRICE_IN_ETH,
+  ETH_PRICE_IN_TST1,
+  TST1_PRICE_IN_ETH_PARAM,
   LT,
-  ETH_PRICE_IN_UNI_PARAM,
+  ETH_PRICE_IN_TST1_PARAM,
   GT,
 } from "./Constants";
 import { RuleStructOutput } from "../typechain-types/contracts/rules/RuleExecutor";
@@ -235,14 +235,8 @@ describe("RuleExecutor", () => {
     });
 
     it("If trigger, action, user, block are the same, ruleHash should be the same -> making the second creation fail", async () => {
-      const {
-        ruleExecutor,
-        swapUniSingleAction,
-        priceTrigger,
-        ruleMakerWallet,
-        ruleSubscriberWallet,
-        testToken1,
-      } = await loadFixture(deployRuleExecutorFixture);
+      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, ruleSubscriberWallet, testToken1 } =
+        await loadFixture(deployRuleExecutorFixture);
 
       const passingTrigger = makePassingTrigger(priceTrigger.address);
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
@@ -259,14 +253,18 @@ describe("RuleExecutor", () => {
 
       try {
         await tx1.wait();
-      } catch { expect.fail(); }
+      } catch {
+        expect.fail();
+      }
 
       try {
         await tx2.wait();
         // cant figure how to confirm whether the error is a duplicate rule error.
-        // this will suffice for now.                
+        // this will suffice for now.
         expect.fail();
-      } catch (err) {/* pass */ }
+      } catch (err) {
+        /* pass */
+      }
 
       try {
         await tx3.wait();
@@ -401,7 +399,7 @@ describe("RuleExecutor", () => {
       expect(await ruleExecutor.connect(botWallet).checkRule(ruleHash)).to.equal(false);
     });
 
-    it.skip("should return true if all of multiple triggers are valid", async () => { });
+    it.skip("should return true if all of multiple triggers are valid", async () => {});
   });
 
   describe("Execute Rule with Failing Trigger", () => {
@@ -455,18 +453,18 @@ describe("RuleExecutor", () => {
       actWlHash,
     } = await loadFixture(deployRuleExecutorFixture);
 
-    const ethUniPassingTrigger = {
+    const ethTst1PassingTrigger = {
       op: GT,
-      param: ETH_PRICE_IN_UNI_PARAM,
+      param: ETH_PRICE_IN_TST1_PARAM,
       callee: priceTrigger.address,
-      value: ETH_PRICE_IN_UNI.sub(1),
+      value: ETH_PRICE_IN_TST1.sub(1),
     };
 
-    const uniEthPassingTrigger = {
+    const tst1EthPassingTrigger = {
       op: LT,
-      param: UNI_PRICE_IN_ETH_PARAM,
+      param: TST1_PRICE_IN_ETH_PARAM,
       callee: priceTrigger.address,
-      value: UNI_PRICE_IN_ETH.add(1),
+      value: TST1_PRICE_IN_ETH.add(1),
     };
 
     // to get ETH from uniswap, you need to set the output token as WETH.
@@ -477,7 +475,7 @@ describe("RuleExecutor", () => {
       trigWlHash,
       actWlHash,
       ruleExecutor,
-      [ethUniPassingTrigger],
+      [ethTst1PassingTrigger],
       [ethSwapAction],
       ruleSubscriberWallet,
       true
@@ -487,7 +485,7 @@ describe("RuleExecutor", () => {
       trigWlHash,
       actWlHash,
       ruleExecutor,
-      [uniEthPassingTrigger],
+      [tst1EthPassingTrigger],
       [tokenSwapAction],
       ruleSubscriberWallet,
       true
@@ -506,8 +504,8 @@ describe("RuleExecutor", () => {
       testToken2,
       swapUniSingleAction,
       priceTrigger,
-      ethUniPassingTrigger,
-      uniEthPassingTrigger,
+      ethTst1PassingTrigger,
+      tst1EthPassingTrigger,
       tokenSwapAction,
       ethSwapAction,
     };
@@ -704,7 +702,7 @@ describe("RuleExecutor", () => {
     // should not allow adding collateral to a cancelled or executed rule
     // this is handled in the rule cancellation section.
 
-    it.skip("should allow adding collateral based on the first action, even if subsequent actions have different collateral requirements", () => { });
+    it.skip("should allow adding collateral based on the first action, even if subsequent actions have different collateral requirements", () => {});
   });
 
   describe("Execute Rule", () => {
@@ -723,11 +721,11 @@ describe("RuleExecutor", () => {
       );
     });
 
-    it.skip("placeholder for multiple triggers / actions", async () => { });
+    it.skip("placeholder for multiple triggers / actions", async () => {});
     // TODO Merge this and the native rule
     // Check for single and multiple triggers, and single and multiple actions
 
-    it.skip("should not revert if anyone tries to execute a rule with no collateral", async () => { });
+    it.skip("should not revert if anyone tries to execute a rule with no collateral", async () => {});
 
     // For some insane reason, if the native test is after the erc20 test,
     // the addCollateral fails in the erc20 test.
@@ -755,7 +753,7 @@ describe("RuleExecutor", () => {
         testToken1,
         // this should reflect the reward.
         [botWallet, ruleSubscriberWallet, ruleExecutor],
-        [0, 0, collateral.mul(ETH_PRICE_IN_UNI).div(PRICE_TRIGGER_DECIMALS)]
+        [0, 0, collateral.mul(ETH_PRICE_IN_TST1).div(PRICE_TRIGGER_DECIMALS)]
       );
 
       await expect(ruleExecutor.connect(botWallet).executeRule(ruleHashEth)).to.be.revertedWith("Rule isn't Activated");
@@ -782,7 +780,7 @@ describe("RuleExecutor", () => {
       await ex.to.changeEtherBalances(
         // this should reflect the rewarD.
         [botWallet, ruleSubscriberWallet, ruleExecutor],
-        [DEFAULT_REWARD, 0, collateral.mul(UNI_PRICE_IN_ETH).div(PRICE_TRIGGER_DECIMALS).sub(DEFAULT_REWARD)]
+        [DEFAULT_REWARD, 0, collateral.mul(TST1_PRICE_IN_ETH).div(PRICE_TRIGGER_DECIMALS).sub(DEFAULT_REWARD)]
       );
 
       // TODO need to implement caller getting paid.
@@ -1014,7 +1012,7 @@ describe("RuleExecutor", () => {
 
       const ex = expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashToken));
       await ex.to
-        .changeEtherBalance(ruleSubscriberWallet, collateralAmount.mul(UNI_PRICE_IN_ETH).div(PRICE_TRIGGER_DECIMALS))
+        .changeEtherBalance(ruleSubscriberWallet, collateralAmount.mul(TST1_PRICE_IN_ETH).div(PRICE_TRIGGER_DECIMALS))
         .emit(ruleExecutor, "Redeemed")
         .withArgs(ruleHashToken);
 
@@ -1039,7 +1037,7 @@ describe("RuleExecutor", () => {
 
       const ex = expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashEth));
 
-      const tokenReceived = collateralAmount.mul(ETH_PRICE_IN_UNI).div(PRICE_TRIGGER_DECIMALS);
+      const tokenReceived = collateralAmount.mul(ETH_PRICE_IN_TST1).div(PRICE_TRIGGER_DECIMALS);
 
       await ex.to
         .changeTokenBalances(testToken1, [ruleExecutor, ruleSubscriberWallet], [tokenReceived.mul(-1), tokenReceived])
@@ -1054,7 +1052,7 @@ describe("RuleExecutor", () => {
       );
     });
 
-    it.skip("Should redeem balance only from the final action if multiple actions were executed", async () => { });
+    it.skip("Should redeem balance only from the final action if multiple actions were executed", async () => {});
   });
 
   describe("Change Reward", () => {
@@ -1168,7 +1166,7 @@ describe("RuleExecutor", () => {
     });
 
     it("getRule returns the rule with all details and collateral amount", async () => {
-      const { ruleHashEth, ruleSubscriberWallet, botWallet, ruleExecutor, ethUniPassingTrigger, ethSwapAction } =
+      const { ruleHashEth, ruleSubscriberWallet, botWallet, ruleExecutor, ethTst1PassingTrigger, ethSwapAction } =
         await loadFixture(deployValidRuleFixture);
 
       const collateralAmount = BigNumber.from(3).mul(ERC20_DECIMALS);
@@ -1185,11 +1183,11 @@ describe("RuleExecutor", () => {
         owner: ruleSubscriberWallet.address,
         totalCollateralAmount: collateralAmount,
         // @ts-ignore
-        triggers: [ethUniPassingTrigger],
+        triggers: [ethTst1PassingTrigger],
         // @ts-ignore
         actions: [ethSwapAction],
         status: 2,
-        outputAmount: collateralAmount.mul(ETH_PRICE_IN_UNI).div(PRICE_TRIGGER_DECIMALS),
+        outputAmount: collateralAmount.mul(ETH_PRICE_IN_TST1).div(PRICE_TRIGGER_DECIMALS),
         reward: DEFAULT_REWARD,
       };
 
@@ -1210,15 +1208,26 @@ describe("RuleExecutor", () => {
       const fixtureVars = await loadFixture(deployValidRuleFixture);
       const { ownerWallet, ruleExecutor } = fixtureVars;
 
-      // If we want to make sure that certain works even after pausing, 
+      // If we want to make sure that certain works even after pausing,
       // that needs to be tested separately.
       const reSuite = (_fixtureVars: any) => {
-        const { ruleHashEth, ruleHashToken, ruleSubscriberWallet, priceTrigger, swapUniSingleAction, ruleExecutor, testToken1 } = _fixtureVars;
+        const {
+          ruleHashEth,
+          ruleHashToken,
+          ruleSubscriberWallet,
+          priceTrigger,
+          swapUniSingleAction,
+          ruleExecutor,
+          testToken1,
+        } = _fixtureVars;
         const collateralAmount = utils.parseEther("2");
         const reSub = ruleExecutor.connect(ruleSubscriberWallet);
 
         return [
-          reSub.createRule([makePassingTrigger(priceTrigger.address)], [makeSwapAction(swapUniSingleAction.address, testToken1.address)]),
+          reSub.createRule(
+            [makePassingTrigger(priceTrigger.address)],
+            [makeSwapAction(swapUniSingleAction.address, testToken1.address)]
+          ),
           reSub.deactivateRule(ruleHashEth),
           reSub.activateRule(ruleHashEth),
           reSub.addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount }),
@@ -1228,11 +1237,10 @@ describe("RuleExecutor", () => {
           reSub.executeRule(ruleHashEth),
           reSub.redeemBalance(ruleHashEth),
           reSub.cancelRule(ruleHashToken),
-        ]
-      }
+        ];
+      };
 
       await testPauseFunctionality(ruleExecutor.connect(ownerWallet), () => reSuite(fixtureVars));
-
     });
   });
 });
