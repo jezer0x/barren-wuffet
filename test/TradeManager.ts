@@ -568,6 +568,32 @@ describe("TradeManager", () => {
       );
     });
 
+    it("Should succeed if subscriber tries to withdraw from a cancelled trade", async function () {
+      const {
+        ownerWallet,
+        tradeTST1forETHHash,
+        tradeManager,
+        traderWallet,
+        tradeSubscriberWallet,
+        testToken1,
+        ruleExecutor,
+      } = await loadFixture(deployValidTradeFixture);
+      const collateralAmount = MAX_COLLATERAL_PER_SUB;
+      await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
+      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount);
+      await tradeManager
+        .connect(tradeSubscriberWallet)
+        .deposit(tradeTST1forETHHash, testToken1.address, collateralAmount);
+
+      await expect(tradeManager.connect(traderWallet).cancelTrade(tradeTST1forETHHash))
+        .to.emit(tradeManager, "Cancelled")
+        .withArgs(tradeTST1forETHHash);
+
+      await expect(tradeManager.connect(tradeSubscriberWallet).withdraw(tradeTST1forETHHash, 0))
+        .to.emit(tradeManager, "Withdraw")
+        .withArgs(tradeTST1forETHHash, 0, testToken1.address, collateralAmount);
+    });
+
     it("Should deactivate rule if withdrawal takes it below minCollateral", async function () {
       const {
         ownerWallet,
