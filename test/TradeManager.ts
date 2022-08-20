@@ -6,12 +6,17 @@ import { SubscriptionConstraintsStruct, TradeStructOutput } from "../typechain-t
 import { BAD_RULE_HASH, DEFAULT_REWARD, ERC20_DECIMALS } from "./Constants";
 import { makePassingTrigger, makeSwapAction, setupTradeManager } from "./Fixtures";
 
+const MIN_COLLATERAL_PER_SUB = BigNumber.from(10).mul(ERC20_DECIMALS);
+const MAX_COLLATERAL_PER_SUB = BigNumber.from(100).mul(ERC20_DECIMALS);
+const MIN_COLLATERAL_TOTAL = BigNumber.from(200).mul(ERC20_DECIMALS);
+const MAX_COLLATERAL_TOTAL = BigNumber.from(500).mul(ERC20_DECIMALS);
+
 async function makeSubConstraints(): Promise<SubscriptionConstraintsStruct> {
   return {
-    minCollateralPerSub: BigNumber.from(10).mul(ERC20_DECIMALS),
-    maxCollateralPerSub: BigNumber.from(100).mul(ERC20_DECIMALS),
-    minCollateralTotal: BigNumber.from(200).mul(ERC20_DECIMALS),
-    maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
+    minCollateralPerSub: MIN_COLLATERAL_PER_SUB,
+    maxCollateralPerSub: MAX_COLLATERAL_PER_SUB,
+    minCollateralTotal: MIN_COLLATERAL_TOTAL,
+    maxCollateralTotal: MAX_COLLATERAL_TOTAL,
     deadline: (await time.latest()) + 86400,
     lockin: (await time.latest()) + 86400 * 10,
     rewardPercentage: 100,
@@ -162,7 +167,7 @@ describe("TradeManager", () => {
       ).to.emit(tradeManager, "Created");
     });
 
-    // TODO: maybe should if the entire trade/rule chain was proper?
+    // TODO: maybe should check if the entire trade/rule chain was proper?
     it("Should set the right manager for the trade", async function () {
       const { tradeHash, tradeManager, traderWallet } = await loadFixture(deployValidTradeFixture);
       const trade: TradeStructOutput = await tradeManager.getTrade(tradeHash);
@@ -201,7 +206,7 @@ describe("TradeManager", () => {
     it("Should revert if subscriber deposits wrong asset", async function () {
       const { ownerWallet, tradeHash, tradeManager, traderWallet, tradeSubscriberWallet, testToken2 } =
         await loadFixture(deployValidTradeFixture);
-      const collateralAmount = BigNumber.from(15).mul(ERC20_DECIMALS);
+      const collateralAmount = MIN_COLLATERAL_PER_SUB.add(1);
       await testToken2.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
       await testToken2.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount);
       await expect(
@@ -212,75 +217,92 @@ describe("TradeManager", () => {
     it("Should revert if subscriber deposits too little / much at once", async function () {
       const { ownerWallet, tradeHash, tradeManager, traderWallet, tradeSubscriberWallet, testToken1 } =
         await loadFixture(deployValidTradeFixture);
-      const collateralAmount = BigNumber.from(600).mul(ERC20_DECIMALS);
+      const collateralAmount = MAX_COLLATERAL_PER_SUB.add(1);
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
       await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount);
 
       await expect(
         tradeManager
           .connect(tradeSubscriberWallet)
-          .deposit(tradeHash, testToken1.address, BigNumber.from(150).mul(ERC20_DECIMALS))
+          .deposit(tradeHash, testToken1.address, MAX_COLLATERAL_PER_SUB.add(1))
       ).to.be.revertedWith("Max Collateral for Subscription exceeded");
 
       await expect(
         tradeManager
           .connect(tradeSubscriberWallet)
-          .deposit(tradeHash, testToken1.address, BigNumber.from(5).mul(ERC20_DECIMALS))
+          .deposit(tradeHash, testToken1.address, MIN_COLLATERAL_PER_SUB.sub(1))
       ).to.be.revertedWith("Insufficient Collateral for Subscription");
     });
 
     it("Should succeed in depositing ERC20 properly", async function () {
+      // anything between MIN_COLLATERAL_PER_SUB and MAX_COLLATERAL_PER_SUB should work (inclusive)
       const { ownerWallet, tradeHash, tradeManager, traderWallet, tradeSubscriberWallet, testToken1 } =
         await loadFixture(deployValidTradeFixture);
-      const collateralAmount = BigNumber.from(100).mul(ERC20_DECIMALS);
-      await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
-      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount);
+      await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, MAX_COLLATERAL_TOTAL);
+      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, MAX_COLLATERAL_TOTAL);
 
-      await expect(tradeManager.connect(tradeSubscriberWallet).deposit(tradeHash, testToken1.address, collateralAmount))
+      await expect(
+        tradeManager.connect(tradeSubscriberWallet).deposit(tradeHash, testToken1.address, MIN_COLLATERAL_PER_SUB)
+      )
         .to.emit(tradeManager, "Deposit")
-        .withArgs(tradeHash, 0, testToken1.address, collateralAmount);
+        .withArgs(tradeHash, 0, testToken1.address, MIN_COLLATERAL_PER_SUB);
+
+      await expect(
+        tradeManager.connect(tradeSubscriberWallet).deposit(tradeHash, testToken1.address, MAX_COLLATERAL_PER_SUB)
+      )
+        .to.emit(tradeManager, "Deposit")
+        .withArgs(tradeHash, 1, testToken1.address, MAX_COLLATERAL_PER_SUB);
+
+      await expect(
+        tradeManager
+          .connect(tradeSubscriberWallet)
+          .deposit(tradeHash, testToken1.address, MIN_COLLATERAL_PER_SUB.add(MAX_COLLATERAL_PER_SUB).div(2))
+      )
+        .to.emit(tradeManager, "Deposit")
+        .withArgs(tradeHash, 2, testToken1.address, MIN_COLLATERAL_PER_SUB.add(MAX_COLLATERAL_PER_SUB).div(2));
     });
 
     it("Should succeed if same acccount subscribes multiple times", async function () {
       const { ownerWallet, tradeHash, tradeManager, traderWallet, tradeSubscriberWallet, testToken1 } =
         await loadFixture(deployValidTradeFixture);
-      const collateralAmount = BigNumber.from(600).mul(ERC20_DECIMALS);
-      await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
-      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount);
+      const collateralAmount = MAX_COLLATERAL_TOTAL;
+      await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, MAX_COLLATERAL_TOTAL);
+      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, MAX_COLLATERAL_TOTAL);
 
-      for (var i = 0; i < 5; i++) {
+      for (var i = 0; i < MAX_COLLATERAL_TOTAL.div(MAX_COLLATERAL_PER_SUB).toNumber(); i++) {
         await tradeManager
           .connect(tradeSubscriberWallet)
-          .deposit(tradeHash, testToken1.address, BigNumber.from(100).mul(ERC20_DECIMALS));
+          .deposit(tradeHash, testToken1.address, MAX_COLLATERAL_PER_SUB);
       }
-      expect((await tradeManager.getTrade(tradeHash)).subscriptions.length).to.equal(5);
+      expect((await tradeManager.getTrade(tradeHash)).subscriptions.length).to.equal(
+        MAX_COLLATERAL_TOTAL.div(MAX_COLLATERAL_PER_SUB).toNumber()
+      );
     });
 
     it("Should activate rule if minCollateral for trade is reached", async function () {
       const { ownerWallet, tradeHash, tradeManager, traderWallet, tradeSubscriberWallet, testToken1, ruleExecutor } =
         await loadFixture(deployValidTradeFixture);
-      const collateralAmount = BigNumber.from(600).mul(ERC20_DECIMALS);
-      await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
-      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount);
+      const collateralAmount = MAX_COLLATERAL_PER_SUB;
+      const times = MIN_COLLATERAL_TOTAL.div(collateralAmount);
+      await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount.mul(times));
+      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount.mul(times));
 
       const trade: TradeStructOutput = await tradeManager.getTrade(tradeHash);
 
-      await tradeManager
-        .connect(tradeSubscriberWallet)
-        .deposit(tradeHash, testToken1.address, BigNumber.from(100).mul(ERC20_DECIMALS));
-      await expect(
-        tradeManager
-          .connect(tradeSubscriberWallet)
-          .deposit(tradeHash, testToken1.address, BigNumber.from(100).mul(ERC20_DECIMALS))
-      )
+      for (var i = 0; i < times.toNumber() - 1; i++) {
+        await tradeManager.connect(tradeSubscriberWallet).deposit(tradeHash, testToken1.address, collateralAmount);
+      }
+
+      await expect(tradeManager.connect(tradeSubscriberWallet).deposit(tradeHash, testToken1.address, collateralAmount))
         .to.emit(ruleExecutor, "Activated")
         .withArgs(trade.ruleHash);
     });
 
     it("Should allow multiple subscriptions from multiple people", async function () {
+      // here tradeSubscriberWaller and ownerWallet are both subscribing to the same trade
       const { ownerWallet, tradeHash, tradeManager, traderWallet, tradeSubscriberWallet, testToken1 } =
         await loadFixture(deployValidTradeFixture);
-      const collateralAmount = BigNumber.from(100).mul(ERC20_DECIMALS);
+      const collateralAmount = MAX_COLLATERAL_PER_SUB;
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
       await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount);
       await testToken1.connect(ownerWallet).approve(tradeManager.address, collateralAmount);
@@ -294,23 +316,24 @@ describe("TradeManager", () => {
         .withArgs(tradeHash, 1, testToken1.address, collateralAmount);
     });
 
-    it("Should revert if deposits take it beyond maxCollateral", async function () {
+    it("Should revert if deposits take it beyond maxCollateralTotal", async function () {
       const { ownerWallet, tradeHash, tradeManager, traderWallet, tradeSubscriberWallet, testToken1 } =
         await loadFixture(deployValidTradeFixture);
-      const collateralAmount = BigNumber.from(600).mul(ERC20_DECIMALS);
-      await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
-      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount);
+      const collateralAmount = MAX_COLLATERAL_PER_SUB;
+      const times = MAX_COLLATERAL_TOTAL.div(MAX_COLLATERAL_PER_SUB);
+      await testToken1
+        .connect(ownerWallet)
+        .transfer(tradeSubscriberWallet.address, collateralAmount.mul(times).add(MIN_COLLATERAL_PER_SUB));
+      await testToken1
+        .connect(tradeSubscriberWallet)
+        .approve(tradeManager.address, collateralAmount.mul(times).add(MIN_COLLATERAL_PER_SUB));
 
-      for (var i = 0; i < 5; i++) {
-        await tradeManager
-          .connect(tradeSubscriberWallet)
-          .deposit(tradeHash, testToken1.address, BigNumber.from(100).mul(ERC20_DECIMALS));
+      for (var i = 0; i < times.toNumber(); i++) {
+        await tradeManager.connect(tradeSubscriberWallet).deposit(tradeHash, testToken1.address, collateralAmount);
       }
 
       await expect(
-        tradeManager
-          .connect(tradeSubscriberWallet)
-          .deposit(tradeHash, testToken1.address, BigNumber.from(10).mul(ERC20_DECIMALS))
+        tradeManager.connect(tradeSubscriberWallet).deposit(tradeHash, testToken1.address, MIN_COLLATERAL_PER_SUB)
       ).to.be.revertedWith("Max Collateral for Trade exceeded");
     });
 
@@ -321,25 +344,39 @@ describe("TradeManager", () => {
     it("Should revert if non-subscriber is trying to withdraw collateral", async function () {
       const { ownerWallet, tradeHash, tradeManager, traderWallet, tradeSubscriberWallet, testToken1, ruleExecutor } =
         await loadFixture(deployValidTradeFixture);
-      const collateralAmount = BigNumber.from(600).mul(ERC20_DECIMALS);
+      const collateralAmount = MAX_COLLATERAL_PER_SUB;
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
       await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount);
 
-      await tradeManager
-        .connect(tradeSubscriberWallet)
-        .deposit(tradeHash, testToken1.address, BigNumber.from(100).mul(ERC20_DECIMALS));
+      await tradeManager.connect(tradeSubscriberWallet).deposit(tradeHash, testToken1.address, collateralAmount);
 
       await expect(tradeManager.connect(ownerWallet).withdraw(tradeHash, 0)).to.be.revertedWith(
         "You're not the subscriber!"
       );
     });
 
-    it.skip("Should succeed if subscriber tries to withdraw if rule is active (ERC20)", async function () {});
+    it("Should succeed if subscriber tries to withdraw if rule is active (ERC20)", async function () {
+      const { ownerWallet, tradeHash, tradeManager, traderWallet, tradeSubscriberWallet, testToken1, ruleExecutor } =
+        await loadFixture(deployValidTradeFixture);
+      const collateralAmount = MAX_COLLATERAL_PER_SUB;
+      await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount.mul(2));
+      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount.mul(2));
+
+      await tradeManager.connect(tradeSubscriberWallet).deposit(tradeHash, testToken1.address, collateralAmount);
+
+      await expect(tradeManager.connect(tradeSubscriberWallet).deposit(tradeHash, testToken1.address, collateralAmount))
+        .to.emit(ruleExecutor, "Activated")
+        .withArgs((await tradeManager.getTrade(tradeHash)).ruleHash);
+
+      await expect(tradeManager.connect(tradeSubscriberWallet).withdraw(tradeHash, 0))
+        .to.emit(tradeManager, "Withdraw")
+        .withArgs(tradeHash, 0, testToken1.address, collateralAmount);
+    });
 
     it("Should succeed if subscriber tries to withdraw if rule is inactive (ERC20), but a second time will revert", async function () {
       const { ownerWallet, tradeHash, tradeManager, traderWallet, tradeSubscriberWallet, testToken1, ruleExecutor } =
         await loadFixture(deployValidTradeFixture);
-      const collateralAmount = BigNumber.from(100).mul(ERC20_DECIMALS);
+      const collateralAmount = MAX_COLLATERAL_PER_SUB;
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
       await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount);
       await tradeManager.connect(tradeSubscriberWallet).deposit(tradeHash, testToken1.address, collateralAmount);
@@ -356,15 +393,16 @@ describe("TradeManager", () => {
     it("Should deactivate rule if withdrawal takes it below minCollateral", async function () {
       const { ownerWallet, tradeHash, tradeManager, traderWallet, tradeSubscriberWallet, testToken1, ruleExecutor } =
         await loadFixture(deployValidTradeFixture);
-      const collateralAmount = BigNumber.from(100).mul(ERC20_DECIMALS);
-      await testToken1
-        .connect(ownerWallet)
-        .transfer(tradeSubscriberWallet.address, BigNumber.from(600).mul(ERC20_DECIMALS));
-      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount.mul(2));
+      const collateralAmount = MAX_COLLATERAL_PER_SUB;
+      const times = MIN_COLLATERAL_TOTAL.div(collateralAmount);
+      await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount.mul(times));
+      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount.mul(times));
 
       const trade: TradeStructOutput = await tradeManager.getTrade(tradeHash);
 
-      await tradeManager.connect(tradeSubscriberWallet).deposit(tradeHash, testToken1.address, collateralAmount);
+      for (var i = 0; i < times.toNumber() - 1; i++) {
+        await tradeManager.connect(tradeSubscriberWallet).deposit(tradeHash, testToken1.address, collateralAmount);
+      }
       await expect(tradeManager.connect(tradeSubscriberWallet).deposit(tradeHash, testToken1.address, collateralAmount))
         .to.emit(ruleExecutor, "Activated")
         .withArgs(trade.ruleHash);
