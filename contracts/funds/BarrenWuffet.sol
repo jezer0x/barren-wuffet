@@ -37,6 +37,15 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         bool closed;
     }
 
+    /*
+    Valid transitions (to -> from): 
+
+    RAISING -> {DEPLOYED, CLOSED}
+    DEPLOYED -> {CLOSED, CLOSABLE}
+    CLOSABLE -> {CLOSED}
+    CLOSED -> {}
+    
+    */
     enum FundStatus {
         RAISING, // deposits possible, withdraws possible, manager can't move funds
         DEPLOYED, // deposits not possible, withdraws not possible, manager can move funds
