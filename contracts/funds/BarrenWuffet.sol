@@ -40,17 +40,17 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
     /*
     Valid transitions (to -> from): 
 
-    RAISING -> {DEPLOYED, CLOSED}
-    DEPLOYED -> {CLOSED, CLOSABLE}
+    RAISING -> {DEPLOYED, CLOSED (premature)}
+    DEPLOYED -> {CLOSED (premature), CLOSABLE}
     CLOSABLE -> {CLOSED}
     CLOSED -> {}
     
     */
     enum FundStatus {
-        RAISING, // deposits possible, withdraws possible, manager can't move funds
+        RAISING, // deposits possible, withdraws possible (inputToken), manager can't move funds
         DEPLOYED, // deposits not possible, withdraws not possible, manager can move funds
         CLOSABLE, // deposits not possible, withdraws not possible, manager can't move funds
-        CLOSED // deposits not possible, withdraws possible, manager can take out rewards but not move funds
+        CLOSED // deposits not possible, withdraws possible (outputTokens), manager can take out rewards but not move funds
     }
 
     mapping(bytes32 => Fund) funds;
@@ -181,6 +181,9 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         uint256 amount
     ) external onlyDeployedFund(fundHash) onlyFundManager(fundHash) whenNotPaused nonReentrant {
         Fund storage fund = funds[fundHash];
+
+        // Assumes that the trade already exists on degenStreet to subscribe to
+        // if it is a novel trade, the fundManager will have to create it with an additional TX
         address inputToken = degenStreet.getInputToken(tradeHash);
         uint256 subIdx;
         _decreaseAssetBalance(fund, inputToken, amount);
@@ -260,6 +263,7 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         require(collateralToken == REConstants.ETH);
         require(collateralAmount == msg.value);
 
+        require(getStatus(fundHash) == FundStatus.RAISING, "Fund is not raising");
         // TODO: check against all constraints here
 
         Fund storage fund = funds[fundHash];
