@@ -141,7 +141,7 @@ describe("BarrenWuffet", () => {
   });
 
   async function deployFundsFixture() {
-    const { barrenWuffet, marlieChungerWallet, fairyLinkWallet, botWallet, testToken1, fundSubscriberWallet } = await loadFixture(deployBarrenWuffetFixture);
+    const { barrenWuffet, marlieChungerWallet, fairyLinkWallet, botWallet, testToken1, fundSubscriberWallet, fundSubscriber2Wallet } = await loadFixture(deployBarrenWuffetFixture);
     const validConstraints = await makeSubConstraints();
 
     // marlie chunger managers jerkshire
@@ -154,7 +154,7 @@ describe("BarrenWuffet", () => {
 
     return {
       barrenWuffet, marlieChungerWallet, fairyLinkWallet, jerkshireHash, crackBlockHash, chungerToContract, fairyToContract, botWallet,
-      testToken1, fundSubscriberWallet
+      testToken1, fundSubscriberWallet, fundSubscriber2Wallet
     };
   }
   describe("xx Fund Status: Raising", () => {
@@ -162,6 +162,16 @@ describe("BarrenWuffet", () => {
       const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
       const depositAmt = utils.parseEther("11");
       await expect(barrenWuffet.connect(fundSubscriberWallet).deposit(
+        jerkshireHash, constants.AddressZero, depositAmt,
+        { value: depositAmt })).to.emit(barrenWuffet, "Deposit").withArgs(
+          jerkshireHash, 0, constants.AddressZero, depositAmt
+        );
+    });
+
+    it("Should allow the fund manager to deposit native token into their own fund", async () => {
+      const { barrenWuffet, jerkshireHash, chungerToContract } = await loadFixture(deployFundsFixture);
+      const depositAmt = utils.parseEther("11");
+      await expect(chungerToContract.deposit(
         jerkshireHash, constants.AddressZero, depositAmt,
         { value: depositAmt })).to.emit(barrenWuffet, "Deposit").withArgs(
           jerkshireHash, 0, constants.AddressZero, depositAmt
