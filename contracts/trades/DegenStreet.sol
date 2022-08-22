@@ -13,7 +13,7 @@ import "../rules/RoboCop.sol";
 import "../utils/Utils.sol";
 import "./TradeTypes.sol";
 
-contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGuard {
+contract DegenStreet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     event Created(bytes32 indexed tradeHash);
@@ -112,7 +112,7 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         address collateralToken,
         uint256 collateralAmount
     ) private view {
-        // TODO: constraints.lockin and constraints.deadline unused in TradeManager
+        // TODO: constraints.lockin and constraints.deadline unused in DegenStreet
         Trade storage trade = trades[tradeHash];
         Rule memory rule = roboCop.getRule(trade.ruleHash);
         SubscriptionConstraints memory constraints = trade.constraints;
@@ -228,7 +228,7 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         Action[] calldata actions,
         SubscriptionConstraints calldata constraints
     ) external payable nonReentrant whenNotPaused returns (bytes32) {
-        // Note: Rule is created through TradeManager so that TradeManager is rule.owner
+        // Note: Rule is created through DegenStreet so that DegenStreet is rule.owner
         bytes32 ruleHash = roboCop.createRule{value: msg.value}(triggers, actions);
         bytes32 tradeHash = getTradeHash(msg.sender, ruleHash);
         require(trades[tradeHash].manager == address(0)); // trade does not exist

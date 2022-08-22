@@ -195,7 +195,7 @@ export async function setupRoboCop() {
     actWlHash,
   };
 }
-export async function setupTradeManager() {
+export async function setupDegenStreet() {
   const [ownerWallet, traderWallet, tradeSubscriberWallet, someOtherWallet] = await ethers.getSigners();
 
   const {
@@ -211,7 +211,7 @@ export async function setupTradeManager() {
     actWlHash,
     botWallet,
   } = await setupRoboCop();
-  const tradeManager = await ethers.getContract("TradeManager");
+  const degenStreet = await ethers.getContract("DegenStreet");
 
   return {
     roboCop,
@@ -228,12 +228,12 @@ export async function setupTradeManager() {
     whitelistService,
     trigWlHash,
     actWlHash,
-    tradeManager,
+    degenStreet,
     botWallet,
   };
 }
 
-export async function setupFundManager() {
+export async function setupBarrenWuffet() {
   // these wallets maybe reused to create trader / rule executor.
   // which shouldnt be a problem
   const [ownerWallet, fundCreatorWallet, fundCreator2Wallet, fundSubscriberWallet, fundSubscriber2Wallet, botWallet] =
@@ -250,9 +250,9 @@ export async function setupFundManager() {
     whitelistService,
     trigWlHash,
     actWlHash,
-    tradeManager,
-  } = await setupTradeManager();
-  const fundManager = await ethers.getContract("FundManager");
+    degenStreet,
+  } = await setupDegenStreet();
+  const barrenWuffet = await ethers.getContract("BarrenWuffet");
 
   return {
     ownerWallet,
@@ -271,7 +271,7 @@ export async function setupFundManager() {
     whitelistService,
     trigWlHash,
     actWlHash,
-    tradeManager,
-    fundManager,
+    degenStreet,
+    barrenWuffet,
   };
 }

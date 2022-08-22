@@ -5,14 +5,14 @@ import "../utils/subscriptions/ISubscription.sol";
 import "../utils/Constants.sol";
 import "../utils/Utils.sol";
 import "../actions/IAction.sol";
-import "../trades/TradeManager.sol";
+import "../trades/DegenStreet.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGuard {
+contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     event Created(bytes32 indexed fundHash);
@@ -45,14 +45,14 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
     }
 
     mapping(bytes32 => Fund) funds;
-    TradeManager tradeManager;
+    DegenStreet degenStreet;
 
     constructor(address payable TmAddr) {
-        tradeManager = TradeManager(TmAddr);
+        degenStreet = DegenStreet(TmAddr);
     }
 
     function setTradeManangerAddress(address payable TmAddr) external onlyOwner {
-        tradeManager = TradeManager(TmAddr);
+        degenStreet = DegenStreet(TmAddr);
     }
 
     modifier onlyActiveSubscriber(bytes32 fundHash, uint256 subscriptionIdx) {
@@ -123,7 +123,7 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
         if (getStatus(fundHash) == FundStatus.CLOSABLE) {
             _closeFund(fundHash);
         } else if (funds[fundHash].manager == msg.sender) {
-            // closed prematurely by fundManager (so that people can withdraw their capital)
+            // closed prematurely by barrenWuffet (so that people can withdraw their capital)
             _closeFund(fundHash);
             // TODO: block rewards since closed before fund.lockin
         }
@@ -172,16 +172,16 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
         uint256 amount
     ) external onlyDeployedFund(fundHash) onlyFundManager(fundHash) whenNotPaused nonReentrant {
         Fund storage fund = funds[fundHash];
-        address inputToken = tradeManager.getInputToken(tradeHash);
+        address inputToken = degenStreet.getInputToken(tradeHash);
         uint256 subIdx;
         _decreaseAssetBalance(fund, inputToken, amount);
         fund.openPositions.push(Position({tradeHash: tradeHash, subIdx: subIdx}));
 
         if (inputToken == REConstants.ETH) {
-            subIdx = tradeManager.deposit{value: amount}(tradeHash, inputToken, amount);
+            subIdx = degenStreet.deposit{value: amount}(tradeHash, inputToken, amount);
         } else {
-            IERC20(inputToken).safeApprove(address(tradeManager), amount);
-            subIdx = tradeManager.deposit(tradeHash, inputToken, amount);
+            IERC20(inputToken).safeApprove(address(degenStreet), amount);
+            subIdx = degenStreet.deposit(tradeHash, inputToken, amount);
         }
     }
 
@@ -200,7 +200,7 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
         Position storage position = fund.openPositions[openPositionIdx];
         bytes32 tradeHash = position.tradeHash;
         uint256 subIdx = position.subIdx;
-        (address[] memory tokens, uint256[] memory amounts) = tradeManager.withdraw(tradeHash, subIdx);
+        (address[] memory tokens, uint256[] memory amounts) = degenStreet.withdraw(tradeHash, subIdx);
         _removeOpenPosition(fund, openPositionIdx);
         _increaseAssetBalance(fund, tokens[0], amounts[0]);
     }
@@ -327,7 +327,7 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
             return (tokens, balances);
         } else if (status == FundStatus.CLOSED) {
             // TODO:
-            // Fundmanager can collect rewards by opening and closing and not doing anything with the funds.
+            // Fund manager can collect rewards by opening and closing and not doing anything with the funds.
             address[] memory tokens = new address[](fund.assets.length);
             uint256[] memory balances = new uint256[](fund.assets.length);
 
@@ -335,7 +335,7 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
             for (uint256 i = 0; i < fund.assets.length; i++) {
                 tokens[i] = fund.assets[i];
                 balances[i] = _getShares(fundHash, subscriptionIdx, fund.assets[i]);
-                // TODO: keep rewardPercentage here for fundManager.
+                // TODO: keep rewardPercentage here for barrenWuffet.
                 emit Withdraw(fundHash, subscriptionIdx, tokens[i], balances[i]);
                 Utils._send(subscription.subscriber, balances[i], tokens[i]);
             }
