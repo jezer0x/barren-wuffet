@@ -4,18 +4,11 @@ import { expect } from "chai";
 import { ethers, deployments } from "hardhat";
 import { BigNumber, constants, utils } from "ethers";
 import {
-  setupBarrenWuffet,
-  makePassingTrigger,
-  makeFailingTrigger,
-  makeSwapAction,
-  createRule,
-  expectEthersObjDeepEqual,
+  setupBarrenWuffet
 } from "./Fixtures";
 import { SubscriptionConstraintsStruct } from "../typechain-types/contracts/funds/BarrenWuffet";
 import { BAD_FUND_HASH, FUND_STATUS } from "./Constants";
 import { getHashFromEvent } from "./helper";
-import { isBytes } from "ethers/lib/utils";
-
 /**
  * These tests are organized by
  * 1. Contract Deployment, settings
@@ -27,14 +20,15 @@ const ETH_PRICE_IN_USD = 1300 * 10 ** 8;
 const TST1_PRICE_IN_USD = 3 * 10 ** 8;
 const ERC20_DECIMALS = BigNumber.from(10).pow(18);
 
-async function makeSubConstraints(): Promise<SubscriptionConstraintsStruct> {
+async function makeSubConstraints() {
+  const latestTime = await time.latest();
   return {
     minCollateralPerSub: BigNumber.from(10).mul(ERC20_DECIMALS),
     maxCollateralPerSub: BigNumber.from(100).mul(ERC20_DECIMALS),
     minCollateralTotal: BigNumber.from(200).mul(ERC20_DECIMALS),
     maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
-    deadline: (await time.latest()) + 86400,
-    lockin: (await time.latest()) + 86400 * 10,
+    deadline: latestTime + 86400,
+    lockin: latestTime + 86400 * 10,
     rewardPercentage: 100,
   };
 }
@@ -142,19 +136,40 @@ describe("BarrenWuffet", () => {
 
   async function deployFundsFixture() {
     const { barrenWuffet, marlieChungerWallet, fairyLinkWallet, botWallet, testToken1, fundSubscriberWallet, fundSubscriber2Wallet } = await loadFixture(deployBarrenWuffetFixture);
-    const validConstraints = await makeSubConstraints();
 
+    const latestTime = await time.latest();
     // marlie chunger managers jerkshire
     const chungerToContract = barrenWuffet.connect(marlieChungerWallet);
-    const jerkshireHash = await getHashFromEvent(chungerToContract.createFund("Jerkshire Castaway", validConstraints), "Created", barrenWuffet.address, "fundHash");
+    const jerkshireConstraints = {
+      minCollateralPerSub: BigNumber.from(10).mul(ERC20_DECIMALS),
+      maxCollateralPerSub: BigNumber.from(100).mul(ERC20_DECIMALS),
+      minCollateralTotal: BigNumber.from(200).mul(ERC20_DECIMALS),
+      maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
+      deadline: latestTime + 86400,
+      lockin: latestTime + 86400 * 10,
+      rewardPercentage: 0,
+    }
+
+    const jerkshireHash = await getHashFromEvent(chungerToContract.createFund("Jerkshire Castaway", jerkshireConstraints), "Created", barrenWuffet.address, "fundHash");
 
     // fairy link manages crackblock
     const fairyToContract = barrenWuffet.connect(fairyLinkWallet);
-    const crackBlockHash = await getHashFromEvent(fairyToContract.createFund("CrackBlock", validConstraints), "Created", barrenWuffet.address, "fundHash");
+    const crackBlockConstraints = {
+      minCollateralPerSub: BigNumber.from(0),
+      maxCollateralPerSub: BigNumber.from(100).mul(ERC20_DECIMALS),
+      minCollateralTotal: BigNumber.from(50).mul(ERC20_DECIMALS),
+      maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
+      deadline: latestTime + 86400,
+      lockin: latestTime + 86400 * 10,
+      rewardPercentage: 10,
+    }
+
+    const crackBlockHash = await getHashFromEvent(fairyToContract.createFund("CrackBlock", crackBlockConstraints), "Created", barrenWuffet.address, "fundHash");
 
     return {
-      barrenWuffet, marlieChungerWallet, fairyLinkWallet, jerkshireHash, crackBlockHash, chungerToContract, fairyToContract, botWallet,
-      testToken1, fundSubscriberWallet, fundSubscriber2Wallet
+      barrenWuffet, marlieChungerWallet, fairyLinkWallet, jerkshireHash, crackBlockHash,
+      jerkshireConstraints, crackBlockConstraints, chungerToContract, fairyToContract,
+      botWallet, testToken1, fundSubscriberWallet, fundSubscriber2Wallet
     };
   }
   describe("Fund Status: Raising", () => {
@@ -195,16 +210,16 @@ describe("BarrenWuffet", () => {
     });
 
     it("Should not allow anyone to deposit less than min subscriber threshold into the fund", async () => {
-      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
-      const depositAmt = utils.parseEther("9.99");
+      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
+      const depositAmt = jerkshireConstraints.minCollateralPerSub.sub(utils.parseEther("0.0001"));
       await expect(barrenWuffet.connect(fundSubscriberWallet).deposit(
         jerkshireHash, constants.AddressZero, depositAmt,
         { value: depositAmt })).to.be.revertedWith("Insufficient Collateral for Subscription");
     });
 
     it("Should not allow anyone to deposit more than max subscriber threshold into the fund", async () => {
-      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
-      const depositAmt = utils.parseEther("100.01");
+      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
+      const depositAmt = jerkshireConstraints.maxCollateralPerSub.add(utils.parseEther("0.0001"));
       await expect(barrenWuffet.connect(fundSubscriberWallet).deposit(
         jerkshireHash, constants.AddressZero, depositAmt,
         { value: depositAmt })).to.be.revertedWith("Max Collateral for Subscription exceeded");
