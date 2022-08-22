@@ -157,20 +157,51 @@ describe("BarrenWuffet", () => {
       testToken1, fundSubscriberWallet
     };
   }
-  describe("Fund Status: Raising", () => {
+  describe("xx Fund Status: Raising", () => {
+    it("Should allow anyone to deposit native token into a raising fund and emit a Deposit event", async () => {
+      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
+      const depositAmt = utils.parseEther("11");
+      await expect(barrenWuffet.connect(fundSubscriberWallet).deposit(
+        jerkshireHash, constants.AddressZero, depositAmt,
+        { value: depositAmt })).to.emit(barrenWuffet, "Deposit").withArgs(
+          anyValue, 0, constants.AddressZero, depositAmt
+        );
+    });
+
+    it("Should not allow anyone to deposit ERC20 tokens into a raising fund. We only allow native right now", async () => {
+      const { barrenWuffet, fundSubscriberWallet, jerkshireHash, testToken1 } = await loadFixture(deployFundsFixture);
+      await expect(barrenWuffet.connect(fundSubscriberWallet).deposit(jerkshireHash, testToken1.address, utils.parseEther("11"))).to.be.revertedWithoutReason();
+    });
+
     it("should return fund status as RAISING once the fund is created, deadline has NOT been hit and amount raised is LESS than min amount", async () => {
       const { barrenWuffet, chungerToContract, fairyToContract, jerkshireHash, crackBlockHash, botWallet } = await loadFixture(deployFundsFixture);
 
       expect(await barrenWuffet.connect(botWallet).getStatus(crackBlockHash)).to.be.equal(FUND_STATUS.RAISING);
       // barren is depositing into their own fund
-      chungerToContract.deposit(jerkshireHash, ethers.constants.AddressZero, utils.parseEther("11"));
-      fairyToContract.deposit(jerkshireHash, ethers.constants.AddressZero, utils.parseEther("188"));
+      const depositAmt = utils.parseEther("11");
+      await chungerToContract.deposit(jerkshireHash, ethers.constants.AddressZero, depositAmt, { value: depositAmt });
+      await fairyToContract.deposit(jerkshireHash, ethers.constants.AddressZero, depositAmt, { value: depositAmt });
 
       expect(await barrenWuffet.connect(botWallet).getStatus(crackBlockHash)).to.be.equal(FUND_STATUS.RAISING);
 
     });
 
-    it.skip("Should allow anyone to deposit collateral token into a raising fund and emit a Deposit event", async () => { });
+    it("Should not allow anyone to deposit less than min subscriber threshold into the fund", async () => {
+      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
+      const depositAmt = utils.parseEther("9.99");
+      await expect(barrenWuffet.connect(fundSubscriberWallet).deposit(
+        jerkshireHash, constants.AddressZero, depositAmt,
+        { value: depositAmt })).to.be.revertedWithoutReason();
+    });
+
+    it("Should not allow anyone to deposit more than max subscriber threshold into the fund", async () => {
+      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
+      const depositAmt = utils.parseEther("100.01");
+      await expect(barrenWuffet.connect(fundSubscriberWallet).deposit(
+        jerkshireHash, constants.AddressZero, depositAmt,
+        { value: depositAmt })).to.be.revertedWithoutReason();
+
+    });
 
     it.skip("Should revert if deposit is attempted on a fund where collateral limit is reached", async () => { });
 
