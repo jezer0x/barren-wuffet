@@ -38,10 +38,10 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
     }
 
     enum FundStatus {
-        RAISING,
-        DEPLOYED,
-        CLOSABLE,
-        CLOSED
+        RAISING, // deposits possible, withdraws possible, manager can't move funds
+        DEPLOYED, // deposits not possible, withdraws not possible, manager can move funds
+        CLOSABLE, // deposits not possible, withdraws not possible, manager can't move funds
+        CLOSED // deposits not possible, withdraws possible, manager can take out rewards but not move funds
     }
 
     mapping(bytes32 => Fund) funds;
@@ -283,11 +283,13 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
         } else if (!fund.closed && block.timestamp >= fund.constraints.lockin) {
             return FundStatus.CLOSABLE;
         } else if (
-            fund.totalCollateral >= fund.constraints.minCollateralTotal || block.timestamp >= fund.constraints.deadline
+            fund.totalCollateral == fund.constraints.maxCollateralTotal || block.timestamp >= fund.constraints.deadline
         ) {
+            // Question: If it hits maxCollateralTotal, do we want to immediately go to DEPLOYED state?
+            // Question: If it DOESN't hit minColalteralTotal do we go to DEPLOYED state after deadline is reached?
             return FundStatus.DEPLOYED;
         } else if (
-            fund.totalCollateral < fund.constraints.minCollateralTotal && block.timestamp < fund.constraints.deadline
+            fund.totalCollateral < fund.constraints.maxCollateralTotal && block.timestamp < fund.constraints.deadline
         ) {
             return FundStatus.RAISING;
         } else {
