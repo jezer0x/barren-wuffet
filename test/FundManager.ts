@@ -2,7 +2,7 @@ import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
 import { ethers, deployments } from "hardhat";
-import { BigNumber, constants } from "ethers";
+import { BigNumber, constants, utils } from "ethers";
 import {
   setupFundManager,
   makePassingTrigger,
@@ -12,7 +12,8 @@ import {
   expectEthersObjDeepEqual,
 } from "./Fixtures";
 import { SubscriptionConstraintsStruct } from "../typechain-types/contracts/funds/FundManager";
-import { BAD_FUND_HASH } from "./Constants";
+import { BAD_FUND_HASH, FUND_STATUS } from "./Constants";
+import { getHashFromEvent } from "./helper";
 
 /** 
  * These tests are organized by
@@ -139,8 +140,33 @@ describe("FundManager", () => {
     });
   });
 
+  async function deployFundsFixture() {
+    const { fundManager, fundCreatorWallet, fundCreator2Wallet, botWallet } = await loadFixture(deployFundManagerFixture);
+    const validConstraints = await makeSubConstraints();
+
+    // barren wuffet managers jerkshire
+    const barrenToContract = fundManager.connect(fundCreatorWallet);
+    const jerkshireHash = await getHashFromEvent(barrenToContract.createFund("Jerkshire Castaway", validConstraints), "Created", fundManager.address, "fundHash");
+
+    // fairy link manages crackblock
+    const fairyToContract = fundManager.connect(fundCreator2Wallet);
+    const crackBlockHash = await getHashFromEvent(fairyToContract.createFund("CrackBlock", validConstraints), "Created", fundManager.address, "fundHash");
+
+    return {
+      fundManager, fundCreatorWallet, fundCreator2Wallet, jerkshireHash, crackBlockHash, barrenToContract, fairyToContract, botWallet
+    };
+  }
   describe.skip("Fund Status: Raising", () => {
     it("should return fund status as RAISING once the fund is created, deadline has NOT been hit and amount raised is LESS than min amount", async () => {
+      const { fundManager, barrenToContract, fairyToContract, jerkshireHash, crackBlockHash, botWallet } = await loadFixture(deployFundsFixture);
+
+      (await fundManager.connect(botWallet).getStatus(crackBlockHash)).is.equal(FUND_STATUS.RAISING);
+      // barren is depositing into their own fund
+      barrenToContract.deposit(jerkshireHash, ethers.constants.AddressZero, utils.parseEther("11"));
+      fairyToContract.deposit(jerkshireHash, ethers.constants.AddressZero, utils.parseEther("188"));
+
+      (await fundManager.connect(botWallet).getStatus(crackBlockHash)).is.equal(FUND_STATUS.RAISING);
+
     });
 
     it("Should allow anyone to deposit collateral token into a raising fund and emit a Deposit event", async () => { });
