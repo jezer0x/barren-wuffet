@@ -55,9 +55,9 @@ describe("BarrenWuffet", () => {
 
   describe("Fund Status: Uninitialized", () => {
     it("should allow anyone to create a fund and emit Created event with the fund hash", async () => {
-      const { barrenWuffet, fundCreatorWallet } = await loadFixture(deployBarrenWuffetFixture);
+      const { barrenWuffet, marlieChungerWallet } = await loadFixture(deployBarrenWuffetFixture);
       const validConstraints = await makeSubConstraints();
-      await expect(barrenWuffet.connect(fundCreatorWallet).createFund("Fund1", validConstraints))
+      await expect(barrenWuffet.connect(marlieChungerWallet).createFund("Fund1", validConstraints))
         .to.emit(barrenWuffet, "Created")
         .withArgs(anyValue);
     });
@@ -74,7 +74,7 @@ describe("BarrenWuffet", () => {
     });
 
     it("should revert if the same user creates 2 funds with the same name", async () => {
-      const { barrenWuffet, fundCreatorWallet } = await loadFixture(deployBarrenWuffetFixture);
+      const { barrenWuffet, marlieChungerWallet } = await loadFixture(deployBarrenWuffetFixture);
       const validConstraints = await makeSubConstraints();
       await barrenWuffet.connect(fundCreatorWallet).createFund("Fund1", validConstraints);
       await expect(barrenWuffet.connect(fundCreatorWallet).createFund("Fund1", validConstraints)).to.be.revertedWith(
@@ -83,7 +83,7 @@ describe("BarrenWuffet", () => {
     });
 
     it("should allow the same user to create 2 funds with different names", async () => {
-      const { barrenWuffet, fundCreatorWallet } = await loadFixture(deployBarrenWuffetFixture);
+      const { barrenWuffet, marlieChungerWallet } = await loadFixture(deployBarrenWuffetFixture);
       const validConstraints = await makeSubConstraints();
       await barrenWuffet.connect(fundCreatorWallet).createFund("Fund1", validConstraints);
       await expect(barrenWuffet.connect(fundCreatorWallet).createFund("Fund2", validConstraints))
@@ -92,10 +92,10 @@ describe("BarrenWuffet", () => {
     });
 
     it("should allow 2 different users to create funds with the same name", async () => {
-      const { barrenWuffet, fundCreatorWallet, fundCreator2Wallet } = await loadFixture(deployBarrenWuffetFixture);
+      const { barrenWuffet, marlieChungerWallet, fairyLinkWallet } = await loadFixture(deployBarrenWuffetFixture);
       const validConstraints = await makeSubConstraints();
-      await barrenWuffet.connect(fundCreatorWallet).createFund("Fund1", validConstraints);
-      await expect(barrenWuffet.connect(fundCreator2Wallet).createFund("Fund1", validConstraints))
+      await barrenWuffet.connect(marlieChungerWallet).createFund("Fund1", validConstraints);
+      await expect(barrenWuffet.connect(marlieChungerWallet).createFund("Fund1", validConstraints))
         .to.emit(barrenWuffet, "Created")
         .withArgs(anyValue);
     });
@@ -105,18 +105,18 @@ describe("BarrenWuffet", () => {
     it("Should return eth as the input token for any fund", async () => {
       // we only support ETH as the input token for now.
       // As this functionality is extended, this test needs to expand
-      const { barrenWuffet, fundCreatorWallet } = await loadFixture(deployBarrenWuffetFixture);
+      const { barrenWuffet, marlieChungerWallet } = await loadFixture(deployBarrenWuffetFixture);
       const validConstraints = await makeSubConstraints();
       let fundHash;
-      await expect(barrenWuffet.connect(fundCreatorWallet).createFund("Fund1", validConstraints))
+      await expect(barrenWuffet.connect(marlieChungerWallet).createFund("Fund1", validConstraints))
         .to.emit(barrenWuffet, "Created")
         .withArgs((hash: string) => {
           fundHash = hash;
           return true;
         });
-      await expect(barrenWuffet.connect(fundCreatorWallet).getInputToken(BAD_FUND_HASH)).to.be.revertedWithoutReason();
+      await expect(barrenWuffet.connect(marlieChungerWallet).getInputToken(BAD_FUND_HASH)).to.be.revertedWithoutReason();
 
-      expect(await barrenWuffet.connect(fundCreatorWallet).getInputToken(fundHash)).to.be.equal(constants.AddressZero);
+      expect(await barrenWuffet.connect(marlieChungerWallet).getInputToken(fundHash)).to.be.equal(constants.AddressZero);
     });
 
     it("Should revert on getOutputToken", async () => {
@@ -124,36 +124,36 @@ describe("BarrenWuffet", () => {
       // before it's returned to the user.
       // This is as yet unimplemented, so the function should revert.
 
-      const { barrenWuffet, fundCreatorWallet } = await loadFixture(deployBarrenWuffetFixture);
+      const { barrenWuffet, marlieChungerWallet } = await loadFixture(deployBarrenWuffetFixture);
       const validConstraints = await makeSubConstraints();
       let fundHash;
-      await expect(barrenWuffet.connect(fundCreatorWallet).createFund("Fund1", validConstraints))
+      await expect(barrenWuffet.connect(marlieChungerWallet).createFund("Fund1", validConstraints))
         .to.emit(barrenWuffet, "Created")
         .withArgs((hash: string) => {
           fundHash = hash;
           return true;
         });
 
-      await expect(barrenWuffet.connect(fundCreatorWallet).getOutputToken(fundHash)).to.be.revertedWith(
+      await expect(barrenWuffet.connect(marlieChungerWallet).getOutputToken(fundHash)).to.be.revertedWith(
         "Undefined: Funds may have multiple output tokens, determined only after it's closed."
       );
     });
   });
 
   async function deployFundsFixture() {
-    const { barrenWuffet, fundCreatorWallet, fundCreator2Wallet, botWallet } = await loadFixture(deployBarrenWuffetFixture);
+    const { barrenWuffet, marlieChungerWallet, fairyLinkWallet, botWallet } = await loadFixture(deployBarrenWuffetFixture);
     const validConstraints = await makeSubConstraints();
 
     // marlie chunger managers jerkshire
-    const chungerToContract = barrenWuffet.connect(fundCreatorWallet);
+    const chungerToContract = barrenWuffet.connect(marlieChungerWallet);
     const jerkshireHash = await getHashFromEvent(chungerToContract.createFund("Jerkshire Castaway", validConstraints), "Created", barrenWuffet.address, "fundHash");
 
     // fairy link manages crackblock
-    const fairyToContract = barrenWuffet.connect(fundCreator2Wallet);
+    const fairyToContract = barrenWuffet.connect(fairyLinkWallet);
     const crackBlockHash = await getHashFromEvent(fairyToContract.createFund("CrackBlock", validConstraints), "Created", barrenWuffet.address, "fundHash");
 
     return {
-      barrenWuffet, fundCreatorWallet, fundCreator2Wallet, jerkshireHash, crackBlockHash, chungerToContract, fairyToContract, botWallet
+      barrenWuffet, marlieChungerWallet, fairyLinkWallet, jerkshireHash, crackBlockHash, chungerToContract, fairyToContract, botWallet
     };
   }
   describe("Fund Status: Raising", () => {

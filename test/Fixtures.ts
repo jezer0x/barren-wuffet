@@ -236,7 +236,7 @@ export async function setupDegenStreet() {
 export async function setupBarrenWuffet() {
   // these wallets maybe reused to create trader / rule executor.
   // which shouldnt be a problem
-  const [ownerWallet, fundCreatorWallet, fundCreator2Wallet, fundSubscriberWallet, fundSubscriber2Wallet, botWallet] =
+  const [ownerWallet, marlieChungerWallet, fairyLinkWallet, fundSubscriberWallet, fundSubscriber2Wallet, botWallet] =
     await ethers.getSigners();
 
   const {
@@ -263,8 +263,8 @@ export async function setupBarrenWuffet() {
     testOracleTst1,
     testToken1,
     testToken2,
-    fundCreatorWallet,
-    fundCreator2Wallet,
+    marlieChungerWallet,
+    fairyLinkWallet,
     fundSubscriberWallet,
     fundSubscriber2Wallet,
     botWallet,
