@@ -1,4 +1,5 @@
 Branch Coverage: ![Branches](https://img.shields.io/badge/branches-58.82%25-red.svg?style=flat)
+
 # Olympus Mons
 
 Olympus Mons is a decentralized fund management platform that allows you to deposit funds into the contract, and tag it to a specific fund manager who can manage your funds on-chain.
@@ -7,15 +8,15 @@ The Fund Manager / Trade Manager and Rule Executor contracts are intended to fun
 
 ## Fund Manager
 
-This contract allows any fund manager to create funds, accept deposits into the fund. They can trigger trades from the funds by subscribing to TradeManager Trades (IFTTT), or take synchronous Actions.
+This contract allows any fund manager to create funds, accept deposits into the fund. They can trigger trades from the funds by subscribing to DegenStreet Trades (IFTTT), or take synchronous Actions.
 
 ## Trade Manager
 
-Trades are created by sending a set of Triggers, Actions along with constraints into TradeManager. The Trigger -> Action pair is called a "Rule". TradeManager uses the Rule Executor to set up the Rules, but they are initially deactivated.
+Trades are created by sending a set of Triggers, Actions along with constraints into DegenStreet. The Trigger -> Action pair is called a "Rule". DegenStreet uses the Rule Executor to set up the Rules, but they are initially deactivated.
 
 After a trade is created, collateral can be deposited into the trade.
 
-Constraints are trade-level restrictions (like min-collateral) that the TradeManager will use to decide when to accept deposits, when to activate the Rules, and when to allow withdrawal of the deposits.
+Constraints are trade-level restrictions (like min-collateral) that the DegenStreet will use to decide when to accept deposits, when to activate the Rules, and when to allow withdrawal of the deposits.
 
 ## Rule Executor
 

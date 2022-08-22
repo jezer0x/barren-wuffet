@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { BigNumber, Bytes } from "ethers";
 import { deployments, ethers, network } from "hardhat";
 import { RuleStructOutput } from "../typechain-types/contracts/rules/RoboCop";
-import { SubscriptionConstraintsStruct, TradeStructOutput } from "../typechain-types/contracts/trades/TradeManager";
+import { SubscriptionConstraintsStruct, TradeStructOutput } from "../typechain-types/contracts/trades/DegenStreet";
 import {
   BAD_RULE_HASH,
   DEFAULT_REWARD,
@@ -14,7 +14,7 @@ import {
   TST1_PRICE_IN_ETH_PARAM,
   GT,
 } from "./Constants";
-import { makePassingTrigger, makeSwapAction, setupTradeManager } from "./Fixtures";
+import { makePassingTrigger, makeSwapAction, setupDegenStreet } from "./Fixtures";
 import { getHashFromEvent } from "./helper";
 
 const MIN_COLLATERAL_PER_SUB = BigNumber.from(10).mul(ERC20_DECIMALS);
@@ -34,13 +34,13 @@ async function makeSubConstraints(): Promise<SubscriptionConstraintsStruct> {
   };
 }
 
-describe("TradeManager", () => {
+describe("DegenStreet", () => {
   // We define a fixture to reuse the same setup in every test.
   // We use loadFixture to run this setup once, snapshot that state,
   // and reset Hardhat Network to that snapshopt in every test.
-  async function deployTradeManagerFixture() {
+  async function deployDegenStreetFixture() {
     await deployments.fixture();
-    return setupTradeManager();
+    return setupDegenStreet();
   }
 
   async function deployValidTradeFixture() {
@@ -50,13 +50,13 @@ describe("TradeManager", () => {
       swapUniSingleAction,
       testToken1,
       testToken2,
-      tradeManager,
+      degenStreet,
       traderWallet,
       someOtherWallet,
       tradeSubscriberWallet,
       roboCop,
       botWallet,
-    } = await deployTradeManagerFixture();
+    } = await deployDegenStreetFixture();
 
     const ETHtoTST1SwapPriceTrigger = {
       op: GT,
@@ -86,23 +86,23 @@ describe("TradeManager", () => {
 
     const properContraints = await makeSubConstraints();
 
-    const tx = await tradeManager
+    const tx = await degenStreet
       .connect(traderWallet)
       .createTrade([TST1toETHSwapPriceTrigger], [swapTST1ToETHAction], properContraints, { value: DEFAULT_REWARD });
 
-    const tradeTST1forETHHash: Bytes = await getHashFromEvent(tx, "Created", tradeManager.address, "tradeHash");
+    const tradeTST1forETHHash: Bytes = await getHashFromEvent(tx, "Created", degenStreet.address, "tradeHash");
 
-    const tx2 = await tradeManager
+    const tx2 = await degenStreet
       .connect(traderWallet)
       .createTrade([ETHtoTST1SwapPriceTrigger], [swapETHToTST1Action], properContraints, { value: DEFAULT_REWARD });
 
-    const tradeETHforTST1Hash: Bytes = await getHashFromEvent(tx2, "Created", tradeManager.address, "tradeHash");
+    const tradeETHforTST1Hash: Bytes = await getHashFromEvent(tx2, "Created", degenStreet.address, "tradeHash");
 
     return {
       ownerWallet,
       testToken1,
       testToken2,
-      tradeManager,
+      degenStreet,
       traderWallet,
       someOtherWallet,
       tradeSubscriberWallet,
@@ -115,20 +115,20 @@ describe("TradeManager", () => {
 
   describe("Deployment", () => {
     it("Should set the right owner", async function () {
-      const { tradeManager, ownerWallet } = await loadFixture(deployTradeManagerFixture);
-      expect(await tradeManager.owner()).to.equal(ownerWallet.address);
+      const { degenStreet, ownerWallet } = await loadFixture(deployDegenStreetFixture);
+      expect(await degenStreet.owner()).to.equal(ownerWallet.address);
     });
   });
 
   describe.skip("Admin functions", () => {
-    it("Should be able to X if owner", async function () { });
-    it("Should not be able to X if not owner", async function () { });
+    it("Should be able to X if owner", async function () {});
+    it("Should not be able to X if not owner", async function () {});
   });
 
   describe("Opening a Trade", () => {
     it("Should emit the Created event properly", async function () {
-      const { priceTrigger, swapUniSingleAction, testToken1, tradeManager, traderWallet } = await loadFixture(
-        deployTradeManagerFixture
+      const { priceTrigger, swapUniSingleAction, testToken1, degenStreet, traderWallet } = await loadFixture(
+        deployDegenStreetFixture
       );
       const passingTrigger = makePassingTrigger(priceTrigger.address);
       const executableAction = makeSwapAction(
@@ -139,15 +139,15 @@ describe("TradeManager", () => {
       const properContraints = await makeSubConstraints();
 
       await expect(
-        await tradeManager
+        await degenStreet
           .connect(traderWallet)
           .createTrade([passingTrigger], [executableAction], properContraints, { value: DEFAULT_REWARD })
-      ).to.emit(tradeManager, "Created");
+      ).to.emit(degenStreet, "Created");
     });
 
     it("Should revert if tries to open duplicate trades in same block", async function () {
-      const { priceTrigger, swapUniSingleAction, testToken1, tradeManager, traderWallet } = await loadFixture(
-        deployTradeManagerFixture
+      const { priceTrigger, swapUniSingleAction, testToken1, degenStreet, traderWallet } = await loadFixture(
+        deployDegenStreetFixture
       );
       const passingTrigger = makePassingTrigger(priceTrigger.address);
       const executableAction = makeSwapAction(
@@ -158,10 +158,10 @@ describe("TradeManager", () => {
       const properContraints = await makeSubConstraints();
 
       await network.provider.send("evm_setAutomine", [false]);
-      const tx1 = await await tradeManager
+      const tx1 = await await degenStreet
         .connect(traderWallet)
         .createTrade([passingTrigger], [executableAction], properContraints, { value: DEFAULT_REWARD });
-      const tx2 = await tradeManager
+      const tx2 = await degenStreet
         .connect(traderWallet)
         .createTrade([passingTrigger], [executableAction], properContraints, { value: DEFAULT_REWARD });
       await network.provider.send("evm_mine", []);
@@ -172,19 +172,19 @@ describe("TradeManager", () => {
       try {
         await tx1.wait();
         tx1Success = true;
-      } catch { }
+      } catch {}
 
       try {
         await tx2.wait();
         tx2Success = true;
-      } catch { }
+      } catch {}
 
       expect(tx1Success).to.not.equal(tx2Success);
     });
 
     it("Should succeed if tries to open duplicate trade in a different block", async function () {
-      const { priceTrigger, swapUniSingleAction, testToken1, tradeManager, traderWallet } = await loadFixture(
-        deployTradeManagerFixture
+      const { priceTrigger, swapUniSingleAction, testToken1, degenStreet, traderWallet } = await loadFixture(
+        deployDegenStreetFixture
       );
       const passingTrigger = makePassingTrigger(priceTrigger.address);
       const executableAction = makeSwapAction(
@@ -195,58 +195,58 @@ describe("TradeManager", () => {
       const properContraints = await makeSubConstraints();
 
       await expect(
-        await tradeManager
+        await degenStreet
           .connect(traderWallet)
           .createTrade([passingTrigger], [executableAction], properContraints, { value: DEFAULT_REWARD })
-      ).to.emit(tradeManager, "Created");
+      ).to.emit(degenStreet, "Created");
 
       await expect(
-        await tradeManager
+        await degenStreet
           .connect(traderWallet)
           .createTrade([passingTrigger], [executableAction], properContraints, { value: DEFAULT_REWARD })
-      ).to.emit(tradeManager, "Created");
+      ).to.emit(degenStreet, "Created");
     });
 
     // TODO: maybe should check if the entire trade/rule chain was proper?
     it("Should set the right manager for the trade", async function () {
-      const { tradeTST1forETHHash, tradeManager, traderWallet } = await loadFixture(deployValidTradeFixture);
-      const trade: TradeStructOutput = await tradeManager.getTrade(tradeTST1forETHHash);
+      const { tradeTST1forETHHash, degenStreet, traderWallet } = await loadFixture(deployValidTradeFixture);
+      const trade: TradeStructOutput = await degenStreet.getTrade(tradeTST1forETHHash);
       expect(trade.manager).to.equal(traderWallet.address);
     });
   });
 
   describe("Cancelling a Trade", () => {
     it("Should revert if non-owner tries to cancel your trade", async function () {
-      const { tradeTST1forETHHash, tradeManager, someOtherWallet } = await loadFixture(deployValidTradeFixture);
-      const trade: TradeStructOutput = await tradeManager.getTrade(tradeTST1forETHHash);
-      await expect(tradeManager.connect(someOtherWallet).cancelTrade(tradeTST1forETHHash)).to.be.revertedWith(
+      const { tradeTST1forETHHash, degenStreet, someOtherWallet } = await loadFixture(deployValidTradeFixture);
+      const trade: TradeStructOutput = await degenStreet.getTrade(tradeTST1forETHHash);
+      await expect(degenStreet.connect(someOtherWallet).cancelTrade(tradeTST1forETHHash)).to.be.revertedWith(
         "onlyManager"
       );
     });
     it("Should succeed if manager wants to cancel trade", async function () {
-      const { tradeTST1forETHHash, tradeManager, traderWallet } = await loadFixture(deployValidTradeFixture);
-      await expect(tradeManager.connect(traderWallet).cancelTrade(tradeTST1forETHHash))
-        .to.emit(tradeManager, "Cancelled")
+      const { tradeTST1forETHHash, degenStreet, traderWallet } = await loadFixture(deployValidTradeFixture);
+      await expect(degenStreet.connect(traderWallet).cancelTrade(tradeTST1forETHHash))
+        .to.emit(degenStreet, "Cancelled")
         .withArgs(tradeTST1forETHHash);
     });
     it("Should revert if trying to cancel non-existing trade", async function () {
-      const { tradeTST1forETHHash, tradeManager, traderWallet } = await loadFixture(deployValidTradeFixture);
-      await expect(tradeManager.connect(traderWallet).cancelTrade(BAD_RULE_HASH)).to.be.reverted;
+      const { tradeTST1forETHHash, degenStreet, traderWallet } = await loadFixture(deployValidTradeFixture);
+      await expect(degenStreet.connect(traderWallet).cancelTrade(BAD_RULE_HASH)).to.be.reverted;
     });
     it("Should revert if manager tries to cancel same trade twice", async function () {
-      const { tradeTST1forETHHash, tradeManager, traderWallet } = await loadFixture(deployValidTradeFixture);
-      await expect(tradeManager.connect(traderWallet).cancelTrade(tradeTST1forETHHash))
-        .to.emit(tradeManager, "Cancelled")
+      const { tradeTST1forETHHash, degenStreet, traderWallet } = await loadFixture(deployValidTradeFixture);
+      await expect(degenStreet.connect(traderWallet).cancelTrade(tradeTST1forETHHash))
+        .to.emit(degenStreet, "Cancelled")
         .withArgs(tradeTST1forETHHash);
 
-      await expect(tradeManager.connect(traderWallet).cancelTrade(tradeTST1forETHHash)).to.be.reverted;
+      await expect(degenStreet.connect(traderWallet).cancelTrade(tradeTST1forETHHash)).to.be.reverted;
     });
 
     it("Should revert if manager tries to cancel a trade that is completed", async function () {
       const {
         ownerWallet,
         tradeTST1forETHHash,
-        tradeManager,
+        degenStreet,
         traderWallet,
         tradeSubscriberWallet,
         testToken1,
@@ -256,25 +256,25 @@ describe("TradeManager", () => {
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       const times = MIN_COLLATERAL_TOTAL.div(collateralAmount);
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount.mul(times));
-      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount.mul(times));
+      await testToken1.connect(tradeSubscriberWallet).approve(degenStreet.address, collateralAmount.mul(times));
 
-      const trade: TradeStructOutput = await tradeManager.getTrade(tradeTST1forETHHash);
+      const trade: TradeStructOutput = await degenStreet.getTrade(tradeTST1forETHHash);
 
       for (var i = 0; i < times.toNumber() - 1; i++) {
-        await tradeManager
+        await degenStreet
           .connect(tradeSubscriberWallet)
           .deposit(tradeTST1forETHHash, testToken1.address, collateralAmount);
       }
 
       await expect(
-        tradeManager.connect(tradeSubscriberWallet).deposit(tradeTST1forETHHash, testToken1.address, collateralAmount)
+        degenStreet.connect(tradeSubscriberWallet).deposit(tradeTST1forETHHash, testToken1.address, collateralAmount)
       )
         .to.emit(roboCop, "Activated")
         .withArgs(trade.ruleHash);
 
       // now a bot will snipe this, making it an EXECUTED rule
       await expect(roboCop.connect(botWallet).executeRule(trade.ruleHash)).to.emit(roboCop, "Executed");
-      await expect(tradeManager.connect(traderWallet).cancelTrade(tradeTST1forETHHash)).to.be.revertedWith(
+      await expect(degenStreet.connect(traderWallet).cancelTrade(tradeTST1forETHHash)).to.be.revertedWith(
         "Can't Cancel Trade"
       );
     });
@@ -282,31 +282,31 @@ describe("TradeManager", () => {
 
   describe("Subscriber depositing", () => {
     it("Should revert if subscriber deposits wrong asset", async function () {
-      const { ownerWallet, tradeTST1forETHHash, tradeManager, traderWallet, tradeSubscriberWallet, testToken2 } =
+      const { ownerWallet, tradeTST1forETHHash, degenStreet, traderWallet, tradeSubscriberWallet, testToken2 } =
         await loadFixture(deployValidTradeFixture);
       const collateralAmount = MIN_COLLATERAL_PER_SUB.add(1);
       await testToken2.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
-      await testToken2.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount);
+      await testToken2.connect(tradeSubscriberWallet).approve(degenStreet.address, collateralAmount);
       await expect(
-        tradeManager.connect(tradeSubscriberWallet).deposit(tradeTST1forETHHash, testToken2.address, collateralAmount)
+        degenStreet.connect(tradeSubscriberWallet).deposit(tradeTST1forETHHash, testToken2.address, collateralAmount)
       ).to.be.revertedWith("Wrong Collateral Type");
     });
 
     it("Should revert if subscriber deposits too little / much at once", async function () {
-      const { ownerWallet, tradeTST1forETHHash, tradeManager, traderWallet, tradeSubscriberWallet, testToken1 } =
+      const { ownerWallet, tradeTST1forETHHash, degenStreet, traderWallet, tradeSubscriberWallet, testToken1 } =
         await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB.add(1);
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
-      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount);
+      await testToken1.connect(tradeSubscriberWallet).approve(degenStreet.address, collateralAmount);
 
       await expect(
-        tradeManager
+        degenStreet
           .connect(tradeSubscriberWallet)
           .deposit(tradeTST1forETHHash, testToken1.address, MAX_COLLATERAL_PER_SUB.add(1))
       ).to.be.revertedWith("Max Collateral for Subscription exceeded");
 
       await expect(
-        tradeManager
+        degenStreet
           .connect(tradeSubscriberWallet)
           .deposit(tradeTST1forETHHash, testToken1.address, MIN_COLLATERAL_PER_SUB.sub(1))
       ).to.be.revertedWith("Insufficient Collateral for Subscription");
@@ -314,33 +314,33 @@ describe("TradeManager", () => {
 
     it("Should succeed in depositing ERC20 properly", async function () {
       // anything between MIN_COLLATERAL_PER_SUB and MAX_COLLATERAL_PER_SUB should work (inclusive)
-      const { ownerWallet, tradeTST1forETHHash, tradeManager, traderWallet, tradeSubscriberWallet, testToken1 } =
+      const { ownerWallet, tradeTST1forETHHash, degenStreet, traderWallet, tradeSubscriberWallet, testToken1 } =
         await loadFixture(deployValidTradeFixture);
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, MAX_COLLATERAL_TOTAL);
-      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, MAX_COLLATERAL_TOTAL);
+      await testToken1.connect(tradeSubscriberWallet).approve(degenStreet.address, MAX_COLLATERAL_TOTAL);
 
       await expect(
-        tradeManager
+        degenStreet
           .connect(tradeSubscriberWallet)
           .deposit(tradeTST1forETHHash, testToken1.address, MIN_COLLATERAL_PER_SUB)
       )
-        .to.emit(tradeManager, "Deposit")
+        .to.emit(degenStreet, "Deposit")
         .withArgs(tradeTST1forETHHash, 0, testToken1.address, MIN_COLLATERAL_PER_SUB);
 
       await expect(
-        tradeManager
+        degenStreet
           .connect(tradeSubscriberWallet)
           .deposit(tradeTST1forETHHash, testToken1.address, MAX_COLLATERAL_PER_SUB)
       )
-        .to.emit(tradeManager, "Deposit")
+        .to.emit(degenStreet, "Deposit")
         .withArgs(tradeTST1forETHHash, 1, testToken1.address, MAX_COLLATERAL_PER_SUB);
 
       await expect(
-        tradeManager
+        degenStreet
           .connect(tradeSubscriberWallet)
           .deposit(tradeTST1forETHHash, testToken1.address, MIN_COLLATERAL_PER_SUB.add(MAX_COLLATERAL_PER_SUB).div(2))
       )
-        .to.emit(tradeManager, "Deposit")
+        .to.emit(degenStreet, "Deposit")
         .withArgs(
           tradeTST1forETHHash,
           2,
@@ -350,18 +350,18 @@ describe("TradeManager", () => {
     });
 
     it("Should succeed if same acccount subscribes multiple times", async function () {
-      const { ownerWallet, tradeTST1forETHHash, tradeManager, traderWallet, tradeSubscriberWallet, testToken1 } =
+      const { ownerWallet, tradeTST1forETHHash, degenStreet, traderWallet, tradeSubscriberWallet, testToken1 } =
         await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_TOTAL;
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, MAX_COLLATERAL_TOTAL);
-      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, MAX_COLLATERAL_TOTAL);
+      await testToken1.connect(tradeSubscriberWallet).approve(degenStreet.address, MAX_COLLATERAL_TOTAL);
 
       for (var i = 0; i < MAX_COLLATERAL_TOTAL.div(MAX_COLLATERAL_PER_SUB).toNumber(); i++) {
-        await tradeManager
+        await degenStreet
           .connect(tradeSubscriberWallet)
           .deposit(tradeTST1forETHHash, testToken1.address, MAX_COLLATERAL_PER_SUB);
       }
-      expect((await tradeManager.getTrade(tradeTST1forETHHash)).subscriptions.length).to.equal(
+      expect((await degenStreet.getTrade(tradeTST1forETHHash)).subscriptions.length).to.equal(
         MAX_COLLATERAL_TOTAL.div(MAX_COLLATERAL_PER_SUB).toNumber()
       );
     });
@@ -370,7 +370,7 @@ describe("TradeManager", () => {
       const {
         ownerWallet,
         tradeTST1forETHHash,
-        tradeManager,
+        degenStreet,
         traderWallet,
         tradeSubscriberWallet,
         testToken1,
@@ -379,18 +379,18 @@ describe("TradeManager", () => {
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       const times = MIN_COLLATERAL_TOTAL.div(collateralAmount);
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount.mul(times));
-      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount.mul(times));
+      await testToken1.connect(tradeSubscriberWallet).approve(degenStreet.address, collateralAmount.mul(times));
 
-      const trade: TradeStructOutput = await tradeManager.getTrade(tradeTST1forETHHash);
+      const trade: TradeStructOutput = await degenStreet.getTrade(tradeTST1forETHHash);
 
       for (var i = 0; i < times.toNumber() - 1; i++) {
-        await tradeManager
+        await degenStreet
           .connect(tradeSubscriberWallet)
           .deposit(tradeTST1forETHHash, testToken1.address, collateralAmount);
       }
 
       await expect(
-        tradeManager.connect(tradeSubscriberWallet).deposit(tradeTST1forETHHash, testToken1.address, collateralAmount)
+        degenStreet.connect(tradeSubscriberWallet).deposit(tradeTST1forETHHash, testToken1.address, collateralAmount)
       )
         .to.emit(roboCop, "Activated")
         .withArgs(trade.ruleHash);
@@ -398,26 +398,26 @@ describe("TradeManager", () => {
 
     it("Should allow multiple subscriptions from multiple people", async function () {
       // here tradeSubscriberWaller and ownerWallet are both subscribing to the same trade
-      const { ownerWallet, tradeTST1forETHHash, tradeManager, traderWallet, tradeSubscriberWallet, testToken1 } =
+      const { ownerWallet, tradeTST1forETHHash, degenStreet, traderWallet, tradeSubscriberWallet, testToken1 } =
         await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
-      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount);
-      await testToken1.connect(ownerWallet).approve(tradeManager.address, collateralAmount);
+      await testToken1.connect(tradeSubscriberWallet).approve(degenStreet.address, collateralAmount);
+      await testToken1.connect(ownerWallet).approve(degenStreet.address, collateralAmount);
 
       await expect(
-        tradeManager.connect(tradeSubscriberWallet).deposit(tradeTST1forETHHash, testToken1.address, collateralAmount)
+        degenStreet.connect(tradeSubscriberWallet).deposit(tradeTST1forETHHash, testToken1.address, collateralAmount)
       )
-        .to.emit(tradeManager, "Deposit")
+        .to.emit(degenStreet, "Deposit")
         .withArgs(tradeTST1forETHHash, 0, testToken1.address, collateralAmount);
 
-      await expect(tradeManager.connect(ownerWallet).deposit(tradeTST1forETHHash, testToken1.address, collateralAmount))
-        .to.emit(tradeManager, "Deposit")
+      await expect(degenStreet.connect(ownerWallet).deposit(tradeTST1forETHHash, testToken1.address, collateralAmount))
+        .to.emit(degenStreet, "Deposit")
         .withArgs(tradeTST1forETHHash, 1, testToken1.address, collateralAmount);
     });
 
     it("Should revert if deposits take it beyond maxCollateralTotal", async function () {
-      const { ownerWallet, tradeTST1forETHHash, tradeManager, traderWallet, tradeSubscriberWallet, testToken1 } =
+      const { ownerWallet, tradeTST1forETHHash, degenStreet, traderWallet, tradeSubscriberWallet, testToken1 } =
         await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       const times = MAX_COLLATERAL_TOTAL.div(MAX_COLLATERAL_PER_SUB);
@@ -426,16 +426,16 @@ describe("TradeManager", () => {
         .transfer(tradeSubscriberWallet.address, collateralAmount.mul(times).add(MIN_COLLATERAL_PER_SUB));
       await testToken1
         .connect(tradeSubscriberWallet)
-        .approve(tradeManager.address, collateralAmount.mul(times).add(MIN_COLLATERAL_PER_SUB));
+        .approve(degenStreet.address, collateralAmount.mul(times).add(MIN_COLLATERAL_PER_SUB));
 
       for (var i = 0; i < times.toNumber(); i++) {
-        await tradeManager
+        await degenStreet
           .connect(tradeSubscriberWallet)
           .deposit(tradeTST1forETHHash, testToken1.address, collateralAmount);
       }
 
       await expect(
-        tradeManager
+        degenStreet
           .connect(tradeSubscriberWallet)
           .deposit(tradeTST1forETHHash, testToken1.address, MIN_COLLATERAL_PER_SUB)
       ).to.be.revertedWith("Max Collateral for Trade exceeded");
@@ -443,31 +443,31 @@ describe("TradeManager", () => {
 
     it("Should succeed in depositing ETH properly", async function () {
       // anything between MIN_COLLATERAL_PER_SUB and MAX_COLLATERAL_PER_SUB should work (inclusive)
-      const { ownerWallet, tradeETHforTST1Hash, tradeManager, traderWallet, tradeSubscriberWallet, testToken1 } =
+      const { ownerWallet, tradeETHforTST1Hash, degenStreet, traderWallet, tradeSubscriberWallet, testToken1 } =
         await loadFixture(deployValidTradeFixture);
 
       await expect(
-        tradeManager
+        degenStreet
           .connect(tradeSubscriberWallet)
           .deposit(tradeETHforTST1Hash, ethers.constants.AddressZero, MIN_COLLATERAL_PER_SUB, {
             value: MIN_COLLATERAL_PER_SUB,
           })
       )
-        .to.emit(tradeManager, "Deposit")
+        .to.emit(degenStreet, "Deposit")
         .withArgs(tradeETHforTST1Hash, 0, ethers.constants.AddressZero, MIN_COLLATERAL_PER_SUB);
 
       await expect(
-        tradeManager
+        degenStreet
           .connect(tradeSubscriberWallet)
           .deposit(tradeETHforTST1Hash, ethers.constants.AddressZero, MAX_COLLATERAL_PER_SUB, {
             value: MAX_COLLATERAL_PER_SUB,
           })
       )
-        .to.emit(tradeManager, "Deposit")
+        .to.emit(degenStreet, "Deposit")
         .withArgs(tradeETHforTST1Hash, 1, ethers.constants.AddressZero, MAX_COLLATERAL_PER_SUB);
 
       await expect(
-        tradeManager
+        degenStreet
           .connect(tradeSubscriberWallet)
           .deposit(
             tradeETHforTST1Hash,
@@ -476,7 +476,7 @@ describe("TradeManager", () => {
             { value: MIN_COLLATERAL_PER_SUB.add(MAX_COLLATERAL_PER_SUB).div(2) }
           )
       )
-        .to.emit(tradeManager, "Deposit")
+        .to.emit(degenStreet, "Deposit")
         .withArgs(
           tradeETHforTST1Hash,
           2,
@@ -491,7 +491,7 @@ describe("TradeManager", () => {
       const {
         ownerWallet,
         tradeTST1forETHHash,
-        tradeManager,
+        degenStreet,
         traderWallet,
         tradeSubscriberWallet,
         testToken1,
@@ -499,13 +499,13 @@ describe("TradeManager", () => {
       } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
-      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount);
+      await testToken1.connect(tradeSubscriberWallet).approve(degenStreet.address, collateralAmount);
 
-      await tradeManager
+      await degenStreet
         .connect(tradeSubscriberWallet)
         .deposit(tradeTST1forETHHash, testToken1.address, collateralAmount);
 
-      await expect(tradeManager.connect(ownerWallet).withdraw(tradeTST1forETHHash, 0)).to.be.revertedWith(
+      await expect(degenStreet.connect(ownerWallet).withdraw(tradeTST1forETHHash, 0)).to.be.revertedWith(
         "You're not the subscriber!"
       );
     });
@@ -514,7 +514,7 @@ describe("TradeManager", () => {
       const {
         ownerWallet,
         tradeTST1forETHHash,
-        tradeManager,
+        degenStreet,
         traderWallet,
         tradeSubscriberWallet,
         testToken1,
@@ -522,20 +522,20 @@ describe("TradeManager", () => {
       } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount.mul(2));
-      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount.mul(2));
+      await testToken1.connect(tradeSubscriberWallet).approve(degenStreet.address, collateralAmount.mul(2));
 
-      await tradeManager
+      await degenStreet
         .connect(tradeSubscriberWallet)
         .deposit(tradeTST1forETHHash, testToken1.address, collateralAmount);
 
       await expect(
-        tradeManager.connect(tradeSubscriberWallet).deposit(tradeTST1forETHHash, testToken1.address, collateralAmount)
+        degenStreet.connect(tradeSubscriberWallet).deposit(tradeTST1forETHHash, testToken1.address, collateralAmount)
       )
         .to.emit(roboCop, "Activated")
-        .withArgs((await tradeManager.getTrade(tradeTST1forETHHash)).ruleHash);
+        .withArgs((await degenStreet.getTrade(tradeTST1forETHHash)).ruleHash);
 
-      await expect(tradeManager.connect(tradeSubscriberWallet).withdraw(tradeTST1forETHHash, 0))
-        .to.emit(tradeManager, "Withdraw")
+      await expect(degenStreet.connect(tradeSubscriberWallet).withdraw(tradeTST1forETHHash, 0))
+        .to.emit(degenStreet, "Withdraw")
         .withArgs(tradeTST1forETHHash, 0, testToken1.address, collateralAmount);
     });
 
@@ -543,7 +543,7 @@ describe("TradeManager", () => {
       const {
         ownerWallet,
         tradeTST1forETHHash,
-        tradeManager,
+        degenStreet,
         traderWallet,
         tradeSubscriberWallet,
         testToken1,
@@ -551,16 +551,16 @@ describe("TradeManager", () => {
       } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
-      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount);
-      await tradeManager
+      await testToken1.connect(tradeSubscriberWallet).approve(degenStreet.address, collateralAmount);
+      await degenStreet
         .connect(tradeSubscriberWallet)
         .deposit(tradeTST1forETHHash, testToken1.address, collateralAmount);
 
-      await expect(tradeManager.connect(tradeSubscriberWallet).withdraw(tradeTST1forETHHash, 0))
-        .to.emit(tradeManager, "Withdraw")
+      await expect(degenStreet.connect(tradeSubscriberWallet).withdraw(tradeTST1forETHHash, 0))
+        .to.emit(degenStreet, "Withdraw")
         .withArgs(tradeTST1forETHHash, 0, testToken1.address, collateralAmount);
 
-      await expect(tradeManager.connect(tradeSubscriberWallet).withdraw(tradeTST1forETHHash, 0)).to.be.revertedWith(
+      await expect(degenStreet.connect(tradeSubscriberWallet).withdraw(tradeTST1forETHHash, 0)).to.be.revertedWith(
         "This subscription is not active!"
       );
     });
@@ -569,7 +569,7 @@ describe("TradeManager", () => {
       const {
         ownerWallet,
         tradeTST1forETHHash,
-        tradeManager,
+        degenStreet,
         traderWallet,
         tradeSubscriberWallet,
         testToken1,
@@ -577,17 +577,17 @@ describe("TradeManager", () => {
       } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
-      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount);
-      await tradeManager
+      await testToken1.connect(tradeSubscriberWallet).approve(degenStreet.address, collateralAmount);
+      await degenStreet
         .connect(tradeSubscriberWallet)
         .deposit(tradeTST1forETHHash, testToken1.address, collateralAmount);
 
-      await expect(tradeManager.connect(traderWallet).cancelTrade(tradeTST1forETHHash))
-        .to.emit(tradeManager, "Cancelled")
+      await expect(degenStreet.connect(traderWallet).cancelTrade(tradeTST1forETHHash))
+        .to.emit(degenStreet, "Cancelled")
         .withArgs(tradeTST1forETHHash);
 
-      await expect(tradeManager.connect(tradeSubscriberWallet).withdraw(tradeTST1forETHHash, 0))
-        .to.emit(tradeManager, "Withdraw")
+      await expect(degenStreet.connect(tradeSubscriberWallet).withdraw(tradeTST1forETHHash, 0))
+        .to.emit(degenStreet, "Withdraw")
         .withArgs(tradeTST1forETHHash, 0, testToken1.address, collateralAmount);
     });
 
@@ -595,7 +595,7 @@ describe("TradeManager", () => {
       const {
         ownerWallet,
         tradeTST1forETHHash,
-        tradeManager,
+        degenStreet,
         traderWallet,
         tradeSubscriberWallet,
         testToken1,
@@ -604,23 +604,23 @@ describe("TradeManager", () => {
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       const times = MIN_COLLATERAL_TOTAL.div(collateralAmount);
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount.mul(times));
-      await testToken1.connect(tradeSubscriberWallet).approve(tradeManager.address, collateralAmount.mul(times));
+      await testToken1.connect(tradeSubscriberWallet).approve(degenStreet.address, collateralAmount.mul(times));
 
-      const trade: TradeStructOutput = await tradeManager.getTrade(tradeTST1forETHHash);
+      const trade: TradeStructOutput = await degenStreet.getTrade(tradeTST1forETHHash);
 
       for (var i = 0; i < times.toNumber() - 1; i++) {
-        await tradeManager
+        await degenStreet
           .connect(tradeSubscriberWallet)
           .deposit(tradeTST1forETHHash, testToken1.address, collateralAmount);
       }
       await expect(
-        tradeManager.connect(tradeSubscriberWallet).deposit(tradeTST1forETHHash, testToken1.address, collateralAmount)
+        degenStreet.connect(tradeSubscriberWallet).deposit(tradeTST1forETHHash, testToken1.address, collateralAmount)
       )
         .to.emit(roboCop, "Activated")
         .withArgs(trade.ruleHash);
 
-      await expect(tradeManager.connect(tradeSubscriberWallet).withdraw(tradeTST1forETHHash, 0))
-        .to.emit(tradeManager, "Withdraw")
+      await expect(degenStreet.connect(tradeSubscriberWallet).withdraw(tradeTST1forETHHash, 0))
+        .to.emit(degenStreet, "Withdraw")
         .withArgs(tradeTST1forETHHash, 0, testToken1.address, collateralAmount)
         .to.emit(roboCop, "Deactivated")
         .withArgs(trade.ruleHash);
@@ -630,7 +630,7 @@ describe("TradeManager", () => {
       const {
         ownerWallet,
         tradeTST1forETHHash,
-        tradeManager,
+        degenStreet,
         traderWallet,
         tradeSubscriberWallet,
         testToken1,
@@ -644,39 +644,39 @@ describe("TradeManager", () => {
         .transfer(tradeSubscriberWallet.address, collateralAmount.mul(times).add(MIN_COLLATERAL_PER_SUB));
       await testToken1
         .connect(tradeSubscriberWallet)
-        .approve(tradeManager.address, collateralAmount.mul(times).add(MIN_COLLATERAL_PER_SUB));
+        .approve(degenStreet.address, collateralAmount.mul(times).add(MIN_COLLATERAL_PER_SUB));
 
       for (var i = 0; i < times.toNumber() - 1; i++) {
-        await tradeManager
+        await degenStreet
           .connect(tradeSubscriberWallet)
           .deposit(tradeTST1forETHHash, testToken1.address, collateralAmount);
       }
 
       await expect(
-        tradeManager.connect(tradeSubscriberWallet).deposit(tradeTST1forETHHash, testToken1.address, collateralAmount)
+        degenStreet.connect(tradeSubscriberWallet).deposit(tradeTST1forETHHash, testToken1.address, collateralAmount)
       ).to.emit(roboCop, "Activated");
 
       // throw in another trade with a separate amount to see if ratio of reward output is fine
-      await tradeManager
+      await degenStreet
         .connect(tradeSubscriberWallet)
         .deposit(tradeTST1forETHHash, testToken1.address, MIN_COLLATERAL_PER_SUB);
 
-      const trade: TradeStructOutput = await tradeManager.getTrade(tradeTST1forETHHash);
+      const trade: TradeStructOutput = await degenStreet.getTrade(tradeTST1forETHHash);
 
       // now a bot will snipe this, making it an EXECUTED rule
       await expect(roboCop.connect(botWallet).executeRule(trade.ruleHash)).to.emit(roboCop, "Executed");
 
       const rule: RuleStructOutput = await roboCop.getRule(trade.ruleHash);
 
-      await tradeManager.redeemOutputFromRule(tradeTST1forETHHash);
+      await degenStreet.redeemOutputFromRule(tradeTST1forETHHash);
 
       for (var i = 0; i < times.toNumber() + 1; i++) {
         var prev_balance = await ethers.provider.getBalance(trade.subscriptions[i].subscriber);
         var expected_output = trade.subscriptions[i].collateralAmount
           .mul(rule.outputAmount)
           .div(rule.totalCollateralAmount);
-        await expect(tradeManager.connect(tradeSubscriberWallet).withdraw(tradeTST1forETHHash, i))
-          .to.emit(tradeManager, "Withdraw")
+        await expect(degenStreet.connect(tradeSubscriberWallet).withdraw(tradeTST1forETHHash, i))
+          .to.emit(degenStreet, "Withdraw")
           .withArgs(tradeTST1forETHHash, i, ethers.constants.AddressZero, expected_output);
         var post_balance = await ethers.provider.getBalance(trade.subscriptions[i].subscriber);
 
@@ -689,7 +689,7 @@ describe("TradeManager", () => {
       const {
         ownerWallet,
         tradeETHforTST1Hash,
-        tradeManager,
+        degenStreet,
         traderWallet,
         tradeSubscriberWallet,
         testToken1,
@@ -700,40 +700,40 @@ describe("TradeManager", () => {
       const times = MIN_COLLATERAL_TOTAL.div(collateralAmount);
 
       for (var i = 0; i < times.toNumber() - 1; i++) {
-        await tradeManager
+        await degenStreet
           .connect(tradeSubscriberWallet)
           .deposit(tradeETHforTST1Hash, ethers.constants.AddressZero, collateralAmount, { value: collateralAmount });
       }
 
       await expect(
-        tradeManager
+        degenStreet
           .connect(tradeSubscriberWallet)
           .deposit(tradeETHforTST1Hash, ethers.constants.AddressZero, collateralAmount, { value: collateralAmount })
       ).to.emit(roboCop, "Activated");
 
       // throw in another trade with a separate amount to see if ratio of reward output is fine
-      await tradeManager
+      await degenStreet
         .connect(tradeSubscriberWallet)
         .deposit(tradeETHforTST1Hash, ethers.constants.AddressZero, MIN_COLLATERAL_PER_SUB, {
           value: MIN_COLLATERAL_PER_SUB,
         });
 
-      const trade: TradeStructOutput = await tradeManager.getTrade(tradeETHforTST1Hash);
+      const trade: TradeStructOutput = await degenStreet.getTrade(tradeETHforTST1Hash);
 
       // now a bot will snipe this, making it an EXECUTED rule
       await expect(roboCop.connect(botWallet).executeRule(trade.ruleHash)).to.emit(roboCop, "Executed");
 
       const rule: RuleStructOutput = await roboCop.getRule(trade.ruleHash);
 
-      await tradeManager.redeemOutputFromRule(tradeETHforTST1Hash);
+      await degenStreet.redeemOutputFromRule(tradeETHforTST1Hash);
 
       for (var i = 0; i < times.toNumber() + 1; i++) {
         var expected_output = trade.subscriptions[i].collateralAmount
           .mul(rule.outputAmount)
           .div(rule.totalCollateralAmount);
 
-        await expect(tradeManager.connect(tradeSubscriberWallet).withdraw(tradeETHforTST1Hash, i))
-          .to.emit(tradeManager, "Withdraw")
+        await expect(degenStreet.connect(tradeSubscriberWallet).withdraw(tradeETHforTST1Hash, i))
+          .to.emit(degenStreet, "Withdraw")
           .withArgs(tradeETHforTST1Hash, i, testToken1.address, expected_output);
       }
     });
