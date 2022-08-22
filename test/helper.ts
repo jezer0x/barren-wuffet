@@ -1,6 +1,6 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
-import { Contract } from "ethers";
+import { Contract, ContractReceipt, ContractTransaction } from "ethers";
 
 export async function testPauseAuthorization(contract: Contract, ownerWallet: SignerWithAddress, otherWallet: SignerWithAddress) {
     const ownerCon = contract.connect(ownerWallet);
@@ -22,4 +22,20 @@ export async function testPauseFunctionality(connectedContract: Contract, fnSuit
 
     const promisesPost = fnSuite();
     await Promise.all(promisesPost.map(p => expect(p).to.not.be.reverted));
+}
+
+
+export async function getHashFromEvent(fnPromise: Promise<ContractTransaction>, eventName: string, eventAddress: string, eventKey: string) {
+    const receipt: ContractReceipt = await tx(fnPromise);
+
+    const events = receipt.events;
+    // address isnt in the definition. need to double check why it's being  passed through
+    //@ts-ignore
+    const hashEvent = events?.find((x: { event: string; address: string }) => x.event == eventName && x.address == eventAddress);
+    const args = hashEvent?.args;
+    return (typeof args === "object") && args[eventKey];
+}
+
+export async function tx(fnPromise: Promise<ContractTransaction>): Promise<ContractReceipt> {
+    return (await fnPromise).wait();
 }

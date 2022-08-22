@@ -13,6 +13,7 @@ import {
   TST1_PRICE_IN_USD,
   ETH_PRICE_IN_TST1,
 } from "./Constants";
+import { getHashFromEvent, tx } from "./helper";
 import { expect } from "chai";
 
 export async function deployTestTokens() {
@@ -67,14 +68,16 @@ export async function createRule(
   triggers.map((t) => _whitelistService.addToWhitelist(trigWlHash, t.callee));
   actions.map((a) => _whitelistService.addToWhitelist(actWlHash, a.callee));
 
+  const p = _ruleExecutor.connect(wallet).createRule(triggers, actions, { value: DEFAULT_REWARD });
   // send 1 eth as reward.
-  const tx = await _ruleExecutor.connect(wallet).createRule(triggers, actions, { value: DEFAULT_REWARD });
-  const receipt2 = await tx.wait();
+  const ruleHash = getHashFromEvent(
+    _ruleExecutor.connect(wallet).createRule(triggers, actions, { value: DEFAULT_REWARD }),
+    "Created",
+    _ruleExecutor.address,
+    "ruleHash");
 
-  const ruleHash = receipt2.events?.find((x: { event: string }) => x.event == "Created")?.args?.ruleHash;
   if (activate) {
-    const tx2 = await _ruleExecutor.connect(wallet).activateRule(ruleHash);
-    await tx2.wait();
+    await tx(_ruleExecutor.connect(wallet).activateRule(ruleHash));
   }
 
   return ruleHash;
