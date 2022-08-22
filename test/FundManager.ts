@@ -14,6 +14,13 @@ import {
 import { SubscriptionConstraintsStruct } from "../typechain-types/contracts/funds/FundManager";
 import { BAD_FUND_HASH } from "./Constants";
 
+/** 
+ * These tests are organized by
+ * 1. Contract Deployment, settings 
+ * 2. Fund actions by status and transitions (FUND CREATION -> RAISING -> DEPLOYED -> <TRADING ACTIONS> -> <CLOSE> -> CLOSED). In each case we test the behaviour of all the functions
+ * 3. User stories testing the overall behaviour of the entire system
+ **/
+
 const ETH_PRICE_IN_USD = 1300 * 10 ** 8;
 const TST1_PRICE_IN_USD = 3 * 10 ** 8;
 const ERC20_DECIMALS = BigNumber.from(10).pow(18);
@@ -44,7 +51,7 @@ describe("FundManager", () => {
     });
   });
 
-  describe("Create fund", () => {
+  describe("Fund Status: Uninitialized", () => {
     it("should allow anyone to create a fund and emit Created event with the fund hash", async () => {
       const { fundManager, fundCreatorWallet } = await loadFixture(deployFundManagerFixture);
       const validConstraints = await makeSubConstraints();
@@ -90,9 +97,10 @@ describe("FundManager", () => {
         .to.emit(fundManager, "Created")
         .withArgs(anyValue);
     });
+
   });
 
-  describe("xx Input and Output Tokens", () => {
+  describe("Input and Output Token Settings", () => {
     it("Should return eth as the input token for any fund", async () => {
       // we only support ETH as the input token for now.
       // As this functionality is extended, this test needs to expand
@@ -131,30 +139,161 @@ describe("FundManager", () => {
     });
   });
 
-  describe.skip("Open and close positions", () => {});
+  describe.skip("Fund Status: Raising", () => {
+    it("should return fund status as RAISING once the fund is created, deadline has NOT been hit and amount raised is LESS than min amount", async () => {
+    });
 
-  describe.skip("Deposit", () => {});
+    it("Should allow anyone to deposit collateral token into a raising fund and emit a Deposit event", async () => { });
 
-  describe.skip("Withdraw", () => {});
+    it("Should revert if deposit is attempted on a fund where collateral limit is reached", async () => { });
 
-  describe.skip("Take Action", () => {});
+    it("Should allow the fund manager to deposit into their own fund", async () => { });
 
-  describe.skip("Status changes", () => {});
+    it("should allow withdrawing from a fund that's still raising", async () => {
 
-  describe.skip("Close fund", () => {
-    it("should revert if an unknown fund or closed fund is closed", () => {});
+    });
 
-    it("should close all open positions and emit a closed event if the fund is closed", () => {});
+    it("should not allow withdrawing if there have not been any deposits from this user", async () => {
+
+    });
+
+    it("should allow only the fund manager to close a Raising fund", async () => {
+
+    });
+
+    it("should revert if rewards withdrawal is attempted on a raising fund", async () => {
+
+    });
+
   });
 
+  describe.skip("Fund Actions on a non-existent fund", async () => {
+    // we are creating this function here and not earlier because we want to have a fund with deposits, and ensure these actions on a different fund dont interfere with the funds on the existing fund.
+    it("should revert if opening / closing positions in a non-existent fund", async () => {
+
+    });
+
+    it("should revert if performing actions on a non-existent fund", async () => {
+
+    });
+
+    it("should revert if withdrawing rewards from  a non-existent fund", async () => {
+
+    });
+
+    it("should revert if depositing / withdrawing from  a non-existent fund", async () => {
+
+    });
+
+    it("should revert on attempting to get status on a non-existent fund", async () => {
+    });
+
+    it("should revert if an unknown fund or closed fund is closed", () => {
+
+    });
+
+  })
+
+  describe.skip("Fund Status: Deployed", () => {
+    it("should return fund status as DEPLOYED once the fund is created, deadline has been hit (min collateral may or maynot be met)", async () => {
+      // Min collateral is not playing the role it is supposed to. This behaviour will likely be changed.
+    });
+
+    it("should return fund status as DEPLOYED if max collateral has been raised (deadline may or may not be met)", async () => {
+
+    });
+
+    it("should revert if deposit / withdrawal is attempted on a deployed fund", async () => {
+
+    });
+
+    it("should revert if rewards withdrawal is attempted on a deployed fund", async () => {
+
+    });
+
+
+    describe.skip("Open and close positions", () => {
+
+      it("Should not allow anyone other than the fund manager to open and  close positons", async () => {
+
+      });
+
+      it("should revert if a position is opened on an unknown trade hash", async () => { });
+
+      it("should transfer assets to trade manager when opening a positon", async () => {
+
+      });
+
+      it("should revert if attempting to close an already closed position", async () => { });
+
+    });
+
+    describe.skip("Take Action", () => {
+      it("Should not allow anyone other than the fund manager to take action", async () => {
+
+      });
+
+      it("should call 'perform' on the action when fund manager calls takeAction", async () => {
+        // ideally we use IAction to create a mock action, and then check if perform is called on the mock action.
+
+      })
+    });
+  });
+
+  describe.skip("Fund status: Closable", () => {
+    it("should return fund status as CLOSABLE once the lockin period has exceeded", async () => {
+
+    });
+
+    // this is when the fund can be closed, and hence wont accept any trades but it hasnt been closed yet.
+    // A fund manager can close such a fund, or it will be auto-closed on withdraw
+    // All other restrictions apply the same to closable and closed funds (so it makes sense to reuse the tests.)        
+    it("should revert if withdrawal is attempted on a closable fund", async () => {
+
+    });
+
+    it("should revert if rewards withdrawal is attempted on a closable fund", async () => {
+
+    });
+
+  });
+
+  describe.skip("Fund transition: Close Fund", () => {
+    it("should allow the fund manager to close a deployed fund (all open positions) and emit a Closed event if the fund is closable", async () => { });
+
+    it("should allow the fund manager to close a deployed fund with open positions that is NOT closable and emit Closed event", async () => { });
+
+    it("should not allow anyone other than the fund manager to close a closable fund", async () => {
+      // this might be made public in the future
+    });
+
+  });
+
+  describe.skip("Fund Status: Closed", () => {
+    it("should return fund status as CLOSED once the fund has been closed", async () => {
+
+    });
+
+    it("Should revert if deposit is attempted on a closable / closed fund", async () => { });
+
+    it("should revert if opening positions in a closable / closed fund", async () => {
+
+    });
+
+    it("should allow withdrawing multiple tokens from a closed fund", async () => {
+      // this might change. We plan to auto-convert all tokens to input token so that profit can be calculated accurately.
+
+    });
+
+  })
+
+
   describe.skip("Rewards", () => {
-    it("should return the correct value of reward to the fund manager", async () => {});
+    it("should return the correct value of reward to each fund manager, when multiple fund managers have pending rewards", async () => { });
 
-    it("should not allow access to rewards of a different fund manager", async () => {});
+    it("should not allow access to rewards from a fund that the manager doesnt own", async () => { });
 
-    it("should not allow multiple withdrawals of the reward", async () => {});
-
-    it("revert if withdrawal is attempted on a fund that has not been closed", async () => {});
+    it("should not allow multiple withdrawals of the reward", async () => { });
   });
 
   describe.skip("User Stories", () => {
