@@ -164,7 +164,7 @@ describe("BarrenWuffet", () => {
       await expect(barrenWuffet.connect(fundSubscriberWallet).deposit(
         jerkshireHash, constants.AddressZero, depositAmt,
         { value: depositAmt })).to.emit(barrenWuffet, "Deposit").withArgs(
-          anyValue, 0, constants.AddressZero, depositAmt
+          jerkshireHash, 0, constants.AddressZero, depositAmt
         );
     });
 
@@ -203,7 +203,30 @@ describe("BarrenWuffet", () => {
 
     });
 
-    it.skip("Should revert if deposit is attempted on a fund where collateral limit is reached", async () => { });
+    it("Should revert if deposit is attempted on a fund where collateral limit is reached", async () => {
+      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
+      // true should succeed, false should error
+      const deposits = [
+        [utils.parseEther("499"), true, 0],
+        [utils.parseEther("2"), false, 0],
+        [utils.parseEther("1"), true, 1],
+        [utils.parseEther("1"), false, 1]];
+
+      for (const deposit in deposits) {
+        const [amt, shouldSucceed, idx] = deposit;
+        const tx = await barrenWuffet.connect(fundSubscriberWallet).deposit(
+          jerkshireHash, constants.AddressZero, amt,
+          { value: amt });
+        if (shouldSucceed) {
+          await expect(tx).to.emit(barrenWuffet, "Deposit").withArgs(
+            jerkshireHash, idx, constants.AddressZero, amt
+          )
+        } else {
+          await expect(tx).to.be.revertedWithoutReason();
+        }
+      }
+
+    });
 
     it.skip("Should allow anyone to deposit collateral token into a raising fund and emit a Deposit event", async () => { });
 
