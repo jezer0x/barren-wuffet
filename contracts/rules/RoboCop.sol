@@ -136,7 +136,6 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
 
     function increaseReward(bytes32 ruleHash) public payable whenNotPaused ruleExists(ruleHash) {
         Rule storage rule = rules[ruleHash];
-        // can't add to executed / redeemed rule
         require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE);
         rule.reward += msg.value;
         rewardProviders[ruleHash][msg.sender] += msg.value;
@@ -144,7 +143,6 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
 
     function withdrawReward(bytes32 ruleHash) external whenNotPaused ruleExists(ruleHash) {
         Rule storage rule = rules[ruleHash];
-        // can only decrease reward if it's not been paid out already
         require(rule.status != RuleStatus.EXECUTED && rule.status != RuleStatus.REDEEMED, "Reward paid");
         uint256 balance = rewardProviders[ruleHash][msg.sender];
         require(balance > 0, "0 contribution");
@@ -243,7 +241,7 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
 
     function executeRule(bytes32 ruleHash) external whenNotPaused ruleExists(ruleHash) nonReentrant {
         Rule storage rule = rules[ruleHash];
-        _setRuleStatus(ruleHash, RuleStatus.EXECUTED);
+        _setRuleStatus(ruleHash, RuleStatus.EXECUTED); // This ensures only active rules can be executed
         (bool valid, uint256 triggerData) = _checkTriggers(rule.triggers);
         require(valid, "Trigger != Satisfied");
 
