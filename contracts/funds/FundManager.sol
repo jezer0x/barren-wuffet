@@ -40,6 +40,7 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
     enum FundStatus {
         RAISING,
         DEPLOYED,
+        CLOSABLE,
         CLOSED
     }
 
@@ -118,18 +119,26 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
         revert("Undefined: Funds may have multiple output tokens, determined only after it's closed.");
     }
 
-    function closeFund(bytes32 fundHash) external onlyFundManager(fundHash) nonReentrant whenNotPaused {
-        _closeFund(fundHash);
+    function closeFund(bytes32 fundHash) external nonReentrant whenNotPaused {
+        if (getStatus(fundHash) == FundStatus.CLOSABLE) {
+            _closeFund(fundHash);
+        } else if (funds[fundHash].manager == msg.sender) {
+            // closed prematurely by fundManager (so that people can withdraw their capital)
+            _closeFund(fundHash);
+            // TODO: block rewards since closed before fund.lockin
+        }
     }
 
     function _closeFund(bytes32 fundHash) internal {
         Fund storage fund = funds[fundHash];
+        fund.closed = true;
 
         for (uint256 i = 0; i < fund.openPositions.length; i++) {
             _closePosition(fundHash, i);
         }
 
         // TODO: potentially swap back all assets to 1 terminal asset
+        // How?
 
         emit Closed(fundHash);
     }
@@ -267,20 +276,18 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
         return (fund.subscriptions[subscriptionIdx].collateralAmount * fund.balances[token]) / fund.totalCollateral;
     }
 
-    function getStatus(bytes32 fundHash) public whenNotPaused returns (FundStatus) {
+    function getStatus(bytes32 fundHash) public view returns (FundStatus) {
         Fund storage fund = funds[fundHash];
         if (fund.closed) {
             return FundStatus.CLOSED;
-        } else if (block.timestamp >= fund.constraints.lockin) {
-            //TODO: icky mutation!
-            _closeFund(fundHash);
-            return FundStatus.CLOSED;
+        } else if (!fund.closed && block.timestamp >= fund.constraints.lockin) {
+            return FundStatus.CLOSABLE;
         } else if (
-            fund.totalCollateral >= fund.constraints.maxCollateralTotal || block.timestamp >= fund.constraints.deadline
+            fund.totalCollateral >= fund.constraints.minCollateralTotal || block.timestamp >= fund.constraints.deadline
         ) {
             return FundStatus.DEPLOYED;
         } else if (
-            fund.totalCollateral < fund.constraints.maxCollateralTotal && block.timestamp < fund.constraints.deadline
+            fund.totalCollateral < fund.constraints.minCollateralTotal && block.timestamp < fund.constraints.deadline
         ) {
             return FundStatus.RAISING;
         } else {
@@ -302,7 +309,9 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
 
         subscription.status = SubscriptionStatus.WITHDRAWN;
 
-        if (status == FundStatus.RAISING) {
+        if (status == FundStatus.CLOSABLE) {
+            revert("Call closeFund before withdrawing!");
+        } else if (status == FundStatus.RAISING) {
             _decreaseAssetBalance(fund, REConstants.ETH, subscription.collateralAmount);
             subscription.status = SubscriptionStatus.WITHDRAWN;
 
@@ -339,6 +348,8 @@ contract FundManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
     function withdrawReward(bytes32 fundHash) public onlyFundManager(fundHash) {
         require(getStatus(fundHash) == FundStatus.CLOSED, "Fund not closed");
         // TODO: get rewards from each asset in the fund.
+        // profit share? (if yes, input asset == output asset? How to ensure?)
+        // % of input instead? (don't have to tackle the problems above yet)
     }
 
     receive() external payable {}

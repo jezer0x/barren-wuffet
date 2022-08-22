@@ -5,6 +5,7 @@ import "../utils/subscriptions/SubscriptionTypes.sol";
 
 enum TradeStatus {
     ACTIVE,
+    REDEEMABLE,
     EXECUTED,
     CANCELLED
 }
