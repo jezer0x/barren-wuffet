@@ -91,11 +91,11 @@ describe("BarrenWuffet", () => {
         .withArgs(anyValue);
     });
 
-    it("should allow 2 different users to create funds with the same name", async () => {
+    it("should not allow 2 different users to create funds with the same name", async () => {
       const { barrenWuffet, marlieChungerWallet, fairyLinkWallet } = await loadFixture(deployBarrenWuffetFixture);
       const validConstraints = await makeSubConstraints();
       await barrenWuffet.connect(marlieChungerWallet).createFund("Jerkshire", validConstraints);
-      await expect(barrenWuffet.connect(marlieChungerWallet).createFund("Jerkshire", validConstraints))
+      await expect(barrenWuffet.connect(fairyLinkWallet).createFund("Jerkshire", validConstraints))
         .to.emit(barrenWuffet, "Created")
         .withArgs(anyValue);
     });
@@ -157,7 +157,7 @@ describe("BarrenWuffet", () => {
       testToken1, fundSubscriberWallet, fundSubscriber2Wallet
     };
   }
-  describe("xx Fund Status: Raising", () => {
+  describe("Fund Status: Raising", () => {
     it("Should allow anyone to deposit native token into a raising fund and emit a Deposit event", async () => {
       const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
       const depositAmt = utils.parseEther("11");
