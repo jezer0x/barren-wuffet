@@ -73,6 +73,7 @@ contract DegenStreet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
         address collateralToken,
         uint256 collateralAmount
     ) external payable whenNotPaused nonReentrant tradeExists(tradeHash) returns (uint256) {
+        require(getStatus(tradeHash) == TradeStatus.ACTIVE, "Trade not active");
         Trade storage trade = trades[tradeHash];
         _validateCollateral(tradeHash, collateralToken, collateralAmount);
         _collectCollateral(trade, collateralToken, collateralAmount);

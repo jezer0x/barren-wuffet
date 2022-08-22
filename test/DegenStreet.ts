@@ -484,6 +484,8 @@ describe("DegenStreet", () => {
           MIN_COLLATERAL_PER_SUB.add(MAX_COLLATERAL_PER_SUB).div(2)
         );
     });
+
+    it("Should only allow deposits in ACTIVE trades", async function () {});
   });
 
   describe("Subscriber withdrawing", () => {
