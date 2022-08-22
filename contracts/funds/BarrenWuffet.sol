@@ -129,9 +129,12 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
     }
 
     function closeFund(bytes32 fundHash) external nonReentrant whenNotPaused {
+        FundStatus status = getStatus(fundHash);
+
         if (getStatus(fundHash) == FundStatus.CLOSABLE) {
             _closeFund(fundHash);
-        } else if (funds[fundHash].manager == msg.sender) {
+        } else {
+            require(funds[fundHash].manager == msg.sender, "Only the fund manager can close a fund prematurely");
             // closed prematurely by barrenWuffet (so that people can withdraw their capital)
             _closeFund(fundHash);
             // TODO: block rewards since closed before fund.lockin

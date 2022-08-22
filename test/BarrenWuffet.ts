@@ -158,23 +158,22 @@ describe("BarrenWuffet", () => {
     };
   }
   describe("Fund Status: Raising", () => {
+    const validDeposit = utils.parseEther("11");
     it("Should allow anyone to deposit native token into a raising fund and emit a Deposit event", async () => {
       const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
-      const depositAmt = utils.parseEther("11");
       await expect(barrenWuffet.connect(fundSubscriberWallet).deposit(
-        jerkshireHash, constants.AddressZero, depositAmt,
-        { value: depositAmt })).to.emit(barrenWuffet, "Deposit").withArgs(
-          jerkshireHash, 0, constants.AddressZero, depositAmt
+        jerkshireHash, constants.AddressZero, validDeposit,
+        { value: validDeposit })).to.emit(barrenWuffet, "Deposit").withArgs(
+          jerkshireHash, 0, constants.AddressZero, validDeposit
         );
     });
 
     it("Should allow the fund manager to deposit native token into their own fund", async () => {
       const { barrenWuffet, jerkshireHash, chungerToContract } = await loadFixture(deployFundsFixture);
-      const depositAmt = utils.parseEther("11");
       await expect(chungerToContract.deposit(
-        jerkshireHash, constants.AddressZero, depositAmt,
-        { value: depositAmt })).to.emit(barrenWuffet, "Deposit").withArgs(
-          jerkshireHash, 0, constants.AddressZero, depositAmt
+        jerkshireHash, constants.AddressZero, validDeposit,
+        { value: validDeposit })).to.emit(barrenWuffet, "Deposit").withArgs(
+          jerkshireHash, 0, constants.AddressZero, validDeposit
         );
     });
 
@@ -188,9 +187,8 @@ describe("BarrenWuffet", () => {
 
       expect(await barrenWuffet.connect(botWallet).getStatus(crackBlockHash)).to.be.equal(FUND_STATUS.RAISING);
       // barren is depositing into their own fund
-      const depositAmt = utils.parseEther("11");
-      await chungerToContract.deposit(jerkshireHash, ethers.constants.AddressZero, depositAmt, { value: depositAmt });
-      await fairyToContract.deposit(jerkshireHash, ethers.constants.AddressZero, depositAmt, { value: depositAmt });
+      await chungerToContract.deposit(jerkshireHash, ethers.constants.AddressZero, validDeposit, { value: validDeposit });
+      await fairyToContract.deposit(jerkshireHash, ethers.constants.AddressZero, validDeposit, { value: validDeposit });
 
       expect(await barrenWuffet.connect(botWallet).getStatus(crackBlockHash)).to.be.equal(FUND_STATUS.RAISING);
 
@@ -216,7 +214,7 @@ describe("BarrenWuffet", () => {
     it("Should revert if deposit is attempted on a fund where collateral limit is reached", async () => {
       const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
       // true should succeed, false should error
-      const deposits = [
+      const deposits: [BigNumber, boolean, string | number][] = [
         [utils.parseEther("100"), true, 0],
         [utils.parseEther("100"), true, 1],
         [utils.parseEther("100"), true, 2],
@@ -232,9 +230,11 @@ describe("BarrenWuffet", () => {
           jerkshireHash, constants.AddressZero, amt,
           { value: amt });
         if (shouldSucceed) {
-          await expect(tx).to.emit(barrenWuffet, "Deposit").withArgs(
-            jerkshireHash, idOrError, constants.AddressZero, amt
-          )
+          await expect(tx).to
+            .changeEtherBalance(fundSubscriberWallet, amt.mul(-1))
+            .emit(barrenWuffet, "Deposit").withArgs(
+              jerkshireHash, idOrError, constants.AddressZero, amt
+            )
         } else {
           await expect(tx).to.be.revertedWith(idOrError.toString());
         }
@@ -242,58 +242,67 @@ describe("BarrenWuffet", () => {
     });
 
     it("should allow withdrawing from a fund that's still raising", async () => {
-      const { barrenWuffet, jerkshireHash, fundSubscriberWallet, fundSubscriber2Wallet } = await loadFixture(deployFundsFixture);
-      const depositAmt = utils.parseEther("11");
+      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
       await barrenWuffet.connect(fundSubscriberWallet).deposit(
-        jerkshireHash, constants.AddressZero, depositAmt,
-        { value: depositAmt });
-      const subscriptionId = 0; // how do i get this?
-      expect(await barrenWuffet.connect(fundSubscriberWallet).withdraw(
-        jerkshireHash, subscriptionId)).to.emit(
+        jerkshireHash, constants.AddressZero, validDeposit,
+        { value: validDeposit });
+      const subscriptionId = 0;
+      await expect(barrenWuffet.connect(fundSubscriberWallet).withdraw(
+        jerkshireHash, subscriptionId)).to
+        .changeEtherBalance(fundSubscriberWallet, validDeposit)
+        .emit(
           barrenWuffet, "Withdraw"
-        ).withArgs(jerkshireHash, subscriptionId, constants.AddressZero, depositAmt);
+        ).withArgs(jerkshireHash, subscriptionId, constants.AddressZero, validDeposit);
 
     });
 
     it("should not allow withdrawing if there have not been any deposits from this user", async () => {
       const { barrenWuffet, jerkshireHash, fundSubscriberWallet, fundSubscriber2Wallet } = await loadFixture(deployFundsFixture);
-      const depositAmt = utils.parseEther("11");
       await barrenWuffet.connect(fundSubscriberWallet).deposit(
-        jerkshireHash, constants.AddressZero, depositAmt,
-        { value: depositAmt });
+        jerkshireHash, constants.AddressZero, validDeposit,
+        { value: validDeposit });
       await expect(barrenWuffet.connect(fundSubscriber2Wallet).withdraw(
         jerkshireHash, 0)).to.be.rejectedWith("You're not the subscriber!");
     });
 
-    it("should allow only the fund manager to close a Raising fund", async () => {
-      const { barrenWuffet, jerkshireHash, crackBlockHash, chungerToContract, fairyToContract, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
-      const depositAmt = utils.parseEther("11");
-      // add some funds so we can confirm that even a fund with funds can be closed
-      // TODO what happens to the funds here?
+    it("should allow only the fund manager to close a Raising fund, and the subscriber to withdraw funds", async () => {
+      const { barrenWuffet, marlieChungerWallet, jerkshireHash, crackBlockHash, chungerToContract, fairyToContract, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
+      // add some funds so we can confirm that even a fund with funds can be closed      
       await barrenWuffet.connect(fundSubscriberWallet).deposit(
-        jerkshireHash, constants.AddressZero, depositAmt,
-        { value: depositAmt });
-      expect(await fairyToContract.closeFund(jerkshireHash)).to.be.revertedWithoutReason();
-      expect(await chungerToContract.closeFund(jerkshireHash)).to.emit(barrenWuffet, "Closed").withArgs(jerkshireHash);
+        jerkshireHash, constants.AddressZero, validDeposit,
+        { value: validDeposit });
+      await expect(fairyToContract.closeFund(jerkshireHash)).to.be.revertedWith("Only the fund manager can close a fund prematurely");
+      await expect(chungerToContract.closeFund(jerkshireHash)).to
+        .changeEtherBalances(
+          [marlieChungerWallet, barrenWuffet.address], [0, 0])
+        .emit(barrenWuffet, "Closed").withArgs(jerkshireHash);
+
+      await expect(barrenWuffet.connect(fundSubscriberWallet).withdraw(
+        jerkshireHash, 0)).to
+        .changeEtherBalance(fundSubscriberWallet, validDeposit)
+        .emit(barrenWuffet, "Withdraw").withArgs(
+          jerkshireHash, 0, constants.AddressZero, validDeposit
+        );
 
       // this is a clean fund
-      expect(await chungerToContract.closeFund(crackBlockHash)).to.be.revertedWithoutReason();
-      expect(await fairyToContract.closeFund(crackBlockHash)).to.emit(barrenWuffet, "Closed").withArgs(crackBlockHash);
+      await expect(chungerToContract.closeFund(crackBlockHash)).to.be.revertedWith("Only the fund manager can close a fund prematurely");
+      await expect(fairyToContract.closeFund(crackBlockHash)).to.emit(barrenWuffet, "Closed").withArgs(crackBlockHash);
     });
 
     it("should revert if rewards withdrawal is attempted on a raising fund", async () => {
-      const { barrenWuffet, jerkshireHash, crackBlockHash, chungerToContract, fairyToContract, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
-      const depositAmt = utils.parseEther("11");
+      const { barrenWuffet, jerkshireHash, chungerToContract, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
       await barrenWuffet.connect(fundSubscriberWallet).deposit(
-        jerkshireHash, constants.AddressZero, depositAmt,
-        { value: depositAmt });
+        jerkshireHash, constants.AddressZero, validDeposit,
+        { value: validDeposit });
       await expect(chungerToContract.withdrawReward(jerkshireHash)).to.be.revertedWith("Fund not closed");
 
     });
   });
 
   describe.skip("Fund Actions on a non-existent fund", async () => {
-    // we are creating this function here and not earlier because we want to have a fund with deposits, and ensure these actions on a different fund dont interfere with the funds on the existing fund.
+    // we are creating this test here and not earlier because we want to have a 
+    // fund with deposits, and ensure these actions on a different fund dont 
+    // interfere with the funds on the existing fund.
     it("should revert if opening / closing positions in a non-existent fund", async () => { });
 
     it("should revert if performing actions on a non-existent fund", async () => { });
