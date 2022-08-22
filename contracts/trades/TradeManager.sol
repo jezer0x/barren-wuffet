@@ -133,14 +133,14 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         Trade storage trade = trades[tradeHash];
         bytes32 ruleHash = trade.ruleHash;
         Rule memory rule = ruleExecutor.getRule(ruleHash);
-        if (rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE) {
-            return TradeStatus.ACTIVE;
-        } else if (rule.status == RuleStatus.CANCELLED) {
+        if (trade.cancelled) {
             return TradeStatus.CANCELLED;
-        } else if (rule.status == RuleStatus.REDEEMED) {
-            return TradeStatus.EXECUTED;
+        } else if (rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE) {
+            return TradeStatus.ACTIVE;
         } else if (rule.status == RuleStatus.EXECUTED) {
             return TradeStatus.REDEEMABLE;
+        } else if (rule.status == RuleStatus.REDEEMED) {
+            return TradeStatus.EXECUTED;
         } else {
             revert("State not covered!");
         }
@@ -203,7 +203,14 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
 
     function cancelTrade(bytes32 tradeHash) external whenNotPaused nonReentrant onlyTradeManager(tradeHash) {
         Trade storage trade = trades[tradeHash];
-        ruleExecutor.cancelRule(trade.ruleHash);
+        TradeStatus status = getStatus(tradeHash);
+        require(status == TradeStatus.ACTIVE, "Can't Cancel Trade");
+        trade.cancelled = true;
+        Rule memory rule = ruleExecutor.getRule(trade.ruleHash);
+        if (rule.status != RuleStatus.INACTIVE) {
+            ruleExecutor.deactivateRule(trade.ruleHash);
+        }
+        ruleExecutor.reduceCollateral(trade.ruleHash, rule.totalCollateralAmount);
         emit Cancelled(tradeHash);
     }
 

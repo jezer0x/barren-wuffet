@@ -275,7 +275,7 @@ describe("TradeManager", () => {
       // now a bot will snipe this, making it an EXECUTED rule
       await expect(ruleExecutor.connect(botWallet).executeRule(trade.ruleHash)).to.emit(ruleExecutor, "Executed");
       await expect(tradeManager.connect(traderWallet).cancelTrade(tradeTST1forETHHash)).to.be.revertedWith(
-        "Can't Cancel Rule"
+        "Can't Cancel Trade"
       );
     });
   });
@@ -668,6 +668,8 @@ describe("TradeManager", () => {
 
       const rule: RuleStructOutput = await ruleExecutor.getRule(trade.ruleHash);
 
+      await tradeManager.redeemOutputFromRule(tradeTST1forETHHash);
+
       for (var i = 0; i < times.toNumber() + 1; i++) {
         var prev_balance = await ethers.provider.getBalance(trade.subscriptions[i].subscriber);
         var expected_output = trade.subscriptions[i].collateralAmount
@@ -722,6 +724,8 @@ describe("TradeManager", () => {
       await expect(ruleExecutor.connect(botWallet).executeRule(trade.ruleHash)).to.emit(ruleExecutor, "Executed");
 
       const rule: RuleStructOutput = await ruleExecutor.getRule(trade.ruleHash);
+
+      await tradeManager.redeemOutputFromRule(tradeETHforTST1Hash);
 
       for (var i = 0; i < times.toNumber() + 1; i++) {
         var expected_output = trade.subscriptions[i].collateralAmount

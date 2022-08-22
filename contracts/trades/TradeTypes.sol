@@ -15,5 +15,5 @@ struct Trade {
     bytes32 ruleHash;
     SubscriptionConstraints constraints;
     Subscription[] subscriptions;
-    bool redeemedOutput;
+    bool cancelled;
 }

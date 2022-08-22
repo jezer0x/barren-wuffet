@@ -825,70 +825,6 @@ describe("RuleExecutor", () => {
     });
   });
 
-  describe("Cancel rule", () => {
-    it("should not allow anyone other than the rule owner to cancel the rule", async () => {
-      const { ruleHashToken, botWallet, ruleSubscriberWallet, ruleExecutor } = await loadFixture(
-        deployValidRuleFixture
-      );
-      await expect(ruleExecutor.connect(botWallet).cancelRule(ruleHashToken)).to.be.revertedWith("onlyRuleOwner");
-    });
-
-    it("should not allow executing the rule or adding collateral if the rule was cancelled", async () => {
-      const { ruleHashToken, botWallet, ruleSubscriberWallet, testToken1, ruleExecutor } = await loadFixture(
-        deployValidRuleFixture
-      );
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).cancelRule(ruleHashToken))
-        .to.emit(ruleExecutor, "Cancelled")
-        .withArgs(ruleHashToken);
-
-      await expect(ruleExecutor.connect(botWallet).executeRule(ruleHashToken)).to.be.revertedWith(
-        "Rule isn't Activated"
-      );
-      await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, 30);
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 30)).to.be.revertedWith(
-        "Can't add collateral"
-      );
-    });
-
-    it("should not allow cancelling rule if it's already executed", async () => {
-      const { ruleHashToken, ruleSubscriberWallet, botWallet, ruleExecutor } = await loadFixture(
-        deployValidRuleFixture
-      );
-      await expect(ruleExecutor.connect(botWallet).executeRule(ruleHashToken)).to.emit(ruleExecutor, "Executed");
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).cancelRule(ruleHashToken)).to.be.revertedWith(
-        "Can't Cancel Rule"
-      );
-    });
-    [0, 1].forEach((isActive) => {
-      it(
-        "should allow cancelling " + (isActive ? "active" : "inactive") + " rules, and return all added collateral",
-        async () => {
-          const { ruleHashToken, ruleSubscriberWallet, ruleExecutor, testToken1 } = await loadFixture(
-            deployValidRuleFixture
-          );
-          const collateralAmount = BigNumber.from(30).mul(ERC20_DECIMALS);
-          await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateralAmount);
-          await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
-          if (!isActive) {
-            await ruleExecutor.connect(ruleSubscriberWallet).deactivateRule(ruleHashToken);
-          } else {
-            // we activate the rules in the fixture so we dont need to explicitly activate them here.
-            // await ruleExecutor.connect(ruleSubscriberWallet).activateRule(ruleHashToken);
-          }
-
-          await expect(ruleExecutor.connect(ruleSubscriberWallet).cancelRule(ruleHashToken))
-            .to.changeTokenBalances(
-              testToken1,
-              [ruleSubscriberWallet, ruleExecutor],
-              [collateralAmount, BigNumber.from(0).sub(collateralAmount)]
-            )
-            .and.emit(ruleExecutor, "Cancelled")
-            .withArgs(ruleHashToken);
-        }
-      );
-    });
-  });
-
   describe("Activate / Deactivate rule", () => {
     it("Should not allow executing a rule that has been deactivated (after it was active)", async () => {
       const { ruleHashToken, ruleSubscriberWallet, botWallet, ruleExecutor, testToken1 } = await loadFixture(
@@ -930,39 +866,6 @@ describe("RuleExecutor", () => {
         )
         .and.emit(ruleExecutor, "Executed")
         .withArgs(ruleHashToken, botWallet.address);
-    });
-
-    [0, 1].forEach((isCancelled) => {
-      it(
-        "Should not allow activating / deactivating a " + (isCancelled ? "cancelled" : "executed") + " rule",
-        async () => {
-          const { ruleHashToken, ruleHashEth, ruleSubscriberWallet, botWallet, ruleExecutor, testToken1 } =
-            await loadFixture(deployValidRuleFixture);
-
-          // deactivate the eth rule, so we can try activating it later.
-          if (isCancelled) {
-            await ruleExecutor.connect(ruleSubscriberWallet).cancelRule(ruleHashToken);
-            await ruleExecutor.connect(ruleSubscriberWallet).deactivateRule(ruleHashEth);
-            // Eth should not be "activate"-able.
-            await ruleExecutor.connect(ruleSubscriberWallet).cancelRule(ruleHashEth);
-            // Now Eth should not be "activate"-able.
-          } else {
-            await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, 50);
-            await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 50);
-            await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, 50, { value: 50 });
-            await ruleExecutor.connect(botWallet).executeRule(ruleHashToken);
-            // No point deactivating eth here, because then we wont be able to execute it.
-            await ruleExecutor.connect(botWallet).executeRule(ruleHashEth);
-          }
-
-          await expect(ruleExecutor.connect(ruleSubscriberWallet).deactivateRule(ruleHashToken)).to.be.revertedWith(
-            "Can't Deactivate Rule"
-          );
-          await expect(ruleExecutor.connect(ruleSubscriberWallet).activateRule(ruleHashEth)).to.be.revertedWith(
-            "Can't Activate Rule"
-          );
-        }
-      );
     });
   });
 
@@ -1126,37 +1029,6 @@ describe("RuleExecutor", () => {
         DEFAULT_REWARD
       );
     });
-
-    it(`should not allow anyone to increase the reward if the rule has been cancelled`, async () => {
-      const { ruleHashEth, ruleSubscriberWallet, botWallet, ruleExecutor } = await loadFixture(deployValidRuleFixture);
-
-      await ruleExecutor.connect(ruleSubscriberWallet).cancelRule(ruleHashEth);
-
-      await expect(
-        ruleExecutor.connect(botWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD })
-      ).to.be.revertedWithoutReason();
-      await expect(
-        ruleExecutor.connect(ruleSubscriberWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD })
-      ).to.be.revertedWithoutReason();
-    });
-
-    it(`should allow users to remove the reward even if the rule has been cancelled`, async () => {
-      const { ruleHashEth, ruleSubscriberWallet, botWallet, ruleExecutor } = await loadFixture(deployValidRuleFixture);
-
-      await ruleExecutor.connect(botWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
-
-      await ruleExecutor.connect(ruleSubscriberWallet).cancelRule(ruleHashEth);
-
-      // we need to allow this, else you cant get the reward out of a cancelled contract.
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).withdrawReward(ruleHashEth)).to.changeEtherBalance(
-        ruleSubscriberWallet,
-        DEFAULT_REWARD
-      );
-      await expect(ruleExecutor.connect(botWallet).withdrawReward(ruleHashEth)).to.changeEtherBalance(
-        botWallet,
-        DEFAULT_REWARD
-      );
-    });
   });
 
   describe("Get Rule", () => {
@@ -1236,7 +1108,6 @@ describe("RuleExecutor", () => {
           reSub.withdrawReward(ruleHashEth),
           reSub.executeRule(ruleHashEth),
           reSub.redeemBalance(ruleHashEth),
-          reSub.cancelRule(ruleHashToken),
         ];
       };
 
