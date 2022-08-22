@@ -223,11 +223,14 @@ describe("DegenStreet", () => {
         "onlyManager"
       );
     });
-    it("Should succeed if manager wants to cancel trade", async function () {
+    it("Should succeed if manager wants to cancel trade, and give back proper reward", async function () {
       const { tradeTST1forETHHash, degenStreet, traderWallet } = await loadFixture(deployValidTradeFixture);
       await expect(degenStreet.connect(traderWallet).cancelTrade(tradeTST1forETHHash))
         .to.emit(degenStreet, "Cancelled")
         .withArgs(tradeTST1forETHHash);
+
+      // TODO: reward given back after cancellation should be equal to reward sent for MEV bots when setting up trade
+      expect(2).to.eq(1);
     });
     it("Should revert if trying to cancel non-existing trade", async function () {
       const { tradeTST1forETHHash, degenStreet, traderWallet } = await loadFixture(deployValidTradeFixture);
