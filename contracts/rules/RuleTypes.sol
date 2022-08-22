@@ -5,11 +5,11 @@ import "../actions/ActionTypes.sol";
 import "../triggers/TriggerTypes.sol";
 
 enum RuleStatus {
-    ACTIVE,
-    INACTIVE,
-    EXECUTED,
-    REDEEMED,
-    CANCELLED
+    ACTIVE, // Action can be executed when trigger is met, can add/withdraw collateral
+    INACTIVE, // Action can not be executed even if trigger is met, can add/withdraw collateral
+    EXECUTED, // Action has been executed, can withdraw output
+    REDEEMED, // Action has been executed, ouput has been withdrawn
+    CANCELLED // Rule has been cancelled, collateral can be withdrawn (or already has been withdrawn?)
 }
 
 struct Rule {
