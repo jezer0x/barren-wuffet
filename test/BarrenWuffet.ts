@@ -14,6 +14,7 @@ import {
 import { SubscriptionConstraintsStruct } from "../typechain-types/contracts/funds/BarrenWuffet";
 import { BAD_FUND_HASH, FUND_STATUS } from "./Constants";
 import { getHashFromEvent } from "./helper";
+import { isBytes } from "ethers/lib/utils";
 
 /**
  * These tests are organized by
@@ -140,51 +141,51 @@ describe("BarrenWuffet", () => {
   });
 
   async function deployFundsFixture() {
-    const { fundManager, fundCreatorWallet, fundCreator2Wallet, botWallet } = await loadFixture(deployFundManagerFixture);
+    const { barrenWuffet, fundCreatorWallet, fundCreator2Wallet, botWallet } = await loadFixture(deployBarrenWuffetFixture);
     const validConstraints = await makeSubConstraints();
 
-    // barren wuffet managers jerkshire
-    const barrenToContract = fundManager.connect(fundCreatorWallet);
-    const jerkshireHash = await getHashFromEvent(barrenToContract.createFund("Jerkshire Castaway", validConstraints), "Created", fundManager.address, "fundHash");
+    // marlie chunger managers jerkshire
+    const chungerToContract = barrenWuffet.connect(fundCreatorWallet);
+    const jerkshireHash = await getHashFromEvent(chungerToContract.createFund("Jerkshire Castaway", validConstraints), "Created", barrenWuffet.address, "fundHash");
 
     // fairy link manages crackblock
-    const fairyToContract = fundManager.connect(fundCreator2Wallet);
-    const crackBlockHash = await getHashFromEvent(fairyToContract.createFund("CrackBlock", validConstraints), "Created", fundManager.address, "fundHash");
+    const fairyToContract = barrenWuffet.connect(fundCreator2Wallet);
+    const crackBlockHash = await getHashFromEvent(fairyToContract.createFund("CrackBlock", validConstraints), "Created", barrenWuffet.address, "fundHash");
 
     return {
-      fundManager, fundCreatorWallet, fundCreator2Wallet, jerkshireHash, crackBlockHash, barrenToContract, fairyToContract, botWallet
+      barrenWuffet, fundCreatorWallet, fundCreator2Wallet, jerkshireHash, crackBlockHash, chungerToContract, fairyToContract, botWallet
     };
   }
-  describe.skip("Fund Status: Raising", () => {
+  describe("Fund Status: Raising", () => {
     it("should return fund status as RAISING once the fund is created, deadline has NOT been hit and amount raised is LESS than min amount", async () => {
-      const { fundManager, barrenToContract, fairyToContract, jerkshireHash, crackBlockHash, botWallet } = await loadFixture(deployFundsFixture);
+      const { barrenWuffet, chungerToContract, fairyToContract, jerkshireHash, crackBlockHash, botWallet } = await loadFixture(deployFundsFixture);
 
-      (await fundManager.connect(botWallet).getStatus(crackBlockHash)).is.equal(FUND_STATUS.RAISING);
+      expect(await barrenWuffet.connect(botWallet).getStatus(crackBlockHash)).to.be.equal(FUND_STATUS.RAISING);
       // barren is depositing into their own fund
-      barrenToContract.deposit(jerkshireHash, ethers.constants.AddressZero, utils.parseEther("11"));
+      chungerToContract.deposit(jerkshireHash, ethers.constants.AddressZero, utils.parseEther("11"));
       fairyToContract.deposit(jerkshireHash, ethers.constants.AddressZero, utils.parseEther("188"));
 
-      (await fundManager.connect(botWallet).getStatus(crackBlockHash)).is.equal(FUND_STATUS.RAISING);
+      expect(await barrenWuffet.connect(botWallet).getStatus(crackBlockHash)).to.be.equal(FUND_STATUS.RAISING);
 
     });
 
-    it("Should allow anyone to deposit collateral token into a raising fund and emit a Deposit event", async () => { });
+    it.skip("Should allow anyone to deposit collateral token into a raising fund and emit a Deposit event", async () => { });
 
-    it("Should revert if deposit is attempted on a fund where collateral limit is reached", async () => { });
+    it.skip("Should revert if deposit is attempted on a fund where collateral limit is reached", async () => { });
 
-    it("Should allow anyone to deposit collateral token into a raising fund and emit a Deposit event", async () => { });
+    it.skip("Should allow anyone to deposit collateral token into a raising fund and emit a Deposit event", async () => { });
 
-    it("Should revert if deposit is attempted on a fund where collateral limit is reached", async () => { });
+    it.skip("Should revert if deposit is attempted on a fund where collateral limit is reached", async () => { });
 
-    it("Should allow the fund manager to deposit into their own fund", async () => { });
+    it.skip("Should allow the fund manager to deposit into their own fund", async () => { });
 
-    it("should allow withdrawing from a fund that's still raising", async () => { });
+    it.skip("should allow withdrawing from a fund that's still raising", async () => { });
 
-    it("should not allow withdrawing if there have not been any deposits from this user", async () => { });
+    it.skip("should not allow withdrawing if there have not been any deposits from this user", async () => { });
 
-    it("should allow only the fund manager to close a Raising fund", async () => { });
+    it.skip("should allow only the fund manager to close a Raising fund", async () => { });
 
-    it("should revert if rewards withdrawal is attempted on a raising fund", async () => { });
+    it.skip("should revert if rewards withdrawal is attempted on a raising fund", async () => { });
   });
 
   describe.skip("Fund Actions on a non-existent fund", async () => {
