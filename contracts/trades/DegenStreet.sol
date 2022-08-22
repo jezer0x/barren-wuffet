@@ -212,6 +212,11 @@ contract DegenStreet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
             roboCop.deactivateRule(trade.ruleHash);
         }
         roboCop.reduceCollateral(trade.ruleHash, rule.totalCollateralAmount);
+        uint256 balance = roboCop.rewardProviders(trade.ruleHash, address(this));
+        if (balance > 0) {
+            require(roboCop.withdrawReward(trade.ruleHash) == balance); // just being defensive, should never be different
+        }
+        Utils._send(trade.manager, balance, REConstants.ETH); // send back the reward they provided when setting up the trade
         emit Cancelled(tradeHash);
     }
 
