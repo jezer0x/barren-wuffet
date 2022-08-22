@@ -40,17 +40,17 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
     /*
     Valid transitions (to -> from): 
 
-    RAISING -> {DEPLOYED, CLOSED}
-    DEPLOYED -> {CLOSED, CLOSABLE}
+    RAISING -> {DEPLOYED, CLOSED (premature)}
+    DEPLOYED -> {CLOSED (premature), CLOSABLE}
     CLOSABLE -> {CLOSED}
     CLOSED -> {}
     
     */
     enum FundStatus {
-        RAISING, // deposits possible, withdraws possible, manager can't move funds
+        RAISING, // deposits possible, withdraws possible (inputToken), manager can't move funds
         DEPLOYED, // deposits not possible, withdraws not possible, manager can move funds
         CLOSABLE, // deposits not possible, withdraws not possible, manager can't move funds
-        CLOSED // deposits not possible, withdraws possible, manager can take out rewards but not move funds
+        CLOSED // deposits not possible, withdraws possible (outputTokens), manager can take out rewards but not move funds
     }
 
     mapping(bytes32 => Fund) funds;
@@ -181,6 +181,9 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         uint256 amount
     ) external onlyDeployedFund(fundHash) onlyFundManager(fundHash) whenNotPaused nonReentrant {
         Fund storage fund = funds[fundHash];
+
+        // Assumes that the trade already exists on degenStreet to subscribe to
+        // if it is a novel trade, the fundManager will have to create it with an additional TX
         address inputToken = degenStreet.getInputToken(tradeHash);
         uint256 subIdx;
         _decreaseAssetBalance(fund, inputToken, amount);
@@ -251,16 +254,33 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         }
     }
 
+    function _validateCollateral(
+        bytes32 fundHash,
+        address collateralToken,
+        uint256 collateralAmount
+    ) private view {
+        // For now we'll only allow subscribing with ETH
+        require(collateralToken == REConstants.ETH);
+        require(collateralAmount == msg.value);
+
+        Fund storage fund = funds[fundHash];
+        SubscriptionConstraints memory constraints = fund.constraints;
+        require(constraints.minCollateralPerSub <= collateralAmount, "Insufficient Collateral for Subscription");
+        require(constraints.maxCollateralPerSub >= collateralAmount, "Max Collateral for Subscription exceeded");
+        require(
+            constraints.maxCollateralTotal >= (fund.totalCollateral + collateralAmount),
+            "Max Collateral for Fund exceeded"
+        );
+        require(block.timestamp < constraints.deadline);
+    }
+
     function deposit(
         bytes32 fundHash,
         address collateralToken,
         uint256 collateralAmount
     ) external payable fundExists(fundHash) whenNotPaused returns (uint256) {
-        // For now we'll only allow subscribing with ETH
-        require(collateralToken == REConstants.ETH);
-        require(collateralAmount == msg.value);
-
-        // TODO: check against all constraints here
+        require(getStatus(fundHash) == FundStatus.RAISING, "Fund is not raising");
+        _validateCollateral(fundHash, collateralToken, collateralAmount);
 
         Fund storage fund = funds[fundHash];
 
