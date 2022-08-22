@@ -129,7 +129,7 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         }
     }
 
-    function getStatus(bytes32 tradeHash) public whenNotPaused tradeExists(tradeHash) returns (TradeStatus) {
+    function getStatus(bytes32 tradeHash) public view tradeExists(tradeHash) returns (TradeStatus) {
         Trade storage trade = trades[tradeHash];
         bytes32 ruleHash = trade.ruleHash;
         Rule memory rule = ruleExecutor.getRule(ruleHash);
@@ -137,13 +137,10 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
             return TradeStatus.ACTIVE;
         } else if (rule.status == RuleStatus.CANCELLED) {
             return TradeStatus.CANCELLED;
-        } else if (trade.redeemedOutput || rule.status == RuleStatus.REDEEMED) {
+        } else if (rule.status == RuleStatus.REDEEMED) {
             return TradeStatus.EXECUTED;
         } else if (rule.status == RuleStatus.EXECUTED) {
-            // TODO: this is icky!
-            trade.redeemedOutput = true;
-            ruleExecutor.redeemBalance(ruleHash);
-            return TradeStatus.EXECUTED;
+            return TradeStatus.REDEEMABLE;
         } else {
             revert("State not covered!");
         }
@@ -185,6 +182,8 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         } else if (status == TradeStatus.CANCELLED) {
             token = getInputToken(tradeHash);
             balance = subscription.collateralAmount;
+        } else if (status == TradeStatus.REDEEMABLE) {
+            revert("Call redeemOutputFromRule first");
         } else {
             revert("State not covered!");
         }
@@ -206,6 +205,11 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         Trade storage trade = trades[tradeHash];
         ruleExecutor.cancelRule(trade.ruleHash);
         emit Cancelled(tradeHash);
+    }
+
+    function redeemOutputFromRule(bytes32 tradeHash) external tradeExists(tradeHash) {
+        Trade storage trade = trades[tradeHash];
+        ruleExecutor.redeemBalance(trade.ruleHash);
     }
 
     function getTradeHash(address manager, bytes32 ruleHash) public pure returns (bytes32) {
