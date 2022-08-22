@@ -3,6 +3,14 @@ pragma solidity ^0.8.9;
 
 import "../utils/subscriptions/SubscriptionTypes.sol";
 
+/*
+Valid Transitions (to -> from): 
+
+ACTIVE -> {REDEEMABLE, CANCELLED}
+REDEEMABLE -> {EXECUTED}
+EXECUTED -> {}
+CANCELLED -> {}
+*/
 enum TradeStatus {
     ACTIVE, // Deposits possible, withdraws possible, Rule has not been executed
     REDEEMABLE, // Deposits not possible, withdraws not possible, Rule has been executed but someone needs to call redeemRuleOuput
