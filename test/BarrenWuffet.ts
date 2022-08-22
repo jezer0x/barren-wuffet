@@ -312,6 +312,46 @@ describe("BarrenWuffet", () => {
       await expect(chungerToContract.withdrawReward(jerkshireHash)).to.be.revertedWith("Fund not closed");
 
     });
+
+    it("should return fund status as DEPLOYED once the fund is created, deadline has been hit (min collateral may or maynot be met)", async () => {
+      // Min collateral is not playing the role it is supposed to. This behaviour will likely be changed.
+      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
+      await barrenWuffet.connect(fundSubscriberWallet).deposit(
+        jerkshireHash, constants.AddressZero, validDeposit,
+        { value: validDeposit });
+
+      await time.increaseTo(jerkshireConstraints.deadline);
+
+      expect(await barrenWuffet.connect(fundSubscriberWallet).getStatus(
+        jerkshireHash)).to.equal(FUND_STATUS.DEPLOYED);
+
+    });
+
+    it("xx should return fund status as DEPLOYED if max collateral has been raised (deadline may or may not be met)", async () => {
+      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet, fundSubscriber2Wallet } = await loadFixture(deployFundsFixture);
+      const maxC = jerkshireConstraints.maxCollateralTotal;
+      const depositAmt = jerkshireConstraints.maxCollateralPerSub;
+      let d = BigNumber.from(depositAmt)
+      for (; d.lte(maxC); d = d.add(depositAmt)) {
+        await barrenWuffet.connect(fundSubscriberWallet).deposit(
+          jerkshireHash, constants.AddressZero, depositAmt,
+          { value: depositAmt });
+      }
+
+      if (d.lt(maxC)) {
+        const remDeposit = maxC.sub(d);
+        if (remDeposit.lt(jerkshireConstraints.minCollateralPerSub)) {
+          expect.fail(`Cant hit max collateral. Stuck at ${d.toString()} Pls fix this test`)
+        }
+        await barrenWuffet.connect(fundSubscriber2Wallet).deposit(
+          jerkshireHash, constants.AddressZero, remDeposit,
+          { value: remDeposit });
+      }
+
+      expect(await barrenWuffet.connect(fundSubscriberWallet).getStatus(
+        jerkshireHash)).to.equal(FUND_STATUS.DEPLOYED);
+    });
+
   });
 
   describe.skip("Fund Actions on a non-existent fund", async () => {
@@ -332,12 +372,6 @@ describe("BarrenWuffet", () => {
   });
 
   describe.skip("Fund Status: Deployed", () => {
-    it("should return fund status as DEPLOYED once the fund is created, deadline has been hit (min collateral may or maynot be met)", async () => {
-      // Min collateral is not playing the role it is supposed to. This behaviour will likely be changed.
-    });
-
-    it("should return fund status as DEPLOYED if max collateral has been raised (deadline may or may not be met)", async () => { });
-
     it("should revert if deposit / withdrawal is attempted on a deployed fund", async () => { });
 
     it("should revert if rewards withdrawal is attempted on a deployed fund", async () => { });
