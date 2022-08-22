@@ -21,7 +21,6 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
     event Created(bytes32 indexed ruleHash);
     event Activated(bytes32 indexed ruleHash);
     event Deactivated(bytes32 indexed ruleHash);
-    event Cancelled(bytes32 indexed ruleHash);
     event Executed(bytes32 indexed ruleHash, address executor);
     event Redeemed(bytes32 indexed ruleHash);
     event CollateralAdded(bytes32 indexed ruleHash, uint256 amt);
@@ -137,7 +136,7 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
 
     function increaseReward(bytes32 ruleHash) public payable whenNotPaused ruleExists(ruleHash) {
         Rule storage rule = rules[ruleHash];
-        // can't add to cancelled / executed / redeemed rule
+        // can't add to executed / redeemed rule
         require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE);
         rule.reward += msg.value;
         rewardProviders[ruleHash][msg.sender] += msg.value;
@@ -191,10 +190,9 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
     /*
         Valid State Transitions: (from) => (to)
 
-        ACTIVE => {inactive, cancelled, executed}
-        INACTIVE => {active, cancelled}
+        ACTIVE => {inactive, executed}
+        INACTIVE => {active}
         EXECUTED => {redeemed}
-        CANCELLED => {} 
         REDEEMED => {}
     */
     function _setRuleStatus(bytes32 ruleHash, RuleStatus newStatus) private {
@@ -205,9 +203,6 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         } else if (newStatus == RuleStatus.INACTIVE) {
             require(rule.status == RuleStatus.ACTIVE, "Can't Deactivate Rule");
             emit Deactivated(ruleHash);
-        } else if (newStatus == RuleStatus.CANCELLED) {
-            require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE, "Can't Cancel Rule");
-            emit Cancelled(ruleHash);
         } else if (newStatus == RuleStatus.EXECUTED) {
             require(rule.status == RuleStatus.ACTIVE, "Rule isn't Activated");
             emit Executed(ruleHash, msg.sender);
@@ -227,12 +222,6 @@ contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
 
     function deactivateRule(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) {
         _setRuleStatus(ruleHash, RuleStatus.INACTIVE);
-    }
-
-    function cancelRule(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) nonReentrant {
-        Rule storage rule = rules[ruleHash];
-        _setRuleStatus(ruleHash, RuleStatus.CANCELLED);
-        Utils._send(rule.owner, rule.totalCollateralAmount, getInputToken(ruleHash));
     }
 
     function _getRuleHash(Trigger[] calldata triggers, Action[] calldata actions) private view returns (bytes32) {
