@@ -14,7 +14,7 @@ import { expect } from "chai";
 import { ethers, network, deployments } from "hardhat";
 import { BigNumber, constants, Contract, utils } from "ethers";
 import {
-  setupRuleExecutor,
+  setupRoboCop,
   makePassingTrigger,
   makeFailingTrigger,
   makeSwapAction,
@@ -33,53 +33,37 @@ import {
   ETH_PRICE_IN_TST1_PARAM,
   GT,
 } from "./Constants";
-import { RuleStructOutput } from "../typechain-types/contracts/rules/RuleExecutor";
+import { RuleStructOutput } from "../typechain-types/contracts/rules/RoboCop";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { testPauseAuthorization, testPauseFunctionality } from "./helper";
 
-describe("RuleExecutor", () => {
-  async function deployRuleExecutorFixture() {
+describe("RoboCop", () => {
+  async function deployRoboCopFixture() {
     await deployments.fixture();
-    return await setupRuleExecutor();
+    return await setupRoboCop();
   }
 
   describe("Deployment", () => {
     it("Should set the right owner", async function () {
-      const { ruleExecutor, ownerWallet } = await loadFixture(deployRuleExecutorFixture);
+      const { roboCop, ownerWallet } = await loadFixture(deployRoboCopFixture);
 
-      expect(await ruleExecutor.owner()).to.equal(ownerWallet.address);
+      expect(await roboCop.owner()).to.equal(ownerWallet.address);
     });
   });
 
   describe("Add Rule By Anyone", () => {
     it("Should revert if no trigger is specified", async () => {
-      const {
-        ruleExecutor,
-        swapUniSingleAction,
-        ruleMakerWallet,
-        testToken1,
-        whitelistService,
-        trigWlHash,
-        actWlHash,
-      } = await loadFixture(deployRuleExecutorFixture);
+      const { roboCop, swapUniSingleAction, ruleMakerWallet, testToken1, whitelistService, trigWlHash, actWlHash } =
+        await loadFixture(deployRoboCopFixture);
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
       whitelistService.disableWhitelist(trigWlHash);
       whitelistService.disableWhitelist(actWlHash);
-      await expect(
-        ruleExecutor.connect(ruleMakerWallet).createRule([], [executableAction])
-      ).to.be.revertedWithoutReason();
+      await expect(roboCop.connect(ruleMakerWallet).createRule([], [executableAction])).to.be.revertedWithoutReason();
     });
 
     it("Should revert if trigger doesnt have a callee with validateTrigger", async () => {
-      const {
-        ruleExecutor,
-        swapUniSingleAction,
-        ruleMakerWallet,
-        testToken1,
-        whitelistService,
-        trigWlHash,
-        actWlHash,
-      } = await loadFixture(deployRuleExecutorFixture);
+      const { roboCop, swapUniSingleAction, ruleMakerWallet, testToken1, whitelistService, trigWlHash, actWlHash } =
+        await loadFixture(deployRoboCopFixture);
 
       const badTrigger = makePassingTrigger(constants.AddressZero); // passing trigger with bad address
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
@@ -87,20 +71,13 @@ describe("RuleExecutor", () => {
       whitelistService.disableWhitelist(trigWlHash);
       whitelistService.disableWhitelist(actWlHash);
       await expect(
-        ruleExecutor.connect(ruleMakerWallet).createRule([badTrigger], [executableAction])
+        roboCop.connect(ruleMakerWallet).createRule([badTrigger], [executableAction])
       ).to.be.revertedWithoutReason();
     });
 
     it("Should revert if validateTrigger on trigger does not return true", async () => {
-      const {
-        ruleExecutor,
-        swapUniSingleAction,
-        ruleMakerWallet,
-        testToken1,
-        whitelistService,
-        trigWlHash,
-        actWlHash,
-      } = await loadFixture(deployRuleExecutorFixture);
+      const { roboCop, swapUniSingleAction, ruleMakerWallet, testToken1, whitelistService, trigWlHash, actWlHash } =
+        await loadFixture(deployRoboCopFixture);
 
       const BadPriceTrigger = await ethers.getContractFactory("BadPriceTrigger");
       const badPriceTrigger = await BadPriceTrigger.deploy();
@@ -110,9 +87,9 @@ describe("RuleExecutor", () => {
 
       whitelistService.disableWhitelist(trigWlHash);
       whitelistService.disableWhitelist(actWlHash);
-      await expect(
-        ruleExecutor.connect(ruleMakerWallet).createRule([badTrigger], [executableAction])
-      ).to.be.revertedWith("Invalid Trigger");
+      await expect(roboCop.connect(ruleMakerWallet).createRule([badTrigger], [executableAction])).to.be.revertedWith(
+        "Invalid Trigger"
+      );
     });
 
     // We dont need to check that validate is a view fn. solidity enforces that
@@ -120,7 +97,7 @@ describe("RuleExecutor", () => {
 
     it("Should revert if no action is specified", async () => {
       const {
-        ruleExecutor,
+        roboCop,
         swapUniSingleAction,
         priceTrigger,
         ruleMakerWallet,
@@ -128,18 +105,16 @@ describe("RuleExecutor", () => {
         whitelistService,
         trigWlHash,
         actWlHash,
-      } = await loadFixture(deployRuleExecutorFixture);
+      } = await loadFixture(deployRoboCopFixture);
       const passingTrigger = makePassingTrigger(priceTrigger.address);
       whitelistService.disableWhitelist(trigWlHash);
       whitelistService.disableWhitelist(actWlHash);
-      await expect(
-        ruleExecutor.connect(ruleMakerWallet).createRule([passingTrigger], [])
-      ).to.be.revertedWithoutReason();
+      await expect(roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [])).to.be.revertedWithoutReason();
     });
 
     it("Should revert if action doesnt have a callee with validate", async () => {
-      const { ruleExecutor, priceTrigger, ruleMakerWallet, testToken1, whitelistService, trigWlHash, actWlHash } =
-        await loadFixture(deployRuleExecutorFixture);
+      const { roboCop, priceTrigger, ruleMakerWallet, testToken1, whitelistService, trigWlHash, actWlHash } =
+        await loadFixture(deployRoboCopFixture);
 
       const passingTrigger = makePassingTrigger(priceTrigger.address);
       const badAction = makeSwapAction(constants.AddressZero, testToken1.address);
@@ -147,7 +122,7 @@ describe("RuleExecutor", () => {
       whitelistService.disableWhitelist(actWlHash);
 
       await expect(
-        ruleExecutor.connect(ruleMakerWallet).createRule([passingTrigger], [badAction])
+        roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [badAction])
       ).to.be.revertedWithoutReason();
     });
 
@@ -159,47 +134,33 @@ describe("RuleExecutor", () => {
     // if the interface is used.
 
     it("Should revert if trigger has not been whitelisted", async () => {
-      const {
-        ruleExecutor,
-        swapUniSingleAction,
-        priceTrigger,
-        ruleMakerWallet,
-        testToken1,
-        whitelistService,
-        trigWlHash,
-      } = await loadFixture(deployRuleExecutorFixture);
+      const { roboCop, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1, whitelistService, trigWlHash } =
+        await loadFixture(deployRoboCopFixture);
       const passingTrigger = makePassingTrigger(priceTrigger.address);
       whitelistService.removeFromWhitelist(trigWlHash, priceTrigger.address);
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
 
       await expect(
-        ruleExecutor.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction])
+        roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction])
       ).to.be.revertedWith("Unauthorized Trigger");
     });
 
     it("Should revert if action has not been whitelisted", async () => {
-      const {
-        ruleExecutor,
-        swapUniSingleAction,
-        priceTrigger,
-        ruleMakerWallet,
-        testToken1,
-        whitelistService,
-        actWlHash,
-      } = await loadFixture(deployRuleExecutorFixture);
+      const { roboCop, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1, whitelistService, actWlHash } =
+        await loadFixture(deployRoboCopFixture);
 
       const passingTrigger = makeFailingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
       whitelistService.removeFromWhitelist(actWlHash, swapUniSingleAction.address);
 
       await expect(
-        ruleExecutor.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction])
+        roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction])
       ).to.be.revertedWith("Unauthorized Action");
     });
 
     it("Should emit Created event, and consume ETH reward if Trigger and Action are valid", async () => {
       const {
-        ruleExecutor,
+        roboCop,
         swapUniSingleAction,
         priceTrigger,
         ruleMakerWallet,
@@ -207,36 +168,34 @@ describe("RuleExecutor", () => {
         whitelistService,
         trigWlHash,
         actWlHash,
-      } = await loadFixture(deployRuleExecutorFixture);
+      } = await loadFixture(deployRoboCopFixture);
 
       const passingTrigger = makeFailingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
 
       const reward = utils.parseEther("0.02");
-      await expect(
-        ruleExecutor.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction], { value: reward })
-      )
-        .to.changeEtherBalances([ruleExecutor, ruleMakerWallet], [reward, BigNumber.from(0).sub(reward)])
-        .and.to.emit(ruleExecutor, "Created")
+      await expect(roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction], { value: reward }))
+        .to.changeEtherBalances([roboCop, ruleMakerWallet], [reward, BigNumber.from(0).sub(reward)])
+        .and.to.emit(roboCop, "Created")
         .withArgs(anyValue);
     });
 
     it("creates rule without reward", async () => {
-      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1 } = await loadFixture(
-        deployRuleExecutorFixture
+      const { roboCop, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1 } = await loadFixture(
+        deployRoboCopFixture
       );
 
       const failingTrigger = makeFailingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
-      await expect(ruleExecutor.connect(ruleMakerWallet).createRule([failingTrigger], [executableAction])).to.emit(
-        ruleExecutor,
+      await expect(roboCop.connect(ruleMakerWallet).createRule([failingTrigger], [executableAction])).to.emit(
+        roboCop,
         "Created"
       );
     });
 
     it("If trigger, action, user, block are the same, ruleHash should be the same -> making the second creation fail", async () => {
-      const { ruleExecutor, swapUniSingleAction, priceTrigger, ruleMakerWallet, ruleSubscriberWallet, testToken1 } =
-        await loadFixture(deployRuleExecutorFixture);
+      const { roboCop, swapUniSingleAction, priceTrigger, ruleMakerWallet, ruleSubscriberWallet, testToken1 } =
+        await loadFixture(deployRoboCopFixture);
 
       const passingTrigger = makePassingTrigger(priceTrigger.address);
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
@@ -244,10 +203,10 @@ describe("RuleExecutor", () => {
       var rule1Hash: string;
 
       await network.provider.send("evm_setAutomine", [false]);
-      const tx1 = await ruleExecutor.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction]);
-      const tx2 = await ruleExecutor.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction]);
+      const tx1 = await roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction]);
+      const tx2 = await roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction]);
       // different user, so this 3rd rule should work
-      const tx3 = await ruleExecutor.connect(ruleSubscriberWallet).createRule([passingTrigger], [executableAction]);
+      const tx3 = await roboCop.connect(ruleSubscriberWallet).createRule([passingTrigger], [executableAction]);
       await network.provider.send("evm_mine", []);
       await network.provider.send("evm_setAutomine", [true]);
 
@@ -276,7 +235,7 @@ describe("RuleExecutor", () => {
 
     it("Should be able to create multiple unique rules with the same trigger, action, constraints and a different user", async () => {
       const {
-        ruleExecutor,
+        roboCop,
         swapUniSingleAction,
         priceTrigger,
         ruleMakerWallet,
@@ -286,7 +245,7 @@ describe("RuleExecutor", () => {
         whitelistService,
         trigWlHash,
         actWlHash,
-      } = await loadFixture(deployRuleExecutorFixture);
+      } = await loadFixture(deployRoboCopFixture);
 
       const ruleMakerWallet2 = botWallet;
 
@@ -294,15 +253,15 @@ describe("RuleExecutor", () => {
       const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
 
       var rule1Hash: string;
-      await expect(ruleExecutor.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction]))
-        .to.emit(ruleExecutor, "Created")
+      await expect(roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction]))
+        .to.emit(roboCop, "Created")
         .withArgs((_hash: string) => {
           rule1Hash = _hash;
           return true;
         });
 
-      await expect(ruleExecutor.connect(ruleMakerWallet2).createRule([passingTrigger], [executableAction]))
-        .to.emit(ruleExecutor, "Created")
+      await expect(roboCop.connect(ruleMakerWallet2).createRule([passingTrigger], [executableAction]))
+        .to.emit(roboCop, "Created")
         .withArgs((_hash2: string) => rule1Hash != _hash2);
     });
   });
@@ -310,7 +269,7 @@ describe("RuleExecutor", () => {
   describe("Check Rule", () => {
     it("should return false if the checkTrigger on the rule denoted by ruleHash returns false", async () => {
       const {
-        ruleExecutor,
+        roboCop,
         swapUniSingleAction,
         priceTrigger,
         ruleMakerWallet,
@@ -319,7 +278,7 @@ describe("RuleExecutor", () => {
         whitelistService,
         trigWlHash,
         actWlHash,
-      } = await loadFixture(deployRuleExecutorFixture);
+      } = await loadFixture(deployRoboCopFixture);
 
       const failingTrigger = makeFailingTrigger(priceTrigger.address);
       const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, constants.AddressZero);
@@ -327,13 +286,13 @@ describe("RuleExecutor", () => {
         whitelistService,
         trigWlHash,
         actWlHash,
-        ruleExecutor,
+        roboCop,
         [failingTrigger],
         [tokenSwapAction],
         ruleMakerWallet
       );
 
-      expect(await ruleExecutor.connect(botWallet).checkRule(ruleHash)).to.equal(false);
+      expect(await roboCop.connect(botWallet).checkRule(ruleHash)).to.equal(false);
     });
 
     it.skip("should return false if the checkTrigger is not available on the callee", async () => {
@@ -344,7 +303,7 @@ describe("RuleExecutor", () => {
 
     it("should return true if the checkTrigger on the callee denoted by ruleHash returns true", async () => {
       const {
-        ruleExecutor,
+        roboCop,
         swapUniSingleAction,
         priceTrigger,
         ruleMakerWallet,
@@ -353,7 +312,7 @@ describe("RuleExecutor", () => {
         whitelistService,
         trigWlHash,
         actWlHash,
-      } = await loadFixture(deployRuleExecutorFixture);
+      } = await loadFixture(deployRoboCopFixture);
 
       const passingTrigger = makePassingTrigger(priceTrigger.address);
       const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, constants.AddressZero);
@@ -361,18 +320,18 @@ describe("RuleExecutor", () => {
         whitelistService,
         trigWlHash,
         actWlHash,
-        ruleExecutor,
+        roboCop,
         [passingTrigger],
         [tokenSwapAction],
         ruleMakerWallet
       );
 
-      expect(await ruleExecutor.connect(botWallet).checkRule(ruleHash)).to.equal(true);
+      expect(await roboCop.connect(botWallet).checkRule(ruleHash)).to.equal(true);
     });
 
     it("should return false if one of multiple triggers is invalid", async () => {
       const {
-        ruleExecutor,
+        roboCop,
         swapUniSingleAction,
         priceTrigger,
         ruleMakerWallet,
@@ -381,7 +340,7 @@ describe("RuleExecutor", () => {
         whitelistService,
         trigWlHash,
         actWlHash,
-      } = await loadFixture(deployRuleExecutorFixture);
+      } = await loadFixture(deployRoboCopFixture);
 
       const passingTrigger = makePassingTrigger(priceTrigger.address);
       const failingTrigger = makeFailingTrigger(priceTrigger.address);
@@ -390,13 +349,13 @@ describe("RuleExecutor", () => {
         whitelistService,
         trigWlHash,
         actWlHash,
-        ruleExecutor,
+        roboCop,
         [passingTrigger, failingTrigger],
         [tokenSwapAction],
         ruleMakerWallet
       );
 
-      expect(await ruleExecutor.connect(botWallet).checkRule(ruleHash)).to.equal(false);
+      expect(await roboCop.connect(botWallet).checkRule(ruleHash)).to.equal(false);
     });
 
     it.skip("should return true if all of multiple triggers are valid", async () => {});
@@ -405,10 +364,10 @@ describe("RuleExecutor", () => {
   describe("Execute Rule with Failing Trigger", () => {
     it("Should revert if anyone tries to execute the rule, and the trigger fails", async () => {
       // It appears that this rule has to be placed before the deployValidRuleFixture.
-      // since it calls the deployRuleExecutorFixture
+      // since it calls the deployRoboCopFixture
       // It causes all tests after it to fail, if it is located after tests that use deployValidRuleFixture
       const {
-        ruleExecutor,
+        roboCop,
         swapUniSingleAction,
         priceTrigger,
         ruleMakerWallet,
@@ -417,7 +376,7 @@ describe("RuleExecutor", () => {
         whitelistService,
         trigWlHash,
         actWlHash,
-      } = await loadFixture(deployRuleExecutorFixture);
+      } = await loadFixture(deployRoboCopFixture);
 
       const passingTrigger = makeFailingTrigger(priceTrigger.address);
       const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, constants.AddressZero);
@@ -425,20 +384,20 @@ describe("RuleExecutor", () => {
         whitelistService,
         trigWlHash,
         actWlHash,
-        ruleExecutor,
+        roboCop,
         [passingTrigger],
         [tokenSwapAction],
         ruleMakerWallet,
         true
       );
 
-      await expect(ruleExecutor.connect(botWallet).executeRule(ruleHash)).to.be.rejectedWith("Trigger != Satisfied");
+      await expect(roboCop.connect(botWallet).executeRule(ruleHash)).to.be.rejectedWith("Trigger != Satisfied");
     });
   });
 
   async function deployValidRuleFixture() {
     const {
-      ruleExecutor,
+      roboCop,
       swapUniSingleAction,
       priceTrigger,
       ownerWallet,
@@ -451,7 +410,7 @@ describe("RuleExecutor", () => {
       whitelistService,
       trigWlHash,
       actWlHash,
-    } = await loadFixture(deployRuleExecutorFixture);
+    } = await loadFixture(deployRoboCopFixture);
 
     const ethTst1PassingTrigger = {
       op: GT,
@@ -474,7 +433,7 @@ describe("RuleExecutor", () => {
       whitelistService,
       trigWlHash,
       actWlHash,
-      ruleExecutor,
+      roboCop,
       [ethTst1PassingTrigger],
       [ethSwapAction],
       ruleSubscriberWallet,
@@ -484,7 +443,7 @@ describe("RuleExecutor", () => {
       whitelistService,
       trigWlHash,
       actWlHash,
-      ruleExecutor,
+      roboCop,
       [tst1EthPassingTrigger],
       [tokenSwapAction],
       ruleSubscriberWallet,
@@ -495,7 +454,7 @@ describe("RuleExecutor", () => {
     return {
       ruleHashEth,
       ruleHashToken,
-      ruleExecutor,
+      roboCop,
       ownerWallet,
       ruleMakerWallet,
       ruleSubscriberWallet,
@@ -513,86 +472,83 @@ describe("RuleExecutor", () => {
 
   describe("Add / Reduce Collateral", function () {
     it("should revert if add / reduce collateral is called on a non-existent ruleHash", async () => {
-      const { ruleSubscriberWallet, ruleExecutor } = await loadFixture(deployValidRuleFixture);
+      const { ruleSubscriberWallet, roboCop } = await loadFixture(deployValidRuleFixture);
       // these error with onlyRuleOwner because the non existent hash doesnt belong to the subscriber
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(BAD_RULE_HASH, 1000)).to.be.revertedWith(
+      await expect(roboCop.connect(ruleSubscriberWallet).addCollateral(BAD_RULE_HASH, 1000)).to.be.revertedWith(
         "onlyRuleOwner"
       );
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).reduceCollateral(BAD_RULE_HASH, 1000)).to.be.revertedWith(
+      await expect(roboCop.connect(ruleSubscriberWallet).reduceCollateral(BAD_RULE_HASH, 1000)).to.be.revertedWith(
         "onlyRuleOwner"
       );
     });
 
     it("should revert if > 0 native is not sent to addCollateral for an native action", async () => {
-      const { ruleHashEth, ruleSubscriberWallet, ruleExecutor } = await loadFixture(deployValidRuleFixture);
+      const { ruleHashEth, ruleSubscriberWallet, roboCop } = await loadFixture(deployValidRuleFixture);
 
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, 0)).to.be.revertedWith(
+      await expect(roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, 0)).to.be.revertedWith(
         "amount <= 0"
       );
     });
 
     it("should revert if > 0 ERC20 isnt sent / approved to addCollateral for an ERC20 rule", async () => {
-      const { ruleHashToken, ruleSubscriberWallet, ruleExecutor, testToken1 } = await loadFixture(
-        deployValidRuleFixture
-      );
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 0)).to.be.revertedWith(
+      const { ruleHashToken, ruleSubscriberWallet, roboCop, testToken1 } = await loadFixture(deployValidRuleFixture);
+      await expect(roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 0)).to.be.revertedWith(
         "amount <= 0"
       );
-      await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, 6);
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 10)).to.be.revertedWith(
+      await testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, 6);
+      await expect(roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 10)).to.be.revertedWith(
         "ERC20: insufficient allowance"
       );
 
       const balance = await testToken1.connect(ruleSubscriberWallet).balanceOf(ruleSubscriberWallet.address);
-      await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, balance.add(1));
+      await testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, balance.add(1));
 
       await expect(
-        ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, balance.add(1))
+        roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, balance.add(1))
       ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
     });
 
     it("should not allow anyone other than rule owner to add / reduce collateral to a rule", async () => {
-      const { ruleHashEth, ruleHashToken, ruleExecutor, testToken1, ruleSubscriberWallet, botWallet } =
-        await loadFixture(deployValidRuleFixture);
+      const { ruleHashEth, ruleHashToken, roboCop, testToken1, ruleSubscriberWallet, botWallet } = await loadFixture(
+        deployValidRuleFixture
+      );
       const collateralAmount = utils.parseEther("1");
       await expect(
-        ruleExecutor.connect(botWallet).addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount })
+        roboCop.connect(botWallet).addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount })
       ).to.be.revertedWith("onlyRuleOwner");
 
       // this should work
-      await ruleExecutor
+      await roboCop
         .connect(ruleSubscriberWallet)
         .addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
       // now that there is some collateral, we confirm  that it cant be removed to a different user.
-      await expect(ruleExecutor.connect(botWallet).reduceCollateral(ruleHashEth, collateralAmount)).to.be.revertedWith(
+      await expect(roboCop.connect(botWallet).reduceCollateral(ruleHashEth, collateralAmount)).to.be.revertedWith(
         "onlyRuleOwner"
       );
 
       // check for tokens as well.
-      await testToken1.connect(botWallet).approve(ruleExecutor.address, collateralAmount);
-      await expect(ruleExecutor.connect(botWallet).addCollateral(ruleHashToken, collateralAmount)).to.be.revertedWith(
+      await testToken1.connect(botWallet).approve(roboCop.address, collateralAmount);
+      await expect(roboCop.connect(botWallet).addCollateral(ruleHashToken, collateralAmount)).to.be.revertedWith(
         "onlyRuleOwner"
       );
-      await expect(
-        ruleExecutor.connect(botWallet).reduceCollateral(ruleHashToken, collateralAmount)
-      ).to.be.revertedWith("onlyRuleOwner");
+      await expect(roboCop.connect(botWallet).reduceCollateral(ruleHashToken, collateralAmount)).to.be.revertedWith(
+        "onlyRuleOwner"
+      );
     });
 
     it("should revert if collateral amount does not match msg.value for native actions", async () => {
-      const { ruleHashEth, ruleSubscriberWallet, ruleExecutor, botWallet } = await loadFixture(deployValidRuleFixture);
+      const { ruleHashEth, ruleSubscriberWallet, roboCop, botWallet } = await loadFixture(deployValidRuleFixture);
       await expect(
-        ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, 12, { value: 3 })
+        roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, 12, { value: 3 })
       ).to.be.revertedWith("ETH: amount != msg.value");
     });
 
     [1, 0].forEach((isNative) => {
       const assetType = isNative ? "native" : "erc20";
       it("should not allow removing collateral if no collateral has been added: " + assetType, async () => {
-        const { ruleHashEth, ruleHashToken, ruleExecutor, ruleSubscriberWallet } = await loadFixture(
-          deployValidRuleFixture
-        );
+        const { ruleHashEth, ruleHashToken, roboCop, ruleSubscriberWallet } = await loadFixture(deployValidRuleFixture);
         const ruleHash = isNative ? ruleHashEth : ruleHashToken;
-        await expect(ruleExecutor.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, 12)).to.be.revertedWith(
+        await expect(roboCop.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, 12)).to.be.revertedWith(
           "Not enough collateral."
         );
       });
@@ -600,25 +556,25 @@ describe("RuleExecutor", () => {
       it(
         "should receive token and emit CollateralAdded event if addCollateral is called successfully: " + assetType,
         async () => {
-          const { ruleHashEth, ruleHashToken, ruleSubscriberWallet, ruleExecutor, testToken1 } = await loadFixture(
+          const { ruleHashEth, ruleHashToken, ruleSubscriberWallet, roboCop, testToken1 } = await loadFixture(
             deployValidRuleFixture
           );
           const collateralAmount = BigNumber.from(1).mul(ERC20_DECIMALS); // ETH is also 18 decimals so this works out both ways
           const msgValue = isNative ? collateralAmount : 0;
           const ruleHash = isNative ? ruleHashEth : ruleHashToken;
-          if (!isNative) await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateralAmount);
+          if (!isNative) await testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, collateralAmount);
 
-          const changeWallets = [ruleSubscriberWallet, ruleExecutor];
+          const changeWallets = [ruleSubscriberWallet, roboCop];
           const changeAmounts = [BigNumber.from(0).sub(collateralAmount), collateralAmount];
           const ethChange = isNative ? changeAmounts : [0, 0];
           const tokenChange = !isNative ? changeAmounts : [0, 0];
 
           const ex = expect(
-            ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHash, collateralAmount, { value: msgValue })
+            roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHash, collateralAmount, { value: msgValue })
           );
           await ex.to
             .changeEtherBalances(changeWallets, ethChange)
-            .and.emit(ruleExecutor, "CollateralAdded")
+            .and.emit(roboCop, "CollateralAdded")
             .withArgs(ruleHash, collateralAmount);
 
           await ex.to.changeTokenBalances(testToken1, changeWallets, tokenChange);
@@ -631,16 +587,16 @@ describe("RuleExecutor", () => {
           if (!isNative)
             await testToken1
               .connect(ruleSubscriberWallet)
-              .approve(ruleExecutor.address, collateralAmount.add(collateralAmount2));
+              .approve(roboCop.address, collateralAmount.add(collateralAmount2));
 
           const ex2 = expect(
-            ruleExecutor
+            roboCop
               .connect(ruleSubscriberWallet)
               .addCollateral(ruleHash, collateralAmount2, { value: isNative ? collateralAmount2 : 0 })
           );
           await ex2.to
             .changeEtherBalances(changeWallets, ethChange2)
-            .and.emit(ruleExecutor, "CollateralAdded")
+            .and.emit(roboCop, "CollateralAdded")
             .withArgs(ruleHash, collateralAmount2);
           await ex2.to.changeTokenBalances(testToken1, changeWallets, tokenChange2);
         }
@@ -649,29 +605,27 @@ describe("RuleExecutor", () => {
       it(
         "should refund token emit CollateralReduced event if reduceCollateral is called successfully: " + assetType,
         async () => {
-          const { ruleHashEth, ruleHashToken, ruleSubscriberWallet, ruleExecutor, testToken1 } = await loadFixture(
+          const { ruleHashEth, ruleHashToken, ruleSubscriberWallet, roboCop, testToken1 } = await loadFixture(
             deployValidRuleFixture
           );
           const collateralAmount = BigNumber.from(10).mul(ERC20_DECIMALS);
           const msgValue = isNative ? collateralAmount : 0;
           const ruleHash = isNative ? ruleHashEth : ruleHashToken;
 
-          if (!isNative) await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateralAmount);
+          if (!isNative) await testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, collateralAmount);
 
-          await ruleExecutor
-            .connect(ruleSubscriberWallet)
-            .addCollateral(ruleHash, collateralAmount, { value: msgValue });
+          await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHash, collateralAmount, { value: msgValue });
 
           const reduceAmount = collateralAmount.sub(1);
-          const changeWallets = [ruleSubscriberWallet, ruleExecutor];
+          const changeWallets = [ruleSubscriberWallet, roboCop];
           const changeAmounts = [reduceAmount, BigNumber.from(0).sub(reduceAmount)];
           const ethChange = isNative ? changeAmounts : [0, 0];
           const tokenChange = !isNative ? changeAmounts : [0, 0];
 
-          const ex = expect(ruleExecutor.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, reduceAmount));
+          const ex = expect(roboCop.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, reduceAmount));
           await ex.to
             .changeEtherBalances(changeWallets, ethChange)
-            .and.emit(ruleExecutor, "CollateralReduced")
+            .and.emit(roboCop, "CollateralReduced")
             .withArgs(ruleHash, reduceAmount);
 
           await ex.to.changeTokenBalances(testToken1, changeWallets, tokenChange);
@@ -679,21 +633,21 @@ describe("RuleExecutor", () => {
       );
 
       it("Should not allow removing more collateral than available:" + assetType, async () => {
-        const { ruleHashToken, testToken1, ruleHashEth, ruleSubscriberWallet, ruleExecutor } = await loadFixture(
+        const { ruleHashToken, testToken1, ruleHashEth, ruleSubscriberWallet, roboCop } = await loadFixture(
           deployValidRuleFixture
         );
         const collateralAmount = BigNumber.from(49).mul(ERC20_DECIMALS);
         const msgValue = isNative ? collateralAmount : 0;
         const ruleHash = isNative ? ruleHashEth : ruleHashToken;
-        if (!isNative) await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateralAmount);
+        if (!isNative) await testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, collateralAmount);
 
-        await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHash, collateralAmount, { value: msgValue });
+        await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHash, collateralAmount, { value: msgValue });
 
         await expect(
-          ruleExecutor.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, collateralAmount.add(1))
+          roboCop.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, collateralAmount.add(1))
         ).to.be.revertedWith("Not enough collateral.");
-        await ruleExecutor.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, collateralAmount);
-        await expect(ruleExecutor.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, 1)).to.be.revertedWith(
+        await roboCop.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, collateralAmount);
+        await expect(roboCop.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, 1)).to.be.revertedWith(
           "Not enough collateral."
         );
       });
@@ -707,18 +661,16 @@ describe("RuleExecutor", () => {
 
   describe("Execute Rule", () => {
     it("should revert if anyone tries to execute an unknown rule", async () => {
-      const { ruleHashToken, botWallet, ruleExecutor } = await loadFixture(deployValidRuleFixture);
-      await expect(ruleExecutor.connect(botWallet).executeRule(BAD_RULE_HASH)).to.be.rejectedWith("Rule not found");
+      const { ruleHashToken, botWallet, roboCop } = await loadFixture(deployValidRuleFixture);
+      await expect(roboCop.connect(botWallet).executeRule(BAD_RULE_HASH)).to.be.rejectedWith("Rule not found");
     });
 
     it.skip("Should revert if anyone tries to execute the rule, and action fails", async () => {
       // Need to create a dummy action and make it fail
-      const { ruleHashToken, ruleSubscriberWallet, botWallet, ruleExecutor, testToken1 } = await loadFixture(
+      const { ruleHashToken, ruleSubscriberWallet, botWallet, roboCop, testToken1 } = await loadFixture(
         deployValidRuleFixture
       );
-      await expect(ruleExecutor.connect(botWallet).executeRule(ruleHashToken)).to.be.rejectedWith(
-        "Action unsuccessful"
-      );
+      await expect(roboCop.connect(botWallet).executeRule(ruleHashToken)).to.be.rejectedWith("Action unsuccessful");
     });
 
     it.skip("placeholder for multiple triggers / actions", async () => {});
@@ -731,95 +683,90 @@ describe("RuleExecutor", () => {
     // the addCollateral fails in the erc20 test.
     it("Should allow anyone to execute the rule once (native) and get a reward if gas is paid, and the trigger passes", async () => {
       // execute valid rule with collateral by someone else. and get a reward.
-      const { ruleHashEth, ruleSubscriberWallet, botWallet, ruleExecutor, testToken1 } = await loadFixture(
+      const { ruleHashEth, ruleSubscriberWallet, botWallet, roboCop, testToken1 } = await loadFixture(
         deployValidRuleFixture
       );
       const collateral = utils.parseEther("2");
       await expect(
-        ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, collateral, { value: collateral })
-      ).to.emit(ruleExecutor, "CollateralAdded");
-      const ex = expect(ruleExecutor.connect(botWallet).executeRule(ruleHashEth));
+        roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, collateral, { value: collateral })
+      ).to.emit(roboCop, "CollateralAdded");
+      const ex = expect(roboCop.connect(botWallet).executeRule(ruleHashEth));
       await ex.to
         .changeEtherBalances(
           // we dont care about the balance of the swap contracts,
           // because that's a downstream impact we dont care about here.
-          [botWallet, ruleSubscriberWallet, ruleExecutor],
+          [botWallet, ruleSubscriberWallet, roboCop],
           [DEFAULT_REWARD, 0, collateral.add(DEFAULT_REWARD).mul(-1)]
         )
-        .and.to.emit(ruleExecutor, "Executed")
+        .and.to.emit(roboCop, "Executed")
         .withArgs(ruleHashEth, botWallet.address);
 
       await ex.to.changeTokenBalances(
         testToken1,
         // this should reflect the reward.
-        [botWallet, ruleSubscriberWallet, ruleExecutor],
+        [botWallet, ruleSubscriberWallet, roboCop],
         [0, 0, collateral.mul(ETH_PRICE_IN_TST1).div(PRICE_TRIGGER_DECIMALS)]
       );
 
-      await expect(ruleExecutor.connect(botWallet).executeRule(ruleHashEth)).to.be.revertedWith("Rule isn't Activated");
+      await expect(roboCop.connect(botWallet).executeRule(ruleHashEth)).to.be.revertedWith("Rule isn't Activated");
     });
 
     it("Should allow anyone to execute the rule (token) and get a reward if gas is paid, and all the triggers passes", async () => {
       // execute valid rule with collateral by someone else. and get a reward.
-      const { ruleHashToken, ruleSubscriberWallet, botWallet, ruleExecutor, testToken1 } = await loadFixture(
+      const { ruleHashToken, ruleSubscriberWallet, botWallet, roboCop, testToken1 } = await loadFixture(
         deployValidRuleFixture
       );
       const collateral = BigNumber.from(5196).mul(ERC20_DECIMALS);
-      await expect(testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateral)).to.not.be
-        .reverted;
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateral)).to.emit(
-        ruleExecutor,
+      await expect(testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, collateral)).to.not.be.reverted;
+      await expect(roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateral)).to.emit(
+        roboCop,
         "CollateralAdded"
       );
-      const ex = expect(ruleExecutor.connect(botWallet).executeRule(ruleHashToken));
+      const ex = expect(roboCop.connect(botWallet).executeRule(ruleHashToken));
       await ex.to
-        .changeTokenBalances(testToken1, [botWallet, ruleSubscriberWallet, ruleExecutor], [0, 0, collateral.mul(-1)])
-        .and.emit(ruleExecutor, "Executed")
+        .changeTokenBalances(testToken1, [botWallet, ruleSubscriberWallet, roboCop], [0, 0, collateral.mul(-1)])
+        .and.emit(roboCop, "Executed")
         .withArgs(ruleHashToken, botWallet.address);
 
       await ex.to.changeEtherBalances(
         // this should reflect the rewarD.
-        [botWallet, ruleSubscriberWallet, ruleExecutor],
+        [botWallet, ruleSubscriberWallet, roboCop],
         [DEFAULT_REWARD, 0, collateral.mul(TST1_PRICE_IN_ETH).div(PRICE_TRIGGER_DECIMALS).sub(DEFAULT_REWARD)]
       );
 
       // TODO need to implement caller getting paid.
-      await expect(ruleExecutor.connect(botWallet).executeRule(ruleHashToken)).to.be.revertedWith(
-        "Rule isn't Activated"
-      );
+      await expect(roboCop.connect(botWallet).executeRule(ruleHashToken)).to.be.revertedWith("Rule isn't Activated");
     });
 
     it("Should revert if anyone tries to execute the rule twice", async () => {
       // we get here by calling a valid rule, using up the collateral and call again.
-      const { ruleHashToken, ruleSubscriberWallet, botWallet, ruleExecutor, testToken1 } = await loadFixture(
+      const { ruleHashToken, ruleSubscriberWallet, botWallet, roboCop, testToken1 } = await loadFixture(
         deployValidRuleFixture
       );
-      await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, 11);
-      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 6);
-      await expect(ruleExecutor.connect(botWallet).executeRule(ruleHashToken))
-        .to.emit(ruleExecutor, "Executed")
+      await testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, 11);
+      await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 6);
+      await expect(roboCop.connect(botWallet).executeRule(ruleHashToken))
+        .to.emit(roboCop, "Executed")
         .withArgs(ruleHashToken, botWallet.address);
 
-      await expect(ruleExecutor.connect(botWallet).executeRule(ruleHashToken)).to.be.revertedWith(
-        "Rule isn't Activated"
-      );
+      await expect(roboCop.connect(botWallet).executeRule(ruleHashToken)).to.be.revertedWith("Rule isn't Activated");
     });
 
     it("Should not allow adding / removing collateral after a rule is executed", async () => {
-      const { ruleHashToken, ruleSubscriberWallet, botWallet, ruleExecutor, testToken1 } = await loadFixture(
+      const { ruleHashToken, ruleSubscriberWallet, botWallet, roboCop, testToken1 } = await loadFixture(
         deployValidRuleFixture
       );
       const collateralAmount = BigNumber.from(15).mul(ERC20_DECIMALS);
-      await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateralAmount);
-      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
-      await expect(ruleExecutor.connect(botWallet).executeRule(ruleHashToken))
-        .to.emit(ruleExecutor, "Executed")
+      await testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, collateralAmount);
+      await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
+      await expect(roboCop.connect(botWallet).executeRule(ruleHashToken))
+        .to.emit(roboCop, "Executed")
         .withArgs(ruleHashToken, botWallet.address);
 
       await expect(
-        ruleExecutor.connect(ruleSubscriberWallet).reduceCollateral(ruleHashToken, collateralAmount)
+        roboCop.connect(ruleSubscriberWallet).reduceCollateral(ruleHashToken, collateralAmount)
       ).to.be.revertedWith("Can't reduce collateral");
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 1)).to.be.revertedWith(
+      await expect(roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 1)).to.be.revertedWith(
         "Can't add collateral"
       );
     });
@@ -827,130 +774,123 @@ describe("RuleExecutor", () => {
 
   describe("Activate / Deactivate rule", () => {
     it("Should not allow executing a rule that has been deactivated (after it was active)", async () => {
-      const { ruleHashToken, ruleSubscriberWallet, botWallet, ruleExecutor, testToken1 } = await loadFixture(
+      const { ruleHashToken, ruleSubscriberWallet, botWallet, roboCop, testToken1 } = await loadFixture(
         deployValidRuleFixture
       );
       const collateralAmount = BigNumber.from(30).mul(ERC20_DECIMALS);
-      await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateralAmount);
-      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
+      await testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, collateralAmount);
+      await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
 
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).deactivateRule(ruleHashToken))
-        .to.emit(ruleExecutor, "Deactivated")
+      await expect(roboCop.connect(ruleSubscriberWallet).deactivateRule(ruleHashToken))
+        .to.emit(roboCop, "Deactivated")
         .withArgs(ruleHashToken);
-      await expect(ruleExecutor.connect(botWallet).executeRule(ruleHashToken)).to.be.revertedWith(
-        "Rule isn't Activated"
-      );
+      await expect(roboCop.connect(botWallet).executeRule(ruleHashToken)).to.be.revertedWith("Rule isn't Activated");
     });
 
     it("Should allow executing a rule that has been activated (after it was deactivated)", async () => {
-      const { ruleHashToken, ruleSubscriberWallet, botWallet, ruleExecutor, testToken1 } = await loadFixture(
+      const { ruleHashToken, ruleSubscriberWallet, botWallet, roboCop, testToken1 } = await loadFixture(
         deployValidRuleFixture
       );
       const collateralAmount = BigNumber.from(30).mul(ERC20_DECIMALS);
-      await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateralAmount);
-      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
+      await testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, collateralAmount);
+      await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
 
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).deactivateRule(ruleHashToken))
-        .to.emit(ruleExecutor, "Deactivated")
+      await expect(roboCop.connect(ruleSubscriberWallet).deactivateRule(ruleHashToken))
+        .to.emit(roboCop, "Deactivated")
         .withArgs(ruleHashToken);
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).activateRule(ruleHashToken))
-        .to.emit(ruleExecutor, "Activated")
+      await expect(roboCop.connect(ruleSubscriberWallet).activateRule(ruleHashToken))
+        .to.emit(roboCop, "Activated")
         .withArgs(ruleHashToken);
 
       // check that the rule got executed correctly.
-      await expect(ruleExecutor.connect(botWallet).executeRule(ruleHashToken))
+      await expect(roboCop.connect(botWallet).executeRule(ruleHashToken))
         .to.changeTokenBalances(
           testToken1,
-          [botWallet, ruleSubscriberWallet, ruleExecutor],
+          [botWallet, ruleSubscriberWallet, roboCop],
           [0, 0, BigNumber.from(0).sub(collateralAmount)]
         )
-        .and.emit(ruleExecutor, "Executed")
+        .and.emit(roboCop, "Executed")
         .withArgs(ruleHashToken, botWallet.address);
     });
   });
 
   describe("Redeem Balance", () => {
     it("should not allow redeeming balance if the rule is not yet executed", async () => {
-      const { ruleHashToken, ruleSubscriberWallet, ruleExecutor, testToken1 } = await loadFixture(
-        deployValidRuleFixture
-      );
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashToken)).to.be.revertedWith(
+      const { ruleHashToken, ruleSubscriberWallet, roboCop, testToken1 } = await loadFixture(deployValidRuleFixture);
+      await expect(roboCop.connect(ruleSubscriberWallet).redeemBalance(ruleHashToken)).to.be.revertedWith(
         "Rule isn't pending redemption"
       );
       const collateralAmount = BigNumber.from(30).mul(ERC20_DECIMALS);
-      await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateralAmount);
-      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashToken)).to.be.revertedWith(
+      await testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, collateralAmount);
+      await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
+      await expect(roboCop.connect(ruleSubscriberWallet).redeemBalance(ruleHashToken)).to.be.revertedWith(
         "Rule isn't pending redemption"
       );
     });
 
     it.skip("should result in no token changes if the rule was executed and did not return a token", async () => {
-      const { ruleHashToken, ruleSubscriberWallet, botWallet, ruleExecutor, testToken1 } = await loadFixture(
+      const { ruleHashToken, ruleSubscriberWallet, botWallet, roboCop, testToken1 } = await loadFixture(
         deployValidRuleFixture
       );
       const collateralAmount = BigNumber.from(30).mul(ERC20_DECIMALS);
-      await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateralAmount);
-      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
+      await testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, collateralAmount);
+      await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
 
-      await expect(ruleExecutor.connect(botWallet).executeRule(ruleHashToken)).to.not.be.rejected;
+      await expect(roboCop.connect(botWallet).executeRule(ruleHashToken)).to.not.be.rejected;
 
-      const ex = expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashToken));
-      await ex.to
-        .changeTokenBalance(testToken1, ruleExecutor, 0)
-        .emit(ruleExecutor, "Redeemed")
-        .withArgs(ruleHashToken);
-      await ex.to.changeEtherBalance(ruleExecutor.address, 0);
+      const ex = expect(roboCop.connect(ruleSubscriberWallet).redeemBalance(ruleHashToken));
+      await ex.to.changeTokenBalance(testToken1, roboCop, 0).emit(roboCop, "Redeemed").withArgs(ruleHashToken);
+      await ex.to.changeEtherBalance(roboCop.address, 0);
     });
 
     it("should redeem all the balance only once by the subscriber if the rule was executed and returned native", async () => {
-      const { ruleHashToken, ruleSubscriberWallet, botWallet, ruleExecutor, testToken1 } = await loadFixture(
+      const { ruleHashToken, ruleSubscriberWallet, botWallet, roboCop, testToken1 } = await loadFixture(
         deployValidRuleFixture
       );
       const collateralAmount = BigNumber.from(500).mul(ERC20_DECIMALS);
-      await testToken1.connect(ruleSubscriberWallet).approve(ruleExecutor.address, collateralAmount);
-      await ruleExecutor.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
-      await ruleExecutor.connect(botWallet).executeRule(ruleHashToken);
-      await expect(ruleExecutor.connect(botWallet).redeemBalance(ruleHashToken)).to.be.revertedWith("onlyRuleOwner");
+      await testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, collateralAmount);
+      await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
+      await roboCop.connect(botWallet).executeRule(ruleHashToken);
+      await expect(roboCop.connect(botWallet).redeemBalance(ruleHashToken)).to.be.revertedWith("onlyRuleOwner");
 
-      const ex = expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashToken));
+      const ex = expect(roboCop.connect(ruleSubscriberWallet).redeemBalance(ruleHashToken));
       await ex.to
         .changeEtherBalance(ruleSubscriberWallet, collateralAmount.mul(TST1_PRICE_IN_ETH).div(PRICE_TRIGGER_DECIMALS))
-        .emit(ruleExecutor, "Redeemed")
+        .emit(roboCop, "Redeemed")
         .withArgs(ruleHashToken);
 
-      await ex.to.changeTokenBalance(testToken1, ruleExecutor, 0);
+      await ex.to.changeTokenBalance(testToken1, roboCop, 0);
 
       // can only redeem once.
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashToken)).to.be.revertedWith(
+      await expect(roboCop.connect(ruleSubscriberWallet).redeemBalance(ruleHashToken)).to.be.revertedWith(
         "Rule isn't pending redemption"
       );
     });
 
     it("should redeem all the balance only once by the subscriber if the rule was executed and returned token", async () => {
-      const { ruleHashEth, ruleSubscriberWallet, botWallet, ruleExecutor, testToken1 } = await loadFixture(
+      const { ruleHashEth, ruleSubscriberWallet, botWallet, roboCop, testToken1 } = await loadFixture(
         deployValidRuleFixture
       );
       const collateralAmount = utils.parseEther("2"); // send 2 eth
-      await ruleExecutor
+      await roboCop
         .connect(ruleSubscriberWallet)
         .addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
-      await ruleExecutor.connect(botWallet).executeRule(ruleHashEth);
-      await expect(ruleExecutor.connect(botWallet).redeemBalance(ruleHashEth)).to.be.revertedWith("onlyRuleOwner");
+      await roboCop.connect(botWallet).executeRule(ruleHashEth);
+      await expect(roboCop.connect(botWallet).redeemBalance(ruleHashEth)).to.be.revertedWith("onlyRuleOwner");
 
-      const ex = expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashEth));
+      const ex = expect(roboCop.connect(ruleSubscriberWallet).redeemBalance(ruleHashEth));
 
       const tokenReceived = collateralAmount.mul(ETH_PRICE_IN_TST1).div(PRICE_TRIGGER_DECIMALS);
 
       await ex.to
-        .changeTokenBalances(testToken1, [ruleExecutor, ruleSubscriberWallet], [tokenReceived.mul(-1), tokenReceived])
-        .emit(ruleExecutor, "Redeemed")
+        .changeTokenBalances(testToken1, [roboCop, ruleSubscriberWallet], [tokenReceived.mul(-1), tokenReceived])
+        .emit(roboCop, "Redeemed")
         .withArgs(ruleHashEth);
 
-      await ex.to.changeEtherBalance(ruleExecutor.address, 0);
+      await ex.to.changeEtherBalance(roboCop.address, 0);
 
       // can only redeem once.
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).redeemBalance(ruleHashEth)).to.be.revertedWith(
+      await expect(roboCop.connect(ruleSubscriberWallet).redeemBalance(ruleHashEth)).to.be.revertedWith(
         "Rule isn't pending redemption"
       );
     });
@@ -960,71 +900,71 @@ describe("RuleExecutor", () => {
 
   describe("Change Reward", () => {
     it(`should accummulate the reward provided to the executor, as the reward is increased by different wallets and not be editable after execution`, async () => {
-      const { ruleHashEth, ruleSubscriberWallet, botWallet, ruleExecutor } = await loadFixture(deployValidRuleFixture);
+      const { ruleHashEth, ruleSubscriberWallet, botWallet, roboCop } = await loadFixture(deployValidRuleFixture);
       const collateralAmount = BigNumber.from(3).mul(ERC20_DECIMALS);
-      await ruleExecutor
+      await roboCop
         .connect(ruleSubscriberWallet)
         .addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
 
-      await ruleExecutor.connect(ruleSubscriberWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
-      await ruleExecutor.connect(botWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
-      await expect(ruleExecutor.connect(botWallet).executeRule(ruleHashEth))
+      await roboCop.connect(ruleSubscriberWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
+      await roboCop.connect(botWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
+      await expect(roboCop.connect(botWallet).executeRule(ruleHashEth))
         .to // default reward + the 2 increases above.
         .changeEtherBalance(botWallet, DEFAULT_REWARD.mul(3));
 
       await expect(
-        ruleExecutor.connect(botWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD })
+        roboCop.connect(botWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD })
       ).to.be.revertedWithoutReason();
-      await expect(ruleExecutor.connect(botWallet).withdrawReward(ruleHashEth)).to.be.revertedWith("Reward paid");
+      await expect(roboCop.connect(botWallet).withdrawReward(ruleHashEth)).to.be.revertedWith("Reward paid");
     });
 
     it(`should allow any user to only remove the reward they added`, async () => {
-      const { ruleHashEth, ruleSubscriberWallet, botWallet, ruleExecutor } = await loadFixture(deployValidRuleFixture);
+      const { ruleHashEth, ruleSubscriberWallet, botWallet, roboCop } = await loadFixture(deployValidRuleFixture);
       const collateralAmount = BigNumber.from(3).mul(ERC20_DECIMALS);
-      await ruleExecutor
+      await roboCop
         .connect(ruleSubscriberWallet)
         .addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
 
-      await ruleExecutor.connect(ruleSubscriberWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
-      await expect(ruleExecutor.connect(botWallet).withdrawReward(ruleHashEth)).to.revertedWith("0 contribution");
+      await roboCop.connect(ruleSubscriberWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
+      await expect(roboCop.connect(botWallet).withdrawReward(ruleHashEth)).to.revertedWith("0 contribution");
 
-      await ruleExecutor.connect(botWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
-      await expect(ruleExecutor.connect(botWallet).withdrawReward(ruleHashEth)).to.changeEtherBalances(
-        [botWallet, ruleExecutor],
+      await roboCop.connect(botWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
+      await expect(roboCop.connect(botWallet).withdrawReward(ruleHashEth)).to.changeEtherBalances(
+        [botWallet, roboCop],
         [DEFAULT_REWARD, DEFAULT_REWARD.mul(-1)]
       );
-      await expect(ruleExecutor.connect(botWallet).withdrawReward(ruleHashEth)).to.revertedWith("0 contribution");
+      await expect(roboCop.connect(botWallet).withdrawReward(ruleHashEth)).to.revertedWith("0 contribution");
 
-      await expect(ruleExecutor.connect(botWallet).executeRule(ruleHashEth)).to.changeEtherBalance(
+      await expect(roboCop.connect(botWallet).executeRule(ruleHashEth)).to.changeEtherBalance(
         botWallet,
         DEFAULT_REWARD.mul(2)
       );
     });
 
     it(`should allow any user to change the reward if the rule is inactive`, async () => {
-      const { ruleHashEth, ruleSubscriberWallet, botWallet, ruleExecutor } = await loadFixture(deployValidRuleFixture);
+      const { ruleHashEth, ruleSubscriberWallet, botWallet, roboCop } = await loadFixture(deployValidRuleFixture);
       const collateralAmount = BigNumber.from(3).mul(ERC20_DECIMALS);
-      await ruleExecutor.connect(ruleSubscriberWallet).deactivateRule(ruleHashEth);
+      await roboCop.connect(ruleSubscriberWallet).deactivateRule(ruleHashEth);
 
-      await ruleExecutor.connect(botWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
-      await expect(ruleExecutor.connect(botWallet).withdrawReward(ruleHashEth)).changeEtherBalance(
+      await roboCop.connect(botWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
+      await expect(roboCop.connect(botWallet).withdrawReward(ruleHashEth)).changeEtherBalance(
         botWallet,
         DEFAULT_REWARD
       );
       // tries to reduce the reward added at the point of rule creation
-      await expect(ruleExecutor.connect(ruleSubscriberWallet).withdrawReward(ruleHashEth)).changeEtherBalance(
+      await expect(roboCop.connect(ruleSubscriberWallet).withdrawReward(ruleHashEth)).changeEtherBalance(
         ruleSubscriberWallet,
         DEFAULT_REWARD
       );
 
-      await ruleExecutor.connect(botWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
+      await roboCop.connect(botWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
 
-      await ruleExecutor.connect(ruleSubscriberWallet).activateRule(ruleHashEth);
-      await ruleExecutor
+      await roboCop.connect(ruleSubscriberWallet).activateRule(ruleHashEth);
+      await roboCop
         .connect(ruleSubscriberWallet)
         .addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
 
-      await expect(ruleExecutor.connect(botWallet).executeRule(ruleHashEth)).to.changeEtherBalance(
+      await expect(roboCop.connect(botWallet).executeRule(ruleHashEth)).to.changeEtherBalance(
         botWallet,
         DEFAULT_REWARD
       );
@@ -1033,21 +973,21 @@ describe("RuleExecutor", () => {
 
   describe("Get Rule", () => {
     it("revert getRule if rule doesnt exist", async () => {
-      const { ruleExecutor } = await loadFixture(deployValidRuleFixture);
-      await expect(ruleExecutor.getRule(BAD_RULE_HASH)).to.be.revertedWith("Rule not found");
+      const { roboCop } = await loadFixture(deployValidRuleFixture);
+      await expect(roboCop.getRule(BAD_RULE_HASH)).to.be.revertedWith("Rule not found");
     });
 
     it("getRule returns the rule with all details and collateral amount", async () => {
-      const { ruleHashEth, ruleSubscriberWallet, botWallet, ruleExecutor, ethTst1PassingTrigger, ethSwapAction } =
+      const { ruleHashEth, ruleSubscriberWallet, botWallet, roboCop, ethTst1PassingTrigger, ethSwapAction } =
         await loadFixture(deployValidRuleFixture);
 
       const collateralAmount = BigNumber.from(3).mul(ERC20_DECIMALS);
 
-      await ruleExecutor
+      await roboCop
         .connect(ruleSubscriberWallet)
         .addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
 
-      await ruleExecutor.connect(botWallet).executeRule(ruleHashEth);
+      await roboCop.connect(botWallet).executeRule(ruleHashEth);
 
       // The return value is a nested object contain both array and object representations
       // We need a nested compar
@@ -1063,7 +1003,7 @@ describe("RuleExecutor", () => {
         reward: DEFAULT_REWARD,
       };
 
-      const actualRule = await ruleExecutor.getRule(ruleHashEth);
+      const actualRule = await roboCop.getRule(ruleHashEth);
       // @ts-ignore
       expectEthersObjDeepEqual(expectedRule, actualRule);
     });
@@ -1071,14 +1011,14 @@ describe("RuleExecutor", () => {
 
   describe("Pause Contract", () => {
     it("should revert if anyone but the owner tries to pause/ unpause the contract", async () => {
-      const { ownerWallet, ruleSubscriberWallet, ruleExecutor } = await loadFixture(deployValidRuleFixture);
-      await testPauseAuthorization(ruleExecutor, ownerWallet, ruleSubscriberWallet);
+      const { ownerWallet, ruleSubscriberWallet, roboCop } = await loadFixture(deployValidRuleFixture);
+      await testPauseAuthorization(roboCop, ownerWallet, ruleSubscriberWallet);
     });
     // TODO: Would it make more sense to just tag some tests a decorator, such that those test will execute with / without pause? We could do the same for other decorators. Downside is that you cant summarize the pause tests in one place.
     // OR perhaps we could be even more generic and check that unless excluded, all state-changing external / public fns do get blocked on pause.
     it("should prevent a bunch of functions from being executed when paused and re-allows them when unpaused", async () => {
       const fixtureVars = await loadFixture(deployValidRuleFixture);
-      const { ownerWallet, ruleExecutor } = fixtureVars;
+      const { ownerWallet, roboCop } = fixtureVars;
 
       // If we want to make sure that certain works even after pausing,
       // that needs to be tested separately.
@@ -1089,11 +1029,11 @@ describe("RuleExecutor", () => {
           ruleSubscriberWallet,
           priceTrigger,
           swapUniSingleAction,
-          ruleExecutor,
+          roboCop,
           testToken1,
         } = _fixtureVars;
         const collateralAmount = utils.parseEther("2");
-        const reSub = ruleExecutor.connect(ruleSubscriberWallet);
+        const reSub = roboCop.connect(ruleSubscriberWallet);
 
         return [
           reSub.createRule(
@@ -1111,7 +1051,7 @@ describe("RuleExecutor", () => {
         ];
       };
 
-      await testPauseFunctionality(ruleExecutor.connect(ownerWallet), () => reSuite(fixtureVars));
+      await testPauseFunctionality(roboCop.connect(ownerWallet), () => reSuite(fixtureVars));
     });
   });
 });

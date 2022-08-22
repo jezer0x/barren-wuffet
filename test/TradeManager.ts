@@ -2,7 +2,7 @@ import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { BigNumber, Bytes } from "ethers";
 import { deployments, ethers, network } from "hardhat";
-import { RuleStructOutput } from "../typechain-types/contracts/rules/RuleExecutor";
+import { RuleStructOutput } from "../typechain-types/contracts/rules/RoboCop";
 import { SubscriptionConstraintsStruct, TradeStructOutput } from "../typechain-types/contracts/trades/TradeManager";
 import {
   BAD_RULE_HASH,
@@ -54,7 +54,7 @@ describe("TradeManager", () => {
       traderWallet,
       someOtherWallet,
       tradeSubscriberWallet,
-      ruleExecutor,
+      roboCop,
       botWallet,
     } = await deployTradeManagerFixture();
 
@@ -108,7 +108,7 @@ describe("TradeManager", () => {
       tradeSubscriberWallet,
       tradeTST1forETHHash,
       tradeETHforTST1Hash,
-      ruleExecutor,
+      roboCop,
       botWallet,
     };
   }
@@ -251,7 +251,7 @@ describe("TradeManager", () => {
         tradeSubscriberWallet,
         testToken1,
         botWallet,
-        ruleExecutor,
+        roboCop,
       } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       const times = MIN_COLLATERAL_TOTAL.div(collateralAmount);
@@ -269,11 +269,11 @@ describe("TradeManager", () => {
       await expect(
         tradeManager.connect(tradeSubscriberWallet).deposit(tradeTST1forETHHash, testToken1.address, collateralAmount)
       )
-        .to.emit(ruleExecutor, "Activated")
+        .to.emit(roboCop, "Activated")
         .withArgs(trade.ruleHash);
 
       // now a bot will snipe this, making it an EXECUTED rule
-      await expect(ruleExecutor.connect(botWallet).executeRule(trade.ruleHash)).to.emit(ruleExecutor, "Executed");
+      await expect(roboCop.connect(botWallet).executeRule(trade.ruleHash)).to.emit(roboCop, "Executed");
       await expect(tradeManager.connect(traderWallet).cancelTrade(tradeTST1forETHHash)).to.be.revertedWith(
         "Can't Cancel Trade"
       );
@@ -374,7 +374,7 @@ describe("TradeManager", () => {
         traderWallet,
         tradeSubscriberWallet,
         testToken1,
-        ruleExecutor,
+        roboCop,
       } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       const times = MIN_COLLATERAL_TOTAL.div(collateralAmount);
@@ -392,7 +392,7 @@ describe("TradeManager", () => {
       await expect(
         tradeManager.connect(tradeSubscriberWallet).deposit(tradeTST1forETHHash, testToken1.address, collateralAmount)
       )
-        .to.emit(ruleExecutor, "Activated")
+        .to.emit(roboCop, "Activated")
         .withArgs(trade.ruleHash);
     });
 
@@ -495,7 +495,7 @@ describe("TradeManager", () => {
         traderWallet,
         tradeSubscriberWallet,
         testToken1,
-        ruleExecutor,
+        roboCop,
       } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
@@ -518,7 +518,7 @@ describe("TradeManager", () => {
         traderWallet,
         tradeSubscriberWallet,
         testToken1,
-        ruleExecutor,
+        roboCop,
       } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount.mul(2));
@@ -531,7 +531,7 @@ describe("TradeManager", () => {
       await expect(
         tradeManager.connect(tradeSubscriberWallet).deposit(tradeTST1forETHHash, testToken1.address, collateralAmount)
       )
-        .to.emit(ruleExecutor, "Activated")
+        .to.emit(roboCop, "Activated")
         .withArgs((await tradeManager.getTrade(tradeTST1forETHHash)).ruleHash);
 
       await expect(tradeManager.connect(tradeSubscriberWallet).withdraw(tradeTST1forETHHash, 0))
@@ -547,7 +547,7 @@ describe("TradeManager", () => {
         traderWallet,
         tradeSubscriberWallet,
         testToken1,
-        ruleExecutor,
+        roboCop,
       } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
@@ -573,7 +573,7 @@ describe("TradeManager", () => {
         traderWallet,
         tradeSubscriberWallet,
         testToken1,
-        ruleExecutor,
+        roboCop,
       } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
@@ -599,7 +599,7 @@ describe("TradeManager", () => {
         traderWallet,
         tradeSubscriberWallet,
         testToken1,
-        ruleExecutor,
+        roboCop,
       } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       const times = MIN_COLLATERAL_TOTAL.div(collateralAmount);
@@ -616,13 +616,13 @@ describe("TradeManager", () => {
       await expect(
         tradeManager.connect(tradeSubscriberWallet).deposit(tradeTST1forETHHash, testToken1.address, collateralAmount)
       )
-        .to.emit(ruleExecutor, "Activated")
+        .to.emit(roboCop, "Activated")
         .withArgs(trade.ruleHash);
 
       await expect(tradeManager.connect(tradeSubscriberWallet).withdraw(tradeTST1forETHHash, 0))
         .to.emit(tradeManager, "Withdraw")
         .withArgs(tradeTST1forETHHash, 0, testToken1.address, collateralAmount)
-        .to.emit(ruleExecutor, "Deactivated")
+        .to.emit(roboCop, "Deactivated")
         .withArgs(trade.ruleHash);
     });
 
@@ -635,7 +635,7 @@ describe("TradeManager", () => {
         tradeSubscriberWallet,
         testToken1,
         botWallet,
-        ruleExecutor,
+        roboCop,
       } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       const times = MIN_COLLATERAL_TOTAL.div(collateralAmount);
@@ -654,7 +654,7 @@ describe("TradeManager", () => {
 
       await expect(
         tradeManager.connect(tradeSubscriberWallet).deposit(tradeTST1forETHHash, testToken1.address, collateralAmount)
-      ).to.emit(ruleExecutor, "Activated");
+      ).to.emit(roboCop, "Activated");
 
       // throw in another trade with a separate amount to see if ratio of reward output is fine
       await tradeManager
@@ -664,9 +664,9 @@ describe("TradeManager", () => {
       const trade: TradeStructOutput = await tradeManager.getTrade(tradeTST1forETHHash);
 
       // now a bot will snipe this, making it an EXECUTED rule
-      await expect(ruleExecutor.connect(botWallet).executeRule(trade.ruleHash)).to.emit(ruleExecutor, "Executed");
+      await expect(roboCop.connect(botWallet).executeRule(trade.ruleHash)).to.emit(roboCop, "Executed");
 
-      const rule: RuleStructOutput = await ruleExecutor.getRule(trade.ruleHash);
+      const rule: RuleStructOutput = await roboCop.getRule(trade.ruleHash);
 
       await tradeManager.redeemOutputFromRule(tradeTST1forETHHash);
 
@@ -694,7 +694,7 @@ describe("TradeManager", () => {
         tradeSubscriberWallet,
         testToken1,
         botWallet,
-        ruleExecutor,
+        roboCop,
       } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       const times = MIN_COLLATERAL_TOTAL.div(collateralAmount);
@@ -709,7 +709,7 @@ describe("TradeManager", () => {
         tradeManager
           .connect(tradeSubscriberWallet)
           .deposit(tradeETHforTST1Hash, ethers.constants.AddressZero, collateralAmount, { value: collateralAmount })
-      ).to.emit(ruleExecutor, "Activated");
+      ).to.emit(roboCop, "Activated");
 
       // throw in another trade with a separate amount to see if ratio of reward output is fine
       await tradeManager
@@ -721,9 +721,9 @@ describe("TradeManager", () => {
       const trade: TradeStructOutput = await tradeManager.getTrade(tradeETHforTST1Hash);
 
       // now a bot will snipe this, making it an EXECUTED rule
-      await expect(ruleExecutor.connect(botWallet).executeRule(trade.ruleHash)).to.emit(ruleExecutor, "Executed");
+      await expect(roboCop.connect(botWallet).executeRule(trade.ruleHash)).to.emit(roboCop, "Executed");
 
-      const rule: RuleStructOutput = await ruleExecutor.getRule(trade.ruleHash);
+      const rule: RuleStructOutput = await roboCop.getRule(trade.ruleHash);
 
       await tradeManager.redeemOutputFromRule(tradeETHforTST1Hash);
 

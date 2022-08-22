@@ -7,15 +7,17 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = deployments;
 
   const { deployer } = await getNamedAccounts();
-  const RoboCop = await (await ethers.getContract("RoboCop")).address;
 
-  await deploy("TradeManager", {
+  const whitelistService = await ethers.getContract("WhitelistService");
+  const trigWlHash = await whitelistService.getWhitelistHash(deployer, "triggers");
+  const actWlHash = await whitelistService.getWhitelistHash(deployer, "actions");
+
+  await deploy("RoboCop", {
     from: deployer,
-    args: [RoboCop],
+    args: [whitelistService.address, trigWlHash, actWlHash],
     log: true,
   });
 };
-
 export default func;
-func.tags = ["TradeManager"];
-func.dependencies = ["RoboCop"];
+func.tags = ["RoboCop"];
+func.dependencies = ["WhitelistService"];

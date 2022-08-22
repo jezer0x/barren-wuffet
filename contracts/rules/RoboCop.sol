@@ -15,7 +15,7 @@ import "./RuleTypes.sol";
 import "../utils/IAssetIO.sol";
 import "../utils/whitelists/WhitelistService.sol";
 
-contract RuleExecutor is IAssetIO, Ownable, Pausable, ReentrancyGuard {
+contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     event Created(bytes32 indexed ruleHash);

@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../utils/subscriptions/ISubscription.sol";
 import "../utils/IAssetIO.sol";
 import "../utils/Constants.sol";
-import "../rules/RuleExecutor.sol";
+import "../rules/RoboCop.sol";
 import "../utils/Utils.sol";
 import "./TradeTypes.sol";
 
@@ -20,7 +20,7 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
     event Cancelled(bytes32 indexed tradeHash);
 
     mapping(bytes32 => Trade) trades;
-    RuleExecutor public ruleExecutor;
+    RoboCop public roboCop;
 
     modifier onlyActiveSubscriber(bytes32 tradeHash, uint256 subscriptionIdx) {
         require(
@@ -53,19 +53,19 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
     }
 
     constructor(address payable ReAddr) {
-        ruleExecutor = RuleExecutor(ReAddr);
+        roboCop = RoboCop(ReAddr);
     }
 
-    function setRuleExecutorAddress(address payable ReAddr) external onlyOwner {
-        ruleExecutor = RuleExecutor(ReAddr);
+    function setRoboCopAddress(address payable ReAddr) external onlyOwner {
+        roboCop = RoboCop(ReAddr);
     }
 
     function getInputToken(bytes32 tradeHash) public view tradeExists(tradeHash) returns (address) {
-        return ruleExecutor.getInputToken(trades[tradeHash].ruleHash);
+        return roboCop.getInputToken(trades[tradeHash].ruleHash);
     }
 
     function getOutputToken(bytes32 tradeHash) public view tradeExists(tradeHash) returns (address) {
-        return ruleExecutor.getOutputToken(trades[tradeHash].ruleHash);
+        return roboCop.getOutputToken(trades[tradeHash].ruleHash);
     }
 
     function deposit(
@@ -81,12 +81,12 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         newSub.status = SubscriptionStatus.ACTIVE;
         // TODO: take a fee here
         newSub.collateralAmount = collateralAmount;
-        Rule memory rule = ruleExecutor.getRule(trade.ruleHash);
+        Rule memory rule = roboCop.getRule(trade.ruleHash);
         if (
             rule.totalCollateralAmount >= trade.constraints.minCollateralTotal &&
             rule.totalCollateralAmount - collateralAmount < trade.constraints.minCollateralTotal
         ) {
-            ruleExecutor.activateRule(trade.ruleHash);
+            roboCop.activateRule(trade.ruleHash);
         }
         emit Deposit(tradeHash, trade.subscriptions.length - 1, collateralToken, collateralAmount);
         return trade.subscriptions.length - 1;
@@ -99,11 +99,11 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
     ) private {
         if (collateralToken != REConstants.ETH) {
             IERC20(collateralToken).safeTransferFrom(msg.sender, address(this), collateralAmount);
-            IERC20(collateralToken).safeApprove(address(ruleExecutor), collateralAmount);
-            ruleExecutor.addCollateral(trade.ruleHash, collateralAmount);
+            IERC20(collateralToken).safeApprove(address(roboCop), collateralAmount);
+            roboCop.addCollateral(trade.ruleHash, collateralAmount);
         } else {
             // else it should be in our balance already
-            ruleExecutor.addCollateral{value: msg.value}(trade.ruleHash, collateralAmount);
+            roboCop.addCollateral{value: msg.value}(trade.ruleHash, collateralAmount);
         }
     }
 
@@ -114,7 +114,7 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
     ) private view {
         // TODO: constraints.lockin and constraints.deadline unused in TradeManager
         Trade storage trade = trades[tradeHash];
-        Rule memory rule = ruleExecutor.getRule(trade.ruleHash);
+        Rule memory rule = roboCop.getRule(trade.ruleHash);
         SubscriptionConstraints memory constraints = trade.constraints;
         require(getInputToken(tradeHash) == collateralToken, "Wrong Collateral Type");
         require(constraints.minCollateralPerSub <= collateralAmount, "Insufficient Collateral for Subscription");
@@ -132,7 +132,7 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
     function getStatus(bytes32 tradeHash) public view tradeExists(tradeHash) returns (TradeStatus) {
         Trade storage trade = trades[tradeHash];
         bytes32 ruleHash = trade.ruleHash;
-        Rule memory rule = ruleExecutor.getRule(ruleHash);
+        Rule memory rule = roboCop.getRule(ruleHash);
         if (trade.cancelled) {
             return TradeStatus.CANCELLED;
         } else if (rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE) {
@@ -156,7 +156,7 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
     {
         Trade storage trade = trades[tradeHash];
         bytes32 ruleHash = trade.ruleHash;
-        Rule memory rule = ruleExecutor.getRule(ruleHash);
+        Rule memory rule = roboCop.getRule(ruleHash);
         Subscription storage subscription = trade.subscriptions[subscriptionIdx];
         TradeStatus status = getStatus(tradeHash);
 
@@ -166,12 +166,12 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         subscription.status = SubscriptionStatus.WITHDRAWN;
 
         if (status == TradeStatus.ACTIVE) {
-            ruleExecutor.reduceCollateral(ruleHash, subscription.collateralAmount);
+            roboCop.reduceCollateral(ruleHash, subscription.collateralAmount);
             if (
                 rule.status == RuleStatus.ACTIVE &&
                 rule.totalCollateralAmount - subscription.collateralAmount < trade.constraints.minCollateralTotal
             ) {
-                ruleExecutor.deactivateRule(ruleHash);
+                roboCop.deactivateRule(ruleHash);
             }
             token = getInputToken(tradeHash);
             balance = subscription.collateralAmount;
@@ -206,17 +206,17 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         TradeStatus status = getStatus(tradeHash);
         require(status == TradeStatus.ACTIVE, "Can't Cancel Trade");
         trade.cancelled = true;
-        Rule memory rule = ruleExecutor.getRule(trade.ruleHash);
+        Rule memory rule = roboCop.getRule(trade.ruleHash);
         if (rule.status != RuleStatus.INACTIVE) {
-            ruleExecutor.deactivateRule(trade.ruleHash);
+            roboCop.deactivateRule(trade.ruleHash);
         }
-        ruleExecutor.reduceCollateral(trade.ruleHash, rule.totalCollateralAmount);
+        roboCop.reduceCollateral(trade.ruleHash, rule.totalCollateralAmount);
         emit Cancelled(tradeHash);
     }
 
     function redeemOutputFromRule(bytes32 tradeHash) external tradeExists(tradeHash) {
         Trade storage trade = trades[tradeHash];
-        ruleExecutor.redeemBalance(trade.ruleHash);
+        roboCop.redeemBalance(trade.ruleHash);
     }
 
     function getTradeHash(address manager, bytes32 ruleHash) public pure returns (bytes32) {
@@ -229,7 +229,7 @@ contract TradeManager is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         SubscriptionConstraints calldata constraints
     ) external payable nonReentrant whenNotPaused returns (bytes32) {
         // Note: Rule is created through TradeManager so that TradeManager is rule.owner
-        bytes32 ruleHash = ruleExecutor.createRule{value: msg.value}(triggers, actions);
+        bytes32 ruleHash = roboCop.createRule{value: msg.value}(triggers, actions);
         bytes32 tradeHash = getTradeHash(msg.sender, ruleHash);
         require(trades[tradeHash].manager == address(0)); // trade does not exist
         Utils._validateSubscriptionConstraintsBasic(constraints);

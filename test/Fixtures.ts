@@ -1,5 +1,5 @@
 import { ethers } from "hardhat";
-import { TriggerStruct, ActionStruct, RuleExecutor } from "../typechain-types/contracts/rules/RuleExecutor";
+import { TriggerStruct, ActionStruct, RoboCop } from "../typechain-types/contracts/rules/RoboCop";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Contract, Bytes, BigNumber } from "ethers";
 import {
@@ -59,7 +59,7 @@ export async function createRule(
   _whitelistService: Contract,
   trigWlHash: Bytes,
   actWlHash: Bytes,
-  _ruleExecutor: Contract,
+  _roboCop: Contract,
   triggers: TriggerStruct[],
   actions: ActionStruct[],
   wallet: SignerWithAddress,
@@ -68,16 +68,17 @@ export async function createRule(
   triggers.map((t) => _whitelistService.addToWhitelist(trigWlHash, t.callee));
   actions.map((a) => _whitelistService.addToWhitelist(actWlHash, a.callee));
 
-  const p = _ruleExecutor.connect(wallet).createRule(triggers, actions, { value: DEFAULT_REWARD });
+  const p = _roboCop.connect(wallet).createRule(triggers, actions, { value: DEFAULT_REWARD });
   // send 1 eth as reward.
   const ruleHash = getHashFromEvent(
-    _ruleExecutor.connect(wallet).createRule(triggers, actions, { value: DEFAULT_REWARD }),
+    _roboCop.connect(wallet).createRule(triggers, actions, { value: DEFAULT_REWARD }),
     "Created",
-    _ruleExecutor.address,
-    "ruleHash");
+    _roboCop.address,
+    "ruleHash"
+  );
 
   if (activate) {
-    await tx(_ruleExecutor.connect(wallet).activateRule(ruleHash));
+    await tx(_roboCop.connect(wallet).activateRule(ruleHash));
   }
 
   return ruleHash;
@@ -164,7 +165,7 @@ export async function getWhitelistService() {
   return { whitelistService, trigWlHash, actWlHash };
 }
 
-export async function setupRuleExecutor() {
+export async function setupRoboCop() {
   // Contracts are deployed using the first signer/account by default
   const [ownerWallet, ruleMakerWallet, ruleSubscriberWallet, botWallet, ethFundWallet] = await ethers.getSigners();
 
@@ -175,9 +176,9 @@ export async function setupRuleExecutor() {
 
   const { whitelistService, trigWlHash, actWlHash } = await getWhitelistService();
 
-  const ruleExecutor = await ethers.getContract("RuleExecutor");
+  const roboCop = await ethers.getContract("RoboCop");
   return {
-    ruleExecutor,
+    roboCop,
     priceTrigger,
     swapUniSingleAction,
     testOracleEth,
@@ -198,7 +199,7 @@ export async function setupTradeManager() {
   const [ownerWallet, traderWallet, tradeSubscriberWallet, someOtherWallet] = await ethers.getSigners();
 
   const {
-    ruleExecutor,
+    roboCop,
     priceTrigger,
     swapUniSingleAction,
     testOracleEth,
@@ -209,11 +210,11 @@ export async function setupTradeManager() {
     trigWlHash,
     actWlHash,
     botWallet,
-  } = await setupRuleExecutor();
+  } = await setupRoboCop();
   const tradeManager = await ethers.getContract("TradeManager");
 
   return {
-    ruleExecutor,
+    roboCop,
     priceTrigger,
     swapUniSingleAction,
     testOracleEth,
@@ -239,7 +240,7 @@ export async function setupFundManager() {
     await ethers.getSigners();
 
   const {
-    ruleExecutor,
+    roboCop,
     priceTrigger,
     swapUniSingleAction,
     testOracleEth,
@@ -255,7 +256,7 @@ export async function setupFundManager() {
 
   return {
     ownerWallet,
-    ruleExecutor,
+    roboCop,
     priceTrigger,
     swapUniSingleAction,
     testOracleEth,
