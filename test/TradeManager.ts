@@ -15,6 +15,7 @@ import {
   GT,
 } from "./Constants";
 import { makePassingTrigger, makeSwapAction, setupTradeManager } from "./Fixtures";
+import { getHashFromEvent } from "./helper";
 
 const MIN_COLLATERAL_PER_SUB = BigNumber.from(10).mul(ERC20_DECIMALS);
 const MAX_COLLATERAL_PER_SUB = BigNumber.from(100).mul(ERC20_DECIMALS);
@@ -88,18 +89,14 @@ describe("TradeManager", () => {
     const tx = await tradeManager
       .connect(traderWallet)
       .createTrade([TST1toETHSwapPriceTrigger], [swapTST1ToETHAction], properContraints, { value: DEFAULT_REWARD });
-    const receipt = await tx.wait();
-    const tradeTST1forETHHash: Bytes = receipt.events?.find(
-      (x: { event: string; address: string }) => x.event == "Created" && x.address == tradeManager.address
-    )?.args?.tradeHash;
+
+    const tradeTST1forETHHash: Bytes = await getHashFromEvent(tx, "Created", tradeManager.address, "tradeHash");
 
     const tx2 = await tradeManager
       .connect(traderWallet)
       .createTrade([ETHtoTST1SwapPriceTrigger], [swapETHToTST1Action], properContraints, { value: DEFAULT_REWARD });
-    const receipt2 = await tx2.wait();
-    const tradeETHforTST1Hash: Bytes = receipt2.events?.find(
-      (x: { event: string; address: string }) => x.event == "Created" && x.address == tradeManager.address
-    )?.args?.tradeHash;
+
+    const tradeETHforTST1Hash: Bytes = await getHashFromEvent(tx2, "Created", tradeManager.address, "tradeHash");
 
     return {
       ownerWallet,
@@ -124,8 +121,8 @@ describe("TradeManager", () => {
   });
 
   describe.skip("Admin functions", () => {
-    it("Should be able to X if owner", async function () {});
-    it("Should not be able to X if not owner", async function () {});
+    it("Should be able to X if owner", async function () { });
+    it("Should not be able to X if not owner", async function () { });
   });
 
   describe("Opening a Trade", () => {
@@ -175,12 +172,12 @@ describe("TradeManager", () => {
       try {
         await tx1.wait();
         tx1Success = true;
-      } catch {}
+      } catch { }
 
       try {
         await tx2.wait();
         tx2Success = true;
-      } catch {}
+      } catch { }
 
       expect(tx1Success).to.not.equal(tx2Success);
     });

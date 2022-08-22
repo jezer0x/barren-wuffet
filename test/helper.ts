@@ -29,7 +29,9 @@ export async function getHashFromEvent(fnPromise: Promise<ContractTransaction>, 
     const receipt: ContractReceipt = await tx(fnPromise);
 
     const events = receipt.events;
-    // address isnt in the definition. need to double check why it's being  passed through
+
+    // Address is definitely part of the event object. Not sure why typescript wont recognize it.
+    // Need the check to disambiguate same-name events from multiple objects
     //@ts-ignore
     const hashEvent = events?.find((x: { event: string; address: string }) => x.event == eventName && x.address == eventAddress);
     const args = hashEvent?.args;
