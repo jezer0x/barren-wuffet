@@ -281,7 +281,13 @@ describe("BarrenWuffet", () => {
       expect(await fairyToContract.closeFund(crackBlockHash)).to.emit(barrenWuffet, "Closed").withArgs(crackBlockHash);
     });
 
-    it.skip("should revert if rewards withdrawal is attempted on a raising fund", async () => {
+    it("should revert if rewards withdrawal is attempted on a raising fund", async () => {
+      const { barrenWuffet, jerkshireHash, crackBlockHash, chungerToContract, fairyToContract, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
+      const depositAmt = utils.parseEther("11");
+      await barrenWuffet.connect(fundSubscriberWallet).deposit(
+        jerkshireHash, constants.AddressZero, depositAmt,
+        { value: depositAmt });
+      await expect(chungerToContract.withdrawReward(jerkshireHash)).to.be.revertedWith("Fund not closed");
 
     });
   });
