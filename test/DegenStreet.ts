@@ -225,12 +225,15 @@ describe("DegenStreet", () => {
     });
     it("Should succeed if manager wants to cancel trade, and give back proper reward", async function () {
       const { tradeTST1forETHHash, degenStreet, traderWallet } = await loadFixture(deployValidTradeFixture);
+
+      const prevBalance = await ethers.provider.getBalance(traderWallet.address);
+      const gasPrice = await ethers.provider.getGasPrice();
       await expect(degenStreet.connect(traderWallet).cancelTrade(tradeTST1forETHHash))
         .to.emit(degenStreet, "Cancelled")
         .withArgs(tradeTST1forETHHash);
-
-      // TODO: reward given back after cancellation should be equal to reward sent for MEV bots when setting up trade
-      expect(2).to.eq(1);
+      const postBalance = await ethers.provider.getBalance(traderWallet.address);
+      const gasUsed = (await ethers.provider.getBlock("latest")).gasUsed;
+      expect(postBalance.sub(prevBalance).add(gasPrice.mul(gasUsed))).to.equal(DEFAULT_REWARD);
     });
     it("Should revert if trying to cancel non-existing trade", async function () {
       const { tradeTST1forETHHash, degenStreet, traderWallet } = await loadFixture(deployValidTradeFixture);
@@ -488,7 +491,7 @@ describe("DegenStreet", () => {
         );
     });
 
-    it("Should only allow deposits in ACTIVE trades", async function () {});
+    it.skip("Should only allow deposits in ACTIVE trades", async function () {});
   });
 
   describe("Subscriber withdrawing", () => {
@@ -680,13 +683,13 @@ describe("DegenStreet", () => {
         var expected_output = trade.subscriptions[i].collateralAmount
           .mul(rule.outputAmount)
           .div(rule.totalCollateralAmount);
+        const gasPrice = await ethers.provider.getGasPrice();
         await expect(degenStreet.connect(tradeSubscriberWallet).withdraw(tradeTST1forETHHash, i))
           .to.emit(degenStreet, "Withdraw")
           .withArgs(tradeTST1forETHHash, i, ethers.constants.AddressZero, expected_output);
         var post_balance = await ethers.provider.getBalance(trade.subscriptions[i].subscriber);
-
-        // TODO: won't be equal because gas fees
-        //await expect(post_balance.sub(prev_balance)).to.equal(expected_output);
+        const gasUsed = (await ethers.provider.getBlock("latest")).gasUsed;
+        expect(post_balance.sub(prev_balance).add(gasPrice.mul(gasUsed))).to.equal(expected_output);
       }
     });
 
