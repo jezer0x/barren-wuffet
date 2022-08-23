@@ -31,11 +31,12 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         SubscriptionConstraints constraints;
         Subscription[] subscriptions;
         address[] assets; // tracking all the assets this fund has atm
-        mapping(address => uint256) balances; // tracking balances of assets
         Position[] openPositions;
         uint256 totalCollateral;
         bool closed;
     }
+
+    mapping(bytes32 => mapping(address => uint256)) fundBalances; // tracking balances of assets
 
     /*
     Valid transitions (to -> from): 
@@ -44,7 +45,6 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
     DEPLOYED -> {CLOSED (premature), CLOSABLE}
     CLOSABLE -> {CLOSED}
     CLOSED -> {}
-    
     */
     enum FundStatus {
         RAISING, // deposits possible, withdraws possible (inputToken), manager can't move funds
@@ -92,6 +92,10 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         return keccak256(abi.encode(manager, name));
     }
 
+    function getFund(bytes32 fundHash) public view fundExists(fundHash) returns (Fund memory) {
+        return funds[fundHash];
+    }
+
     function pause() public onlyOwner {
         _pause();
     }
@@ -129,8 +133,6 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
     }
 
     function closeFund(bytes32 fundHash) external nonReentrant whenNotPaused {
-        FundStatus status = getStatus(fundHash);
-
         if (getStatus(fundHash) == FundStatus.CLOSABLE) {
             _closeFund(fundHash);
         } else {
@@ -167,15 +169,14 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         nonReentrant
         returns (uint256 output)
     {
-        Fund storage fund = funds[fundHash];
-        _decreaseAssetBalance(fund, action.inputToken, runtimeParams.totalCollateralAmount);
+        _decreaseAssetBalance(fundHash, action.inputToken, runtimeParams.totalCollateralAmount);
         if (action.inputToken != REConstants.ETH) {
             IERC20(action.inputToken).safeApprove(action.callee, runtimeParams.totalCollateralAmount);
             output = IAction(action.callee).perform(action, runtimeParams);
         } else {
             output = IAction(action.callee).perform{value: runtimeParams.totalCollateralAmount}(action, runtimeParams);
         }
-        _increaseAssetBalance(fund, action.outputToken, output);
+        _increaseAssetBalance(fundHash, action.outputToken, output);
     }
 
     function openPosition(
@@ -189,7 +190,7 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         // if it is a novel trade, the fundManager will have to create it with an additional TX
         address inputToken = degenStreet.getInputToken(tradeHash);
         uint256 subIdx;
-        _decreaseAssetBalance(fund, inputToken, amount);
+        _decreaseAssetBalance(fundHash, inputToken, amount);
         fund.openPositions.push(Position({tradeHash: tradeHash, subIdx: subIdx}));
 
         if (inputToken == REConstants.ETH) {
@@ -217,7 +218,7 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         uint256 subIdx = position.subIdx;
         (address[] memory tokens, uint256[] memory amounts) = degenStreet.withdraw(tradeHash, subIdx);
         _removeOpenPosition(fund, openPositionIdx);
-        _increaseAssetBalance(fund, tokens[0], amounts[0]);
+        _increaseAssetBalance(fundHash, tokens[0], amounts[0]);
     }
 
     function _removeOpenPosition(Fund storage fund, uint256 openPositionIdx) private {
@@ -226,27 +227,30 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
     }
 
     function _increaseAssetBalance(
-        Fund storage fund,
+        bytes32 fundHash,
         address token,
         uint256 amount
     ) private {
-        if (fund.balances[token] == 0) {
-            fund.balances[token] = amount;
+        Fund storage fund = funds[fundHash];
+        if (fundBalances[fundHash][token] == 0) {
+            fundBalances[fundHash][token] = amount;
             fund.assets.push(token);
         } else {
-            fund.balances[token] += amount;
+            fundBalances[fundHash][token] += amount;
         }
     }
 
     function _decreaseAssetBalance(
-        Fund storage fund,
+        bytes32 fundHash,
         address token,
         uint256 amount
     ) private {
-        fund.balances[token] -= amount;
+        Fund storage fund = funds[fundHash];
+
+        fundBalances[fundHash][token] -= amount;
 
         // TODO: could be made more efficient if we kept token => idx in storage
-        if (fund.balances[token] == 0) {
+        if (fundBalances[fundHash][token] == 0) {
             for (uint256 i = 0; i < fund.assets.length; i++) {
                 if (fund.assets[i] == token) {
                     fund.assets[i] = fund.assets[fund.assets.length - 1];
@@ -292,7 +296,7 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         newSub.status = SubscriptionStatus.ACTIVE;
 
         newSub.collateralAmount = collateralAmount;
-        _increaseAssetBalance(fund, collateralToken, collateralAmount);
+        _increaseAssetBalance(fundHash, collateralToken, collateralAmount);
         fund.totalCollateral += collateralAmount;
 
         emit Deposit(fundHash, fund.subscriptions.length - 1, collateralToken, collateralAmount);
@@ -305,7 +309,9 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         address token
     ) private view returns (uint256) {
         Fund storage fund = funds[fundHash];
-        return (fund.subscriptions[subscriptionIdx].collateralAmount * fund.balances[token]) / fund.totalCollateral;
+        return
+            (fund.subscriptions[subscriptionIdx].collateralAmount * fundBalances[fundHash][token]) /
+            fund.totalCollateral;
     }
 
     function getStatus(bytes32 fundHash) public view returns (FundStatus) {
@@ -346,7 +352,7 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         if (status == FundStatus.CLOSABLE) {
             revert("Call closeFund before withdrawing!");
         } else if (status == FundStatus.RAISING) {
-            _decreaseAssetBalance(fund, REConstants.ETH, subscription.collateralAmount);
+            _decreaseAssetBalance(fundHash, REConstants.ETH, subscription.collateralAmount);
             subscription.status = SubscriptionStatus.WITHDRAWN;
 
             emit Withdraw(fundHash, subscriptionIdx, REConstants.ETH, subscription.collateralAmount);

@@ -38,7 +38,7 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
 
     // hash -> Rule
     mapping(bytes32 => Rule) rules;
-    mapping(bytes32 => mapping(address => uint256)) public rewardProviders;
+    mapping(bytes32 => mapping(address => uint256)) public ruleRewardProviders;
 
     bytes32 triggerWhitelistHash;
     bytes32 actionWhitelistHash;
@@ -138,16 +138,16 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         Rule storage rule = rules[ruleHash];
         require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE);
         rule.reward += msg.value;
-        rewardProviders[ruleHash][msg.sender] += msg.value;
+        ruleRewardProviders[ruleHash][msg.sender] += msg.value;
     }
 
     function withdrawReward(bytes32 ruleHash) external whenNotPaused ruleExists(ruleHash) returns (uint256 balance) {
         Rule storage rule = rules[ruleHash];
         require(rule.status != RuleStatus.EXECUTED && rule.status != RuleStatus.REDEEMED, "Reward paid");
-        balance = rewardProviders[ruleHash][msg.sender];
+        balance = ruleRewardProviders[ruleHash][msg.sender];
         require(balance > 0, "0 contribution");
         rule.reward -= balance;
-        rewardProviders[ruleHash][msg.sender] = 0;
+        ruleRewardProviders[ruleHash][msg.sender] = 0;
 
         // slither-disable-next-line arbitrary-send
         payable(msg.sender).transfer(balance);
