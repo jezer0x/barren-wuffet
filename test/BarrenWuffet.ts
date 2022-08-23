@@ -419,13 +419,13 @@ describe("BarrenWuffet", () => {
     };
   }
 
-  describe("xx Fund Status: Deployed", () => {
+  describe("Fund Status: Deployed", () => {
     function getTotalDeposits(depositObj: { [key: string]: { [key: string]: BigNumber } }, fund: string) {
       return Object.values(depositObj[fund])
         .reduce((sum, current: BigNumber) => sum.add(current), BigNumber.from(0));
     }
 
-    it("should revert if deposit / withdrawal is attempted on a deployed fund", async () => {
+    it("should revert if deposit is attempted on a deployed fund", async () => {
       const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet, deposits } = await loadFixture(deployedFundsFixture);
 
       const depositAmt = jerkshireConstraints.minCollateralPerSub;
@@ -437,14 +437,18 @@ describe("BarrenWuffet", () => {
         jerkshireHash, constants.AddressZero, depositAmt,
         { value: depositAmt })).to.be.revertedWith("Fund is not raising");
 
+    });
+
+    it("should revert if withdrawal is attempted on a deployed fund", async () => {
+      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await loadFixture(deployedFundsFixture);
+
       await expect(barrenWuffet.connect(fundSubscriberWallet).withdraw(
         jerkshireHash, 0)).to.be.revertedWith("Can't get money back from deployed fund!");
 
     });
 
     it("should revert if rewards withdrawal is attempted on a deployed fund", async () => {
-      const { chungerToContract, jerkshireHash, jerkshireConstraints, fundSubscriberWallet, deposits } = await loadFixture(deployedFundsFixture);
-      const depositAmt = jerkshireConstraints.minCollateralPerSub;
+      const { chungerToContract, jerkshireHash, jerkshireConstraints } = await loadFixture(deployedFundsFixture);
 
       await expect(chungerToContract.withdrawReward(
         jerkshireHash)).to.be.revertedWith("Fund not closed");
