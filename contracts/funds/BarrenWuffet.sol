@@ -145,7 +145,18 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         fund.closed = true;
 
         for (uint256 i = 0; i < fund.openRules.length; i++) {
-            _closeRule(fundHash, i);
+            bytes32 ruleHash = funds[fundHash].openRules[i];
+            Rule memory rule = roboCop.getRule(ruleHash);
+
+            if (rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE) {
+                _cancelRule(fundHash, i);
+            } else if (rule.status == RuleStatus.EXECUTED) {
+                _redeemRuleOutput(fundHash, i);
+            }
+        }
+
+        for (uint256 i = 0; i < fund.openRules.length; i++) {
+            _removeOpenRuleIdx(fundHash, i);
         }
 
         // TODO: potentially swap back all assets to 1 terminal asset
@@ -261,7 +272,6 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         uint256 openRuleIdx,
         uint256[] memory collateralAmounts
     ) internal {
-        Fund storage fund = funds[fundHash];
         bytes32 ruleHash = funds[fundHash].openRules[openRuleIdx];
         address[] memory inputTokens = roboCop.getInputTokens(ruleHash);
         roboCop.reduceCollateral(ruleHash, collateralAmounts);
@@ -272,29 +282,37 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
     }
 
     function cancelRule(bytes32 fundHash, uint256 openRuleIdx)
-        public
+        external
         whenNotPaused
         nonReentrant
         onlyDeployedFund(fundHash)
         onlyFundManager(fundHash)
     {
-        Fund storage fund = funds[fundHash];
+        _cancelRule(fundHash, openRuleIdx);
+        _removeOpenRuleIdx(fundHash, openRuleIdx);
+    }
+
+    function _cancelRule(bytes32 fundHash, uint256 openRuleIdx) internal {
         bytes32 ruleHash = funds[fundHash].openRules[openRuleIdx];
         Rule memory rule = roboCop.getRule(ruleHash);
         if (rule.status != RuleStatus.INACTIVE) {
             roboCop.deactivateRule(ruleHash);
         }
         _reduceRuleCollateral(fundHash, openRuleIdx, rule.collateralAmounts);
-        _removeOpenRuleIdx(fundHash, openRuleIdx);
     }
 
     function redeemRuleOutput(bytes32 fundHash, uint256 openRuleIdx)
-        public
+        external
         whenNotPaused
         nonReentrant
         onlyDeployedFund(fundHash)
         onlyFundManager(fundHash)
     {
+        _redeemRuleOutput(fundHash, openRuleIdx);
+        _removeOpenRuleIdx(fundHash, openRuleIdx);
+    }
+
+    function _redeemRuleOutput(bytes32 fundHash, uint256 openRuleIdx) internal {
         bytes32 ruleHash = funds[fundHash].openRules[openRuleIdx];
         Rule memory rule = roboCop.getRule(ruleHash);
         address[] memory outputTokens = roboCop.getOutputTokens(ruleHash);
@@ -303,18 +321,6 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
 
         for (uint256 i = 0; i < outputTokens.length; i++) {
             _increaseAssetBalance(fundHash, outputTokens[i], outputAmounts[i]);
-        }
-        _removeOpenRuleIdx(fundHash, openRuleIdx);
-    }
-
-    function _closeRule(bytes32 fundHash, uint256 openRuleIdx) private {
-        bytes32 ruleHash = funds[fundHash].openRules[openRuleIdx];
-        Rule memory rule = roboCop.getRule(ruleHash);
-
-        if (rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE) {
-            cancelRule(fundHash, openRuleIdx);
-        } else if (rule.status == RuleStatus.EXECUTED) {
-            redeemRuleOutput(fundHash, openRuleIdx);
         }
     }
 
