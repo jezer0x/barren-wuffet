@@ -134,8 +134,9 @@ describe("BarrenWuffet", () => {
     });
   });
 
-  async function deployFundsFixture() {
-    const { barrenWuffet, marlieChungerWallet, fairyLinkWallet, botWallet, testToken1, fundSubscriberWallet, fundSubscriber2Wallet } = await loadFixture(deployBarrenWuffetFixture);
+  async function raisingFundsFixture() {
+    const { barrenWuffet, marlieChungerWallet, fairyLinkWallet, botWallet, testToken1,
+      fundSubscriberWallet, fundSubscriber2Wallet } = await loadFixture(deployBarrenWuffetFixture);
 
     const latestTime = await time.latest();
     // marlie chunger managers jerkshire
@@ -175,7 +176,7 @@ describe("BarrenWuffet", () => {
   describe("Fund Status: Raising", () => {
     const validDeposit = utils.parseEther("11");
     it("Should allow anyone to deposit native token into a raising fund and emit a Deposit event", async () => {
-      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
+      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await loadFixture(raisingFundsFixture);
       await expect(barrenWuffet.connect(fundSubscriberWallet).deposit(
         jerkshireHash, constants.AddressZero, validDeposit,
         { value: validDeposit })).to.emit(barrenWuffet, "Deposit").withArgs(
@@ -184,7 +185,7 @@ describe("BarrenWuffet", () => {
     });
 
     it("Should allow the fund manager to deposit native token into their own fund", async () => {
-      const { barrenWuffet, jerkshireHash, chungerToContract } = await loadFixture(deployFundsFixture);
+      const { barrenWuffet, jerkshireHash, chungerToContract } = await loadFixture(raisingFundsFixture);
       await expect(chungerToContract.deposit(
         jerkshireHash, constants.AddressZero, validDeposit,
         { value: validDeposit })).to.emit(barrenWuffet, "Deposit").withArgs(
@@ -193,12 +194,12 @@ describe("BarrenWuffet", () => {
     });
 
     it("Should not allow anyone to deposit ERC20 tokens into a raising fund. We only allow native right now", async () => {
-      const { barrenWuffet, fundSubscriberWallet, jerkshireHash, testToken1 } = await loadFixture(deployFundsFixture);
+      const { barrenWuffet, fundSubscriberWallet, jerkshireHash, testToken1 } = await loadFixture(raisingFundsFixture);
       await expect(barrenWuffet.connect(fundSubscriberWallet).deposit(jerkshireHash, testToken1.address, utils.parseEther("11"))).to.be.revertedWithoutReason();
     });
 
     it("should return fund status as RAISING once the fund is created, deadline has NOT been hit and amount raised is LESS than min amount", async () => {
-      const { barrenWuffet, chungerToContract, fairyToContract, jerkshireHash, crackBlockHash, botWallet } = await loadFixture(deployFundsFixture);
+      const { barrenWuffet, chungerToContract, fairyToContract, jerkshireHash, crackBlockHash, botWallet } = await loadFixture(raisingFundsFixture);
 
       expect(await barrenWuffet.connect(botWallet).getStatus(crackBlockHash)).to.be.equal(FUND_STATUS.RAISING);
       // barren is depositing into their own fund
@@ -210,7 +211,7 @@ describe("BarrenWuffet", () => {
     });
 
     it("Should not allow anyone to deposit less than min subscriber threshold into the fund", async () => {
-      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
+      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet } = await loadFixture(raisingFundsFixture);
       const depositAmt = jerkshireConstraints.minCollateralPerSub.sub(utils.parseEther("0.0001"));
       await expect(barrenWuffet.connect(fundSubscriberWallet).deposit(
         jerkshireHash, constants.AddressZero, depositAmt,
@@ -218,7 +219,7 @@ describe("BarrenWuffet", () => {
     });
 
     it("Should not allow anyone to deposit more than max subscriber threshold into the fund", async () => {
-      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
+      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet } = await loadFixture(raisingFundsFixture);
       const depositAmt = jerkshireConstraints.maxCollateralPerSub.add(utils.parseEther("0.0001"));
       await expect(barrenWuffet.connect(fundSubscriberWallet).deposit(
         jerkshireHash, constants.AddressZero, depositAmt,
@@ -227,7 +228,7 @@ describe("BarrenWuffet", () => {
     });
 
     it("Should revert if deposit is attempted on a fund where collateral limit is reached", async () => {
-      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
+      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await loadFixture(raisingFundsFixture);
       // true should succeed, false should error
       const deposits: [BigNumber, boolean, string | number][] = [
         [utils.parseEther("100"), true, 0],
@@ -257,7 +258,7 @@ describe("BarrenWuffet", () => {
     });
 
     it("should allow withdrawing from a fund that's still raising", async () => {
-      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
+      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await loadFixture(raisingFundsFixture);
       await barrenWuffet.connect(fundSubscriberWallet).deposit(
         jerkshireHash, constants.AddressZero, validDeposit,
         { value: validDeposit });
@@ -272,7 +273,7 @@ describe("BarrenWuffet", () => {
     });
 
     it("should not allow withdrawing if there have not been any deposits from this user", async () => {
-      const { barrenWuffet, jerkshireHash, fundSubscriberWallet, fundSubscriber2Wallet } = await loadFixture(deployFundsFixture);
+      const { barrenWuffet, jerkshireHash, fundSubscriberWallet, fundSubscriber2Wallet } = await loadFixture(raisingFundsFixture);
       await barrenWuffet.connect(fundSubscriberWallet).deposit(
         jerkshireHash, constants.AddressZero, validDeposit,
         { value: validDeposit });
@@ -281,7 +282,7 @@ describe("BarrenWuffet", () => {
     });
 
     it("should allow only the fund manager to close a Raising fund, and the subscriber to withdraw funds", async () => {
-      const { barrenWuffet, marlieChungerWallet, jerkshireHash, crackBlockHash, chungerToContract, fairyToContract, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
+      const { barrenWuffet, marlieChungerWallet, jerkshireHash, crackBlockHash, chungerToContract, fairyToContract, fundSubscriberWallet } = await loadFixture(raisingFundsFixture);
       // add some funds so we can confirm that even a fund with funds can be closed      
       await barrenWuffet.connect(fundSubscriberWallet).deposit(
         jerkshireHash, constants.AddressZero, validDeposit,
@@ -305,7 +306,7 @@ describe("BarrenWuffet", () => {
     });
 
     it("should revert if rewards withdrawal is attempted on a raising fund", async () => {
-      const { barrenWuffet, jerkshireHash, chungerToContract, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
+      const { barrenWuffet, jerkshireHash, chungerToContract, fundSubscriberWallet } = await loadFixture(raisingFundsFixture);
       await barrenWuffet.connect(fundSubscriberWallet).deposit(
         jerkshireHash, constants.AddressZero, validDeposit,
         { value: validDeposit });
@@ -315,7 +316,7 @@ describe("BarrenWuffet", () => {
 
     it("should return fund status as DEPLOYED once the fund is created, deadline has been hit (min collateral may or maynot be met)", async () => {
       // Min collateral is not playing the role it is supposed to. This behaviour will likely be changed.
-      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet } = await loadFixture(deployFundsFixture);
+      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet } = await loadFixture(raisingFundsFixture);
       await barrenWuffet.connect(fundSubscriberWallet).deposit(
         jerkshireHash, constants.AddressZero, validDeposit,
         { value: validDeposit });
@@ -328,7 +329,7 @@ describe("BarrenWuffet", () => {
     });
 
     it("xx should return fund status as DEPLOYED if max collateral has been raised (deadline may or may not be met)", async () => {
-      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet, fundSubscriber2Wallet } = await loadFixture(deployFundsFixture);
+      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet, fundSubscriber2Wallet } = await loadFixture(raisingFundsFixture);
       const maxC = jerkshireConstraints.maxCollateralTotal;
       const depositAmt = jerkshireConstraints.maxCollateralPerSub;
       let d = BigNumber.from(depositAmt)
@@ -371,8 +372,13 @@ describe("BarrenWuffet", () => {
     it("should revert if an unknown fund or closed fund is closed", () => { });
   });
 
+  async function deployedFundsFixture() {
+  }
+
   describe.skip("Fund Status: Deployed", () => {
-    it("should revert if deposit / withdrawal is attempted on a deployed fund", async () => { });
+    it("should revert if deposit / withdrawal is attempted on a deployed fund", async () => {
+
+    });
 
     it("should revert if rewards withdrawal is attempted on a deployed fund", async () => { });
 
@@ -411,7 +417,7 @@ describe("BarrenWuffet", () => {
 
     it("should allow the fund manager to close a deployed fund with open positions that is NOT closable and emit Closed event", async () => { });
 
-    it("should not allow anyone other than the fund manager to close a closable fund", async () => {
+    it("should not allow anyone other than the  fund manager to close a closable fund", async () => {
       // this might be made public in the future
     });
   });
