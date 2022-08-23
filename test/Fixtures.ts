@@ -1,4 +1,5 @@
 import { ethers } from "hardhat";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { TriggerStruct, ActionStruct, RoboCop } from "../typechain-types/contracts/rules/RoboCop";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Contract, Bytes, BigNumber } from "ethers";
@@ -302,7 +303,24 @@ export async function setupBarrenWuffet() {
     actWlHash,
     degenStreet,
   } = await setupDegenStreet();
+
   const barrenWuffet = await ethers.getContract("BarrenWuffet");
+  const latestBlock = await time.latest();
+  const {
+    tradeTST1forETHHash,
+    tradeETHforTST1Hash,
+  } = await setupSwapTrades(
+    priceTrigger, swapUniSingleAction, testToken1, {
+    minCollateralPerSub: BigNumber.from(0),
+    maxCollateralPerSub: BigNumber.from(1000).mul(ERC20_DECIMALS),
+    minCollateralTotal: BigNumber.from(0),
+    maxCollateralTotal: BigNumber.from(1000).mul(ERC20_DECIMALS),
+    deadline: latestBlock + 60,
+    lockin: latestBlock + 61,
+    rewardPercentage: 10,
+  },
+    degenStreet, marlieChungerWallet
+  )
 
   return {
     ownerWallet,
@@ -323,5 +341,7 @@ export async function setupBarrenWuffet() {
     actWlHash,
     degenStreet,
     barrenWuffet,
+    tradeTST1forETHHash,
+    tradeETHforTST1Hash
   };
 }

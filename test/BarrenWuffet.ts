@@ -7,7 +7,7 @@ import {
   setupBarrenWuffet
 } from "./Fixtures";
 import { SubscriptionConstraintsStruct } from "../typechain-types/contracts/funds/BarrenWuffet";
-import { BAD_FUND_HASH, FUND_STATUS } from "./Constants";
+import { BAD_FUND_HASH, BAD_TRADE_HASH, FUND_STATUS } from "./Constants";
 import { depositMaxCollateral, getHashFromEvent } from "./helper";
 import { Provider } from "@ethersproject/providers";
 import { assert } from "console";
@@ -138,7 +138,7 @@ describe("BarrenWuffet", () => {
 
   async function raisingFundsFixture() {
     const { barrenWuffet, marlieChungerWallet, fairyLinkWallet, botWallet, testToken1,
-      fundSubscriberWallet, fundSubscriber2Wallet } = await loadFixture(deployBarrenWuffetFixture);
+      fundSubscriberWallet, fundSubscriber2Wallet, tradeETHforTST1Hash } = await loadFixture(deployBarrenWuffetFixture);
 
     const latestTime = await time.latest();
     // marlie chunger managers jerkshire
@@ -172,7 +172,7 @@ describe("BarrenWuffet", () => {
     return {
       barrenWuffet, marlieChungerWallet, fairyLinkWallet, jerkshireHash, crackBlockHash,
       jerkshireConstraints, crackBlockConstraints, chungerToContract, fairyToContract,
-      botWallet, testToken1, fundSubscriberWallet, fundSubscriber2Wallet
+      botWallet, testToken1, fundSubscriberWallet, fundSubscriber2Wallet, tradeETHforTST1Hash
     };
   }
   describe("Fund Status: Raising", () => {
@@ -448,19 +448,48 @@ describe("BarrenWuffet", () => {
     });
 
     it("should revert if rewards withdrawal is attempted on a deployed fund", async () => {
-      const { chungerToContract, jerkshireHash, jerkshireConstraints } = await loadFixture(deployedFundsFixture);
+      const { chungerToContract, jerkshireHash } = await loadFixture(deployedFundsFixture);
 
       await expect(chungerToContract.withdrawReward(
         jerkshireHash)).to.be.revertedWith("Fund not closed");
 
     });
 
-    describe.skip("Open and close positions", () => {
-      it("Should not allow anyone other than the fund manager to open and  close positons", async () => { });
+    describe("xx Open and close positions", () => {
+      it("Should not allow anyone other than the fund manager to open and  close positons", async () => {
+        const { barrenWuffet, fundSubscriberWallet, jerkshireHash, tradeETHforTST1Hash } = await loadFixture(deployedFundsFixture);
 
-      it("should revert if a position is opened on an unknown trade hash", async () => { });
+        const positionValue = utils.parseEther("1");
+        await expect(barrenWuffet.connect(fundSubscriberWallet).openPosition(
+          jerkshireHash, tradeETHforTST1Hash, positionValue)).to.be.revertedWithoutReason();
 
-      it("should transfer assets to trade manager when opening a positon", async () => { });
+      });
+
+      it("should revert if a position is opened on an unknown trade hash", async () => {
+
+        const { chungerToContract, jerkshireHash } = await loadFixture(deployedFundsFixture);
+
+        const positionValue = utils.parseEther("1");
+        await expect(chungerToContract.openPosition(
+          jerkshireHash, BAD_TRADE_HASH, positionValue)).to.be.revertedWithoutReason();
+      });
+
+      it("should transfer assets to degen street when opening a positon", async () => {
+        const { barrenWuffet, chungerToContract, jerkshireHash, tradeETHforTST1Hash } = await loadFixture(deployedFundsFixture);
+
+        const degenStreet = barrenWuffet.degenStreet;
+        const positionValue = utils.parseEther("1");
+        await expect(chungerToContract.openPosition(
+          jerkshireHash, tradeETHforTST1Hash, positionValue)).to
+          .changeEtherBalances(
+            [barrenWuffet, degenStreet],
+            [-positionValue, positionValue]
+          )
+          .emit(
+            // should be degenStreet
+            barrenWuffet, "Deposit"
+          );
+      });
 
       it("should revert if attempting to close an already closed position", async () => { });
     });
