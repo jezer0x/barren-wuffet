@@ -224,8 +224,27 @@ describe("BarrenWuffet", () => {
       await expect(barrenWuffet.connect(fundSubscriberWallet).deposit(
         jerkshireHash, constants.AddressZero, depositAmt,
         { value: depositAmt })).to.be.revertedWith("Max Collateral for Subscription exceeded");
-
     });
+
+    it("Should allow anyone to deposit more than max subscriber threshold by splitting the deposits into multiple subscriptions", async () => {
+      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet } = await loadFixture(raisingFundsFixture);
+      // unclear if this is a feature or a bug, but we want to document the usecase
+      // check if multiple smaller deposits, that exceed collateral limit in total, get reverted.
+      const depositAmt1 = jerkshireConstraints.maxCollateralPerSub.sub(utils.parseEther("0.1"));
+      await expect(barrenWuffet.connect(fundSubscriberWallet).deposit(
+        jerkshireHash, constants.AddressZero, depositAmt1,
+        { value: depositAmt1 })).to.emit(barrenWuffet, "Deposit").withArgs(
+          jerkshireHash, 0, constants.AddressZero, depositAmt1
+        );
+
+      const depositAmt2 = jerkshireConstraints.minCollateralPerSub;
+      await expect(barrenWuffet.connect(fundSubscriberWallet).deposit(
+        jerkshireHash, constants.AddressZero, depositAmt2,
+        { value: depositAmt2 })).to.emit(barrenWuffet, "Deposit").withArgs(
+          jerkshireHash, 1, constants.AddressZero, depositAmt2
+        );
+
+    })
 
     it("Should revert if deposit is attempted on a fund where collateral limit is reached", async () => {
       const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await loadFixture(raisingFundsFixture);
