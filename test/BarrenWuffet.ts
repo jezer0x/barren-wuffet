@@ -2,13 +2,14 @@ import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
 import { ethers, deployments } from "hardhat";
-import { BigNumber, constants, utils } from "ethers";
+import { BigNumber, constants, Contract, utils } from "ethers";
 import {
   setupBarrenWuffet
 } from "./Fixtures";
 import { SubscriptionConstraintsStruct } from "../typechain-types/contracts/funds/BarrenWuffet";
 import { BAD_FUND_HASH, FUND_STATUS } from "./Constants";
-import { getHashFromEvent } from "./helper";
+import { depositMaxCollateral, getHashFromEvent } from "./helper";
+import { Provider } from "@ethersproject/providers";
 /**
  * These tests are organized by
  * 1. Contract Deployment, settings
@@ -347,26 +348,16 @@ describe("BarrenWuffet", () => {
 
     });
 
-    it("xx should return fund status as DEPLOYED if max collateral has been raised (deadline may or may not be met)", async () => {
-      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet, fundSubscriber2Wallet } = await loadFixture(raisingFundsFixture);
-      const maxC = jerkshireConstraints.maxCollateralTotal;
-      const depositAmt = jerkshireConstraints.maxCollateralPerSub;
-      let d = BigNumber.from(depositAmt)
-      for (; d.lte(maxC); d = d.add(depositAmt)) {
-        await barrenWuffet.connect(fundSubscriberWallet).deposit(
-          jerkshireHash, constants.AddressZero, depositAmt,
-          { value: depositAmt });
-      }
+    it("should return fund status as DEPLOYED if max collateral has been raised (deadline may or may not be met)", async () => {
+      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet,
+        fundSubscriber2Wallet } = await loadFixture(raisingFundsFixture);
 
-      if (d.lt(maxC)) {
-        const remDeposit = maxC.sub(d);
-        if (remDeposit.lt(jerkshireConstraints.minCollateralPerSub)) {
-          expect.fail(`Cant hit max collateral. Stuck at ${d.toString()} Pls fix this test`)
-        }
-        await barrenWuffet.connect(fundSubscriber2Wallet).deposit(
-          jerkshireHash, constants.AddressZero, remDeposit,
-          { value: remDeposit });
-      }
+      await depositMaxCollateral(
+        barrenWuffet.connect(fundSubscriberWallet),
+        barrenWuffet.connect(fundSubscriber2Wallet),
+        jerkshireHash,
+        jerkshireConstraints
+      );
 
       expect(await barrenWuffet.connect(fundSubscriberWallet).getStatus(
         jerkshireHash)).to.equal(FUND_STATUS.DEPLOYED);

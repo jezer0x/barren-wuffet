@@ -1,6 +1,6 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
-import { Contract, ContractReceipt, ContractTransaction } from "ethers";
+import { BigNumber, constants, Contract, ContractReceipt, ContractTransaction } from "ethers";
 
 export async function testPauseAuthorization(contract: Contract, ownerWallet: SignerWithAddress, otherWallet: SignerWithAddress) {
     const ownerCon = contract.connect(ownerWallet);
@@ -40,4 +40,34 @@ export async function getHashFromEvent(fnPromise: Promise<ContractTransaction>, 
 
 export async function tx(fnPromise: Promise<ContractTransaction>): Promise<ContractReceipt> {
     return (await fnPromise).wait();
+}
+
+export async function depositMaxCollateral(subscriber1Conn: Contract,
+    subscriber2Conn: Contract,
+    fundHash: string,
+    constraints: { maxCollateralTotal: any; maxCollateralPerSub: any; minCollateralPerSub: any; }
+) {
+    const maxC = constraints.maxCollateralTotal;
+    const depositAmt = constraints.maxCollateralPerSub;
+
+    let d = BigNumber.from(depositAmt);
+    let subscriberConns = [subscriber1Conn, subscriber2Conn];
+    let i = 0;
+    for (; d.lte(maxC); d = d.add(depositAmt)) {
+        // alternate deposits, so both subscribers have deposits.
+        await subscriberConns[(i++) % 2].deposit(
+            fundHash, constants.AddressZero, depositAmt,
+            { value: depositAmt });
+    }
+
+    if (d.lt(maxC)) {
+        const remDeposit = maxC.sub(d);
+        if (remDeposit.lt(constraints.minCollateralPerSub)) {
+            expect.fail(`Cant hit max collateral. Stuck at ${d.toString()} Pls fix this test`)
+        }
+        await subscriberConns[(i++) % 2].deposit(
+            fundHash, constants.AddressZero, remDeposit,
+            { value: remDeposit });
+    }
+
 }
