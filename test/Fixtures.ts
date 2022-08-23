@@ -12,6 +12,7 @@ import {
   PRICE_TRIGGER_DECIMALS,
   TST1_PRICE_IN_USD,
   ETH_PRICE_IN_TST1,
+  ETH_PRICE_IN_TST1_PARAM,
 } from "./Constants";
 import { getHashFromEvent, tx } from "./helper";
 import { expect } from "chai";
@@ -231,6 +232,55 @@ export async function setupDegenStreet() {
     degenStreet,
     botWallet,
   };
+}
+
+//@ts-ignore
+export async function setupSwapTrades(priceTrigger, swapUniSingleAction, testToken1,
+  //@ts-ignore
+  constraints, degenStreet, traderWallet) {
+
+  const ETHtoTST1SwapPriceTrigger = {
+    op: GT,
+    param: ETH_PRICE_IN_TST1_PARAM,
+    callee: priceTrigger.address,
+    value: ETH_PRICE_IN_TST1.sub(1),
+  };
+
+  const TST1toETHSwapPriceTrigger = {
+    op: GT,
+    param: TST1_PRICE_IN_ETH_PARAM,
+    callee: priceTrigger.address,
+    value: TST1_PRICE_IN_ETH.sub(1),
+  };
+
+  const swapTST1ToETHAction = makeSwapAction(
+    swapUniSingleAction.address,
+    testToken1.address,
+    ethers.constants.AddressZero
+  );
+
+  const swapETHToTST1Action = makeSwapAction(
+    swapUniSingleAction.address,
+    ethers.constants.AddressZero,
+    testToken1.address
+  );
+
+  const tx = await degenStreet
+    .connect(traderWallet)
+    .createTrade([TST1toETHSwapPriceTrigger], [swapTST1ToETHAction], constraints, { value: DEFAULT_REWARD });
+
+  const tradeTST1forETHHash: Bytes = await getHashFromEvent(tx, "Created", degenStreet.address, "tradeHash");
+
+  const tx2 = await degenStreet
+    .connect(traderWallet)
+    .createTrade([ETHtoTST1SwapPriceTrigger], [swapETHToTST1Action], constraints, { value: DEFAULT_REWARD });
+
+  const tradeETHforTST1Hash: Bytes = await getHashFromEvent(tx2, "Created", degenStreet.address, "tradeHash");
+
+  return {
+    tradeETHforTST1Hash,
+    tradeTST1forETHHash
+  }
 }
 
 export async function setupBarrenWuffet() {
