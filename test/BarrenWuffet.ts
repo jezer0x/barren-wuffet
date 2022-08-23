@@ -10,6 +10,7 @@ import { SubscriptionConstraintsStruct } from "../typechain-types/contracts/fund
 import { BAD_FUND_HASH, FUND_STATUS } from "./Constants";
 import { depositMaxCollateral, getHashFromEvent } from "./helper";
 import { Provider } from "@ethersproject/providers";
+import { assert } from "console";
 /**
  * These tests are organized by
  * 1. Contract Deployment, settings
@@ -245,6 +246,8 @@ describe("BarrenWuffet", () => {
           jerkshireHash, 1, constants.AddressZero, depositAmt2
         );
 
+
+
     })
 
     it("Should revert if deposit is attempted on a fund where collateral limit is reached", async () => {
@@ -383,14 +386,70 @@ describe("BarrenWuffet", () => {
   });
 
   async function deployedFundsFixture() {
+    const vars = await loadFixture(raisingFundsFixture);
+    const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet, fundSubscriber2Wallet } = vars;
+
+    const deposits = {
+      jerkshire: {
+        subscription1: jerkshireConstraints.minCollateralPerSub,
+        subscription2: jerkshireConstraints.minCollateralPerSub.mul(2)
+      }
+    }
+
+    // both subscribers have deposits
+    await barrenWuffet.connect(fundSubscriberWallet).deposit(
+      jerkshireHash, constants.AddressZero, deposits.jerkshire.subscription1,
+      { value: deposits.jerkshire.subscription1 });
+    await barrenWuffet.connect(fundSubscriber2Wallet).deposit(
+      jerkshireHash, constants.AddressZero, deposits.jerkshire.subscription2,
+      { value: deposits.jerkshire.subscription2 });
+
+    // meet deadine also to be sure that the status is deployed
+    await time.increaseTo(jerkshireConstraints.deadline);
+
+    // confirm that the status is deployed
+    expect(await barrenWuffet.connect(fundSubscriberWallet).getStatus(
+      jerkshireHash)).to.equal(FUND_STATUS.DEPLOYED);
+
+    // we arent deploying crackblock yet, we can deploy it with the appropriate state as needed.
+
+    return {
+      ...vars,
+      deposits
+    };
   }
 
-  describe.skip("Fund Status: Deployed", () => {
+  describe("xx Fund Status: Deployed", () => {
+    function getTotalDeposits(depositObj: { [key: string]: { [key: string]: BigNumber } }, fund: string) {
+      return Object.values(depositObj[fund])
+        .reduce((sum, current: BigNumber) => sum.add(current), BigNumber.from(0));
+    }
+
     it("should revert if deposit / withdrawal is attempted on a deployed fund", async () => {
+      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet, deposits } = await loadFixture(deployedFundsFixture);
+
+      const depositAmt = jerkshireConstraints.minCollateralPerSub;
+
+      // confirming this to avoid red herrings
+      expect(depositAmt.add(getTotalDeposits(deposits, "jerkshire"))).to.be.lessThanOrEqual(jerkshireConstraints.maxCollateralTotal);
+
+      await expect(barrenWuffet.connect(fundSubscriberWallet).deposit(
+        jerkshireHash, constants.AddressZero, depositAmt,
+        { value: depositAmt })).to.be.revertedWith("Fund is not raising");
+
+      await expect(barrenWuffet.connect(fundSubscriberWallet).withdraw(
+        jerkshireHash, 0)).to.be.revertedWith("Can't get money back from deployed fund!");
 
     });
 
-    it("should revert if rewards withdrawal is attempted on a deployed fund", async () => { });
+    it("should revert if rewards withdrawal is attempted on a deployed fund", async () => {
+      const { chungerToContract, jerkshireHash, jerkshireConstraints, fundSubscriberWallet, deposits } = await loadFixture(deployedFundsFixture);
+      const depositAmt = jerkshireConstraints.minCollateralPerSub;
+
+      await expect(chungerToContract.withdrawReward(
+        jerkshireHash)).to.be.revertedWith("Fund not closed");
+
+    });
 
     describe.skip("Open and close positions", () => {
       it("Should not allow anyone other than the fund manager to open and  close positons", async () => { });
