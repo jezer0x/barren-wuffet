@@ -7,8 +7,8 @@ interface ISubscription {
 
     function deposit(
         bytes32 hash,
-        address collateralToken,
-        uint256 collateralAmount
+        address[] collateralTokens,
+        uint256[] collateralAmounts
     ) external payable returns (uint256);
 
     function withdraw(bytes32 hash, uint256 subscriptionIdx) external returns (address[] memory, uint256[] memory);

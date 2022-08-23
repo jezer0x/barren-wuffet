@@ -15,6 +15,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
     Notes with examples: 
     ETH/USD -> USD per ETH -> ETH Price in USD -> triggerData = ["eth", "usd"] -> Must use when tokenIn = ETH and tokenOut = USD (i.e. buying USD with ETH)
     USD/ETH -> ETH per USD -> USD Price in ETH -> triggerData = ["usd", "eth"] -> Must use when tokenIn = USD* and tokenOut = ETH (i.e. buying ETH with USD)
+
+    Will only have 1 input token and 1 output token
  */
 contract SwapUniSingleAction is IAction, Ownable {
     using SafeERC20 for IERC20;
@@ -40,16 +42,15 @@ contract SwapUniSingleAction is IAction, Ownable {
     function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
         external
         payable
-        returns (uint256)
+        returns (uint256[] memory outputs)
     {
         ISwapRouter.ExactInputSingleParams memory params;
-        uint256 amountOut;
 
         if (msg.value > 0) {
-            require(action.inputToken == REConstants.ETH, "ETH != inputToken");
+            require(action.inputTokens[0] == REConstants.ETH, "ETH != inputToken");
             params = ISwapRouter.ExactInputSingleParams({
                 tokenIn: WETH9,
-                tokenOut: action.outputToken,
+                tokenOut: action.outputTokens[0],
                 fee: 3000, // TODO: pass from action.data?
                 recipient: msg.sender,
                 deadline: block.timestamp, // need to do an immediate swap
@@ -57,30 +58,32 @@ contract SwapUniSingleAction is IAction, Ownable {
                 amountOutMinimum: (runtimeParams.triggerData * msg.value) / 10**8, // assumption: triggerData in the form of ETH/tokenOut.
                 sqrtPriceLimitX96: 0
             });
-            amountOut = swapRouter.exactInputSingle{value: msg.value}(params);
+            outputs[0] = swapRouter.exactInputSingle{value: msg.value}(params);
         } else {
             address outputToken;
-            if (action.outputToken == REConstants.ETH) {
+            if (action.outputTokens[0] == REConstants.ETH) {
                 outputToken = WETH9;
             } else {
-                outputToken = action.outputToken;
+                outputToken = action.outputTokens[0];
             }
-            IERC20(action.inputToken).safeTransferFrom(msg.sender, address(this), runtimeParams.totalCollateralAmount);
-            IERC20(action.inputToken).safeApprove(address(swapRouter), runtimeParams.totalCollateralAmount);
+            IERC20(action.inputTokens[0]).safeTransferFrom(
+                msg.sender,
+                address(this),
+                runtimeParams.collateralAmounts[0]
+            );
+            IERC20(action.inputTokens[0]).safeApprove(address(swapRouter), runtimeParams.collateralAmounts[0]);
             params = ISwapRouter.ExactInputSingleParams({
-                tokenIn: action.inputToken,
+                tokenIn: action.inputTokens[0],
                 tokenOut: outputToken,
                 fee: 3000, // TODO: pass from action.data?
                 recipient: msg.sender,
                 deadline: block.timestamp, // need to do an immediate swap
-                amountIn: runtimeParams.totalCollateralAmount,
-                amountOutMinimum: (runtimeParams.triggerData * runtimeParams.totalCollateralAmount) / 10**8, // assumption: triggerData in the form of tokenIn/tokenOut.
+                amountIn: runtimeParams.collateralAmounts[0],
+                amountOutMinimum: (runtimeParams.triggerData * runtimeParams.collateralAmounts[0]) / 10**8, // assumption: triggerData in the form of tokenIn/tokenOut.
                 sqrtPriceLimitX96: 0
             });
-            amountOut = swapRouter.exactInputSingle(params);
-            IERC20(action.inputToken).safeApprove(address(swapRouter), 0);
+            outputs[0] = swapRouter.exactInputSingle(params);
+            IERC20(action.inputTokens[0]).safeApprove(address(swapRouter), 0);
         }
-
-        return (amountOut);
     }
 }

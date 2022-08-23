@@ -2,7 +2,7 @@
 pragma solidity ^0.8.9;
 
 interface IAssetIO {
-    function getInputToken(bytes32 hash) external view returns (address);
+    function getInputTokens(bytes32 hash) external view returns (address[] memory);
 
-    function getOutputToken(bytes32 hash) external view returns (address);
+    function getOutputTokens(bytes32 hash) external view returns (address[] memory);
 }

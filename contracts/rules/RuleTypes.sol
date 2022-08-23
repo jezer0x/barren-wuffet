@@ -15,8 +15,8 @@ struct Rule {
     address owner;
     Trigger[] triggers;
     Action[] actions;
-    uint256 totalCollateralAmount;
+    uint256[] collateralAmounts;
     RuleStatus status;
-    uint256 outputAmount;
+    uint256[] outputAmounts;
     uint256 reward;
 }

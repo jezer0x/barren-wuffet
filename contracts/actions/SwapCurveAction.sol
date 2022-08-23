@@ -49,6 +49,8 @@ interface IRegistry {
  
     action.data must be in the form of (address)
 
+    only 1 input token and 1 output token
+
  */
 contract SwapCurveAction is IAction, Ownable {
     using SafeERC20 for IERC20;
@@ -75,8 +77,8 @@ contract SwapCurveAction is IAction, Ownable {
         // TODO: reverts if poolAddr does not match in/out tokens
         (int128 i, int128 j, bool exchange_underlying) = registry.get_coin_indices(
             poolAddr,
-            action.inputToken,
-            action.outputToken
+            action.inputTokens[0],
+            action.outputTokens[0]
         );
 
         return true;
@@ -85,19 +87,17 @@ contract SwapCurveAction is IAction, Ownable {
     function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
         external
         payable
-        returns (uint256)
+        returns (uint256[] memory outputs)
     {
         address poolAddr = abi.decode(action.data, (address));
         ISwapper swapper = ISwapper(_getSwapper());
-        uint256 amountOut = swapper.exchange(
+        outputs[0] = swapper.exchange(
             poolAddr,
-            action.inputToken,
-            action.outputToken,
-            runtimeParams.totalCollateralAmount,
-            (runtimeParams.triggerData * runtimeParams.totalCollateralAmount) / 10**8,
+            action.inputTokens[0],
+            action.outputTokens[0],
+            runtimeParams.collateralAmounts[0],
+            (runtimeParams.triggerData * runtimeParams.collateralAmounts[0]) / 10**8,
             msg.sender
         );
-
-        return amountOut;
     }
 }

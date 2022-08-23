@@ -23,8 +23,8 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
     event Deactivated(bytes32 indexed ruleHash);
     event Executed(bytes32 indexed ruleHash, address executor);
     event Redeemed(bytes32 indexed ruleHash);
-    event CollateralAdded(bytes32 indexed ruleHash, uint256 amt);
-    event CollateralReduced(bytes32 indexed ruleHash, uint256 amt);
+    event CollateralAdded(bytes32 indexed ruleHash, uint256[] amounts);
+    event CollateralReduced(bytes32 indexed ruleHash, uint256[] amounts);
 
     modifier onlyRuleOwner(bytes32 ruleHash) {
         require(rules[ruleHash].owner == msg.sender, "onlyRuleOwner");
@@ -76,22 +76,26 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         return rules[ruleHash];
     }
 
-    function getInputToken(bytes32 ruleHash) public view ruleExists(ruleHash) returns (address) {
-        return rules[ruleHash].actions[0].inputToken;
+    function getInputTokens(bytes32 ruleHash) public view ruleExists(ruleHash) returns (address[] memory) {
+        return rules[ruleHash].actions[0].inputTokens;
     }
 
-    function getOutputToken(bytes32 ruleHash) public view ruleExists(ruleHash) returns (address) {
+    function getOutputTokens(bytes32 ruleHash) public view ruleExists(ruleHash) returns (address[] memory) {
         Rule storage rule = rules[ruleHash];
-        return rule.actions[rule.actions.length - 1].outputToken;
+        return rule.actions[rule.actions.length - 1].outputTokens;
     }
 
     function redeemBalance(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) nonReentrant {
         Rule storage rule = rules[ruleHash];
         _setRuleStatus(ruleHash, RuleStatus.REDEEMED);
-        Utils._send(rule.owner, rule.outputAmount, getOutputToken(ruleHash));
+        address[] memory tokens = getOutputTokens(ruleHash);
+
+        for (uint256 i = 0; i < tokens.length; i++) {
+            Utils._send(rule.owner, rule.outputAmounts[i], tokens[i]);
+        }
     }
 
-    function addCollateral(bytes32 ruleHash, uint256 amount)
+    function addCollateral(bytes32 ruleHash, uint256[] memory amounts)
         external
         payable
         whenNotPaused
@@ -101,20 +105,24 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         Rule storage rule = rules[ruleHash];
         require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE, "Can't add collateral");
 
-        require(amount > 0, "amount <= 0");
+        address[] memory tokens = getInputTokens(ruleHash);
+        uint256 amount;
 
-        if (getInputToken(ruleHash) != REConstants.ETH) {
-            rule.totalCollateralAmount = rule.totalCollateralAmount + amount;
-            // must have been approved first
-            IERC20(getInputToken(ruleHash)).safeTransferFrom(msg.sender, address(this), amount);
-        } else {
-            require(amount == msg.value, "ETH: amount != msg.value");
-            rule.totalCollateralAmount = rule.totalCollateralAmount + msg.value;
+        for (uint256 i = 0; i < tokens.length; i++) {
+            amount = amounts[i];
+            require(amount > 0, "amount <= 0");
+            if (tokens[i] != REConstants.ETH) {
+                IERC20(tokens[i]).safeTransferFrom(msg.sender, address(this), amount);
+            } else {
+                require(amount == msg.value, "ETH: amount != msg.value");
+            }
+            rule.collateralAmounts[i] += amount;
         }
-        emit CollateralAdded(ruleHash, amount);
+
+        emit CollateralAdded(ruleHash, amounts);
     }
 
-    function reduceCollateral(bytes32 ruleHash, uint256 amount)
+    function reduceCollateral(bytes32 ruleHash, uint256[] memory amounts)
         external
         whenNotPaused
         onlyRuleOwner(ruleHash)
@@ -123,15 +131,20 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         Rule storage rule = rules[ruleHash];
         require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE, "Can't reduce collateral");
 
-        require(rule.totalCollateralAmount >= amount, "Not enough collateral.");
-        rule.totalCollateralAmount = rule.totalCollateralAmount - amount;
+        address[] memory tokens = getInputTokens(ruleHash);
+        uint256 amount;
 
-        if (getInputToken(ruleHash) != REConstants.ETH) {
-            IERC20(getInputToken(ruleHash)).safeTransfer(msg.sender, amount);
-        } else {
-            payable(msg.sender).transfer(amount);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            amount = amounts[i];
+            require(rule.collateralAmounts[i] >= amount, "Not enough collateral.");
+            rule.collateralAmounts[i] -= amount;
+            if (tokens[i] != REConstants.ETH) {
+                IERC20(tokens[i]).safeTransfer(msg.sender, amount);
+            } else {
+                payable(msg.sender).transfer(amount);
+            }
         }
-        emit CollateralReduced(ruleHash, amount);
+        emit CollateralReduced(ruleHash, amounts);
     }
 
     function increaseReward(bytes32 ruleHash) public payable whenNotPaused ruleExists(ruleHash) {
@@ -172,13 +185,16 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         for (uint256 i = 0; i < actions.length; i++) {
             require(IAction(actions[i].callee).validate(actions[i]), "Invalid Action");
             if (i != actions.length - 1) {
-                require(actions[i].outputToken == actions[i + 1].inputToken, "Invalid inputToken->outputToken");
+                address[] memory inputTokens = actions[i + 1].inputTokens;
+                address[] memory outputTokens = actions[i].outputTokens;
+                for (uint256 j = 0; j < outputTokens.length; j++) {
+                    require(outputTokens[j] == inputTokens[j], "Invalid inputTokens->outputTokens");
+                }
             }
             rule.actions.push(actions[i]);
         }
         rule.owner = msg.sender;
         rule.status = RuleStatus.INACTIVE;
-        rule.outputAmount = 0;
         increaseReward(ruleHash);
 
         emit Created(ruleHash);
@@ -247,25 +263,35 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
 
         ActionRuntimeParams memory runtimeParams = ActionRuntimeParams({
             triggerData: triggerData,
-            totalCollateralAmount: rule.totalCollateralAmount
+            collateralAmounts: rule.collateralAmounts
         });
 
-        uint256 output = 0;
+        uint256[] memory outputs;
         for (uint256 i = 0; i < rule.actions.length; i++) {
             Action storage action = rule.actions[i];
-            if (action.inputToken != REConstants.ETH) {
-                IERC20(action.inputToken).safeApprove(action.callee, runtimeParams.totalCollateralAmount);
-                output = IAction(action.callee).perform(action, runtimeParams);
+            address token;
+            int256 eth_pos = -1;
+
+            for (uint256 j = 0; j < action.inputTokens.length; j++) {
+                token = action.inputTokens[j];
+                if (token != REConstants.ETH) {
+                    IERC20(token).safeApprove(action.callee, runtimeParams.collateralAmounts[j]);
+                } else {
+                    eth_pos = int256(j);
+                }
+            }
+            if (eth_pos == -1) {
+                outputs = IAction(action.callee).perform(action, runtimeParams);
             } else {
-                output = IAction(action.callee).perform{value: runtimeParams.totalCollateralAmount}(
+                outputs = IAction(action.callee).perform{value: runtimeParams.collateralAmounts[uint256(eth_pos)]}(
                     action,
                     runtimeParams
                 );
             }
-            runtimeParams.totalCollateralAmount = output;
+            runtimeParams.collateralAmounts = outputs;
         }
 
-        rule.outputAmount = output;
+        rule.outputAmounts = outputs;
         // We dont need to check sender here.
         // As long as the execution reaches this point, the reward is there
         // for the taking.

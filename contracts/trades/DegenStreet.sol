@@ -60,12 +60,12 @@ contract DegenStreet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGu
         roboCop = RoboCop(ReAddr);
     }
 
-    function getInputToken(bytes32 tradeHash) public view tradeExists(tradeHash) returns (address) {
-        return roboCop.getInputToken(trades[tradeHash].ruleHash);
+    function getInputTokens(bytes32 tradeHash) public view tradeExists(tradeHash) returns (address[] memory) {
+        return roboCop.getInputTokens(trades[tradeHash].ruleHash);
     }
 
-    function getOutputToken(bytes32 tradeHash) public view tradeExists(tradeHash) returns (address) {
-        return roboCop.getOutputToken(trades[tradeHash].ruleHash);
+    function getOutputTokens(bytes32 tradeHash) public view tradeExists(tradeHash) returns (address[] memory) {
+        return roboCop.getOutputTokens(trades[tradeHash].ruleHash);
     }
 
     function deposit(
