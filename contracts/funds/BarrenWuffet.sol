@@ -5,7 +5,7 @@ import "../utils/subscriptions/ISubscription.sol";
 import "../utils/Constants.sol";
 import "../utils/Utils.sol";
 import "../actions/IAction.sol";
-import "../trades/DegenStreet.sol";
+import "../rules/RoboCop.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -18,11 +18,6 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
     event Created(bytes32 indexed fundHash);
     event Closed(bytes32 indexed fundHash);
 
-    struct Position {
-        bytes32 tradeHash;
-        uint256 subIdx;
-    }
-
     struct Fund {
         bytes32 fundHash;
         address manager;
@@ -31,7 +26,7 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         SubscriptionConstraints constraints;
         Subscription[] subscriptions;
         address[] assets; // tracking all the assets this fund has atm
-        Position[] openPositions;
+        bytes32[] openRules;
         uint256 totalCollateral;
         bool closed;
     }
@@ -54,14 +49,14 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
     }
 
     mapping(bytes32 => Fund) funds;
-    DegenStreet degenStreet;
+    RoboCop roboCop;
 
-    constructor(address payable TmAddr) {
-        degenStreet = DegenStreet(TmAddr);
+    constructor(address payable RcAddr) {
+        roboCop = RoboCop(RcAddr);
     }
 
-    function setTradeManangerAddress(address payable TmAddr) external onlyOwner {
-        degenStreet = DegenStreet(TmAddr);
+    function setTradeManangerAddress(address payable RcAddr) external onlyOwner {
+        roboCop = RoboCop(RcAddr);
     }
 
     modifier onlyActiveSubscriber(bytes32 fundHash, uint256 subscriptionIdx) {
@@ -124,11 +119,13 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         return fundHash;
     }
 
-    function getInputToken(bytes32 fundHash) external view fundExists(fundHash) returns (address) {
-        return REConstants.ETH;
+    function getInputTokens(bytes32 fundHash) external view fundExists(fundHash) returns (address[] memory) {
+        address[] memory tokens = new address[](1);
+        tokens[0] = REConstants.ETH;
+        return tokens;
     }
 
-    function getOutputToken(bytes32) external pure returns (address) {
+    function getOutputTokens(bytes32) external pure returns (address[] memory) {
         revert("Undefined: Funds may have multiple output tokens, determined only after it's closed.");
     }
 
@@ -147,8 +144,8 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         Fund storage fund = funds[fundHash];
         fund.closed = true;
 
-        for (uint256 i = 0; i < fund.openPositions.length; i++) {
-            _closePosition(fundHash, i);
+        for (uint256 i = 0; i < fund.openRules.length; i++) {
+            _closeRule(fundHash, i);
         }
 
         // TODO: potentially swap back all assets to 1 terminal asset
@@ -163,68 +160,168 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         ActionRuntimeParams calldata runtimeParams
     )
         external
+        payable
         onlyDeployedFund(fundHash)
         onlyFundManager(fundHash)
         whenNotPaused
         nonReentrant
-        returns (uint256 output)
+        returns (uint256[] memory outputs)
     {
-        _decreaseAssetBalance(fundHash, action.inputToken, runtimeParams.totalCollateralAmount);
-        if (action.inputToken != REConstants.ETH) {
-            IERC20(action.inputToken).safeApprove(action.callee, runtimeParams.totalCollateralAmount);
-            output = IAction(action.callee).perform(action, runtimeParams);
-        } else {
-            output = IAction(action.callee).perform{value: runtimeParams.totalCollateralAmount}(action, runtimeParams);
+        address token;
+        uint256 amount;
+        for (uint256 i = 0; i < action.inputTokens.length; i++) {
+            token = action.inputTokens[i];
+            amount = runtimeParams.collateralAmounts[i];
+            _decreaseAssetBalance(fundHash, token, amount);
+            if (token != REConstants.ETH) {
+                IERC20(token).safeApprove(action.callee, runtimeParams.collateralAmounts[i]);
+            }
         }
-        _increaseAssetBalance(fundHash, action.outputToken, output);
+
+        outputs = IAction(action.callee).perform{value: msg.value}(action, runtimeParams);
+
+        for (uint256 i = 0; i < action.inputTokens.length; i++) {
+            token = action.outputTokens[i];
+            amount = outputs[i];
+            _increaseAssetBalance(fundHash, token, amount);
+        }
     }
 
-    function openPosition(
+    function createRule(
         bytes32 fundHash,
-        bytes32 tradeHash,
-        uint256 amount
-    ) external onlyDeployedFund(fundHash) onlyFundManager(fundHash) whenNotPaused nonReentrant {
-        Fund storage fund = funds[fundHash];
-
-        // Assumes that the trade already exists on degenStreet to subscribe to
-        // if it is a novel trade, the fundManager will have to create it with an additional TX
-        address inputToken = degenStreet.getInputToken(tradeHash);
-        uint256 subIdx;
-        _decreaseAssetBalance(fundHash, inputToken, amount);
-        fund.openPositions.push(Position({tradeHash: tradeHash, subIdx: subIdx}));
-
-        if (inputToken == REConstants.ETH) {
-            subIdx = degenStreet.deposit{value: amount}(tradeHash, inputToken, amount);
-        } else {
-            IERC20(inputToken).safeApprove(address(degenStreet), amount);
-            subIdx = degenStreet.deposit(tradeHash, inputToken, amount);
-        }
+        Trigger[] calldata triggers,
+        Action[] calldata actions
+    )
+        external
+        payable
+        nonReentrant
+        whenNotPaused
+        onlyDeployedFund(fundHash)
+        onlyFundManager(fundHash)
+        returns (bytes32 ruleHash)
+    {
+        // Note: Rule is created through BarrenWuffet so that BarrenWuffet is rule.owner
+        ruleHash = roboCop.createRule{value: msg.value}(triggers, actions);
+        funds[fundHash].openRules.push(ruleHash);
     }
 
-    function closePosition(bytes32 fundHash, uint256 openPositionIdx)
+    function activateRule(bytes32 fundHash, uint256 openRuleIdx)
         external
         whenNotPaused
         nonReentrant
+        onlyDeployedFund(fundHash)
         onlyFundManager(fundHash)
     {
-        _closePosition(fundHash, openPositionIdx);
+        roboCop.activateRule(funds[fundHash].openRules[openRuleIdx]);
     }
 
-    function _closePosition(bytes32 fundHash, uint256 openPositionIdx) private {
-        Fund storage fund = funds[fundHash];
-        // Following line should blow up if openPosIdx does not exist
-        Position storage position = fund.openPositions[openPositionIdx];
-        bytes32 tradeHash = position.tradeHash;
-        uint256 subIdx = position.subIdx;
-        (address[] memory tokens, uint256[] memory amounts) = degenStreet.withdraw(tradeHash, subIdx);
-        _removeOpenPosition(fundHash, openPositionIdx);
-        _increaseAssetBalance(fundHash, tokens[0], amounts[0]);
+    function deactivateRule(bytes32 fundHash, uint256 openRuleIdx)
+        external
+        whenNotPaused
+        nonReentrant
+        onlyDeployedFund(fundHash)
+        onlyFundManager(fundHash)
+    {
+        roboCop.deactivateRule(funds[fundHash].openRules[openRuleIdx]);
     }
 
-    function _removeOpenPosition(bytes32 fundHash, uint256 openPositionIdx) private {
+    function addRuleCollateral(
+        bytes32 fundHash,
+        uint256 openRuleIdx,
+        address[] memory collateralTokens,
+        uint256[] memory collateralAmounts
+    ) external payable whenNotPaused nonReentrant onlyDeployedFund(fundHash) onlyFundManager(fundHash) {
         Fund storage fund = funds[fundHash];
-        fund.openPositions[openPositionIdx] = fund.openPositions[fund.openPositions.length - 1];
-        fund.openPositions.pop();
+
+        address token;
+        uint256 amount;
+        for (uint256 i = 0; i < collateralTokens.length; i++) {
+            token = collateralTokens[i];
+            amount = collateralAmounts[i];
+            _decreaseAssetBalance(fundHash, token, amount);
+            if (token != REConstants.ETH) {
+                IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+                IERC20(token).safeApprove(address(roboCop), amount);
+            }
+        }
+
+        roboCop.addCollateral{value: msg.value}(fund.openRules[openRuleIdx], collateralAmounts);
+    }
+
+    function reduceRuleCollateral(
+        bytes32 fundHash,
+        uint256 openRuleIdx,
+        uint256[] memory collateralAmounts
+    ) external whenNotPaused nonReentrant onlyDeployedFund(fundHash) onlyFundManager(fundHash) {
+        _reduceRuleCollateral(fundHash, openRuleIdx, collateralAmounts);
+    }
+
+    function _reduceRuleCollateral(
+        bytes32 fundHash,
+        uint256 openRuleIdx,
+        uint256[] memory collateralAmounts
+    ) internal {
+        Fund storage fund = funds[fundHash];
+        bytes32 ruleHash = funds[fundHash].openRules[openRuleIdx];
+        address[] memory inputTokens = roboCop.getInputTokens(ruleHash);
+        roboCop.reduceCollateral(ruleHash, collateralAmounts);
+
+        for (uint256 i = 0; i < inputTokens.length; i++) {
+            _increaseAssetBalance(fundHash, inputTokens[i], collateralAmounts[i]);
+        }
+    }
+
+    function cancelRule(bytes32 fundHash, uint256 openRuleIdx)
+        public
+        whenNotPaused
+        nonReentrant
+        onlyDeployedFund(fundHash)
+        onlyFundManager(fundHash)
+    {
+        Fund storage fund = funds[fundHash];
+        bytes32 ruleHash = funds[fundHash].openRules[openRuleIdx];
+        Rule memory rule = roboCop.getRule(ruleHash);
+        if (rule.status != RuleStatus.INACTIVE) {
+            roboCop.deactivateRule(ruleHash);
+        }
+        _reduceRuleCollateral(fundHash, openRuleIdx, rule.collateralAmounts);
+        _removeOpenRuleIdx(fundHash, openRuleIdx);
+    }
+
+    function redeemRuleOutput(bytes32 fundHash, uint256 openRuleIdx)
+        public
+        whenNotPaused
+        nonReentrant
+        onlyDeployedFund(fundHash)
+        onlyFundManager(fundHash)
+    {
+        bytes32 ruleHash = funds[fundHash].openRules[openRuleIdx];
+        Rule memory rule = roboCop.getRule(ruleHash);
+        address[] memory outputTokens = roboCop.getOutputTokens(ruleHash);
+        uint256[] memory outputAmounts = rule.outputAmounts;
+        roboCop.redeemBalance(ruleHash);
+
+        for (uint256 i = 0; i < outputTokens.length; i++) {
+            _increaseAssetBalance(fundHash, outputTokens[i], outputAmounts[i]);
+        }
+        _removeOpenRuleIdx(fundHash, openRuleIdx);
+    }
+
+    function _closeRule(bytes32 fundHash, uint256 openRuleIdx) private {
+        bytes32 ruleHash = funds[fundHash].openRules[openRuleIdx];
+        Rule memory rule = roboCop.getRule(ruleHash);
+
+        if (rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE) {
+            cancelRule(fundHash, openRuleIdx);
+        } else if (rule.status == RuleStatus.EXECUTED) {
+            redeemRuleOutput(fundHash, openRuleIdx);
+        }
+    }
+
+    function _removeOpenRuleIdx(bytes32 fundHash, uint256 openRuleIdx) private {
+        Fund storage fund = funds[fundHash];
+        fund.openRules[openRuleIdx] = fund.openRules[fund.openRules.length - 1];
+        fund.openRules.pop();
     }
 
     function _increaseAssetBalance(
