@@ -57,7 +57,7 @@ contract SwapCurveAction is IAction, Ownable {
 
     constructor(address _address_provider) {
         // should be 0x0000000022D53366457F9d5E68Ec105046FC4383, per https://curve.readthedocs.io/registry-address-provider.html
-        address_provider = IAddressProvider(address_provider);
+        address_provider = IAddressProvider(_address_provider);
     }
 
     function _getRegistry() internal view returns (address) {
