@@ -217,11 +217,12 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         bytes32 tradeHash = position.tradeHash;
         uint256 subIdx = position.subIdx;
         (address[] memory tokens, uint256[] memory amounts) = degenStreet.withdraw(tradeHash, subIdx);
-        _removeOpenPosition(fund, openPositionIdx);
+        _removeOpenPosition(fundHash, openPositionIdx);
         _increaseAssetBalance(fundHash, tokens[0], amounts[0]);
     }
 
-    function _removeOpenPosition(Fund storage fund, uint256 openPositionIdx) private {
+    function _removeOpenPosition(bytes32 fundHash, uint256 openPositionIdx) private {
+        Fund storage fund = funds[fundHash];
         fund.openPositions[openPositionIdx] = fund.openPositions[fund.openPositions.length - 1];
         fund.openPositions.pop();
     }
