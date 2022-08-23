@@ -8,11 +8,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "hardhat/console.sol";
-
 /*
+    https://docs.uniswap.org/protocol/guides/swaps/single-swaps
+
     runtimeParams.triggerData must be in decimals = 8
-    
     Notes with examples: 
     ETH/USD -> USD per ETH -> ETH Price in USD -> triggerData = ["eth", "usd"] -> Must use when tokenIn = ETH and tokenOut = USD (i.e. buying USD with ETH)
     USD/ETH -> ETH per USD -> USD Price in ETH -> triggerData = ["usd", "eth"] -> Must use when tokenIn = USD* and tokenOut = ETH (i.e. buying ETH with USD)
