@@ -55,7 +55,7 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         roboCop = RoboCop(RcAddr);
     }
 
-    function setTradeManangerAddress(address payable RcAddr) external onlyOwner {
+    function setRoboCopAddress(address payable RcAddr) external onlyOwner {
         roboCop = RoboCop(RcAddr);
     }
 
