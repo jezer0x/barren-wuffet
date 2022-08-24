@@ -359,7 +359,7 @@ describe("RoboCop", () => {
       expect(await roboCop.connect(botWallet).checkRule(ruleHash)).to.equal(false);
     });
 
-    it.skip("should return true if all of multiple triggers are valid", async () => {});
+    it.skip("should return true if all of multiple triggers are valid", async () => { });
   });
 
   describe("Execute Rule with Failing Trigger", () => {
@@ -657,7 +657,7 @@ describe("RoboCop", () => {
     // should not allow adding collateral to a cancelled or executed rule
     // this is handled in the rule cancellation section.
 
-    it.skip("should allow adding collateral based on the first action, even if subsequent actions have different collateral requirements", () => {});
+    it.skip("should allow adding collateral based on the first action, even if subsequent actions have different collateral requirements", () => { });
   });
 
   describe("Execute Rule", () => {
@@ -674,15 +674,15 @@ describe("RoboCop", () => {
       await expect(roboCop.connect(botWallet).executeRule(ruleHashToken)).to.be.rejectedWith("Action unsuccessful");
     });
 
-    it.skip("placeholder for multiple triggers / actions", async () => {});
+    it.skip("placeholder for multiple triggers / actions", async () => { });
     // TODO Merge this and the native rule
     // Check for single and multiple triggers, and single and multiple actions
 
-    it.skip("should not revert if anyone tries to execute a rule with no collateral", async () => {});
+    it.skip("should not revert if anyone tries to execute a rule with no collateral", async () => { });
 
     // For some insane reason, if the native test is after the erc20 test,
     // the addCollateral fails in the erc20 test.
-    it("Should allow anyone to execute the rule once (native) and get a reward if gas is paid, and the trigger passes", async () => {
+    it("xx Should allow anyone to execute the rule once (native) and get a reward if gas is paid, and the trigger passes", async () => {
       // execute valid rule with collateral by someone else. and get a reward.
       const { ruleHashEth, ruleSubscriberWallet, botWallet, roboCop, testToken1 } = await loadFixture(
         deployValidRuleFixture
@@ -896,7 +896,7 @@ describe("RoboCop", () => {
       );
     });
 
-    it.skip("Should redeem balance only from the final action if multiple actions were executed", async () => {});
+    it.skip("Should redeem balance only from the final action if multiple actions were executed", async () => { });
   });
 
   describe("Change Reward", () => {
@@ -1017,42 +1017,40 @@ describe("RoboCop", () => {
     });
     // TODO: Would it make more sense to just tag some tests a decorator, such that those test will execute with / without pause? We could do the same for other decorators. Downside is that you cant summarize the pause tests in one place.
     // OR perhaps we could be even more generic and check that unless excluded, all state-changing external / public fns do get blocked on pause.
-    it("should prevent a bunch of functions from being executed when paused and re-allows them when unpaused", async () => {
+    it("xx should prevent a bunch of functions from being executed when paused and re-allows them when unpaused", async () => {
       const fixtureVars = await loadFixture(deployValidRuleFixture);
-      const { ownerWallet, roboCop } = fixtureVars;
+      const {
+        ruleHashEth,
+        ruleSubscriberWallet,
+        priceTrigger,
+        swapUniSingleAction,
+        roboCop,
+        testToken1,
+        ownerWallet
+      } = fixtureVars;
 
       // If we want to make sure that certain works even after pausing,
       // that needs to be tested separately.
-      const reSuite = (_fixtureVars: any) => {
-        const {
-          ruleHashEth,
-          ruleHashToken,
-          ruleSubscriberWallet,
-          priceTrigger,
-          swapUniSingleAction,
-          roboCop,
-          testToken1,
-        } = _fixtureVars;
-        const collateralAmount = utils.parseEther("2");
-        const reSub = roboCop.connect(ruleSubscriberWallet);
 
-        return [
-          reSub.createRule(
-            [makePassingTrigger(priceTrigger.address)],
-            [makeSwapAction(swapUniSingleAction.address, [testToken1.address])]
-          ),
-          reSub.deactivateRule(ruleHashEth),
-          reSub.activateRule(ruleHashEth),
-          reSub.addCollateral(ruleHashEth, [collateralAmount], { value: collateralAmount }),
-          reSub.reduceCollateral(ruleHashEth, [utils.parseEther("1.5")]),
-          reSub.increaseReward(ruleHashEth, { value: DEFAULT_REWARD }),
-          reSub.withdrawReward(ruleHashEth),
-          reSub.executeRule(ruleHashEth),
-          reSub.redeemBalance(ruleHashEth),
-        ];
-      };
+      const collateralAmount = utils.parseEther("2");
+      const reSub = roboCop.connect(ruleSubscriberWallet);
 
-      await testPauseFunctionality(roboCop.connect(ownerWallet), () => reSuite(fixtureVars));
+      const reSuite = [
+        () => reSub.createRule(
+          [makePassingTrigger(priceTrigger.address)],
+          [makeSwapAction(swapUniSingleAction.address, [testToken1.address])]
+        ),
+        () => reSub.deactivateRule(ruleHashEth),
+        () => reSub.activateRule(ruleHashEth),
+        () => reSub.addCollateral(ruleHashEth, [collateralAmount], { value: collateralAmount }),
+        () => reSub.reduceCollateral(ruleHashEth, [utils.parseEther("1.5")]),
+        () => reSub.increaseReward(ruleHashEth, { value: DEFAULT_REWARD }),
+        () => reSub.withdrawReward(ruleHashEth),
+        () => reSub.executeRule(ruleHashEth),
+        () => reSub.redeemBalance(ruleHashEth),
+      ];
+
+      await testPauseFunctionality(roboCop.connect(ownerWallet), reSuite);
     });
   });
 });

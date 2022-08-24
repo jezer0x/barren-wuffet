@@ -12,16 +12,20 @@ export async function testPauseAuthorization(contract: Contract, ownerWallet: Si
     await expect(ownerCon.unpause()).to.emit(contract, "Unpaused");
 }
 
-export async function testPauseFunctionality(connectedContract: Contract, fnSuite: () => Promise<any>[]) {
+export async function testPauseFunctionality(connectedContract: Contract, fnSuite: (() => Promise<any>)[]) {
     await connectedContract.pause();
 
-    const promisesPre = fnSuite();
-    await Promise.all(promisesPre.map(p => expect(p).to.be.revertedWith("Pausable: paused")));
+    // we want to execute these sequentially incase some depend on others
+    for (const f of fnSuite) {
+        await expect(f()).to.be.revertedWith("Pausable: paused");
+    }
 
     await connectedContract.unpause();
 
-    const promisesPost = fnSuite();
-    await Promise.all(promisesPost.map(p => expect(p).to.not.be.reverted));
+    for (const f of fnSuite) {
+        await expect(f()).to.not.be.reverted;
+    }
+
 }
 
 
