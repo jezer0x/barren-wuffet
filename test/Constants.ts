@@ -16,6 +16,7 @@ export const ETH_PRICE_IN_TST1_PARAM = utils.defaultAbiCoder.encode(["string", "
 export const ETH_PRICE_IN_TST1 = ETH_PRICE_IN_USD.mul(PRICE_TRIGGER_DECIMALS).div(TST1_PRICE_IN_USD); // 43333333333 = 1 ETH costs ~433 TST1
 
 export const BAD_RULE_HASH = "0x" + "1234".repeat(16);
+export const BAD_TRADE_HASH = "0x" + "1234".repeat(16);
 export const BAD_FUND_HASH = "0x" + "1234".repeat(16);
 
 export const DEFAULT_REWARD = utils.parseEther("0.01");

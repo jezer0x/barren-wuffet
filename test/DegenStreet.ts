@@ -14,7 +14,7 @@ import {
   TST1_PRICE_IN_ETH_PARAM,
   GT,
 } from "./Constants";
-import { makePassingTrigger, makeSwapAction, setupDegenStreet } from "./Fixtures";
+import { makePassingTrigger, makeSwapAction, setupDegenStreet, setupSwapTrades } from "./Fixtures";
 import { getHashFromEvent } from "./helper";
 
 const MIN_COLLATERAL_PER_SUB = BigNumber.from(10).mul(ERC20_DECIMALS);
@@ -58,46 +58,13 @@ describe("DegenStreet", () => {
       botWallet,
     } = await deployDegenStreetFixture();
 
-    const ETHtoTST1SwapPriceTrigger = {
-      op: GT,
-      param: ETH_PRICE_IN_TST1_PARAM,
-      callee: priceTrigger.address,
-      value: ETH_PRICE_IN_TST1.sub(1),
-    };
-
-    const TST1toETHSwapPriceTrigger = {
-      op: GT,
-      param: TST1_PRICE_IN_ETH_PARAM,
-      callee: priceTrigger.address,
-      value: TST1_PRICE_IN_ETH.sub(1),
-    };
-
-    const swapTST1ToETHAction = makeSwapAction(
-      swapUniSingleAction.address,
-      testToken1.address,
-      ethers.constants.AddressZero
-    );
-
-    const swapETHToTST1Action = makeSwapAction(
-      swapUniSingleAction.address,
-      ethers.constants.AddressZero,
-      testToken1.address
-    );
-
-    const properContraints = await makeSubConstraints();
-
-    const tx = await degenStreet
-      .connect(traderWallet)
-      .createTrade([TST1toETHSwapPriceTrigger], [swapTST1ToETHAction], properContraints, { value: DEFAULT_REWARD });
-
-    const tradeTST1forETHHash: Bytes = await getHashFromEvent(tx, "Created", degenStreet.address, "tradeHash");
-
-    const tx2 = await degenStreet
-      .connect(traderWallet)
-      .createTrade([ETHtoTST1SwapPriceTrigger], [swapETHToTST1Action], properContraints, { value: DEFAULT_REWARD });
-
-    const tradeETHforTST1Hash: Bytes = await getHashFromEvent(tx2, "Created", degenStreet.address, "tradeHash");
-
+    const {
+      tradeTST1forETHHash,
+      tradeETHforTST1Hash,
+    } = await setupSwapTrades(
+      priceTrigger, swapUniSingleAction, testToken1, await makeSubConstraints(),
+      degenStreet, traderWallet
+    )
     return {
       ownerWallet,
       testToken1,
@@ -121,8 +88,8 @@ describe("DegenStreet", () => {
   });
 
   describe.skip("Admin functions", () => {
-    it("Should be able to X if owner", async function () {});
-    it("Should not be able to X if not owner", async function () {});
+    it("Should be able to X if owner", async function () { });
+    it("Should not be able to X if not owner", async function () { });
   });
 
   describe("Opening a Trade", () => {
@@ -172,12 +139,12 @@ describe("DegenStreet", () => {
       try {
         await tx1.wait();
         tx1Success = true;
-      } catch {}
+      } catch { }
 
       try {
         await tx2.wait();
         tx2Success = true;
-      } catch {}
+      } catch { }
 
       expect(tx1Success).to.not.equal(tx2Success);
     });
@@ -491,7 +458,7 @@ describe("DegenStreet", () => {
         );
     });
 
-    it.skip("Should only allow deposits in ACTIVE trades", async function () {});
+    it.skip("Should only allow deposits in ACTIVE trades", async function () { });
   });
 
   describe("Subscriber withdrawing", () => {

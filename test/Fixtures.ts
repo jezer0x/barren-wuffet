@@ -1,4 +1,5 @@
 import { ethers } from "hardhat";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { TriggerStruct, ActionStruct, RoboCop } from "../typechain-types/contracts/rules/RoboCop";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Contract, Bytes, BigNumber } from "ethers";
@@ -12,6 +13,7 @@ import {
   PRICE_TRIGGER_DECIMALS,
   TST1_PRICE_IN_USD,
   ETH_PRICE_IN_TST1,
+  ETH_PRICE_IN_TST1_PARAM,
 } from "./Constants";
 import { getHashFromEvent, tx } from "./helper";
 import { expect } from "chai";
@@ -233,6 +235,55 @@ export async function setupDegenStreet() {
   };
 }
 
+//@ts-ignore
+export async function setupSwapTrades(priceTrigger, swapUniSingleAction, testToken1,
+  //@ts-ignore
+  constraints, degenStreet, traderWallet) {
+
+  const ETHtoTST1SwapPriceTrigger = {
+    op: GT,
+    param: ETH_PRICE_IN_TST1_PARAM,
+    callee: priceTrigger.address,
+    value: ETH_PRICE_IN_TST1.sub(1),
+  };
+
+  const TST1toETHSwapPriceTrigger = {
+    op: GT,
+    param: TST1_PRICE_IN_ETH_PARAM,
+    callee: priceTrigger.address,
+    value: TST1_PRICE_IN_ETH.sub(1),
+  };
+
+  const swapTST1ToETHAction = makeSwapAction(
+    swapUniSingleAction.address,
+    testToken1.address,
+    ethers.constants.AddressZero
+  );
+
+  const swapETHToTST1Action = makeSwapAction(
+    swapUniSingleAction.address,
+    ethers.constants.AddressZero,
+    testToken1.address
+  );
+
+  const tx = await degenStreet
+    .connect(traderWallet)
+    .createTrade([TST1toETHSwapPriceTrigger], [swapTST1ToETHAction], constraints, { value: DEFAULT_REWARD });
+
+  const tradeTST1forETHHash: Bytes = await getHashFromEvent(tx, "Created", degenStreet.address, "tradeHash");
+
+  const tx2 = await degenStreet
+    .connect(traderWallet)
+    .createTrade([ETHtoTST1SwapPriceTrigger], [swapETHToTST1Action], constraints, { value: DEFAULT_REWARD });
+
+  const tradeETHforTST1Hash: Bytes = await getHashFromEvent(tx2, "Created", degenStreet.address, "tradeHash");
+
+  return {
+    tradeETHforTST1Hash,
+    tradeTST1forETHHash
+  }
+}
+
 export async function setupBarrenWuffet() {
   // these wallets maybe reused to create trader / rule executor.
   // which shouldnt be a problem
@@ -252,7 +303,24 @@ export async function setupBarrenWuffet() {
     actWlHash,
     degenStreet,
   } = await setupDegenStreet();
+
   const barrenWuffet = await ethers.getContract("BarrenWuffet");
+  const latestBlock = await time.latest();
+  const {
+    tradeTST1forETHHash,
+    tradeETHforTST1Hash,
+  } = await setupSwapTrades(
+    priceTrigger, swapUniSingleAction, testToken1, {
+    minCollateralPerSub: BigNumber.from(0),
+    maxCollateralPerSub: BigNumber.from(1000).mul(ERC20_DECIMALS),
+    minCollateralTotal: BigNumber.from(0),
+    maxCollateralTotal: BigNumber.from(1000).mul(ERC20_DECIMALS),
+    deadline: latestBlock + 60,
+    lockin: latestBlock + 61,
+    rewardPercentage: 10,
+  },
+    degenStreet, marlieChungerWallet
+  )
 
   return {
     ownerWallet,
@@ -273,5 +341,7 @@ export async function setupBarrenWuffet() {
     actWlHash,
     degenStreet,
     barrenWuffet,
+    tradeTST1forETHHash,
+    tradeETHforTST1Hash
   };
 }

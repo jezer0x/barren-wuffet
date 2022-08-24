@@ -49,7 +49,7 @@ library Utils {
         require(constraints.maxCollateralTotal >= constraints.maxCollateralPerSub, "maximums don't make sense");
         require(constraints.deadline >= block.timestamp, "deadline is in the past");
         require(constraints.lockin >= block.timestamp, "lockin is in the past");
-        require(constraints.lockin > constraints.deadline, "lockin <= dealdine");
+        require(constraints.lockin > constraints.deadline, "lockin <= deadline");
         require(constraints.rewardPercentage <= 100 * 100, "reward > 100%");
     }
 }
