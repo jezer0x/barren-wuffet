@@ -994,7 +994,7 @@ describe("RoboCop", () => {
       // We need a nested compar
       const expectedRule: Partial<RuleStructOutput> = {
         owner: ruleSubscriberWallet.address,
-        totalCollateralAmount: collateralAmount,
+        collateralAmounts: [collateralAmount],
         // @ts-ignore
         triggers: [ethTst1PassingTrigger],
         // @ts-ignore
@@ -1005,8 +1005,6 @@ describe("RoboCop", () => {
       };
 
       const actualRule = await roboCop.getRule(ruleHashEth);
-      console.log(actualRule);
-      console.log(expectedRule);
       // @ts-ignore
       expectEthersObjDeepEqual(expectedRule, actualRule);
     });
