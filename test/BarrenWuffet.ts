@@ -109,11 +109,11 @@ describe("BarrenWuffet", () => {
           return true;
         });
       await expect(
-        barrenWuffet.connect(marlieChungerWallet).getInputToken(BAD_FUND_HASH)
+        barrenWuffet.connect(marlieChungerWallet).getInputTokens(BAD_FUND_HASH)
       ).to.be.revertedWithoutReason();
 
-      expect(await barrenWuffet.connect(marlieChungerWallet).getInputToken(fundHash)).to.be.equal(
-        constants.AddressZero
+      expect(await barrenWuffet.connect(marlieChungerWallet).getInputTokens(fundHash)).to.have.length(1).and.contain(
+        ETH_ADDRESS
       );
     });
 
@@ -132,7 +132,7 @@ describe("BarrenWuffet", () => {
           return true;
         });
 
-      await expect(barrenWuffet.connect(marlieChungerWallet).getOutputToken(fundHash)).to.be.revertedWith(
+      await expect(barrenWuffet.connect(marlieChungerWallet).getOutputTokens(fundHash)).to.be.revertedWith(
         "Undefined: Funds may have multiple output tokens, determined only after it's closed."
       );
     });
@@ -147,7 +147,6 @@ describe("BarrenWuffet", () => {
       testToken1,
       fundSubscriberWallet,
       fundSubscriber2Wallet,
-      tradeETHforTST1Hash,
     } = await loadFixture(deployBarrenWuffetFixture);
 
     const latestTime = await time.latest();
@@ -203,7 +202,6 @@ describe("BarrenWuffet", () => {
       testToken1,
       fundSubscriberWallet,
       fundSubscriber2Wallet,
-      tradeETHforTST1Hash,
     };
   }
   describe("Fund Status: Raising", () => {
@@ -213,19 +211,19 @@ describe("BarrenWuffet", () => {
       await expect(
         barrenWuffet
           .connect(fundSubscriberWallet)
-          .deposit(jerkshireHash, constants.AddressZero, validDeposit, { value: validDeposit })
+          .deposit(jerkshireHash, ETH_ADDRESS, validDeposit, { value: validDeposit })
       )
         .to.emit(barrenWuffet, "Deposit")
-        .withArgs(jerkshireHash, 0, constants.AddressZero, validDeposit);
+        .withArgs(jerkshireHash, 0, ETH_ADDRESS, validDeposit);
     });
 
     it("Should allow the fund manager to deposit native token into their own fund", async () => {
       const { barrenWuffet, jerkshireHash, chungerToContract } = await loadFixture(raisingFundsFixture);
       await expect(
-        chungerToContract.deposit(jerkshireHash, constants.AddressZero, validDeposit, { value: validDeposit })
+        chungerToContract.deposit(jerkshireHash, ETH_ADDRESS, validDeposit, { value: validDeposit })
       )
         .to.emit(barrenWuffet, "Deposit")
-        .withArgs(jerkshireHash, 0, constants.AddressZero, validDeposit);
+        .withArgs(jerkshireHash, 0, ETH_ADDRESS, validDeposit);
     });
 
     it("Should not allow anyone to deposit ERC20 tokens into a raising fund. We only allow native right now", async () => {
@@ -255,7 +253,7 @@ describe("BarrenWuffet", () => {
       await expect(
         barrenWuffet
           .connect(fundSubscriberWallet)
-          .deposit(jerkshireHash, constants.AddressZero, depositAmt, { value: depositAmt })
+          .deposit(jerkshireHash, ETH_ADDRESS, depositAmt, { value: depositAmt })
       ).to.be.revertedWith("Insufficient Collateral for Subscription");
     });
 
@@ -267,7 +265,7 @@ describe("BarrenWuffet", () => {
       await expect(
         barrenWuffet
           .connect(fundSubscriberWallet)
-          .deposit(jerkshireHash, constants.AddressZero, depositAmt, { value: depositAmt })
+          .deposit(jerkshireHash, ETH_ADDRESS, depositAmt, { value: depositAmt })
       ).to.be.revertedWith("Max Collateral for Subscription exceeded");
     });
 
@@ -281,19 +279,19 @@ describe("BarrenWuffet", () => {
       await expect(
         barrenWuffet
           .connect(fundSubscriberWallet)
-          .deposit(jerkshireHash, constants.AddressZero, depositAmt1, { value: depositAmt1 })
+          .deposit(jerkshireHash, ETH_ADDRESS, depositAmt1, { value: depositAmt1 })
       )
         .to.emit(barrenWuffet, "Deposit")
-        .withArgs(jerkshireHash, 0, constants.AddressZero, depositAmt1);
+        .withArgs(jerkshireHash, 0, ETH_ADDRESS, depositAmt1);
 
       const depositAmt2 = jerkshireConstraints.minCollateralPerSub;
       await expect(
         barrenWuffet
           .connect(fundSubscriberWallet)
-          .deposit(jerkshireHash, constants.AddressZero, depositAmt2, { value: depositAmt2 })
+          .deposit(jerkshireHash, ETH_ADDRESS, depositAmt2, { value: depositAmt2 })
       )
         .to.emit(barrenWuffet, "Deposit")
-        .withArgs(jerkshireHash, 1, constants.AddressZero, depositAmt2);
+        .withArgs(jerkshireHash, 1, ETH_ADDRESS, depositAmt2);
     });
 
     it("Should revert if deposit is attempted on a fund where collateral limit is reached", async () => {
@@ -314,12 +312,12 @@ describe("BarrenWuffet", () => {
         const [amt, shouldSucceed, idOrError] = deposit;
         const tx = barrenWuffet
           .connect(fundSubscriberWallet)
-          .deposit(jerkshireHash, constants.AddressZero, amt, { value: amt });
+          .deposit(jerkshireHash, ETH_ADDRESS, amt, { value: amt });
         if (shouldSucceed) {
           await expect(tx)
             .to.changeEtherBalance(fundSubscriberWallet, amt.mul(-1))
             .emit(barrenWuffet, "Deposit")
-            .withArgs(jerkshireHash, idOrError, constants.AddressZero, amt);
+            .withArgs(jerkshireHash, idOrError, ETH_ADDRESS, amt);
         } else {
           await expect(tx).to.be.revertedWith(idOrError.toString());
         }
@@ -330,12 +328,12 @@ describe("BarrenWuffet", () => {
       const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await loadFixture(raisingFundsFixture);
       await barrenWuffet
         .connect(fundSubscriberWallet)
-        .deposit(jerkshireHash, constants.AddressZero, validDeposit, { value: validDeposit });
+        .deposit(jerkshireHash, ETH_ADDRESS, validDeposit, { value: validDeposit });
       const subscriptionId = 0;
       await expect(barrenWuffet.connect(fundSubscriberWallet).withdraw(jerkshireHash, subscriptionId))
         .to.changeEtherBalance(fundSubscriberWallet, validDeposit)
         .emit(barrenWuffet, "Withdraw")
-        .withArgs(jerkshireHash, subscriptionId, constants.AddressZero, validDeposit);
+        .withArgs(jerkshireHash, subscriptionId, ETH_ADDRESS, validDeposit);
     });
 
     it("should not allow withdrawing if there have not been any deposits from this user", async () => {
@@ -344,7 +342,7 @@ describe("BarrenWuffet", () => {
       );
       await barrenWuffet
         .connect(fundSubscriberWallet)
-        .deposit(jerkshireHash, constants.AddressZero, validDeposit, { value: validDeposit });
+        .deposit(jerkshireHash, ETH_ADDRESS, validDeposit, { value: validDeposit });
       await expect(barrenWuffet.connect(fundSubscriber2Wallet).withdraw(jerkshireHash, 0)).to.be.rejectedWith(
         "You're not the subscriber!"
       );
@@ -363,7 +361,7 @@ describe("BarrenWuffet", () => {
       // add some funds so we can confirm that even a fund with funds can be closed
       await barrenWuffet
         .connect(fundSubscriberWallet)
-        .deposit(jerkshireHash, constants.AddressZero, validDeposit, { value: validDeposit });
+        .deposit(jerkshireHash, ETH_ADDRESS, validDeposit, { value: validDeposit });
       await expect(fairyToContract.closeFund(jerkshireHash)).to.be.revertedWith(
         "Only the fund manager can close a fund prematurely"
       );
@@ -375,7 +373,7 @@ describe("BarrenWuffet", () => {
       await expect(barrenWuffet.connect(fundSubscriberWallet).withdraw(jerkshireHash, 0))
         .to.changeEtherBalance(fundSubscriberWallet, validDeposit)
         .emit(barrenWuffet, "Withdraw")
-        .withArgs(jerkshireHash, 0, constants.AddressZero, validDeposit);
+        .withArgs(jerkshireHash, 0, ETH_ADDRESS, validDeposit);
 
       // this is a clean fund
       await expect(chungerToContract.closeFund(crackBlockHash)).to.be.revertedWith(
@@ -390,7 +388,7 @@ describe("BarrenWuffet", () => {
       );
       await barrenWuffet
         .connect(fundSubscriberWallet)
-        .deposit(jerkshireHash, constants.AddressZero, validDeposit, { value: validDeposit });
+        .deposit(jerkshireHash, ETH_ADDRESS, validDeposit, { value: validDeposit });
       await expect(chungerToContract.withdrawReward(jerkshireHash)).to.be.revertedWith("Fund not closed");
     });
 
@@ -401,7 +399,7 @@ describe("BarrenWuffet", () => {
       );
       await barrenWuffet
         .connect(fundSubscriberWallet)
-        .deposit(jerkshireHash, constants.AddressZero, validDeposit, { value: validDeposit });
+        .deposit(jerkshireHash, ETH_ADDRESS, validDeposit, { value: validDeposit });
 
       await time.increaseTo(jerkshireConstraints.deadline);
 
@@ -454,12 +452,12 @@ describe("BarrenWuffet", () => {
     // both subscribers have deposits
     await barrenWuffet
       .connect(fundSubscriberWallet)
-      .deposit(jerkshireHash, constants.AddressZero, deposits.jerkshire.subscription1, {
+      .deposit(jerkshireHash, ETH_ADDRESS, deposits.jerkshire.subscription1, {
         value: deposits.jerkshire.subscription1,
       });
     await barrenWuffet
       .connect(fundSubscriber2Wallet)
-      .deposit(jerkshireHash, constants.AddressZero, deposits.jerkshire.subscription2, {
+      .deposit(jerkshireHash, ETH_ADDRESS, deposits.jerkshire.subscription2, {
         value: deposits.jerkshire.subscription2,
       });
 
@@ -497,7 +495,7 @@ describe("BarrenWuffet", () => {
       await expect(
         barrenWuffet
           .connect(fundSubscriberWallet)
-          .deposit(jerkshireHash, constants.AddressZero, depositAmt, { value: depositAmt })
+          .deposit(jerkshireHash, ETH_ADDRESS, depositAmt, { value: depositAmt })
       ).to.be.revertedWith("Fund is not raising");
     });
 
@@ -515,15 +513,15 @@ describe("BarrenWuffet", () => {
       await expect(chungerToContract.withdrawReward(jerkshireHash)).to.be.revertedWith("Fund not closed");
     });
 
-    describe("xx Open and close positions", () => {
+    describe.skip("xx <Open and close positions> change to create rules", () => {
       it("Should not allow anyone other than the fund manager to open and  close positons", async () => {
-        const { barrenWuffet, fundSubscriberWallet, jerkshireHash, tradeETHforTST1Hash } = await loadFixture(
+        const { barrenWuffet, fundSubscriberWallet, jerkshireHash } = await loadFixture(
           deployedFundsFixture
         );
 
         const positionValue = utils.parseEther("1");
         await expect(
-          barrenWuffet.connect(fundSubscriberWallet).openPosition(jerkshireHash, tradeETHforTST1Hash, positionValue)
+          barrenWuffet.connect(fundSubscriberWallet).openPosition(jerkshireHash, positionValue)
         ).to.be.revertedWithoutReason();
       });
 
@@ -537,13 +535,13 @@ describe("BarrenWuffet", () => {
       });
 
       it("should transfer assets to degen street when opening a positon", async () => {
-        const { barrenWuffet, chungerToContract, jerkshireHash, tradeETHforTST1Hash } = await loadFixture(
+        const { barrenWuffet, chungerToContract, jerkshireHash } = await loadFixture(
           deployedFundsFixture
         );
 
         const degenStreet = barrenWuffet.degenStreet;
         const positionValue = utils.parseEther("1");
-        await expect(chungerToContract.openPosition(jerkshireHash, tradeETHforTST1Hash, positionValue))
+        await expect(chungerToContract.openPosition(jerkshireHash, positionValue))
           .to.changeEtherBalances([barrenWuffet, degenStreet], [-positionValue, positionValue])
           .emit(
             // should be degenStreet

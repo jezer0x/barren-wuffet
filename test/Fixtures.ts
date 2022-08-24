@@ -236,6 +236,36 @@ export async function setupDegenStreet() {
   };
 }
 
+export async function setupSwapActions(
+  priceTrigger: Contract,
+  swapUniSingleAction: Contract,
+  testToken1: Contract,
+) {
+
+  const passingETHtoTST1SwapPriceTrigger = {
+    op: GT,
+    param: ETH_PRICE_IN_TST1_PARAM,
+    callee: priceTrigger.address,
+    value: ETH_PRICE_IN_TST1.sub(1),
+  };
+
+  const passingTST1toETHSwapPriceTrigger = {
+    op: GT,
+    param: TST1_PRICE_IN_ETH_PARAM,
+    callee: priceTrigger.address,
+    value: TST1_PRICE_IN_ETH.sub(1),
+  };
+
+  const swapTST1ToETHAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address], [ETH_ADDRESS]);
+  const swapETHToTST1Action = makeSwapAction(swapUniSingleAction.address, [ETH_ADDRESS], [testToken1.address]);
+
+  return {
+    passingETHtoTST1SwapPriceTrigger,
+    passingTST1toETHSwapPriceTrigger,
+    swapETHToTST1Action,
+    swapTST1ToETHAction,
+  };
+}
 //@ts-ignore
 export async function setupSwapTrades(
   priceTrigger: Contract,
@@ -246,33 +276,22 @@ export async function setupSwapTrades(
   degenStreet: Contract,
   traderWallet: SignerWithAddress
 ) {
-  const ETHtoTST1SwapPriceTrigger = {
-    op: GT,
-    param: ETH_PRICE_IN_TST1_PARAM,
-    callee: priceTrigger.address,
-    value: ETH_PRICE_IN_TST1.sub(1),
-  };
-
-  const TST1toETHSwapPriceTrigger = {
-    op: GT,
-    param: TST1_PRICE_IN_ETH_PARAM,
-    callee: priceTrigger.address,
-    value: TST1_PRICE_IN_ETH.sub(1),
-  };
-
-  const swapTST1ToETHAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address], [ETH_ADDRESS]);
-
-  const swapETHToTST1Action = makeSwapAction(swapUniSingleAction.address, [ETH_ADDRESS], [testToken1.address]);
+  const {
+    passingETHtoTST1SwapPriceTrigger,
+    passingTST1toETHSwapPriceTrigger,
+    swapETHToTST1Action,
+    swapTST1ToETHAction,
+  } = await setupSwapActions(priceTrigger, swapUniSingleAction, testToken1);
 
   const tx = await degenStreet
     .connect(traderWallet)
-    .createTrade([TST1toETHSwapPriceTrigger], [swapTST1ToETHAction], constraints, { value: DEFAULT_REWARD });
+    .createTrade([passingTST1toETHSwapPriceTrigger], [swapTST1ToETHAction], constraints, { value: DEFAULT_REWARD });
 
   const tradeTST1forETHHash: Bytes = await getHashFromEvent(tx, "Created", degenStreet.address, "tradeHash");
 
   const tx2 = await degenStreet
     .connect(traderWallet)
-    .createTrade([ETHtoTST1SwapPriceTrigger], [swapETHToTST1Action], constraints, { value: DEFAULT_REWARD });
+    .createTrade([passingETHtoTST1SwapPriceTrigger], [swapETHToTST1Action], constraints, { value: DEFAULT_REWARD });
 
   const tradeETHforTST1Hash: Bytes = await getHashFromEvent(tx2, "Created", degenStreet.address, "tradeHash");
 
@@ -299,27 +318,16 @@ export async function setupBarrenWuffet() {
     whitelistService,
     trigWlHash,
     actWlHash,
-    degenStreet,
-  } = await setupDegenStreet();
+  } = await setupRoboCop();
 
   const barrenWuffet = await ethers.getContract("BarrenWuffet");
   const latestBlock = await time.latest();
-  const { tradeTST1forETHHash, tradeETHforTST1Hash } = await setupSwapTrades(
-    priceTrigger,
-    swapUniSingleAction,
-    testToken1,
-    {
-      minCollateralPerSub: BigNumber.from(0),
-      maxCollateralPerSub: BigNumber.from(1000).mul(ERC20_DECIMALS),
-      minCollateralTotal: BigNumber.from(0),
-      maxCollateralTotal: BigNumber.from(1000).mul(ERC20_DECIMALS),
-      deadline: latestBlock + 60,
-      lockin: latestBlock + 61,
-      rewardPercentage: 10,
-    },
-    degenStreet,
-    marlieChungerWallet
-  );
+  const {
+    passingETHtoTST1SwapPriceTrigger,
+    passingTST1toETHSwapPriceTrigger,
+    swapETHToTST1Action,
+    swapTST1ToETHAction,
+  } = await setupSwapActions(priceTrigger, swapUniSingleAction, testToken1);
 
   return {
     ownerWallet,
@@ -338,9 +346,10 @@ export async function setupBarrenWuffet() {
     whitelistService,
     trigWlHash,
     actWlHash,
-    degenStreet,
     barrenWuffet,
-    tradeTST1forETHHash,
-    tradeETHforTST1Hash,
+    passingETHtoTST1SwapPriceTrigger,
+    passingTST1toETHSwapPriceTrigger,
+    swapETHToTST1Action,
+    swapTST1ToETHAction,
   };
 }
