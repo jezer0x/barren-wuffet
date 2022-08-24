@@ -1017,7 +1017,7 @@ describe("RoboCop", () => {
     });
     // TODO: Would it make more sense to just tag some tests a decorator, such that those test will execute with / without pause? We could do the same for other decorators. Downside is that you cant summarize the pause tests in one place.
     // OR perhaps we could be even more generic and check that unless excluded, all state-changing external / public fns do get blocked on pause.
-    it("xx should prevent a bunch of functions from being executed when paused and re-allows them when unpaused", async () => {
+    it("should prevent a bunch of functions from being executed when paused and re-allows them when unpaused", async () => {
       const fixtureVars = await loadFixture(deployValidRuleFixture);
       const {
         ruleHashEth,
