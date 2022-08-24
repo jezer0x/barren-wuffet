@@ -74,6 +74,9 @@ contract SwapCurveAction is IAction, Ownable {
         address poolAddr = abi.decode(action.data, (address));
         IRegistry registry = IRegistry(_getRegistry());
 
+        require(action.inputTokens.length == 1);
+        require(action.outputTokens.length == 1);
+
         // TODO: reverts if poolAddr does not match in/out tokens
         (int128 i, int128 j, bool exchange_underlying) = registry.get_coin_indices(
             poolAddr,

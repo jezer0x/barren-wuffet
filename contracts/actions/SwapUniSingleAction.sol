@@ -34,8 +34,9 @@ contract SwapUniSingleAction is IAction, Ownable {
         WETH9 = wethAddress;
     }
 
-    function validate(Action calldata) external pure returns (bool) {
-        // we'll be ignoring action.data in swapUni (?)
+    function validate(Action calldata action) external pure returns (bool) {
+        require(action.inputTokens.length == 1);
+        require(action.outputTokens.length == 1);
         return true;
     }
 
