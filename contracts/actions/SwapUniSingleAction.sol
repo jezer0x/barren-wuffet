@@ -47,7 +47,7 @@ contract SwapUniSingleAction is IAction, Ownable {
         ISwapRouter.ExactInputSingleParams memory params;
 
         if (msg.value > 0) {
-            require(action.inputTokens[0] == REConstants.ETH, "ETH != inputToken");
+            require(action.inputTokens[0] == Constants.ETH, "ETH != inputToken");
             params = ISwapRouter.ExactInputSingleParams({
                 tokenIn: WETH9,
                 tokenOut: action.outputTokens[0],
@@ -61,7 +61,7 @@ contract SwapUniSingleAction is IAction, Ownable {
             outputs[0] = swapRouter.exactInputSingle{value: msg.value}(params);
         } else {
             address outputToken;
-            if (action.outputTokens[0] == REConstants.ETH) {
+            if (action.outputTokens[0] == Constants.ETH) {
                 outputToken = WETH9;
             } else {
                 outputToken = action.outputTokens[0];

@@ -121,7 +121,7 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
 
     function getInputTokens(bytes32 fundHash) external view fundExists(fundHash) returns (address[] memory) {
         address[] memory tokens = new address[](1);
-        tokens[0] = REConstants.ETH;
+        tokens[0] = Constants.ETH;
         return tokens;
     }
 
@@ -184,7 +184,7 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
             token = action.inputTokens[i];
             amount = runtimeParams.collateralAmounts[i];
             _decreaseAssetBalance(fundHash, token, amount);
-            if (token != REConstants.ETH) {
+            if (token != Constants.ETH) {
                 IERC20(token).safeApprove(action.callee, runtimeParams.collateralAmounts[i]);
             }
         }
@@ -250,7 +250,7 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
             token = collateralTokens[i];
             amount = collateralAmounts[i];
             _decreaseAssetBalance(fundHash, token, amount);
-            if (token != REConstants.ETH) {
+            if (token != Constants.ETH) {
                 IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
                 IERC20(token).safeApprove(address(roboCop), amount);
             }
@@ -371,7 +371,7 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         uint256 collateralAmount
     ) private view {
         // For now we'll only allow subscribing with ETH
-        require(collateralToken == REConstants.ETH);
+        require(collateralToken == Constants.ETH);
         require(collateralAmount == msg.value);
 
         Fund storage fund = funds[fundHash];
@@ -456,14 +456,14 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         if (status == FundStatus.CLOSABLE) {
             revert("Call closeFund before withdrawing!");
         } else if (status == FundStatus.RAISING) {
-            _decreaseAssetBalance(fundHash, REConstants.ETH, subscription.collateralAmount);
+            _decreaseAssetBalance(fundHash, Constants.ETH, subscription.collateralAmount);
             subscription.status = SubscriptionStatus.WITHDRAWN;
 
-            emit Withdraw(fundHash, subscriptionIdx, REConstants.ETH, subscription.collateralAmount);
-            Utils._send(subscription.subscriber, subscription.collateralAmount, REConstants.ETH);
+            emit Withdraw(fundHash, subscriptionIdx, Constants.ETH, subscription.collateralAmount);
+            Utils._send(subscription.subscriber, subscription.collateralAmount, Constants.ETH);
 
             address[] memory tokens = new address[](1);
-            tokens[0] = REConstants.ETH;
+            tokens[0] = Constants.ETH;
             uint256[] memory balances = new uint256[](1);
             balances[0] = subscription.collateralAmount;
             return (tokens, balances);

@@ -111,7 +111,7 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         for (uint256 i = 0; i < tokens.length; i++) {
             amount = amounts[i];
             require(amount > 0, "amount <= 0");
-            if (tokens[i] != REConstants.ETH) {
+            if (tokens[i] != Constants.ETH) {
                 IERC20(tokens[i]).safeTransferFrom(msg.sender, address(this), amount);
             } else {
                 require(amount == msg.value, "ETH: amount != msg.value");
@@ -138,7 +138,7 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
             amount = amounts[i];
             require(rule.collateralAmounts[i] >= amount, "Not enough collateral.");
             rule.collateralAmounts[i] -= amount;
-            if (tokens[i] != REConstants.ETH) {
+            if (tokens[i] != Constants.ETH) {
                 IERC20(tokens[i]).safeTransfer(msg.sender, amount);
             } else {
                 payable(msg.sender).transfer(amount);
@@ -274,7 +274,7 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
 
             for (uint256 j = 0; j < action.inputTokens.length; j++) {
                 token = action.inputTokens[j];
-                if (token != REConstants.ETH) {
+                if (token != Constants.ETH) {
                     IERC20(token).safeApprove(action.callee, runtimeParams.collateralAmounts[j]);
                 } else {
                     eth_pos = int256(j);

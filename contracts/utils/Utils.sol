@@ -29,7 +29,7 @@ library Utils {
         uint256 balance,
         address token
     ) internal {
-        if (token != REConstants.ETH) {
+        if (token != Constants.ETH) {
             IERC20(token).safeTransfer(receiver, balance);
         } else {
             payable(receiver).transfer(balance);
