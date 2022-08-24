@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "./IAction.sol";
-import "../utils/Constants.sol";
+import "../IAction.sol";
+import "../../utils/Constants.sol";
+import "./IRegistry.sol";
+import "./AddressProvider.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-
-interface IAddressProvider {
-    function get_address(uint256) external view returns (address);
-}
 
 interface ISwapper {
     function exchange(
@@ -20,21 +18,6 @@ interface ISwapper {
         uint256 _expected,
         address _receiver
     ) external payable returns (uint256);
-}
-
-interface IRegistry {
-    function get_coin_indices(
-        address,
-        address,
-        address
-    )
-        external
-        view
-        returns (
-            int128,
-            int128,
-            bool
-        );
 }
 
 /*
@@ -52,18 +35,12 @@ interface IRegistry {
     only 1 input token and 1 output token
 
  */
-contract SwapCurveAction is IAction, Ownable {
+contract SwapCurveAction is AddressProvider, IAction {
     using SafeERC20 for IERC20;
-
-    IAddressProvider address_provider;
 
     constructor(address _address_provider) {
         // should be 0x0000000022D53366457F9d5E68Ec105046FC4383, per https://curve.readthedocs.io/registry-address-provider.html
         address_provider = IAddressProvider(_address_provider);
-    }
-
-    function _getRegistry() internal view returns (address) {
-        return address_provider.get_address(0);
     }
 
     function _getSwapper() internal view returns (address) {

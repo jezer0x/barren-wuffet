@@ -1,24 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "./IAction.sol";
-import "../utils/Constants.sol";
+import "../IAction.sol";
+import "../../utils/Constants.sol";
+import "./IRegistry.sol";
+import "./AddressProvider.sol";
+import "./PlainPool.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
-interface IAddressProvider {
-    function get_address(uint256) external view returns (address);
-}
-
-interface IPlainPool {
-    function add_liquidity(uint256[] memory _amounts, uint256 _min_mint_amount) external returns (uint256);
-}
-
-interface IRegistry {
-    function get_pool_from_lp_token(address lp_token) external view returns (address);
-
-    function get_coins(address pool) external view returns (address[8] memory);
-}
 
 /*
     Will only work for plain Pools
@@ -30,27 +19,12 @@ interface IRegistry {
     Expects multiple input tokens and 1 output token
 
  */
-contract AddLiquidityCurveAction is IAction {
+contract AddLiquidityCurveAction is AddressProvider, PlainPool, IAction {
     using SafeERC20 for IERC20;
-
-    IAddressProvider address_provider;
 
     constructor(address _address_provider) {
         // should be 0x0000000022D53366457F9d5E68Ec105046FC4383, per https://curve.readthedocs.io/registry-address-provider.html
         address_provider = IAddressProvider(_address_provider);
-    }
-
-    function _getRegistry() internal view returns (address) {
-        return address_provider.get_address(0);
-    }
-
-    function _coinInPool(address token, address[8] memory tokenList) internal pure returns (bool) {
-        for (uint256 i = 0; i < tokenList.length; i++) {
-            if (token == tokenList[i]) {
-                return true;
-            }
-        }
-        return false;
     }
 
     function validate(Action calldata action) external view returns (bool) {
