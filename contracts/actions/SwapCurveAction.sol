@@ -90,10 +90,14 @@ contract SwapCurveAction is IAction, Ownable {
     function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
         external
         payable
-        returns (uint256[] memory outputs)
+        returns (uint256[] memory)
     {
+        uint256[] memory outputs = new uint256[](1);
         address poolAddr = abi.decode(action.data, (address));
         ISwapper swapper = ISwapper(_getSwapper());
+
+        IERC20(action.inputTokens[0]).safeTransferFrom(msg.sender, address(this), runtimeParams.collateralAmounts[0]);
+        IERC20(action.inputTokens[0]).safeApprove(address(swapper), runtimeParams.collateralAmounts[0]);
         outputs[0] = swapper.exchange(
             poolAddr,
             action.inputTokens[0],
@@ -102,5 +106,8 @@ contract SwapCurveAction is IAction, Ownable {
             (runtimeParams.triggerData * runtimeParams.collateralAmounts[0]) / 10**8,
             msg.sender
         );
+        IERC20(action.inputTokens[0]).safeApprove(address(swapper), 0);
+
+        return outputs;
     }
 }

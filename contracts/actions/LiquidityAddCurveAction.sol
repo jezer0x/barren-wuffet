@@ -80,10 +80,10 @@ contract AddLiquidityCurveAction is IAction {
         uint256 _min_mint_amount = 0; // TODO: figure this out from runtimeParams.triggerData or let it be?
 
         for (uint256 i = 0; i < action.inputTokens.length; i++) {
-            IERC20(action.inputTokens[0]).safeTransferFrom(
+            IERC20(action.inputTokens[i]).safeTransferFrom(
                 msg.sender,
                 address(this),
-                runtimeParams.collateralAmounts[0]
+                runtimeParams.collateralAmounts[i]
             );
             IERC20(action.inputTokens[i]).safeApprove(address(pool), runtimeParams.collateralAmounts[i]);
         }
