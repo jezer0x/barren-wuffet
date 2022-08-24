@@ -5,7 +5,7 @@ import { ethers, deployments } from "hardhat";
 import { BigNumber, constants, Contract, utils } from "ethers";
 import { setupBarrenWuffet } from "./Fixtures";
 import { SubscriptionConstraintsStruct } from "../typechain-types/contracts/funds/BarrenWuffet";
-import { BAD_FUND_HASH, BAD_TRADE_HASH, FUND_STATUS } from "./Constants";
+import { BAD_FUND_HASH, BAD_TRADE_HASH, ETH_ADDRESS, FUND_STATUS } from "./Constants";
 import { depositMaxCollateral, getHashFromEvent } from "./helper";
 import { Provider } from "@ethersproject/providers";
 import { assert } from "console";
@@ -427,17 +427,17 @@ describe("BarrenWuffet", () => {
     // we are creating this test here and not earlier because we want to have a
     // fund with deposits, and ensure these actions on a different fund dont
     // interfere with the funds on the existing fund.
-    it("should revert if opening / closing positions in a non-existent fund", async () => {});
+    it("should revert if opening / closing positions in a non-existent fund", async () => { });
 
-    it("should revert if performing actions on a non-existent fund", async () => {});
+    it("should revert if performing actions on a non-existent fund", async () => { });
 
-    it("should revert if withdrawing rewards from  a non-existent fund", async () => {});
+    it("should revert if withdrawing rewards from  a non-existent fund", async () => { });
 
-    it("should revert if depositing / withdrawing from  a non-existent fund", async () => {});
+    it("should revert if depositing / withdrawing from  a non-existent fund", async () => { });
 
-    it("should revert on attempting to get status on a non-existent fund", async () => {});
+    it("should revert on attempting to get status on a non-existent fund", async () => { });
 
-    it("should revert if an unknown fund or closed fund is closed", () => {});
+    it("should revert if an unknown fund or closed fund is closed", () => { });
   });
 
   async function deployedFundsFixture() {
@@ -552,11 +552,11 @@ describe("BarrenWuffet", () => {
           );
       });
 
-      it("should revert if attempting to close an already closed position", async () => {});
+      it("should revert if attempting to close an already closed position", async () => { });
     });
 
     describe.skip("Take Action", () => {
-      it("Should not allow anyone other than the fund manager to take action", async () => {});
+      it("Should not allow anyone other than the fund manager to take action", async () => { });
 
       it("should call 'perform' on the action when fund manager calls takeAction", async () => {
         // ideally we use IAction to create a mock action, and then check if perform is called on the mock action.
@@ -565,20 +565,20 @@ describe("BarrenWuffet", () => {
   });
 
   describe.skip("Fund status: Closable", () => {
-    it("should return fund status as CLOSABLE once the lockin period has exceeded", async () => {});
+    it("should return fund status as CLOSABLE once the lockin period has exceeded", async () => { });
 
     // this is when the fund can be closed, and hence wont accept any trades but it hasnt been closed yet.
     // A fund manager can close such a fund, or it will be auto-closed on withdraw
     // All other restrictions apply the same to closable and closed funds (so it makes sense to reuse the tests.)
-    it("should revert if withdrawal is attempted on a closable fund", async () => {});
+    it("should revert if withdrawal is attempted on a closable fund", async () => { });
 
-    it("should revert if rewards withdrawal is attempted on a closable fund", async () => {});
+    it("should revert if rewards withdrawal is attempted on a closable fund", async () => { });
   });
 
   describe.skip("Fund transition: Close Fund", () => {
-    it("should allow the fund manager to close a deployed fund (all open positions) and emit a Closed event if the fund is closable", async () => {});
+    it("should allow the fund manager to close a deployed fund (all open positions) and emit a Closed event if the fund is closable", async () => { });
 
-    it("should allow the fund manager to close a deployed fund with open positions that is NOT closable and emit Closed event", async () => {});
+    it("should allow the fund manager to close a deployed fund with open positions that is NOT closable and emit Closed event", async () => { });
 
     it("should not allow anyone other than the  fund manager to close a closable fund", async () => {
       // this might be made public in the future
@@ -586,11 +586,11 @@ describe("BarrenWuffet", () => {
   });
 
   describe.skip("Fund Status: Closed", () => {
-    it("should return fund status as CLOSED once the fund has been closed", async () => {});
+    it("should return fund status as CLOSED once the fund has been closed", async () => { });
 
-    it("Should revert if deposit is attempted on a closable / closed fund", async () => {});
+    it("Should revert if deposit is attempted on a closable / closed fund", async () => { });
 
-    it("should revert if opening positions in a closable / closed fund", async () => {});
+    it("should revert if opening positions in a closable / closed fund", async () => { });
 
     it("should allow withdrawing multiple tokens from a closed fund", async () => {
       // this might change. We plan to auto-convert all tokens to input token so that profit can be calculated accurately.
@@ -598,11 +598,11 @@ describe("BarrenWuffet", () => {
   });
 
   describe.skip("Rewards", () => {
-    it("should return the correct value of reward to each fund manager, when multiple fund managers have pending rewards", async () => {});
+    it("should return the correct value of reward to each fund manager, when multiple fund managers have pending rewards", async () => { });
 
-    it("should not allow access to rewards from a fund that the manager doesnt own", async () => {});
+    it("should not allow access to rewards from a fund that the manager doesnt own", async () => { });
 
-    it("should not allow multiple withdrawals of the reward", async () => {});
+    it("should not allow multiple withdrawals of the reward", async () => { });
   });
 
   describe.skip("User Stories", () => {
