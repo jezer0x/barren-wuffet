@@ -22,7 +22,9 @@ export const BAD_FUND_HASH = "0x" + "1234".repeat(16);
 export const DEFAULT_REWARD = utils.parseEther("0.01");
 
 export const FUND_STATUS = {
-    RAISING: 0,
-    DEPLOYED: 1,
-    CLOSED: 2
-}
+  RAISING: 0,
+  DEPLOYED: 1,
+  CLOSED: 2,
+};
+
+export const ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";

@@ -42,9 +42,10 @@ contract SwapUniSingleAction is IAction, Ownable {
     function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
         external
         payable
-        returns (uint256[] memory outputs)
+        returns (uint256[] memory)
     {
         ISwapRouter.ExactInputSingleParams memory params;
+        uint256[] memory outputs = new uint256[](1);
 
         if (msg.value > 0) {
             require(action.inputTokens[0] == Constants.ETH, "ETH != inputToken");
@@ -85,5 +86,7 @@ contract SwapUniSingleAction is IAction, Ownable {
             outputs[0] = swapRouter.exactInputSingle(params);
             IERC20(action.inputTokens[0]).safeApprove(address(swapRouter), 0);
         }
+
+        return outputs;
     }
 }

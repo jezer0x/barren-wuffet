@@ -58,13 +58,14 @@ describe("DegenStreet", () => {
       botWallet,
     } = await deployDegenStreetFixture();
 
-    const {
-      tradeTST1forETHHash,
-      tradeETHforTST1Hash,
-    } = await setupSwapTrades(
-      priceTrigger, swapUniSingleAction, testToken1, await makeSubConstraints(),
-      degenStreet, traderWallet
-    )
+    const { tradeTST1forETHHash, tradeETHforTST1Hash } = await setupSwapTrades(
+      priceTrigger,
+      swapUniSingleAction,
+      testToken1,
+      await makeSubConstraints(),
+      degenStreet,
+      traderWallet
+    );
     return {
       ownerWallet,
       testToken1,
@@ -88,8 +89,8 @@ describe("DegenStreet", () => {
   });
 
   describe.skip("Admin functions", () => {
-    it("Should be able to X if owner", async function () { });
-    it("Should not be able to X if not owner", async function () { });
+    it("Should be able to X if owner", async function () {});
+    it("Should not be able to X if not owner", async function () {});
   });
 
   describe("Opening a Trade", () => {
@@ -98,11 +99,7 @@ describe("DegenStreet", () => {
         deployDegenStreetFixture
       );
       const passingTrigger = makePassingTrigger(priceTrigger.address);
-      const executableAction = makeSwapAction(
-        swapUniSingleAction.address,
-        testToken1.address,
-        ethers.constants.AddressZero
-      );
+      const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, ETH_ADDRESS);
       const properContraints = await makeSubConstraints();
 
       await expect(
@@ -117,11 +114,7 @@ describe("DegenStreet", () => {
         deployDegenStreetFixture
       );
       const passingTrigger = makePassingTrigger(priceTrigger.address);
-      const executableAction = makeSwapAction(
-        swapUniSingleAction.address,
-        testToken1.address,
-        ethers.constants.AddressZero
-      );
+      const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, ETH_ADDRESS);
       const properContraints = await makeSubConstraints();
 
       await network.provider.send("evm_setAutomine", [false]);
@@ -139,12 +132,12 @@ describe("DegenStreet", () => {
       try {
         await tx1.wait();
         tx1Success = true;
-      } catch { }
+      } catch {}
 
       try {
         await tx2.wait();
         tx2Success = true;
-      } catch { }
+      } catch {}
 
       expect(tx1Success).to.not.equal(tx2Success);
     });
@@ -154,11 +147,7 @@ describe("DegenStreet", () => {
         deployDegenStreetFixture
       );
       const passingTrigger = makePassingTrigger(priceTrigger.address);
-      const executableAction = makeSwapAction(
-        swapUniSingleAction.address,
-        testToken1.address,
-        ethers.constants.AddressZero
-      );
+      const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, ETH_ADDRESS);
       const properContraints = await makeSubConstraints();
 
       await expect(
@@ -420,45 +409,33 @@ describe("DegenStreet", () => {
         await loadFixture(deployValidTradeFixture);
 
       await expect(
-        degenStreet
-          .connect(tradeSubscriberWallet)
-          .deposit(tradeETHforTST1Hash, ethers.constants.AddressZero, MIN_COLLATERAL_PER_SUB, {
-            value: MIN_COLLATERAL_PER_SUB,
-          })
+        degenStreet.connect(tradeSubscriberWallet).deposit(tradeETHforTST1Hash, ETH_ADDRESS, MIN_COLLATERAL_PER_SUB, {
+          value: MIN_COLLATERAL_PER_SUB,
+        })
       )
         .to.emit(degenStreet, "Deposit")
-        .withArgs(tradeETHforTST1Hash, 0, ethers.constants.AddressZero, MIN_COLLATERAL_PER_SUB);
+        .withArgs(tradeETHforTST1Hash, 0, ETH_ADDRESS, MIN_COLLATERAL_PER_SUB);
+
+      await expect(
+        degenStreet.connect(tradeSubscriberWallet).deposit(tradeETHforTST1Hash, ETH_ADDRESS, MAX_COLLATERAL_PER_SUB, {
+          value: MAX_COLLATERAL_PER_SUB,
+        })
+      )
+        .to.emit(degenStreet, "Deposit")
+        .withArgs(tradeETHforTST1Hash, 1, ETH_ADDRESS, MAX_COLLATERAL_PER_SUB);
 
       await expect(
         degenStreet
           .connect(tradeSubscriberWallet)
-          .deposit(tradeETHforTST1Hash, ethers.constants.AddressZero, MAX_COLLATERAL_PER_SUB, {
-            value: MAX_COLLATERAL_PER_SUB,
+          .deposit(tradeETHforTST1Hash, ETH_ADDRESS, MIN_COLLATERAL_PER_SUB.add(MAX_COLLATERAL_PER_SUB).div(2), {
+            value: MIN_COLLATERAL_PER_SUB.add(MAX_COLLATERAL_PER_SUB).div(2),
           })
       )
         .to.emit(degenStreet, "Deposit")
-        .withArgs(tradeETHforTST1Hash, 1, ethers.constants.AddressZero, MAX_COLLATERAL_PER_SUB);
-
-      await expect(
-        degenStreet
-          .connect(tradeSubscriberWallet)
-          .deposit(
-            tradeETHforTST1Hash,
-            ethers.constants.AddressZero,
-            MIN_COLLATERAL_PER_SUB.add(MAX_COLLATERAL_PER_SUB).div(2),
-            { value: MIN_COLLATERAL_PER_SUB.add(MAX_COLLATERAL_PER_SUB).div(2) }
-          )
-      )
-        .to.emit(degenStreet, "Deposit")
-        .withArgs(
-          tradeETHforTST1Hash,
-          2,
-          ethers.constants.AddressZero,
-          MIN_COLLATERAL_PER_SUB.add(MAX_COLLATERAL_PER_SUB).div(2)
-        );
+        .withArgs(tradeETHforTST1Hash, 2, ETH_ADDRESS, MIN_COLLATERAL_PER_SUB.add(MAX_COLLATERAL_PER_SUB).div(2));
     });
 
-    it.skip("Should only allow deposits in ACTIVE trades", async function () { });
+    it.skip("Should only allow deposits in ACTIVE trades", async function () {});
   });
 
   describe("Subscriber withdrawing", () => {
@@ -653,7 +630,7 @@ describe("DegenStreet", () => {
         const gasPrice = await ethers.provider.getGasPrice();
         await expect(degenStreet.connect(tradeSubscriberWallet).withdraw(tradeTST1forETHHash, i))
           .to.emit(degenStreet, "Withdraw")
-          .withArgs(tradeTST1forETHHash, i, ethers.constants.AddressZero, expected_output);
+          .withArgs(tradeTST1forETHHash, i, ETH_ADDRESS, expected_output);
         var post_balance = await ethers.provider.getBalance(trade.subscriptions[i].subscriber);
         const gasUsed = (await ethers.provider.getBlock("latest")).gasUsed;
         expect(post_balance.sub(prev_balance).add(gasPrice.mul(gasUsed))).to.equal(expected_output);
@@ -677,19 +654,19 @@ describe("DegenStreet", () => {
       for (var i = 0; i < times.toNumber() - 1; i++) {
         await degenStreet
           .connect(tradeSubscriberWallet)
-          .deposit(tradeETHforTST1Hash, ethers.constants.AddressZero, collateralAmount, { value: collateralAmount });
+          .deposit(tradeETHforTST1Hash, ETH_ADDRESS, collateralAmount, { value: collateralAmount });
       }
 
       await expect(
         degenStreet
           .connect(tradeSubscriberWallet)
-          .deposit(tradeETHforTST1Hash, ethers.constants.AddressZero, collateralAmount, { value: collateralAmount })
+          .deposit(tradeETHforTST1Hash, ETH_ADDRESS, collateralAmount, { value: collateralAmount })
       ).to.emit(roboCop, "Activated");
 
       // throw in another trade with a separate amount to see if ratio of reward output is fine
       await degenStreet
         .connect(tradeSubscriberWallet)
-        .deposit(tradeETHforTST1Hash, ethers.constants.AddressZero, MIN_COLLATERAL_PER_SUB, {
+        .deposit(tradeETHforTST1Hash, ETH_ADDRESS, MIN_COLLATERAL_PER_SUB, {
           value: MIN_COLLATERAL_PER_SUB,
         });
 

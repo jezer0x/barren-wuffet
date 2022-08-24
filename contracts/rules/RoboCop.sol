@@ -195,6 +195,11 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         }
         rule.owner = msg.sender;
         rule.status = RuleStatus.INACTIVE;
+
+        for (uint256 i = 0; i < actions[0].inputTokens.length; i++) {
+            rule.collateralAmounts.push();
+        }
+
         increaseReward(ruleHash);
 
         emit Created(ruleHash);

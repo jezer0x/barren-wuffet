@@ -55,7 +55,7 @@ describe("PriceTrigger", () => {
         param: ethers.utils.defaultAbiCoder.encode(["string"], ["eth"]),
         // this is the address of the ITrigger, PriceTrigger.address in this case
         // but we dont expect it to matter within PriceTrigger.
-        callee: ethers.constants.AddressZero,
+        callee: ETH_ADDRESS,
         value: 0,
       };
 
@@ -68,7 +68,7 @@ describe("PriceTrigger", () => {
       const trigger: TriggerStruct = {
         op: GT,
         param: ethers.utils.defaultAbiCoder.encode(["string", "string"], ["eth", "sushi"]),
-        callee: ethers.constants.AddressZero,
+        callee: ETH_ADDRESS,
         value: 0,
       };
 
@@ -81,7 +81,7 @@ describe("PriceTrigger", () => {
       const trigger: TriggerStruct = {
         op: GT,
         param: TST1_PRICE_IN_ETH_PARAM,
-        callee: ethers.constants.AddressZero,
+        callee: ETH_ADDRESS,
         value: 0,
       };
 
@@ -97,7 +97,7 @@ describe("PriceTrigger", () => {
           const trigger: TriggerStruct = {
             op: LT,
             param: TST1_PRICE_IN_ETH_PARAM,
-            callee: ethers.constants.AddressZero,
+            callee: ETH_ADDRESS,
             value: TST1_PRICE_IN_ETH.sub(1),
           };
           expect(await priceTrigger.connect(otherWallet).check(trigger)).to.deep.equal([false, TST1_PRICE_IN_ETH]);
@@ -108,7 +108,7 @@ describe("PriceTrigger", () => {
           const trigger: TriggerStruct = {
             op: GT,
             param: TST1_PRICE_IN_ETH_PARAM,
-            callee: ethers.constants.AddressZero,
+            callee: ETH_ADDRESS,
             value: TST1_PRICE_IN_ETH.add(1),
           };
 
@@ -120,7 +120,7 @@ describe("PriceTrigger", () => {
           const trigger: TriggerStruct = {
             op: GT,
             param: TST1_PRICE_IN_ETH_PARAM,
-            callee: ethers.constants.AddressZero,
+            callee: ETH_ADDRESS,
             value: TST1_PRICE_IN_ETH.sub(1),
           };
 
@@ -132,7 +132,7 @@ describe("PriceTrigger", () => {
           const trigger: TriggerStruct = {
             op: LT,
             param: TST1_PRICE_IN_ETH_PARAM,
-            callee: ethers.constants.AddressZero,
+            callee: ETH_ADDRESS,
             value: TST1_PRICE_IN_ETH.add(1),
           };
 

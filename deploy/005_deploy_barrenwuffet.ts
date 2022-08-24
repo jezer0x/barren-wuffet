@@ -9,7 +9,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await getNamedAccounts();
   const RoboCop = await (await ethers.getContract("RoboCop")).address;
 
-  await deploy("DegenStreet", {
+  await deploy("BarrenWuffet", {
     from: deployer,
     args: [RoboCop],
     log: true,
@@ -17,5 +17,5 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 export default func;
-func.tags = ["DegenStreet"];
-func.dependencies = ["RoboCop"];
+func.tags = ["BarrenWuffet"];
+func.dependencies = ["DegenStreet"];

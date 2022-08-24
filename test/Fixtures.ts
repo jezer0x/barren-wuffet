@@ -14,6 +14,7 @@ import {
   TST1_PRICE_IN_USD,
   ETH_PRICE_IN_TST1,
   ETH_PRICE_IN_TST1_PARAM,
+  ETH_ADDRESS,
 } from "./Constants";
 import { getHashFromEvent, tx } from "./helper";
 import { expect } from "chai";
@@ -46,14 +47,14 @@ export function makeFailingTrigger(triggerContract: string): TriggerStruct {
 
 export function makeSwapAction(
   swapContract: string,
-  inputToken: string = ethers.constants.AddressZero,
-  outputToken: string = ethers.constants.AddressZero
+  inputTokens: [string] = [ETH_ADDRESS],
+  outputTokens: [string] = [ETH_ADDRESS]
 ): ActionStruct {
   return {
     callee: swapContract,
     data: "0x0000000000000000000000000000000000000000000000000000000000000000",
-    inputToken: inputToken, // eth
-    outputToken: outputToken,
+    inputTokens: inputTokens, // eth
+    outputTokens: outputTokens,
   };
 }
 
@@ -236,10 +237,15 @@ export async function setupDegenStreet() {
 }
 
 //@ts-ignore
-export async function setupSwapTrades(priceTrigger, swapUniSingleAction, testToken1,
+export async function setupSwapTrades(
+  priceTrigger: Contract,
+  swapUniSingleAction: Contract,
+  testToken1: Contract,
   //@ts-ignore
-  constraints, degenStreet, traderWallet) {
-
+  constraints,
+  degenStreet: Contract,
+  traderWallet: SignerWithAddress
+) {
   const ETHtoTST1SwapPriceTrigger = {
     op: GT,
     param: ETH_PRICE_IN_TST1_PARAM,
@@ -254,17 +260,9 @@ export async function setupSwapTrades(priceTrigger, swapUniSingleAction, testTok
     value: TST1_PRICE_IN_ETH.sub(1),
   };
 
-  const swapTST1ToETHAction = makeSwapAction(
-    swapUniSingleAction.address,
-    testToken1.address,
-    ethers.constants.AddressZero
-  );
+  const swapTST1ToETHAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address], [ETH_ADDRESS]);
 
-  const swapETHToTST1Action = makeSwapAction(
-    swapUniSingleAction.address,
-    ethers.constants.AddressZero,
-    testToken1.address
-  );
+  const swapETHToTST1Action = makeSwapAction(swapUniSingleAction.address, [ETH_ADDRESS], [testToken1.address]);
 
   const tx = await degenStreet
     .connect(traderWallet)
@@ -280,8 +278,8 @@ export async function setupSwapTrades(priceTrigger, swapUniSingleAction, testTok
 
   return {
     tradeETHforTST1Hash,
-    tradeTST1forETHHash
-  }
+    tradeTST1forETHHash,
+  };
 }
 
 export async function setupBarrenWuffet() {
@@ -306,21 +304,22 @@ export async function setupBarrenWuffet() {
 
   const barrenWuffet = await ethers.getContract("BarrenWuffet");
   const latestBlock = await time.latest();
-  const {
-    tradeTST1forETHHash,
-    tradeETHforTST1Hash,
-  } = await setupSwapTrades(
-    priceTrigger, swapUniSingleAction, testToken1, {
-    minCollateralPerSub: BigNumber.from(0),
-    maxCollateralPerSub: BigNumber.from(1000).mul(ERC20_DECIMALS),
-    minCollateralTotal: BigNumber.from(0),
-    maxCollateralTotal: BigNumber.from(1000).mul(ERC20_DECIMALS),
-    deadline: latestBlock + 60,
-    lockin: latestBlock + 61,
-    rewardPercentage: 10,
-  },
-    degenStreet, marlieChungerWallet
-  )
+  const { tradeTST1forETHHash, tradeETHforTST1Hash } = await setupSwapTrades(
+    priceTrigger,
+    swapUniSingleAction,
+    testToken1,
+    {
+      minCollateralPerSub: BigNumber.from(0),
+      maxCollateralPerSub: BigNumber.from(1000).mul(ERC20_DECIMALS),
+      minCollateralTotal: BigNumber.from(0),
+      maxCollateralTotal: BigNumber.from(1000).mul(ERC20_DECIMALS),
+      deadline: latestBlock + 60,
+      lockin: latestBlock + 61,
+      rewardPercentage: 10,
+    },
+    degenStreet,
+    marlieChungerWallet
+  );
 
   return {
     ownerWallet,
@@ -342,6 +341,6 @@ export async function setupBarrenWuffet() {
     degenStreet,
     barrenWuffet,
     tradeTST1forETHHash,
-    tradeETHforTST1Hash
+    tradeETHforTST1Hash,
   };
 }

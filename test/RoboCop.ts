@@ -32,6 +32,7 @@ import {
   LT,
   ETH_PRICE_IN_TST1_PARAM,
   GT,
+  ETH_ADDRESS,
 } from "./Constants";
 import { RuleStructOutput } from "../typechain-types/contracts/rules/RoboCop";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
@@ -55,7 +56,7 @@ describe("RoboCop", () => {
     it("Should revert if no trigger is specified", async () => {
       const { roboCop, swapUniSingleAction, ruleMakerWallet, testToken1, whitelistService, trigWlHash, actWlHash } =
         await loadFixture(deployRoboCopFixture);
-      const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
+      const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
       whitelistService.disableWhitelist(trigWlHash);
       whitelistService.disableWhitelist(actWlHash);
       await expect(roboCop.connect(ruleMakerWallet).createRule([], [executableAction])).to.be.revertedWithoutReason();
@@ -66,7 +67,7 @@ describe("RoboCop", () => {
         await loadFixture(deployRoboCopFixture);
 
       const badTrigger = makePassingTrigger(constants.AddressZero); // passing trigger with bad address
-      const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
+      const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
 
       whitelistService.disableWhitelist(trigWlHash);
       whitelistService.disableWhitelist(actWlHash);
@@ -83,7 +84,7 @@ describe("RoboCop", () => {
       const badPriceTrigger = await BadPriceTrigger.deploy();
 
       const badTrigger = makePassingTrigger(badPriceTrigger.address);
-      const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
+      const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
 
       whitelistService.disableWhitelist(trigWlHash);
       whitelistService.disableWhitelist(actWlHash);
@@ -117,7 +118,7 @@ describe("RoboCop", () => {
         await loadFixture(deployRoboCopFixture);
 
       const passingTrigger = makePassingTrigger(priceTrigger.address);
-      const badAction = makeSwapAction(constants.AddressZero, testToken1.address);
+      const badAction = makeSwapAction(constants.AddressZero, [testToken1.address]);
       whitelistService.disableWhitelist(trigWlHash);
       whitelistService.disableWhitelist(actWlHash);
 
@@ -138,7 +139,7 @@ describe("RoboCop", () => {
         await loadFixture(deployRoboCopFixture);
       const passingTrigger = makePassingTrigger(priceTrigger.address);
       whitelistService.removeFromWhitelist(trigWlHash, priceTrigger.address);
-      const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
+      const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
 
       await expect(
         roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction])
@@ -150,7 +151,7 @@ describe("RoboCop", () => {
         await loadFixture(deployRoboCopFixture);
 
       const passingTrigger = makeFailingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
-      const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
+      const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
       whitelistService.removeFromWhitelist(actWlHash, swapUniSingleAction.address);
 
       await expect(
@@ -171,7 +172,7 @@ describe("RoboCop", () => {
       } = await loadFixture(deployRoboCopFixture);
 
       const passingTrigger = makeFailingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
-      const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
+      const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
 
       const reward = utils.parseEther("0.02");
       await expect(roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction], { value: reward }))
@@ -186,7 +187,7 @@ describe("RoboCop", () => {
       );
 
       const failingTrigger = makeFailingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
-      const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
+      const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
       await expect(roboCop.connect(ruleMakerWallet).createRule([failingTrigger], [executableAction])).to.emit(
         roboCop,
         "Created"
@@ -198,7 +199,7 @@ describe("RoboCop", () => {
         await loadFixture(deployRoboCopFixture);
 
       const passingTrigger = makePassingTrigger(priceTrigger.address);
-      const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
+      const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
 
       var rule1Hash: string;
 
@@ -250,7 +251,7 @@ describe("RoboCop", () => {
       const ruleMakerWallet2 = botWallet;
 
       const passingTrigger = makePassingTrigger(priceTrigger.address);
-      const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address);
+      const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
 
       var rule1Hash: string;
       await expect(roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction]))
@@ -281,7 +282,7 @@ describe("RoboCop", () => {
       } = await loadFixture(deployRoboCopFixture);
 
       const failingTrigger = makeFailingTrigger(priceTrigger.address);
-      const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, constants.AddressZero);
+      const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address], [ETH_ADDRESS]);
       const ruleHash = await createRule(
         whitelistService,
         trigWlHash,
@@ -315,7 +316,7 @@ describe("RoboCop", () => {
       } = await loadFixture(deployRoboCopFixture);
 
       const passingTrigger = makePassingTrigger(priceTrigger.address);
-      const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, constants.AddressZero);
+      const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address], [ETH_ADDRESS]);
       const ruleHash = await createRule(
         whitelistService,
         trigWlHash,
@@ -344,7 +345,7 @@ describe("RoboCop", () => {
 
       const passingTrigger = makePassingTrigger(priceTrigger.address);
       const failingTrigger = makeFailingTrigger(priceTrigger.address);
-      const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, constants.AddressZero);
+      const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address], [ETH_ADDRESS]);
       const ruleHash = await createRule(
         whitelistService,
         trigWlHash,
@@ -379,7 +380,7 @@ describe("RoboCop", () => {
       } = await loadFixture(deployRoboCopFixture);
 
       const passingTrigger = makeFailingTrigger(priceTrigger.address);
-      const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, constants.AddressZero);
+      const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address], [ETH_ADDRESS]);
       const ruleHash = await createRule(
         whitelistService,
         trigWlHash,
@@ -427,8 +428,8 @@ describe("RoboCop", () => {
     };
 
     // to get ETH from uniswap, you need to set the output token as WETH.
-    const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, constants.AddressZero);
-    const ethSwapAction = makeSwapAction(swapUniSingleAction.address, constants.AddressZero, testToken1.address);
+    const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address], [ETH_ADDRESS]);
+    const ethSwapAction = makeSwapAction(swapUniSingleAction.address, [ETH_ADDRESS], [testToken1.address]);
     const ruleHashEth = await createRule(
       whitelistService,
       trigWlHash,
@@ -474,10 +475,10 @@ describe("RoboCop", () => {
     it("should revert if add / reduce collateral is called on a non-existent ruleHash", async () => {
       const { ruleSubscriberWallet, roboCop } = await loadFixture(deployValidRuleFixture);
       // these error with onlyRuleOwner because the non existent hash doesnt belong to the subscriber
-      await expect(roboCop.connect(ruleSubscriberWallet).addCollateral(BAD_RULE_HASH, 1000)).to.be.revertedWith(
+      await expect(roboCop.connect(ruleSubscriberWallet).addCollateral(BAD_RULE_HASH, [1000])).to.be.revertedWith(
         "onlyRuleOwner"
       );
-      await expect(roboCop.connect(ruleSubscriberWallet).reduceCollateral(BAD_RULE_HASH, 1000)).to.be.revertedWith(
+      await expect(roboCop.connect(ruleSubscriberWallet).reduceCollateral(BAD_RULE_HASH, [1000])).to.be.revertedWith(
         "onlyRuleOwner"
       );
     });
@@ -485,18 +486,18 @@ describe("RoboCop", () => {
     it("should revert if > 0 native is not sent to addCollateral for an native action", async () => {
       const { ruleHashEth, ruleSubscriberWallet, roboCop } = await loadFixture(deployValidRuleFixture);
 
-      await expect(roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, 0)).to.be.revertedWith(
+      await expect(roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, [0])).to.be.revertedWith(
         "amount <= 0"
       );
     });
 
     it("should revert if > 0 ERC20 isnt sent / approved to addCollateral for an ERC20 rule", async () => {
       const { ruleHashToken, ruleSubscriberWallet, roboCop, testToken1 } = await loadFixture(deployValidRuleFixture);
-      await expect(roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 0)).to.be.revertedWith(
+      await expect(roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, [0])).to.be.revertedWith(
         "amount <= 0"
       );
       await testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, 6);
-      await expect(roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 10)).to.be.revertedWith(
+      await expect(roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, [10])).to.be.revertedWith(
         "ERC20: insufficient allowance"
       );
 
@@ -504,7 +505,7 @@ describe("RoboCop", () => {
       await testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, balance.add(1));
 
       await expect(
-        roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, balance.add(1))
+        roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, [balance.add(1)])
       ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
     });
 
@@ -514,24 +515,24 @@ describe("RoboCop", () => {
       );
       const collateralAmount = utils.parseEther("1");
       await expect(
-        roboCop.connect(botWallet).addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount })
+        roboCop.connect(botWallet).addCollateral(ruleHashEth, [collateralAmount], { value: collateralAmount })
       ).to.be.revertedWith("onlyRuleOwner");
 
       // this should work
       await roboCop
         .connect(ruleSubscriberWallet)
-        .addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
+        .addCollateral(ruleHashEth, [collateralAmount], { value: collateralAmount });
       // now that there is some collateral, we confirm  that it cant be removed to a different user.
-      await expect(roboCop.connect(botWallet).reduceCollateral(ruleHashEth, collateralAmount)).to.be.revertedWith(
+      await expect(roboCop.connect(botWallet).reduceCollateral(ruleHashEth, [collateralAmount])).to.be.revertedWith(
         "onlyRuleOwner"
       );
 
       // check for tokens as well.
       await testToken1.connect(botWallet).approve(roboCop.address, collateralAmount);
-      await expect(roboCop.connect(botWallet).addCollateral(ruleHashToken, collateralAmount)).to.be.revertedWith(
+      await expect(roboCop.connect(botWallet).addCollateral(ruleHashToken, [collateralAmount])).to.be.revertedWith(
         "onlyRuleOwner"
       );
-      await expect(roboCop.connect(botWallet).reduceCollateral(ruleHashToken, collateralAmount)).to.be.revertedWith(
+      await expect(roboCop.connect(botWallet).reduceCollateral(ruleHashToken, [collateralAmount])).to.be.revertedWith(
         "onlyRuleOwner"
       );
     });
@@ -539,7 +540,7 @@ describe("RoboCop", () => {
     it("should revert if collateral amount does not match msg.value for native actions", async () => {
       const { ruleHashEth, ruleSubscriberWallet, roboCop, botWallet } = await loadFixture(deployValidRuleFixture);
       await expect(
-        roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, 12, { value: 3 })
+        roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, [12], { value: 3 })
       ).to.be.revertedWith("ETH: amount != msg.value");
     });
 
@@ -548,7 +549,7 @@ describe("RoboCop", () => {
       it("should not allow removing collateral if no collateral has been added: " + assetType, async () => {
         const { ruleHashEth, ruleHashToken, roboCop, ruleSubscriberWallet } = await loadFixture(deployValidRuleFixture);
         const ruleHash = isNative ? ruleHashEth : ruleHashToken;
-        await expect(roboCop.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, 12)).to.be.revertedWith(
+        await expect(roboCop.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, [12])).to.be.revertedWith(
           "Not enough collateral."
         );
       });
@@ -570,12 +571,12 @@ describe("RoboCop", () => {
           const tokenChange = !isNative ? changeAmounts : [0, 0];
 
           const ex = expect(
-            roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHash, collateralAmount, { value: msgValue })
+            roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHash, [collateralAmount], { value: msgValue })
           );
           await ex.to
             .changeEtherBalances(changeWallets, ethChange)
             .and.emit(roboCop, "CollateralAdded")
-            .withArgs(ruleHash, collateralAmount);
+            .withArgs(ruleHash, [collateralAmount]);
 
           await ex.to.changeTokenBalances(testToken1, changeWallets, tokenChange);
 
@@ -592,12 +593,12 @@ describe("RoboCop", () => {
           const ex2 = expect(
             roboCop
               .connect(ruleSubscriberWallet)
-              .addCollateral(ruleHash, collateralAmount2, { value: isNative ? collateralAmount2 : 0 })
+              .addCollateral(ruleHash, [collateralAmount2], { value: isNative ? collateralAmount2 : 0 })
           );
           await ex2.to
             .changeEtherBalances(changeWallets, ethChange2)
             .and.emit(roboCop, "CollateralAdded")
-            .withArgs(ruleHash, collateralAmount2);
+            .withArgs(ruleHash, [collateralAmount2]);
           await ex2.to.changeTokenBalances(testToken1, changeWallets, tokenChange2);
         }
       );
@@ -614,7 +615,7 @@ describe("RoboCop", () => {
 
           if (!isNative) await testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, collateralAmount);
 
-          await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHash, collateralAmount, { value: msgValue });
+          await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHash, [collateralAmount], { value: msgValue });
 
           const reduceAmount = collateralAmount.sub(1);
           const changeWallets = [ruleSubscriberWallet, roboCop];
@@ -622,11 +623,11 @@ describe("RoboCop", () => {
           const ethChange = isNative ? changeAmounts : [0, 0];
           const tokenChange = !isNative ? changeAmounts : [0, 0];
 
-          const ex = expect(roboCop.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, reduceAmount));
+          const ex = expect(roboCop.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, [reduceAmount]));
           await ex.to
             .changeEtherBalances(changeWallets, ethChange)
             .and.emit(roboCop, "CollateralReduced")
-            .withArgs(ruleHash, reduceAmount);
+            .withArgs(ruleHash, [reduceAmount]);
 
           await ex.to.changeTokenBalances(testToken1, changeWallets, tokenChange);
         }
@@ -641,13 +642,13 @@ describe("RoboCop", () => {
         const ruleHash = isNative ? ruleHashEth : ruleHashToken;
         if (!isNative) await testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, collateralAmount);
 
-        await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHash, collateralAmount, { value: msgValue });
+        await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHash, [collateralAmount], { value: msgValue });
 
         await expect(
-          roboCop.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, collateralAmount.add(1))
+          roboCop.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, [collateralAmount.add(1)])
         ).to.be.revertedWith("Not enough collateral.");
-        await roboCop.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, collateralAmount);
-        await expect(roboCop.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, 1)).to.be.revertedWith(
+        await roboCop.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, [collateralAmount]);
+        await expect(roboCop.connect(ruleSubscriberWallet).reduceCollateral(ruleHash, [1])).to.be.revertedWith(
           "Not enough collateral."
         );
       });
@@ -688,7 +689,7 @@ describe("RoboCop", () => {
       );
       const collateral = utils.parseEther("2");
       await expect(
-        roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, collateral, { value: collateral })
+        roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashEth, [collateral], { value: collateral })
       ).to.emit(roboCop, "CollateralAdded");
       const ex = expect(roboCop.connect(botWallet).executeRule(ruleHashEth));
       await ex.to
@@ -718,7 +719,7 @@ describe("RoboCop", () => {
       );
       const collateral = BigNumber.from(5196).mul(ERC20_DECIMALS);
       await expect(testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, collateral)).to.not.be.reverted;
-      await expect(roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateral)).to.emit(
+      await expect(roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, [collateral])).to.emit(
         roboCop,
         "CollateralAdded"
       );
@@ -744,7 +745,7 @@ describe("RoboCop", () => {
         deployValidRuleFixture
       );
       await testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, 11);
-      await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 6);
+      await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, [6]);
       await expect(roboCop.connect(botWallet).executeRule(ruleHashToken))
         .to.emit(roboCop, "Executed")
         .withArgs(ruleHashToken, botWallet.address);
@@ -758,15 +759,15 @@ describe("RoboCop", () => {
       );
       const collateralAmount = BigNumber.from(15).mul(ERC20_DECIMALS);
       await testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, collateralAmount);
-      await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
+      await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, [collateralAmount]);
       await expect(roboCop.connect(botWallet).executeRule(ruleHashToken))
         .to.emit(roboCop, "Executed")
         .withArgs(ruleHashToken, botWallet.address);
 
       await expect(
-        roboCop.connect(ruleSubscriberWallet).reduceCollateral(ruleHashToken, collateralAmount)
+        roboCop.connect(ruleSubscriberWallet).reduceCollateral(ruleHashToken, [collateralAmount])
       ).to.be.revertedWith("Can't reduce collateral");
-      await expect(roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, 1)).to.be.revertedWith(
+      await expect(roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, [1])).to.be.revertedWith(
         "Can't add collateral"
       );
     });
@@ -779,7 +780,7 @@ describe("RoboCop", () => {
       );
       const collateralAmount = BigNumber.from(30).mul(ERC20_DECIMALS);
       await testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, collateralAmount);
-      await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
+      await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, [collateralAmount]);
 
       await expect(roboCop.connect(ruleSubscriberWallet).deactivateRule(ruleHashToken))
         .to.emit(roboCop, "Deactivated")
@@ -793,7 +794,7 @@ describe("RoboCop", () => {
       );
       const collateralAmount = BigNumber.from(30).mul(ERC20_DECIMALS);
       await testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, collateralAmount);
-      await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
+      await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, [collateralAmount]);
 
       await expect(roboCop.connect(ruleSubscriberWallet).deactivateRule(ruleHashToken))
         .to.emit(roboCop, "Deactivated")
@@ -822,7 +823,7 @@ describe("RoboCop", () => {
       );
       const collateralAmount = BigNumber.from(30).mul(ERC20_DECIMALS);
       await testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, collateralAmount);
-      await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
+      await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, [collateralAmount]);
       await expect(roboCop.connect(ruleSubscriberWallet).redeemBalance(ruleHashToken)).to.be.revertedWith(
         "Rule isn't pending redemption"
       );
@@ -834,7 +835,7 @@ describe("RoboCop", () => {
       );
       const collateralAmount = BigNumber.from(30).mul(ERC20_DECIMALS);
       await testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, collateralAmount);
-      await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
+      await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, [collateralAmount]);
 
       await expect(roboCop.connect(botWallet).executeRule(ruleHashToken)).to.not.be.rejected;
 
@@ -849,7 +850,7 @@ describe("RoboCop", () => {
       );
       const collateralAmount = BigNumber.from(500).mul(ERC20_DECIMALS);
       await testToken1.connect(ruleSubscriberWallet).approve(roboCop.address, collateralAmount);
-      await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, collateralAmount);
+      await roboCop.connect(ruleSubscriberWallet).addCollateral(ruleHashToken, [collateralAmount]);
       await roboCop.connect(botWallet).executeRule(ruleHashToken);
       await expect(roboCop.connect(botWallet).redeemBalance(ruleHashToken)).to.be.revertedWith("onlyRuleOwner");
 
@@ -874,7 +875,7 @@ describe("RoboCop", () => {
       const collateralAmount = utils.parseEther("2"); // send 2 eth
       await roboCop
         .connect(ruleSubscriberWallet)
-        .addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
+        .addCollateral(ruleHashEth, [collateralAmount], { value: collateralAmount });
       await roboCop.connect(botWallet).executeRule(ruleHashEth);
       await expect(roboCop.connect(botWallet).redeemBalance(ruleHashEth)).to.be.revertedWith("onlyRuleOwner");
 
@@ -904,7 +905,7 @@ describe("RoboCop", () => {
       const collateralAmount = BigNumber.from(3).mul(ERC20_DECIMALS);
       await roboCop
         .connect(ruleSubscriberWallet)
-        .addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
+        .addCollateral(ruleHashEth, [collateralAmount], { value: collateralAmount });
 
       await roboCop.connect(ruleSubscriberWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
       await roboCop.connect(botWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
@@ -923,7 +924,7 @@ describe("RoboCop", () => {
       const collateralAmount = BigNumber.from(3).mul(ERC20_DECIMALS);
       await roboCop
         .connect(ruleSubscriberWallet)
-        .addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
+        .addCollateral(ruleHashEth, [collateralAmount], { value: collateralAmount });
 
       await roboCop.connect(ruleSubscriberWallet).increaseReward(ruleHashEth, { value: DEFAULT_REWARD });
       await expect(roboCop.connect(botWallet).withdrawReward(ruleHashEth)).to.revertedWith("0 contribution");
@@ -962,7 +963,7 @@ describe("RoboCop", () => {
       await roboCop.connect(ruleSubscriberWallet).activateRule(ruleHashEth);
       await roboCop
         .connect(ruleSubscriberWallet)
-        .addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
+        .addCollateral(ruleHashEth, [collateralAmount], { value: collateralAmount });
 
       await expect(roboCop.connect(botWallet).executeRule(ruleHashEth)).to.changeEtherBalance(
         botWallet,
@@ -985,7 +986,7 @@ describe("RoboCop", () => {
 
       await roboCop
         .connect(ruleSubscriberWallet)
-        .addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount });
+        .addCollateral(ruleHashEth, [collateralAmount], { value: collateralAmount });
 
       await roboCop.connect(botWallet).executeRule(ruleHashEth);
 
@@ -999,11 +1000,13 @@ describe("RoboCop", () => {
         // @ts-ignore
         actions: [ethSwapAction],
         status: 2,
-        outputAmount: collateralAmount.mul(ETH_PRICE_IN_TST1).div(PRICE_TRIGGER_DECIMALS),
+        outputAmounts: [collateralAmount.mul(ETH_PRICE_IN_TST1).div(PRICE_TRIGGER_DECIMALS)],
         reward: DEFAULT_REWARD,
       };
 
       const actualRule = await roboCop.getRule(ruleHashEth);
+      console.log(actualRule);
+      console.log(expectedRule);
       // @ts-ignore
       expectEthersObjDeepEqual(expectedRule, actualRule);
     });
@@ -1038,12 +1041,12 @@ describe("RoboCop", () => {
         return [
           reSub.createRule(
             [makePassingTrigger(priceTrigger.address)],
-            [makeSwapAction(swapUniSingleAction.address, testToken1.address)]
+            [makeSwapAction(swapUniSingleAction.address, [testToken1.address])]
           ),
           reSub.deactivateRule(ruleHashEth),
           reSub.activateRule(ruleHashEth),
-          reSub.addCollateral(ruleHashEth, collateralAmount, { value: collateralAmount }),
-          reSub.reduceCollateral(ruleHashEth, utils.parseEther("1.5")),
+          reSub.addCollateral(ruleHashEth, [collateralAmount], { value: collateralAmount }),
+          reSub.reduceCollateral(ruleHashEth, [utils.parseEther("1.5")]),
           reSub.increaseReward(ruleHashEth, { value: DEFAULT_REWARD }),
           reSub.withdrawReward(ruleHashEth),
           reSub.executeRule(ruleHashEth),
