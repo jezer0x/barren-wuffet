@@ -274,25 +274,18 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         uint256[] memory outputs;
         for (uint256 i = 0; i < rule.actions.length; i++) {
             Action storage action = rule.actions[i];
-            address token;
-            int256 eth_pos = -1;
+            uint256 ethCollateral = 0;
 
             for (uint256 j = 0; j < action.inputTokens.length; j++) {
-                token = action.inputTokens[j];
-                if (token != Constants.ETH) {
-                    IERC20(token).safeApprove(action.callee, runtimeParams.collateralAmounts[j]);
+                if (action.inputTokens[j] != Constants.ETH) {
+                    IERC20(action.inputTokens[j]).safeApprove(action.callee, runtimeParams.collateralAmounts[j]);
                 } else {
-                    eth_pos = int256(j);
+                    ethCollateral = runtimeParams.collateralAmounts[j];
                 }
             }
-            if (eth_pos == -1) {
-                outputs = IAction(action.callee).perform(action, runtimeParams);
-            } else {
-                outputs = IAction(action.callee).perform{value: runtimeParams.collateralAmounts[uint256(eth_pos)]}(
-                    action,
-                    runtimeParams
-                );
-            }
+
+            outputs = IAction(action.callee).perform{value: ethCollateral}(action, runtimeParams);
+
             runtimeParams.collateralAmounts = outputs;
         }
 
