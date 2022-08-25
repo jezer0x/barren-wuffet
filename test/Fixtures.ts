@@ -50,7 +50,6 @@ export function makePassingTrigger(triggerContract: string, testToken1: Contract
 }
 
 export function makeFailingTrigger(triggerContract: string, testToken1: Contract): TriggerStruct {
-
   return {
     createTimeParams: utils.defaultAbiCoder.encode(
       ["address", "address", "uint8", "uint256"],
@@ -124,12 +123,10 @@ export function expectEthersObjDeepEqual(_expectedResult: Array<any> & object, _
 }
 
 async function deployTestOracle() {
-  const [ownerWallet] = await ethers.getSigners();
-
-  const TestOracle = await ethers.getContractFactory("TestOracle");
-  const testOracleEth = await TestOracle.deploy(ETH_PRICE_IN_USD);
-  const testOracleTst1 = await TestOracle.deploy(TST1_PRICE_IN_USD);
-  return { testOracleEth, testOracleTst1, ownerWallet };
+  return {
+    testOracleEth: await ethers.getContract("TestOracleEth"),
+    testOracleTst1: await ethers.getContract("TestOracleTst1"),
+  };
 }
 
 export async function setupPriceTrigger() {
