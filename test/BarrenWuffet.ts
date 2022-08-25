@@ -3,7 +3,7 @@ import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
 import { ethers, deployments } from "hardhat";
 import { BigNumber, constants, Contract, FixedNumber, utils } from "ethers";
-import { makePassingTrigger, setupBarrenWuffet } from "./Fixtures";
+import { makeFailingTrigger, makePassingTrigger, setupBarrenWuffet } from "./Fixtures";
 import { SubscriptionConstraintsStruct } from "../typechain-types/contracts/funds/BarrenWuffet";
 import { BAD_FUND_HASH, BAD_TRADE_HASH, ETH_ADDRESS, FUND_STATUS } from "./Constants";
 import { depositMaxCollateral, getHashFromEvent } from "./helper";
@@ -529,6 +529,111 @@ describe("BarrenWuffet", () => {
     });
 
     describe("xx Manage rules", () => {
+      it("Should emit RoboCop event when fund manager creates one or more rules", async () => {
+        const { roboCop, chungerToContract, priceTrigger, jerkshireHash, swapETHToTST1Action } = await loadFixture(
+          deployedFundsFixture
+        );
+
+        expect(
+          chungerToContract.createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address)], [swapETHToTST1Action])
+        ).to.emit(roboCop, "Created").withArgs(anyValue);
+
+        expect(
+          chungerToContract.createRule(jerkshireHash, [makeFailingTrigger(priceTrigger.address)], [swapETHToTST1Action])
+        ).to.emit(roboCop, "Created").withArgs(anyValue);
+      });
+
+      //@ts-ignore
+      async function createTwoRules(_fixtureVars) {
+        const { crackBlockHash, roboCop, chungerToContract,
+          fairyToContract, priceTrigger, jerkshireHash, swapETHToTST1Action } = _fixtureVars;
+        const ruleHash = await getHashFromEvent(
+          chungerToContract.createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address)], [swapETHToTST1Action]),
+          "Created",
+          roboCop.address,
+          "ruleHash"
+        );
+        // create the same rule in a different fund to confirm that we dont mix things up.
+        const ruleHash2 = await getHashFromEvent(
+          fairyToContract.createRule(crackBlockHash, [makePassingTrigger(priceTrigger.address)], [swapETHToTST1Action]),
+          "Created",
+          roboCop.address,
+          "ruleHash"
+        );
+
+        expect(ruleHash).to.not.equal(ruleHash2);
+
+        return ruleHash;
+
+      }
+      it("Should emit RoboCop events when fund manager creates / activates / deactivates / cancels a rule", async () => {
+        const fixtureVars = await loadFixture(
+          deployedFundsFixture
+        );
+        const { barrenWuffet, marlieChungerWallet, crackBlockHash, roboCop, chungerToContract,
+          fairyToContract, priceTrigger, jerkshireHash, swapETHToTST1Action } = fixtureVars;
+
+        const ruleHash = await createTwoRules(fixtureVars);
+
+        await expect(
+          chungerToContract.activateRule(jerkshireHash, ruleHash)).to
+          .changeEtherBalances([barrenWuffet, roboCop], [0, 0])
+          .emit(roboCop, "Activated").withArgs(ruleHash);
+
+        await expect(
+          chungerToContract.deactivateRule(jerkshireHash, ruleHash)).to
+          .changeEtherBalances([barrenWuffet, roboCop], [0, 0])
+          .emit(roboCop, "Deactivated").withArgs(ruleHash);
+
+        await expect(
+          chungerToContract.cancelRule(jerkshireHash, ruleHash)).to
+          .changeEtherBalances([barrenWuffet, roboCop], [0, 0])
+          .emit(roboCop, "Deactivated").withArgs(ruleHash);
+      });
+
+      it("Should emit RoboCop events and adjust funds from berkshire when fund manager adds / removes / cancels native collateral for a rule", async () => {
+
+        const fixtureVars = await loadFixture(
+          deployedFundsFixture
+        );
+        const { barrenWuffet, marlieChungerWallet, roboCop, chungerToContract,
+          jerkshireHash } = fixtureVars;
+
+        const ruleHash = await createTwoRules(fixtureVars);
+
+        const addAmt = [utils.parseEther("1")];
+        await expect(chungerToContract.addRuleCollateral(jerkshireHash, ruleHash, [ETH_ADDRESS], [addAmt])).to
+          .changeEtherBalances([barrenWuffet, roboCop, marlieChungerWallet], [-addAmt, addAmt, 0])
+          .emit(roboCop, "CollateralAdded").withArgs(ruleHash, [addAmt]);
+
+        const redAmt = [utils.parseEther("0.6")];
+        await expect(chungerToContract.reduceRuleCollateral(jerkshireHash, ruleHash, redAmt)).to
+          .changeEtherBalances([barrenWuffet, roboCop, marlieChungerWallet], [redAmt, -redAmt, 0])
+          .emit(roboCop, "CollateralReduced").withArgs(
+            ruleHash, [redAmt]);
+
+      });
+
+      it("Should return all collateral added when the rule is cancelled", async () => {
+        const fixtureVars = await loadFixture(
+          deployedFundsFixture
+        );
+        const { barrenWuffet, marlieChungerWallet, roboCop, chungerToContract,
+          jerkshireHash } = fixtureVars;
+
+        const ruleHash = await createTwoRules(fixtureVars);
+
+        const collateral = [utils.parseEther("0.6")];
+        await chungerToContract.addRuleCollateral(jerkshireHash, ruleHash, [ETH_ADDRESS], [collateral]).to
+
+        await expect(chungerToContract.cancelRule(jerkshireHash, ruleHash)).to
+          .changeEtherBalances([barrenWuffet, roboCop, marlieChungerWallet], [collateral, -collateral, 0])
+          .emit(roboCop, "Deactivated").withArgs(
+            ruleHash)
+          .emit(roboCop, "CollateralReduced").withArgs(
+            ruleHash, [collateral]);
+      })
+
       it("Should not allow anyone other than the fund manager to manage rules", async () => {
         const { barrenWuffet, roboCop, chungerToContract, fairyToContract, priceTrigger, jerkshireHash, swapETHToTST1Action } = await loadFixture(
           deployedFundsFixture
@@ -560,32 +665,11 @@ describe("BarrenWuffet", () => {
 
       });
 
-      it("should revert if a position is opened on an unknown trade hash", async () => {
+      it.skip("should revert if an unknown rule is accessed", async () => {
         const { chungerToContract, jerkshireHash } = await loadFixture(deployedFundsFixture);
 
-        const positionValue = utils.parseEther("1");
-        await expect(
-          chungerToContract.openPosition(jerkshireHash, BAD_TRADE_HASH, positionValue)
-        ).to.be.revertedWithoutReason();
+
       });
-
-      it("should transfer assets to degen street when opening a positon", async () => {
-        const { barrenWuffet, chungerToContract, jerkshireHash } = await loadFixture(
-          deployedFundsFixture
-        );
-
-        const degenStreet = barrenWuffet.degenStreet;
-        const positionValue = utils.parseEther("1");
-        await expect(chungerToContract.openPosition(jerkshireHash, positionValue))
-          .to.changeEtherBalances([barrenWuffet, degenStreet], [-positionValue, positionValue])
-          .emit(
-            // should be degenStreet
-            barrenWuffet,
-            "Deposit"
-          );
-      });
-
-      it("should revert if attempting to close an already closed position", async () => { });
     });
 
     describe.skip("Take Action", () => {
