@@ -2,46 +2,64 @@ import { ethers } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { TriggerStruct, ActionStruct, RoboCop } from "../typechain-types/contracts/rules/RoboCop";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { Contract, Bytes, BigNumber } from "ethers";
+import { Contract, Bytes, BigNumber, utils } from "ethers";
 import {
   GT,
   ERC20_DECIMALS,
   TST1_PRICE_IN_ETH,
-  TST1_PRICE_IN_ETH_PARAM,
   DEFAULT_REWARD,
   ETH_PRICE_IN_USD,
   PRICE_TRIGGER_DECIMALS,
   TST1_PRICE_IN_USD,
   ETH_PRICE_IN_TST1,
-  ETH_PRICE_IN_TST1_PARAM,
   ETH_ADDRESS,
+  PRICE_TRIGGER_TYPE,
+  LT,
 } from "./Constants";
 import { getHashFromEvent, tx } from "./helper";
 import { expect } from "chai";
 
-export async function deployTestTokens() {
-  const TestToken = await ethers.getContractFactory("TestToken");
-  const testToken1 = await TestToken.deploy(BigNumber.from("1000000").mul(ERC20_DECIMALS), "Test1", "TST1");
-  const testToken2 = await TestToken.deploy(BigNumber.from("1000000").mul(ERC20_DECIMALS), "Test2", "TST2");
-  const WETH = await TestToken.deploy(BigNumber.from("1000000").mul(ERC20_DECIMALS), "WETH", "WETH");
+// for caching
+var G_TEST_TOKEN_1: Contract;
+var G_TEST_TOKEN_2: Contract;
+var G_WETH: Contract;
+export async function setupTestTokens() {
+  if (G_TEST_TOKEN_1 == undefined) {
+    const TestToken = await ethers.getContractFactory("TestToken");
+    G_TEST_TOKEN_1 = await TestToken.deploy(BigNumber.from("1000000").mul(ERC20_DECIMALS), "Test1", "TST1");
+    G_TEST_TOKEN_2 = await TestToken.deploy(BigNumber.from("1000000").mul(ERC20_DECIMALS), "Test2", "TST2");
+    G_WETH = await TestToken.deploy(BigNumber.from("1000000").mul(ERC20_DECIMALS), "WETH", "WETH");
+  }
+
+  const testToken1 = G_TEST_TOKEN_1;
+  const testToken2 = G_TEST_TOKEN_2;
+  const WETH = G_WETH;
+
   return { testToken1, testToken2, WETH };
 }
 
-export function makePassingTrigger(triggerContract: string): TriggerStruct {
+export async function makePassingTrigger(triggerContract: string): Promise<TriggerStruct> {
+  const { testToken1 } = await setupTestTokens();
   return {
-    op: GT,
-    param: TST1_PRICE_IN_ETH_PARAM,
+    createTimeParams: utils.defaultAbiCoder.encode(
+      ["address", "address", "uint8", "uint256"],
+      [testToken1.address, ETH_ADDRESS, GT, TST1_PRICE_IN_ETH.sub(1)]
+    ),
+    triggerType: PRICE_TRIGGER_TYPE,
     callee: triggerContract,
-    value: TST1_PRICE_IN_ETH.sub(1),
   };
 }
 
-export function makeFailingTrigger(triggerContract: string): TriggerStruct {
+export async function makeFailingTrigger(triggerContract: string): Promise<TriggerStruct> {
+  const { testToken1 } = await setupTestTokens();
+
   return {
-    op: GT,
-    param: TST1_PRICE_IN_ETH_PARAM,
+    createTimeParams: utils.defaultAbiCoder.encode(
+      ["address", "address", "uint8", "uint256"],
+      [testToken1.address, ETH_ADDRESS, GT, TST1_PRICE_IN_ETH.add(1)]
+    ),
+    triggerType: PRICE_TRIGGER_TYPE,
     callee: triggerContract,
-    value: TST1_PRICE_IN_ETH.add(1),
   };
 }
 
@@ -124,13 +142,13 @@ export async function setupPriceTrigger() {
 
 export async function setupEthToTst1PriceTrigger() {
   const [ownerWallet, otherWallet] = await ethers.getSigners();
-
+  const { testToken1 } = await setupTestTokens();
   const { priceTrigger } = await setupPriceTrigger();
   const { testOracleTst1, testOracleEth } = await deployTestOracle();
-  await priceTrigger.addPriceFeed("eth", testOracleEth.address);
-  await priceTrigger.addPriceFeed("tst1", testOracleTst1.address);
+  await priceTrigger.addPriceFeed(ETH_ADDRESS, testOracleEth.address);
+  await priceTrigger.addPriceFeed(testToken1.address, testOracleTst1.address);
 
-  return { priceTrigger, testOracleEth, testOracleTst1, ownerWallet, otherWallet };
+  return { priceTrigger, testOracleEth, testOracleTst1, ownerWallet, otherWallet, testToken1 };
 }
 
 export async function setupSwapUniSingleAction(testToken: Contract, WETH: Contract) {
@@ -172,7 +190,7 @@ export async function setupRoboCop() {
   // Contracts are deployed using the first signer/account by default
   const [ownerWallet, ruleMakerWallet, ruleSubscriberWallet, botWallet, ethFundWallet] = await ethers.getSigners();
 
-  const { testToken1, testToken2, WETH } = await deployTestTokens();
+  const { testToken1, testToken2, WETH } = await setupTestTokens();
   const { testOracleEth, testOracleTst1, priceTrigger } = await setupEthToTst1PriceTrigger();
 
   const swapUniSingleAction = await setupSwapUniSingleAction(testToken1, WETH);
@@ -236,24 +254,23 @@ export async function setupDegenStreet() {
   };
 }
 
-export async function setupSwapActions(
-  priceTrigger: Contract,
-  swapUniSingleAction: Contract,
-  testToken1: Contract,
-) {
-
+export async function setupSwapActions(priceTrigger: Contract, swapUniSingleAction: Contract, testToken1: Contract) {
   const passingETHtoTST1SwapPriceTrigger = {
-    op: GT,
-    param: ETH_PRICE_IN_TST1_PARAM,
+    createTimeParams: utils.defaultAbiCoder.encode(
+      ["address", "address", "uint8", "uint256"],
+      [ETH_ADDRESS, testToken1.address, GT, ETH_PRICE_IN_TST1.sub(1)]
+    ),
+    triggerType: PRICE_TRIGGER_TYPE,
     callee: priceTrigger.address,
-    value: ETH_PRICE_IN_TST1.sub(1),
   };
 
   const passingTST1toETHSwapPriceTrigger = {
-    op: GT,
-    param: TST1_PRICE_IN_ETH_PARAM,
+    createTimeParams: utils.defaultAbiCoder.encode(
+      ["address", "address", "uint8", "uint256"],
+      [testToken1.address, ETH_ADDRESS, GT, TST1_PRICE_IN_ETH.sub(1)]
+    ),
+    triggerType: PRICE_TRIGGER_TYPE,
     callee: priceTrigger.address,
-    value: TST1_PRICE_IN_ETH.sub(1),
   };
 
   const swapTST1ToETHAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address], [ETH_ADDRESS]);
