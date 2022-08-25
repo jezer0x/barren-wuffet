@@ -534,11 +534,11 @@ describe("BarrenWuffet", () => {
           deployedFundsFixture
         );
 
-        expect(
+        await expect(
           chungerToContract.createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address)], [swapETHToTST1Action])
         ).to.emit(roboCop, "Created").withArgs(anyValue);
 
-        expect(
+        await expect(
           chungerToContract.createRule(jerkshireHash, [makeFailingTrigger(priceTrigger.address)], [swapETHToTST1Action])
         ).to.emit(roboCop, "Created").withArgs(anyValue);
       });
