@@ -11,10 +11,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 /*
     https://docs.uniswap.org/protocol/guides/swaps/single-swaps
 
-    runtimeParams.triggerData must be in decimals = 8
+    runtimeParams.triggerReturn must be in decimals = 8
     Notes with examples: 
-    ETH/USD -> USD per ETH -> ETH Price in USD -> triggerData = ["eth", "usd"] -> Must use when tokenIn = ETH and tokenOut = USD (i.e. buying USD with ETH)
-    USD/ETH -> ETH per USD -> USD Price in ETH -> triggerData = ["usd", "eth"] -> Must use when tokenIn = USD* and tokenOut = ETH (i.e. buying ETH with USD)
+    ETH/USD -> USD per ETH -> ETH Price in USD -> triggerReturn = ["eth", "usd"] -> Must use when tokenIn = ETH and tokenOut = USD (i.e. buying USD with ETH)
+    USD/ETH -> ETH per USD -> USD Price in ETH -> triggerReturn = ["usd", "eth"] -> Must use when tokenIn = USD* and tokenOut = ETH (i.e. buying ETH with USD)
 
     Will only have 1 input token and 1 output token
  */
@@ -57,7 +57,7 @@ contract SwapUniSingleAction is IAction, Ownable {
                 recipient: msg.sender,
                 deadline: block.timestamp, // need to do an immediate swap
                 amountIn: msg.value,
-                amountOutMinimum: (runtimeParams.triggerData * msg.value) / 10**8, // assumption: triggerData in the form of ETH/tokenOut.
+                amountOutMinimum: (runtimeParams.triggerReturn * msg.value) / 10**8, // assumption: triggerReturn in the form of ETH/tokenOut.
                 sqrtPriceLimitX96: 0
             });
             outputs[0] = swapRouter.exactInputSingle{value: msg.value}(params);
@@ -81,7 +81,7 @@ contract SwapUniSingleAction is IAction, Ownable {
                 recipient: msg.sender,
                 deadline: block.timestamp, // need to do an immediate swap
                 amountIn: runtimeParams.collateralAmounts[0],
-                amountOutMinimum: (runtimeParams.triggerData * runtimeParams.collateralAmounts[0]) / 10**8, // assumption: triggerData in the form of tokenIn/tokenOut.
+                amountOutMinimum: (runtimeParams.triggerReturn * runtimeParams.collateralAmounts[0]) / 10**8, // assumption: triggerReturn in the form of tokenIn/tokenOut.
                 sqrtPriceLimitX96: 0
             });
             outputs[0] = swapRouter.exactInputSingle(params);

@@ -247,13 +247,16 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         return keccak256(abi.encode(triggers, actions, msg.sender, block.timestamp));
     }
 
-    // WARNING: only the last trigger's data gets sent back as triggerData
-    function _checkTriggers(Trigger[] storage triggers) internal view returns (bool valid, uint256 triggerData) {
+    function _checkTriggers(Trigger[] storage triggers) internal view returns (bool, TriggerReturn[] memory) {
+        TriggerReturn[] memory triggerReturnArr = new TriggerReturn[](triggers.length);
+        TriggerReturn memory triggerReturn;
+        bool valid = false;
         for (uint256 i = 0; i < triggers.length; i++) {
-            (valid, triggerData) = ITrigger(triggers[i].callee).check(triggers[i]);
-            if (!valid) return (false, 0);
+            (valid, triggerReturn) = ITrigger(triggers[i].callee).check(triggers[i]);
+            triggerReturnArr[i] = triggerReturn;
+            if (!valid) return (false, triggerReturnArr);
         }
-        return (true, triggerData);
+        return (true, triggerReturnArr);
     }
 
     function checkRule(bytes32 ruleHash) external view returns (bool valid) {
@@ -263,11 +266,11 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
     function executeRule(bytes32 ruleHash) external whenNotPaused ruleExists(ruleHash) nonReentrant {
         Rule storage rule = rules[ruleHash];
         _setRuleStatus(ruleHash, RuleStatus.EXECUTED); // This ensures only active rules can be executed
-        (bool valid, uint256 triggerData) = _checkTriggers(rule.triggers);
+        (bool valid, TriggerReturn[] memory triggerReturnArr) = _checkTriggers(rule.triggers);
         require(valid, "Trigger != Satisfied");
 
         ActionRuntimeParams memory runtimeParams = ActionRuntimeParams({
-            triggerData: triggerData,
+            triggerReturnArr: triggerReturnArr,
             collateralAmounts: rule.collateralAmounts
         });
 

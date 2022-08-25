@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
     Will only work for plain Pools
     https://curve.readthedocs.io/exchange-pools.html#plain-pools
 
-    runtimeParams.triggerData must be ???
+    runtimeParams.triggerReturn must be ???
     action.data must be in the form of (address)
 
     Expects 1 input token and multiple output tokens
@@ -51,7 +51,7 @@ contract AddLiquidityCurveAction is AddressProvider, PlainPool, IAction {
         uint256[] memory outputs = new uint256[](action.outputTokens.length);
         address poolAddr = abi.decode(action.data, (address));
         IPlainPool pool = IPlainPool(poolAddr);
-        uint256[] memory _min_amounts = new uint256[](action.outputTokens.length); // TODO: figure this out from runtimeParams.triggerData or let it be?
+        uint256[] memory _min_amounts = new uint256[](action.outputTokens.length); // TODO: figure this out from runtimeParams.triggerReturn or let it be?
 
         IERC20(action.inputTokens[0]).safeTransferFrom(msg.sender, address(this), runtimeParams.collateralAmounts[0]);
         IERC20(action.inputTokens[0]).safeApprove(address(pool), runtimeParams.collateralAmounts[0]);

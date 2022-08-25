@@ -25,10 +25,10 @@ interface ISwapper {
     
     The other way to do it is to locate the pool and then do a direct exchange https://curve.readthedocs.io/exchange-pools.html#StableSwap.exchange
 
-    runtimeParams.triggerData must be in decimals = 8
+    runtimeParams.triggerReturn must be in decimals = 8
     Notes with examples: 
-    ETH/USD -> USD per ETH -> ETH Price in USD -> triggerData = ["eth", "usd"] -> Must use when tokenIn = ETH and tokenOut = USD (i.e. buying USD with ETH)
-    USD/ETH -> ETH per USD -> USD Price in ETH -> triggerData = ["usd", "eth"] -> Must use when tokenIn = USD* and tokenOut = ETH (i.e. buying ETH with USD)
+    ETH/USD -> USD per ETH -> ETH Price in USD -> triggerReturn = ["eth", "usd"] -> Must use when tokenIn = ETH and tokenOut = USD (i.e. buying USD with ETH)
+    USD/ETH -> ETH per USD -> USD Price in ETH -> triggerReturn = ["usd", "eth"] -> Must use when tokenIn = USD* and tokenOut = ETH (i.e. buying ETH with USD)
  
     action.data must be in the form of (address)
 
@@ -80,7 +80,7 @@ contract SwapCurveAction is AddressProvider, IAction {
             action.inputTokens[0],
             action.outputTokens[0],
             runtimeParams.collateralAmounts[0],
-            (runtimeParams.triggerData * runtimeParams.collateralAmounts[0]) / 10**8,
+            (runtimeParams.triggerReturn * runtimeParams.collateralAmounts[0]) / 10**8,
             msg.sender
         );
         IERC20(action.inputTokens[0]).safeApprove(address(swapper), 0);

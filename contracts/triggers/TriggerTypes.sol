@@ -6,9 +6,19 @@ enum Ops {
     LT
 }
 
+enum TriggerDataType {
+    PriceFeed,
+    Timestamp
+}
+
+struct TriggerReturn {
+    TriggerDataType dataType;
+    bytes data;
+}
+
 struct Trigger {
     address callee;
-    bytes param; // any custom param to send to the callee, encoded at compileTime
-    uint256 value; // Must be in decimals = 8 (i.e. 1 = 1e8)
+    bytes createTimeParams; // any custom param to send to the callee, encoded at compileTime
+    TriggerReturn executeTimeData;
     Ops op; //eg. GT
 }
