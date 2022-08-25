@@ -1,6 +1,7 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { BigNumber, constants, Contract, ContractReceipt, ContractTransaction } from "ethers";
+import { ETH_ADDRESS } from "./Constants";
 
 export async function testPauseAuthorization(contract: Contract, ownerWallet: SignerWithAddress, otherWallet: SignerWithAddress) {
     const ownerCon = contract.connect(ownerWallet);
@@ -60,7 +61,7 @@ export async function depositMaxCollateral(subscriber1Conn: Contract,
     for (; d.lte(maxC); d = d.add(depositAmt)) {
         // alternate deposits, so both subscribers have deposits.
         await subscriberConns[(i++) % 2].deposit(
-            fundHash, constants.AddressZero, depositAmt,
+            fundHash, ETH_ADDRESS, depositAmt,
             { value: depositAmt });
     }
 
@@ -70,7 +71,7 @@ export async function depositMaxCollateral(subscriber1Conn: Contract,
             expect.fail(`Cant hit max collateral. Stuck at ${d.toString()} Pls fix this test`)
         }
         await subscriberConns[(i++) % 2].deposit(
-            fundHash, constants.AddressZero, remDeposit,
+            fundHash, ETH_ADDRESS, remDeposit,
             { value: remDeposit });
     }
 
