@@ -43,8 +43,8 @@ contract BadPriceTrigger {
 
     function check(Trigger memory trigger) external view returns (bool, uint256) {
         // get the val of var, so we can check if it matches trigger
-        (uint256 val, Ops op) = (trigger.value, trigger.op);
-        (string memory asset1, string memory asset2) = abi.decode(trigger.param, (string, string));
+        // (uint256 val, Ops op) = (trigger.value, trigger.op);
+        // (string memory asset1, string memory asset2) = abi.decode(trigger.param, (string, string));
 
         return (false, 0);
     }

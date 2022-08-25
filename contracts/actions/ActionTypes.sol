@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
+import "../triggers/TriggerTypes.sol";
 
 struct ActionRuntimeParams {
-    uint256 triggerData;
+    TriggerReturn[] triggerReturnArr;
     uint256[] collateralAmounts;
 }
 
