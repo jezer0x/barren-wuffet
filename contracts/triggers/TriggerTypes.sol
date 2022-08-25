@@ -7,6 +7,7 @@ enum Ops {
 }
 
 enum TriggerType {
+    NULL,
     Price,
     Timestamp
 }

@@ -3,6 +3,9 @@ import { BigNumber, utils } from "ethers";
 export const GT = 0;
 export const LT = 1;
 
+export const PRICE_TRIGGER_TYPE = 1;
+export const TIMESTAMP_TRIGGER_TYPE = 2;
+
 export const ERC20_DECIMALS = BigNumber.from(10).pow(18);
 export const PRICE_TRIGGER_DECIMALS = BigNumber.from(10).pow(8);
 
