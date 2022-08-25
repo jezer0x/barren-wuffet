@@ -2,7 +2,7 @@ import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
 import { ethers, deployments } from "hardhat";
-import { BigNumber, constants, Contract, utils } from "ethers";
+import { BigNumber, constants, Contract, FixedNumber, utils } from "ethers";
 import { makePassingTrigger, setupBarrenWuffet } from "./Fixtures";
 import { SubscriptionConstraintsStruct } from "../typechain-types/contracts/funds/BarrenWuffet";
 import { BAD_FUND_HASH, BAD_TRADE_HASH, ETH_ADDRESS, FUND_STATUS } from "./Constants";
@@ -142,6 +142,7 @@ describe("BarrenWuffet", () => {
     const {
       priceTrigger,
       barrenWuffet,
+      roboCop,
       marlieChungerWallet,
       fairyLinkWallet,
       botWallet,
@@ -193,6 +194,7 @@ describe("BarrenWuffet", () => {
     return {
       barrenWuffet,
       priceTrigger,
+      roboCop,
       marlieChungerWallet,
       fairyLinkWallet,
       jerkshireHash,
@@ -386,7 +388,7 @@ describe("BarrenWuffet", () => {
       await expect(fairyToContract.closeFund(crackBlockHash)).to.emit(barrenWuffet, "Closed").withArgs(crackBlockHash);
     });
 
-    it("xx should not allow creating a rule for a raising fund", async () => {
+    it("should not allow creating a rule for a raising fund", async () => {
       const { jerkshireHash, chungerToContract, priceTrigger, swapETHToTST1Action } = await loadFixture(
         raisingFundsFixture
       );
@@ -526,16 +528,36 @@ describe("BarrenWuffet", () => {
       await expect(chungerToContract.withdrawReward(jerkshireHash)).to.be.revertedWith("Fund not closed");
     });
 
-    describe.skip("xx <Open and close positions> change to create rules", () => {
-      it("Should not allow anyone other than the fund manager to open and  close positons", async () => {
-        const { barrenWuffet, fundSubscriberWallet, jerkshireHash } = await loadFixture(
+    describe("xx Manage rules", () => {
+      it("Should not allow anyone other than the fund manager to manage rules", async () => {
+        const { barrenWuffet, roboCop, chungerToContract, fairyToContract, priceTrigger, jerkshireHash, swapETHToTST1Action } = await loadFixture(
           deployedFundsFixture
         );
 
-        const positionValue = utils.parseEther("1");
         await expect(
-          barrenWuffet.connect(fundSubscriberWallet).openPosition(jerkshireHash, positionValue)
+          fairyToContract.createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address)], [swapETHToTST1Action])
         ).to.be.revertedWithoutReason();
+
+        const ruleHash = await getHashFromEvent(
+          chungerToContract.createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address)], [swapETHToTST1Action]),
+          "Created",
+          roboCop.address,
+          "ruleHash"
+        );
+
+        const ruleFns = [
+          () => fairyToContract.activateRule(jerkshireHash, ruleHash),
+          () => fairyToContract.deactivateRule(jerkshireHash, ruleHash),
+          () => fairyToContract.addRuleCollateral(jerkshireHash, ruleHash, [ETH_ADDRESS], [utils.parseEther("1")],
+            { value: utils.parseEther("1") }),
+          () => fairyToContract.reduceRuleCollateral(jerkshireHash, ruleHash, [utils.parseEther("0.6")]),
+          () => fairyToContract.cancelRule(jerkshireHash, ruleHash)
+        ]
+
+        for (const fn of ruleFns) {
+          await fn().to.be.revertedWithoutReason();
+        }
+
       });
 
       it("should revert if a position is opened on an unknown trade hash", async () => {
