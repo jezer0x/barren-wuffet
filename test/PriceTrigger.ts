@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { deployments, ethers } from "hardhat";
 import { setupPriceTrigger, setupEthToTst1PriceTrigger } from "./Fixtures";
 import { TriggerStruct } from "../typechain-types/contracts/rules/RoboCop";
-import { GT, LT, TST1_PRICE_IN_ETH_PARAM, TST1_PRICE_IN_ETH } from "./Constants";
+import { GT, LT, TST1_PRICE_IN_ETH_PARAM, TST1_PRICE_IN_ETH, ETH_ADDRESS } from "./Constants";
 
 describe("PriceTrigger", () => {
   // We define a fixture to reuse the same setup in every test.
