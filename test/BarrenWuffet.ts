@@ -110,9 +110,9 @@ describe("BarrenWuffet", () => {
         barrenWuffet.connect(marlieChungerWallet).getInputTokens(BAD_FUND_HASH)
       ).to.be.revertedWithoutReason();
 
-      expect(await barrenWuffet.connect(marlieChungerWallet).getInputTokens(fundHash)).to.have.length(1).and.contain(
-        ETH_ADDRESS
-      );
+      expect(await barrenWuffet.connect(marlieChungerWallet).getInputTokens(fundHash))
+        .to.have.length(1)
+        .and.contain(ETH_ADDRESS);
     });
 
     it("Should revert on getOutputToken", async () => {
@@ -147,7 +147,7 @@ describe("BarrenWuffet", () => {
       testToken1,
       fundSubscriberWallet,
       fundSubscriber2Wallet,
-      swapETHToTST1Action
+      swapETHToTST1Action,
     } = await loadFixture(deployBarrenWuffetFixture);
 
     const latestTime = await time.latest();
@@ -205,7 +205,7 @@ describe("BarrenWuffet", () => {
       testToken1,
       fundSubscriberWallet,
       fundSubscriber2Wallet,
-      swapETHToTST1Action
+      swapETHToTST1Action,
     };
   }
   describe("Fund Status: Raising", () => {
@@ -223,9 +223,7 @@ describe("BarrenWuffet", () => {
 
     it("Should allow the fund manager to deposit native token into their own fund", async () => {
       const { barrenWuffet, jerkshireHash, chungerToContract } = await loadFixture(raisingFundsFixture);
-      await expect(
-        chungerToContract.deposit(jerkshireHash, ETH_ADDRESS, validDeposit, { value: validDeposit })
-      )
+      await expect(chungerToContract.deposit(jerkshireHash, ETH_ADDRESS, validDeposit, { value: validDeposit }))
         .to.emit(barrenWuffet, "Deposit")
         .withArgs(jerkshireHash, 0, ETH_ADDRESS, validDeposit);
     });
@@ -314,9 +312,7 @@ describe("BarrenWuffet", () => {
 
       for (const deposit of deposits) {
         const [amt, shouldSucceed, idOrError] = deposit;
-        const tx = barrenWuffet
-          .connect(fundSubscriberWallet)
-          .deposit(jerkshireHash, ETH_ADDRESS, amt, { value: amt });
+        const tx = barrenWuffet.connect(fundSubscriberWallet).deposit(jerkshireHash, ETH_ADDRESS, amt, { value: amt });
         if (shouldSucceed) {
           await expect(tx)
             .to.changeEtherBalance(fundSubscriberWallet, amt.mul(-1))
@@ -391,9 +387,13 @@ describe("BarrenWuffet", () => {
         raisingFundsFixture
       );
 
-      await expect(chungerToContract
-        .createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action])).be.revertedWithoutReason();
-
+      await expect(
+        chungerToContract.createRule(
+          jerkshireHash,
+          [makePassingTrigger(priceTrigger.address, testToken1)],
+          [swapETHToTST1Action]
+        )
+      ).be.revertedWithoutReason();
     });
     it("should revert if rewards withdrawal is attempted on a raising fund", async () => {
       const { barrenWuffet, jerkshireHash, chungerToContract, fundSubscriberWallet } = await loadFixture(
@@ -438,17 +438,17 @@ describe("BarrenWuffet", () => {
     // we are creating this test here and not earlier because we want to have a
     // fund with deposits, and ensure these actions on a different fund dont
     // interfere with the funds on the existing fund.
-    it("should revert if creating rules positions in a non-existent fund", async () => { });
+    it("should revert if creating rules positions in a non-existent fund", async () => {});
 
-    it("should revert if performing actions on a non-existent fund", async () => { });
+    it("should revert if performing actions on a non-existent fund", async () => {});
 
-    it("should revert if withdrawing rewards from  a non-existent fund", async () => { });
+    it("should revert if withdrawing rewards from  a non-existent fund", async () => {});
 
-    it("should revert if depositing / withdrawing from  a non-existent fund", async () => { });
+    it("should revert if depositing / withdrawing from  a non-existent fund", async () => {});
 
-    it("should revert on attempting to get status on a non-existent fund", async () => { });
+    it("should revert on attempting to get status on a non-existent fund", async () => {});
 
-    it("should revert if an unknown fund or closed fund is closed", () => { });
+    it("should revert if an unknown fund or closed fund is closed", () => {});
   });
 
   async function deployedFundsFixture() {
@@ -528,35 +528,62 @@ describe("BarrenWuffet", () => {
 
     describe("xx Manage rules", () => {
       it("Should emit RoboCop event when fund manager creates one or more rules", async () => {
-        const { roboCop, chungerToContract, priceTrigger, testToken1, jerkshireHash, swapETHToTST1Action } = await loadFixture(
-          deployedFundsFixture
-        );
+        const { roboCop, chungerToContract, priceTrigger, testToken1, jerkshireHash, swapETHToTST1Action } =
+          await loadFixture(deployedFundsFixture);
 
         await expect(
-          chungerToContract.createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action])
-        ).to.emit(roboCop, "Created").withArgs(anyValue);
+          chungerToContract.createRule(
+            jerkshireHash,
+            [makePassingTrigger(priceTrigger.address, testToken1)],
+            [swapETHToTST1Action]
+          )
+        )
+          .to.emit(roboCop, "Created")
+          .withArgs(anyValue);
 
         await expect(
-          chungerToContract.createRule(jerkshireHash, [makeFailingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action])
-        ).to.emit(roboCop, "Created").withArgs(anyValue);
+          chungerToContract.createRule(
+            jerkshireHash,
+            [makeFailingTrigger(priceTrigger.address, testToken1)],
+            [swapETHToTST1Action]
+          )
+        )
+          .to.emit(roboCop, "Created")
+          .withArgs(anyValue);
       });
 
       //@ts-ignore
       async function createTwoRules(_fixtureVars) {
-        const { crackBlockHash, roboCop, chungerToContract,
-          fairyToContract, priceTrigger, jerkshireHash, testToken1, swapETHToTST1Action } = _fixtureVars;
-        
+        const {
+          crackBlockHash,
+          roboCop,
+          chungerToContract,
+          fairyToContract,
+          priceTrigger,
+          jerkshireHash,
+          testToken1,
+          swapETHToTST1Action,
+        } = _fixtureVars;
+
         // Why fundHash and not ruleHash? dont know. the event is emitted by roboCop but the field is fundHash.
         // the "fundHash" key isnt part of the abi (only the type is), so this could be an ethers issue.
         const ruleHash = await getHashFromEvent(
-          chungerToContract.createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action]),
+          chungerToContract.createRule(
+            jerkshireHash,
+            [makePassingTrigger(priceTrigger.address, testToken1)],
+            [swapETHToTST1Action]
+          ),
           "Created",
           roboCop.address,
           "fundHash"
         );
         // create the same rule in a different fund to confirm that we dont mix things up.
         const ruleHash2 = await getHashFromEvent(
-          fairyToContract.createRule(crackBlockHash, [makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action]),
+          fairyToContract.createRule(
+            crackBlockHash,
+            [makePassingTrigger(priceTrigger.address, testToken1)],
+            [swapETHToTST1Action]
+          ),
           "Created",
           roboCop.address,
           "fundHash"
@@ -564,135 +591,144 @@ describe("BarrenWuffet", () => {
 
         expect(ruleHash).to.not.equal(ruleHash2);
 
-
         return {
           ruleIndex: 0,
-          ruleHash: ruleHash
+          ruleHash: ruleHash,
         };
-
       }
       it("Should emit RoboCop events when fund manager creates / activates / deactivates / cancels a rule", async () => {
-        const fixtureVars = await loadFixture(
-          deployedFundsFixture
-        );
-        const { barrenWuffet, marlieChungerWallet, crackBlockHash, roboCop, chungerToContract,
-          fairyToContract, priceTrigger, jerkshireHash, swapETHToTST1Action } = fixtureVars;
+        const fixtureVars = await loadFixture(deployedFundsFixture);
+        const {
+          barrenWuffet,
+          marlieChungerWallet,
+          crackBlockHash,
+          roboCop,
+          chungerToContract,
+          fairyToContract,
+          priceTrigger,
+          jerkshireHash,
+          swapETHToTST1Action,
+        } = fixtureVars;
 
-        const {ruleIndex, ruleHash} = await createTwoRules(fixtureVars);
+        const { ruleIndex, ruleHash } = await createTwoRules(fixtureVars);
 
-        await expect(
-          chungerToContract.activateRule(jerkshireHash, ruleIndex)).to
-          .changeEtherBalances([barrenWuffet, roboCop], [0, 0])
-          .emit(roboCop, "Activated").withArgs(ruleHash);
+        await expect(chungerToContract.activateRule(jerkshireHash, ruleIndex))
+          .to.changeEtherBalances([barrenWuffet, roboCop], [0, 0])
+          .emit(roboCop, "Activated")
+          .withArgs(ruleHash);
 
-        await expect(
-          chungerToContract.deactivateRule(jerkshireHash, ruleIndex)).to
-          .changeEtherBalances([barrenWuffet, roboCop], [0, 0])
-          .emit(roboCop, "Deactivated").withArgs(ruleHash);
+        await expect(chungerToContract.deactivateRule(jerkshireHash, ruleIndex))
+          .to.changeEtherBalances([barrenWuffet, roboCop], [0, 0])
+          .emit(roboCop, "Deactivated")
+          .withArgs(ruleHash);
 
-        await expect(
-            chungerToContract.activateRule(jerkshireHash, ruleIndex)).to
-            .changeEtherBalances([barrenWuffet, roboCop], [0, 0])
-            .emit(roboCop, "Activated").withArgs(ruleHash);
+        await expect(chungerToContract.activateRule(jerkshireHash, ruleIndex))
+          .to.changeEtherBalances([barrenWuffet, roboCop], [0, 0])
+          .emit(roboCop, "Activated")
+          .withArgs(ruleHash);
 
-        await expect(
-          chungerToContract.cancelRule(jerkshireHash, ruleIndex)).to
-          .changeEtherBalances([barrenWuffet, roboCop], [0, 0])
-          .emit(roboCop, "Deactivated").withArgs(ruleHash);
+        await expect(chungerToContract.cancelRule(jerkshireHash, ruleIndex))
+          .to.changeEtherBalances([barrenWuffet, roboCop], [0, 0])
+          .emit(roboCop, "Deactivated")
+          .withArgs(ruleHash);
       });
 
       it("Should emit RoboCop events and adjust funds from jerkshire when fund manager adds / removes / cancels native collateral for a rule", async () => {
-
-        const fixtureVars = await loadFixture(
-          deployedFundsFixture
-        );
-        const { barrenWuffet, marlieChungerWallet, roboCop, chungerToContract,
-          jerkshireHash } = fixtureVars;
+        const fixtureVars = await loadFixture(deployedFundsFixture);
+        const { barrenWuffet, marlieChungerWallet, roboCop, chungerToContract, jerkshireHash } = fixtureVars;
 
         const { ruleIndex, ruleHash } = await createTwoRules(fixtureVars);
 
         const addAmt = [utils.parseEther("1")];
 
-        await expect(chungerToContract.addRuleCollateral(jerkshireHash, ruleIndex, [ETH_ADDRESS], addAmt)).to
-          .changeEtherBalances([barrenWuffet, roboCop, marlieChungerWallet], [addAmt[0].mul(-1), addAmt[0], 0])
-          .emit(roboCop, "CollateralAdded").withArgs(ruleHash, addAmt);
+        await expect(chungerToContract.addRuleCollateral(jerkshireHash, ruleIndex, [ETH_ADDRESS], addAmt))
+          .to.changeEtherBalances([barrenWuffet, roboCop, marlieChungerWallet], [addAmt[0].mul(-1), addAmt[0], 0])
+          .emit(roboCop, "CollateralAdded")
+          .withArgs(ruleHash, addAmt);
 
         const redAmt = [utils.parseEther("0.6")];
-        await expect(chungerToContract.reduceRuleCollateral(jerkshireHash, ruleIndex, redAmt)).to
-          .changeEtherBalances([barrenWuffet, roboCop, marlieChungerWallet], [redAmt[0], redAmt[0].mul(-1), 0])
-          .emit(roboCop, "CollateralReduced").withArgs(
-            ruleHash, redAmt);
-
+        await expect(chungerToContract.reduceRuleCollateral(jerkshireHash, ruleIndex, redAmt))
+          .to.changeEtherBalances([barrenWuffet, roboCop, marlieChungerWallet], [redAmt[0], redAmt[0].mul(-1), 0])
+          .emit(roboCop, "CollateralReduced")
+          .withArgs(ruleHash, redAmt);
       });
-      [0, 1].forEach(isActive => {
+      [0, 1].forEach((isActive) => {
         const activation = isActive ? "active" : "inactive";
         it(`Should return all collateral added when ${activation} rule is cancelled and make it inactive`, async () => {
-          const fixtureVars = await loadFixture(
-            deployedFundsFixture
-          );
-          const { barrenWuffet, marlieChungerWallet, roboCop, chungerToContract,
-            jerkshireHash } = fixtureVars;
-  
-          const {ruleIndex, ruleHash} = await createTwoRules(fixtureVars);
-  
+          const fixtureVars = await loadFixture(deployedFundsFixture);
+          const { barrenWuffet, marlieChungerWallet, roboCop, chungerToContract, jerkshireHash } = fixtureVars;
+
+          const { ruleIndex, ruleHash } = await createTwoRules(fixtureVars);
+
           const collateral = [utils.parseEther("0.6")];
           await chungerToContract.addRuleCollateral(jerkshireHash, ruleIndex, [ETH_ADDRESS], collateral);
 
-          if(isActive){
+          if (isActive) {
             await chungerToContract.activateRule(jerkshireHash, ruleIndex);
           }
-  
-          const e = expect(chungerToContract.cancelRule(jerkshireHash, ruleIndex)).to
-            .changeEtherBalances([barrenWuffet, roboCop, marlieChungerWallet], [collateral[0], collateral[0].mul(-1), 0])            
-            .emit(roboCop, "CollateralReduced").withArgs(
-              ruleHash, collateral);
 
-          if (isActive){
-            await e.emit(roboCop, "Deactivated").withArgs(
-              ruleHash);
+          const e = expect(chungerToContract.cancelRule(jerkshireHash, ruleIndex))
+            .to.changeEtherBalances(
+              [barrenWuffet, roboCop, marlieChungerWallet],
+              [collateral[0], collateral[0].mul(-1), 0]
+            )
+            .emit(roboCop, "CollateralReduced")
+            .withArgs(ruleHash, collateral);
+
+          if (isActive) {
+            await e.emit(roboCop, "Deactivated").withArgs(ruleHash);
           } else {
             await e;
           }
-          
-        })
-      })
-      
+        });
+      });
 
       it("Should not allow anyone other than the fund manager to manage rules", async () => {
-        const { barrenWuffet, roboCop, chungerToContract, fairyToContract, priceTrigger, testToken1, jerkshireHash, swapETHToTST1Action } = await loadFixture(
-          deployedFundsFixture
-        );
+        const {
+          barrenWuffet,
+          roboCop,
+          chungerToContract,
+          fairyToContract,
+          priceTrigger,
+          testToken1,
+          jerkshireHash,
+          swapETHToTST1Action,
+        } = await loadFixture(deployedFundsFixture);
 
         await expect(
-          fairyToContract.createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action])
+          fairyToContract.createRule(
+            jerkshireHash,
+            [makePassingTrigger(priceTrigger.address, testToken1)],
+            [swapETHToTST1Action]
+          )
         ).to.be.revertedWithoutReason();
 
-        
-        await chungerToContract.createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action]);
+        await chungerToContract.createRule(
+          jerkshireHash,
+          [makePassingTrigger(priceTrigger.address, testToken1)],
+          [swapETHToTST1Action]
+        );
 
         const ruleFns = [
           () => fairyToContract.activateRule(jerkshireHash, 0),
           () => fairyToContract.deactivateRule(jerkshireHash, 0),
           () => fairyToContract.addRuleCollateral(jerkshireHash, 0, [ETH_ADDRESS], [utils.parseEther("1")]),
           () => fairyToContract.reduceRuleCollateral(jerkshireHash, 0, [utils.parseEther("0.6")]),
-          () => fairyToContract.cancelRule(jerkshireHash, 0)
-        ]
+          () => fairyToContract.cancelRule(jerkshireHash, 0),
+        ];
 
         for (const fn of ruleFns) {
           await expect(fn()).to.be.revertedWithoutReason();
         }
-
       });
 
       it.skip("should revert if an unknown rule is accessed", async () => {
         const { chungerToContract, jerkshireHash } = await loadFixture(deployedFundsFixture);
-
-
       });
     });
 
     describe.skip("Take Action", () => {
-      it("Should not allow anyone other than the fund manager to take action", async () => { });
+      it("Should not allow anyone other than the fund manager to take action", async () => {});
 
       it("should call 'perform' on the action when fund manager calls takeAction", async () => {
         // ideally we use IAction to create a mock action, and then check if perform is called on the mock action.
@@ -701,20 +737,20 @@ describe("BarrenWuffet", () => {
   });
 
   describe.skip("Fund status: Closable", () => {
-    it("should return fund status as CLOSABLE once the lockin period has exceeded", async () => { });
+    it("should return fund status as CLOSABLE once the lockin period has exceeded", async () => {});
 
     // this is when the fund can be closed, and hence wont accept any trades but it hasnt been closed yet.
     // A fund manager can close such a fund, or it will be auto-closed on withdraw
     // All other restrictions apply the same to closable and closed funds (so it makes sense to reuse the tests.)
-    it("should revert if withdrawal is attempted on a closable fund", async () => { });
+    it("should revert if withdrawal is attempted on a closable fund", async () => {});
 
-    it("should revert if rewards withdrawal is attempted on a closable fund", async () => { });
+    it("should revert if rewards withdrawal is attempted on a closable fund", async () => {});
   });
 
   describe.skip("Fund transition: Close Fund", () => {
-    it("should allow the fund manager to close a deployed fund (all open positions) and emit a Closed event if the fund is closable", async () => { });
+    it("should allow the fund manager to close a deployed fund (all open positions) and emit a Closed event if the fund is closable", async () => {});
 
-    it("should allow the fund manager to close a deployed fund with open positions that is NOT closable and emit Closed event", async () => { });
+    it("should allow the fund manager to close a deployed fund with open positions that is NOT closable and emit Closed event", async () => {});
 
     it("should not allow anyone other than the  fund manager to close a closable fund", async () => {
       // this might be made public in the future
@@ -722,11 +758,11 @@ describe("BarrenWuffet", () => {
   });
 
   describe.skip("Fund Status: Closed", () => {
-    it("should return fund status as CLOSED once the fund has been closed", async () => { });
+    it("should return fund status as CLOSED once the fund has been closed", async () => {});
 
-    it("Should revert if deposit is attempted on a closable / closed fund", async () => { });
+    it("Should revert if deposit is attempted on a closable / closed fund", async () => {});
 
-    it("should revert if opening positions in a closable / closed fund", async () => { });
+    it("should revert if opening positions in a closable / closed fund", async () => {});
 
     it("should allow withdrawing multiple tokens from a closed fund", async () => {
       // this might change. We plan to auto-convert all tokens to input token so that profit can be calculated accurately.
@@ -734,11 +770,11 @@ describe("BarrenWuffet", () => {
   });
 
   describe.skip("Rewards", () => {
-    it("should return the correct value of reward to each fund manager, when multiple fund managers have pending rewards", async () => { });
+    it("should return the correct value of reward to each fund manager, when multiple fund managers have pending rewards", async () => {});
 
-    it("should not allow access to rewards from a fund that the manager doesnt own", async () => { });
+    it("should not allow access to rewards from a fund that the manager doesnt own", async () => {});
 
-    it("should not allow multiple withdrawals of the reward", async () => { });
+    it("should not allow multiple withdrawals of the reward", async () => {});
   });
 
   describe.skip("User Stories", () => {
