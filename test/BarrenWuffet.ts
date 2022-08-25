@@ -32,22 +32,22 @@ async function makeSubConstraints() {
 }
 
 describe("BarrenWuffet", () => {
-  async function deployBarrenWuffetFixture() {
+  const deployBarrenWuffetFixture = deployments.createFixture(async (vars, options) => {
     await deployments.fixture(["BarrenWuffet"]);
     return await setupBarrenWuffet();
-  }
+  });
 
   describe("Deployment", () => {
     it("Should set the right owner", async function () {
-      const { barrenWuffet, ownerWallet } = await loadFixture(deployBarrenWuffetFixture);
+      const { barrenWuffet, ownerWallet } = await deployBarrenWuffetFixture();
 
       expect(await barrenWuffet.owner()).to.equal(ownerWallet.address);
     });
   });
 
   describe("Fund Status: Uninitialized", () => {
-    it("should allow anyone to create a fund and emit Created event with the fund hash", async () => {
-      const { barrenWuffet, marlieChungerWallet } = await loadFixture(deployBarrenWuffetFixture);
+    it("yy should allow anyone to create a fund and emit Created event with the fund hash", async () => {
+      const { barrenWuffet, marlieChungerWallet } = await deployBarrenWuffetFixture();
       const validConstraints = await makeSubConstraints();
       await expect(barrenWuffet.connect(marlieChungerWallet).createFund("Fund1", validConstraints))
         .to.emit(barrenWuffet, "Created")
@@ -66,7 +66,7 @@ describe("BarrenWuffet", () => {
     });
 
     it("should revert if the same user creates 2 funds with the same name", async () => {
-      const { barrenWuffet, marlieChungerWallet } = await loadFixture(deployBarrenWuffetFixture);
+      const { barrenWuffet, marlieChungerWallet } = await deployBarrenWuffetFixture();
       const validConstraints = await makeSubConstraints();
       await barrenWuffet.connect(marlieChungerWallet).createFund("Fund1", validConstraints);
       await expect(barrenWuffet.connect(marlieChungerWallet).createFund("Fund1", validConstraints)).to.be.revertedWith(
@@ -75,7 +75,7 @@ describe("BarrenWuffet", () => {
     });
 
     it("should allow the same user to create 2 funds with different names", async () => {
-      const { barrenWuffet, marlieChungerWallet } = await loadFixture(deployBarrenWuffetFixture);
+      const { barrenWuffet, marlieChungerWallet } = await deployBarrenWuffetFixture();
       const validConstraints = await makeSubConstraints();
       await barrenWuffet.connect(marlieChungerWallet).createFund("Jerkshire", validConstraints);
       await expect(barrenWuffet.connect(marlieChungerWallet).createFund("Clerkshire", validConstraints))
@@ -84,7 +84,7 @@ describe("BarrenWuffet", () => {
     });
 
     it("should not allow 2 different users to create funds with the same name", async () => {
-      const { barrenWuffet, marlieChungerWallet, fairyLinkWallet } = await loadFixture(deployBarrenWuffetFixture);
+      const { barrenWuffet, marlieChungerWallet, fairyLinkWallet } = await deployBarrenWuffetFixture();
       const validConstraints = await makeSubConstraints();
       await barrenWuffet.connect(marlieChungerWallet).createFund("Jerkshire", validConstraints);
       await expect(barrenWuffet.connect(fairyLinkWallet).createFund("Jerkshire", validConstraints))
@@ -94,10 +94,10 @@ describe("BarrenWuffet", () => {
   });
 
   describe("Input and Output Token Settings", () => {
-    it("Should return eth as the input token for any fund", async () => {
+    it("yy Should return eth as the input token for any fund", async () => {
       // we only support ETH as the input token for now.
       // As this functionality is extended, this test needs to expand
-      const { barrenWuffet, marlieChungerWallet } = await loadFixture(deployBarrenWuffetFixture);
+      const { barrenWuffet, marlieChungerWallet } = await deployBarrenWuffetFixture();
       const validConstraints = await makeSubConstraints();
       let fundHash;
       await expect(barrenWuffet.connect(marlieChungerWallet).createFund("Jerkshire", validConstraints))
@@ -120,7 +120,7 @@ describe("BarrenWuffet", () => {
       // before it's returned to the user.
       // This is as yet unimplemented, so the function should revert.
 
-      const { barrenWuffet, marlieChungerWallet } = await loadFixture(deployBarrenWuffetFixture);
+      const { barrenWuffet, marlieChungerWallet } = await deployBarrenWuffetFixture();
       const validConstraints = await makeSubConstraints();
       let fundHash;
       await expect(barrenWuffet.connect(marlieChungerWallet).createFund("Jerkshire", validConstraints))
@@ -148,7 +148,7 @@ describe("BarrenWuffet", () => {
       fundSubscriberWallet,
       fundSubscriber2Wallet,
       swapETHToTST1Action,
-    } = await setupBarrenWuffet(); // loadFixture(deployBarrenWuffetFixture);
+    } = await setupBarrenWuffet();
 
     const latestTime = await time.latest();
     // marlie chunger managers jerkshire
@@ -209,15 +209,20 @@ describe("BarrenWuffet", () => {
     };
   }
 
-  async function raisingFundsFixture() {
+  // async function raisingFundsFixture() {
+  //   await deployments.fixture(["BarrenWuffet"]);
+  //   return await setupRaisingFunds();
+  // }
+
+  const raisingFundsFixture = deployments.createFixture(async (vars, options) => {
     await deployments.fixture(["BarrenWuffet"]);
     return await setupRaisingFunds();
-  }
+  });
 
   describe("Fund Status: Raising", () => {
     const validDeposit = utils.parseEther("11");
-    it("Should allow anyone to deposit native token into a raising fund and emit a Deposit event", async () => {
-      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await loadFixture(raisingFundsFixture);
+    it("yy Should allow anyone to deposit native token into a raising fund and emit a Deposit event", async () => {
+      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await raisingFundsFixture();
       await expect(
         barrenWuffet
           .connect(fundSubscriberWallet)
@@ -228,14 +233,14 @@ describe("BarrenWuffet", () => {
     });
 
     it("Should allow the fund manager to deposit native token into their own fund", async () => {
-      const { barrenWuffet, jerkshireHash, chungerToContract } = await loadFixture(raisingFundsFixture);
+      const { barrenWuffet, jerkshireHash, chungerToContract } = await raisingFundsFixture();
       await expect(chungerToContract.deposit(jerkshireHash, ETH_ADDRESS, validDeposit, { value: validDeposit }))
         .to.emit(barrenWuffet, "Deposit")
         .withArgs(jerkshireHash, 0, ETH_ADDRESS, validDeposit);
     });
 
     it("Should not allow anyone to deposit ERC20 tokens into a raising fund. We only allow native right now", async () => {
-      const { barrenWuffet, fundSubscriberWallet, jerkshireHash, testToken1 } = await loadFixture(raisingFundsFixture);
+      const { barrenWuffet, fundSubscriberWallet, jerkshireHash, testToken1 } = await raisingFundsFixture();
       await expect(
         barrenWuffet.connect(fundSubscriberWallet).deposit(jerkshireHash, testToken1.address, utils.parseEther("11"))
       ).to.be.revertedWithoutReason();
@@ -243,7 +248,7 @@ describe("BarrenWuffet", () => {
 
     it("should return fund status as RAISING once the fund is created, deadline has NOT been hit and amount raised is LESS than min amount", async () => {
       const { barrenWuffet, chungerToContract, fairyToContract, jerkshireHash, crackBlockHash, botWallet } =
-        await loadFixture(raisingFundsFixture);
+        await raisingFundsFixture();
 
       expect(await barrenWuffet.connect(botWallet).getStatus(crackBlockHash)).to.be.equal(FUND_STATUS.RAISING);
       // barren is depositing into their own fund
@@ -254,9 +259,7 @@ describe("BarrenWuffet", () => {
     });
 
     it("Should not allow anyone to deposit less than min subscriber threshold into the fund", async () => {
-      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet } = await loadFixture(
-        raisingFundsFixture
-      );
+      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet } = await raisingFundsFixture();
       const depositAmt = jerkshireConstraints.minCollateralPerSub.sub(utils.parseEther("0.0001"));
       await expect(
         barrenWuffet
@@ -266,9 +269,7 @@ describe("BarrenWuffet", () => {
     });
 
     it("Should not allow anyone to deposit more than max subscriber threshold into the fund", async () => {
-      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet } = await loadFixture(
-        raisingFundsFixture
-      );
+      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet } = await raisingFundsFixture();
       const depositAmt = jerkshireConstraints.maxCollateralPerSub.add(utils.parseEther("0.0001"));
       await expect(
         barrenWuffet
@@ -278,9 +279,7 @@ describe("BarrenWuffet", () => {
     });
 
     it("Should allow anyone to deposit more than max subscriber threshold by splitting the deposits into multiple subscriptions", async () => {
-      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet } = await loadFixture(
-        raisingFundsFixture
-      );
+      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet } = await raisingFundsFixture();
       // unclear if this is a feature or a bug, but we want to document the usecase
       // check if multiple smaller deposits, that exceed collateral limit in total, get reverted.
       const depositAmt1 = jerkshireConstraints.maxCollateralPerSub.sub(utils.parseEther("0.1"));
@@ -303,7 +302,7 @@ describe("BarrenWuffet", () => {
     });
 
     it("Should revert if deposit is attempted on a fund where collateral limit is reached", async () => {
-      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await loadFixture(raisingFundsFixture);
+      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await raisingFundsFixture();
       // true should succeed, false should error
       const deposits: [BigNumber, boolean, string | number][] = [
         [utils.parseEther("100"), true, 0],
@@ -331,7 +330,7 @@ describe("BarrenWuffet", () => {
     });
 
     it("should allow withdrawing from a fund that's still raising", async () => {
-      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await loadFixture(raisingFundsFixture);
+      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await raisingFundsFixture();
       await barrenWuffet
         .connect(fundSubscriberWallet)
         .deposit(jerkshireHash, ETH_ADDRESS, validDeposit, { value: validDeposit });
@@ -343,9 +342,7 @@ describe("BarrenWuffet", () => {
     });
 
     it("should not allow withdrawing if there have not been any deposits from this user", async () => {
-      const { barrenWuffet, jerkshireHash, fundSubscriberWallet, fundSubscriber2Wallet } = await loadFixture(
-        raisingFundsFixture
-      );
+      const { barrenWuffet, jerkshireHash, fundSubscriberWallet, fundSubscriber2Wallet } = await raisingFundsFixture();
       await barrenWuffet
         .connect(fundSubscriberWallet)
         .deposit(jerkshireHash, ETH_ADDRESS, validDeposit, { value: validDeposit });
@@ -363,7 +360,7 @@ describe("BarrenWuffet", () => {
         chungerToContract,
         fairyToContract,
         fundSubscriberWallet,
-      } = await loadFixture(raisingFundsFixture);
+      } = await raisingFundsFixture();
       // add some funds so we can confirm that even a fund with funds can be closed
       await barrenWuffet
         .connect(fundSubscriberWallet)
@@ -389,9 +386,8 @@ describe("BarrenWuffet", () => {
     });
 
     it("should not allow creating a rule for a raising fund", async () => {
-      const { jerkshireHash, chungerToContract, priceTrigger, testToken1, swapETHToTST1Action } = await loadFixture(
-        raisingFundsFixture
-      );
+      const { jerkshireHash, chungerToContract, priceTrigger, testToken1, swapETHToTST1Action } =
+        await raisingFundsFixture();
 
       await expect(
         chungerToContract.createRule(
@@ -402,9 +398,7 @@ describe("BarrenWuffet", () => {
       ).be.revertedWithoutReason();
     });
     it("should revert if rewards withdrawal is attempted on a raising fund", async () => {
-      const { barrenWuffet, jerkshireHash, chungerToContract, fundSubscriberWallet } = await loadFixture(
-        raisingFundsFixture
-      );
+      const { barrenWuffet, jerkshireHash, chungerToContract, fundSubscriberWallet } = await raisingFundsFixture();
       await barrenWuffet
         .connect(fundSubscriberWallet)
         .deposit(jerkshireHash, ETH_ADDRESS, validDeposit, { value: validDeposit });
@@ -413,9 +407,7 @@ describe("BarrenWuffet", () => {
 
     it("should return fund status as DEPLOYED once the fund is created, deadline has been hit (min collateral may or maynot be met)", async () => {
       // Min collateral is not playing the role it is supposed to. This behaviour will likely be changed.
-      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet } = await loadFixture(
-        raisingFundsFixture
-      );
+      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet } = await raisingFundsFixture();
       await barrenWuffet
         .connect(fundSubscriberWallet)
         .deposit(jerkshireHash, ETH_ADDRESS, validDeposit, { value: validDeposit });
@@ -427,7 +419,7 @@ describe("BarrenWuffet", () => {
 
     it("should return fund status as DEPLOYED if max collateral has been raised (deadline may or may not be met)", async () => {
       const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet, fundSubscriber2Wallet } =
-        await loadFixture(raisingFundsFixture);
+        await raisingFundsFixture();
 
       await depositMaxCollateral(
         barrenWuffet.connect(fundSubscriberWallet),
@@ -494,10 +486,10 @@ describe("BarrenWuffet", () => {
     };
   }
 
-  async function deployedFundsFixture() {
+  const deployedFundsFixture = deployments.createFixture(async (vars, options) => {
     await deployments.fixture(["BarrenWuffet"]);
     return await setupDeployedFunds();
-  }
+  });
 
   describe("Fund Status: Deployed", () => {
     function getTotalDeposits(depositObj: { [key: string]: { [key: string]: BigNumber } }, fund: string) {
@@ -505,9 +497,8 @@ describe("BarrenWuffet", () => {
     }
 
     it("should revert if deposit is attempted on a deployed fund", async () => {
-      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet, deposits } = await loadFixture(
-        deployedFundsFixture
-      );
+      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet, deposits } =
+        await deployedFundsFixture();
 
       const depositAmt = jerkshireConstraints.minCollateralPerSub;
 
@@ -524,7 +515,7 @@ describe("BarrenWuffet", () => {
     });
 
     it("should revert if withdrawal is attempted on a deployed fund", async () => {
-      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await loadFixture(deployedFundsFixture);
+      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await deployedFundsFixture();
 
       await expect(barrenWuffet.connect(fundSubscriberWallet).withdraw(jerkshireHash, 0)).to.be.revertedWith(
         "Can't get money back from deployed fund!"
@@ -532,7 +523,7 @@ describe("BarrenWuffet", () => {
     });
 
     it("should revert if rewards withdrawal is attempted on a deployed fund", async () => {
-      const { chungerToContract, jerkshireHash } = await loadFixture(deployedFundsFixture);
+      const { chungerToContract, jerkshireHash } = await deployedFundsFixture();
 
       await expect(chungerToContract.withdrawReward(jerkshireHash)).to.be.revertedWith("Fund not closed");
     });
@@ -540,7 +531,7 @@ describe("BarrenWuffet", () => {
     describe("xx Manage rules", () => {
       it("Should emit RoboCop event when fund manager creates one or more rules", async () => {
         const { roboCop, chungerToContract, priceTrigger, testToken1, jerkshireHash, swapETHToTST1Action } =
-          await loadFixture(deployedFundsFixture);
+          await deployedFundsFixture();
 
         await expect(
           chungerToContract.createRule(
@@ -608,7 +599,7 @@ describe("BarrenWuffet", () => {
         };
       }
       it("Should emit RoboCop events when fund manager creates / activates / deactivates / cancels a rule", async () => {
-        const fixtureVars = await loadFixture(deployedFundsFixture);
+        const fixtureVars = await deployedFundsFixture();
         const {
           barrenWuffet,
           marlieChungerWallet,
@@ -645,7 +636,7 @@ describe("BarrenWuffet", () => {
       });
 
       it("Should emit RoboCop events and adjust funds from jerkshire when fund manager adds / removes / cancels native collateral for a rule", async () => {
-        const fixtureVars = await loadFixture(deployedFundsFixture);
+        const fixtureVars = await deployedFundsFixture();
         const { barrenWuffet, marlieChungerWallet, roboCop, chungerToContract, jerkshireHash } = fixtureVars;
 
         const { ruleIndex, ruleHash } = await createTwoRules(fixtureVars);
@@ -666,7 +657,7 @@ describe("BarrenWuffet", () => {
       [0, 1].forEach((isActive) => {
         const activation = isActive ? "active" : "inactive";
         it(`Should return all collateral added when ${activation} rule is cancelled and make it inactive`, async () => {
-          const fixtureVars = await loadFixture(deployedFundsFixture);
+          const fixtureVars = await deployedFundsFixture();
           const { barrenWuffet, marlieChungerWallet, roboCop, chungerToContract, jerkshireHash } = fixtureVars;
 
           const { ruleIndex, ruleHash } = await createTwoRules(fixtureVars);
@@ -704,7 +695,7 @@ describe("BarrenWuffet", () => {
           testToken1,
           jerkshireHash,
           swapETHToTST1Action,
-        } = await loadFixture(deployedFundsFixture);
+        } = await deployedFundsFixture();
 
         await expect(
           fairyToContract.createRule(
@@ -734,7 +725,7 @@ describe("BarrenWuffet", () => {
       });
 
       it.skip("should revert if an unknown rule is accessed", async () => {
-        const { chungerToContract, jerkshireHash } = await loadFixture(deployedFundsFixture);
+        const { chungerToContract, jerkshireHash } = await deployedFundsFixture();
       });
     });
 
