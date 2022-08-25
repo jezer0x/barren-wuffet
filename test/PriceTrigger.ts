@@ -101,122 +101,48 @@ describe("PriceTrigger", () => {
     describe(
       "Should pass / fail the trigger based on eth/tst1 limit price. Current eth/tst1 is " + TST1_PRICE_IN_ETH,
       () => {
-        it("Should fail the trigger if eth/tst1 trigger is LT " + TST1_PRICE_IN_ETH.sub(1), async () => {
-          const { priceTrigger, testOracleEth, otherWallet, testToken1 } = await deployEthtoTst1TriggerFixture();
-          const trigger: TriggerStruct = {
-            createTimeParams: ethers.utils.defaultAbiCoder.encode(
-              ["address", "address", "uint8", "uint256"],
-              [testToken1.address, ETH_ADDRESS, LT, TST1_PRICE_IN_ETH.sub(1)]
-            ),
-            triggerType: PRICE_TRIGGER_TYPE,
-            // this is the address of the ITrigger, PriceTrigger.address in this case
-            // but we dont expect it to matter within PriceTrigger.
-            callee: ETH_ADDRESS,
-          };
+        [
+          [LT, TST1_PRICE_IN_ETH.sub(1), false],
+          [GT, TST1_PRICE_IN_ETH.add(1), false],
+          [GT, TST1_PRICE_IN_ETH.sub(1), true],
+          [LT, TST1_PRICE_IN_ETH.add(1), true],
+        ].forEach(([cmp, triggerPrice, pass]) => {
+          const cmpStr = { [LT]: "LT", [GT]: "GT" }[<number>cmp];
+          const passStr = pass ? "pass" : "fail";
+          it(`Should ${passStr} the trigger if eth/tst1 trigger is ${cmpStr} ${triggerPrice}`, async () => {
+            const { priceTrigger, testOracleEth, otherWallet, testToken1 } = await deployEthtoTst1TriggerFixture();
+            const trigger: TriggerStruct = {
+              createTimeParams: ethers.utils.defaultAbiCoder.encode(
+                ["address", "address", "uint8", "uint256"],
+                [testToken1.address, ETH_ADDRESS, cmp, triggerPrice]
+              ),
+              triggerType: PRICE_TRIGGER_TYPE,
+              // this is the address of the ITrigger, PriceTrigger.address in this case
+              // but we dont expect it to matter within PriceTrigger.
+              callee: ETH_ADDRESS,
+            };
 
-          const expectedReturn: TriggerReturnStruct = {
-            triggerType: PRICE_TRIGGER_TYPE,
-            runtimeData: ethers.utils.defaultAbiCoder.encode(
-              ["address", "address", "uint256"],
-              [testToken1.address, ETH_ADDRESS, TST1_PRICE_IN_ETH]
-            ),
-          };
-          expectEthersObjDeepEqual(
-            [
-              false,
-              {
-                triggerType: PRICE_TRIGGER_TYPE,
-                runtimeData: ethers.utils.defaultAbiCoder.encode(
-                  ["address", "address", "uint256"],
-                  [testToken1.address, ETH_ADDRESS, TST1_PRICE_IN_ETH]
-                ),
-              },
-            ],
-            await priceTrigger.connect(otherWallet).check(trigger)
-          );
-        });
-
-        it("Should fail the trigger if eth/tst1 limit is GT " + TST1_PRICE_IN_ETH.add(1), async () => {
-          const { priceTrigger, testOracleEth, otherWallet, testToken1 } = await deployEthtoTst1TriggerFixture();
-          const trigger: TriggerStruct = {
-            createTimeParams: ethers.utils.defaultAbiCoder.encode(
-              ["address", "address", "uint8", "uint256"],
-              [testToken1.address, ETH_ADDRESS, GT, TST1_PRICE_IN_ETH.add(1)]
-            ),
-            triggerType: PRICE_TRIGGER_TYPE,
-            // this is the address of the ITrigger, PriceTrigger.address in this case
-            // but we dont expect it to matter within PriceTrigger.
-            callee: ETH_ADDRESS,
-          };
-
-          expectEthersObjDeepEqual(
-            [
-              false,
-              {
-                triggerType: PRICE_TRIGGER_TYPE,
-                runtimeData: ethers.utils.defaultAbiCoder.encode(
-                  ["address", "address", "uint256"],
-                  [testToken1.address, ETH_ADDRESS, TST1_PRICE_IN_ETH]
-                ),
-              },
-            ],
-            await priceTrigger.connect(otherWallet).check(trigger)
-          );
-        });
-
-        it("Should pass the trigger if eth/tst1 limit is GT " + TST1_PRICE_IN_ETH.sub(1), async () => {
-          const { priceTrigger, testOracleEth, otherWallet, testToken1 } = await deployEthtoTst1TriggerFixture();
-          const trigger: TriggerStruct = {
-            createTimeParams: ethers.utils.defaultAbiCoder.encode(
-              ["address", "address", "uint8", "uint256"],
-              [testToken1.address, ETH_ADDRESS, GT, TST1_PRICE_IN_ETH.sub(1)]
-            ),
-            triggerType: PRICE_TRIGGER_TYPE,
-            // this is the address of the ITrigger, PriceTrigger.address in this case
-            // but we dont expect it to matter within PriceTrigger.
-            callee: ETH_ADDRESS,
-          };
-          expectEthersObjDeepEqual(
-            [
-              true,
-              {
-                triggerType: PRICE_TRIGGER_TYPE,
-                runtimeData: ethers.utils.defaultAbiCoder.encode(
-                  ["address", "address", "uint256"],
-                  [testToken1.address, ETH_ADDRESS, TST1_PRICE_IN_ETH]
-                ),
-              },
-            ],
-            await priceTrigger.connect(otherWallet).check(trigger)
-          );
-        });
-
-        it("Should pass the trigger if eth/tst1 limit is LT " + TST1_PRICE_IN_ETH.add(1), async () => {
-          const { priceTrigger, testOracleEth, otherWallet, testToken1 } = await deployEthtoTst1TriggerFixture();
-          const trigger: TriggerStruct = {
-            createTimeParams: ethers.utils.defaultAbiCoder.encode(
-              ["address", "address", "uint8", "uint256"],
-              [testToken1.address, ETH_ADDRESS, LT, TST1_PRICE_IN_ETH.add(1)]
-            ),
-            triggerType: PRICE_TRIGGER_TYPE,
-            // this is the address of the ITrigger, PriceTrigger.address in this case
-            // but we dont expect it to matter within PriceTrigger.
-            callee: ETH_ADDRESS,
-          };
-
-          expectEthersObjDeepEqual(
-            [
-              true,
-              {
-                triggerType: PRICE_TRIGGER_TYPE,
-                runtimeData: ethers.utils.defaultAbiCoder.encode(
-                  ["address", "address", "uint256"],
-                  [testToken1.address, ETH_ADDRESS, TST1_PRICE_IN_ETH]
-                ),
-              },
-            ],
-            await priceTrigger.connect(otherWallet).check(trigger)
-          );
+            const expectedReturn: TriggerReturnStruct = {
+              triggerType: PRICE_TRIGGER_TYPE,
+              runtimeData: ethers.utils.defaultAbiCoder.encode(
+                ["address", "address", "uint256"],
+                [testToken1.address, ETH_ADDRESS, TST1_PRICE_IN_ETH]
+              ),
+            };
+            expectEthersObjDeepEqual(
+              [
+                pass,
+                {
+                  triggerType: PRICE_TRIGGER_TYPE,
+                  runtimeData: ethers.utils.defaultAbiCoder.encode(
+                    ["address", "address", "uint256"],
+                    [testToken1.address, ETH_ADDRESS, TST1_PRICE_IN_ETH]
+                  ),
+                },
+              ],
+              await priceTrigger.connect(otherWallet).check(trigger)
+            );
+          });
         });
       }
     );
