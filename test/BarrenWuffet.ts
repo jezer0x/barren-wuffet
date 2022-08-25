@@ -527,7 +527,7 @@ describe("BarrenWuffet", () => {
       await expect(chungerToContract.withdrawReward(jerkshireHash)).to.be.revertedWith("Fund not closed");
     });
 
-    describe("Manage rules", () => {
+    describe("xx Manage rules", () => {
       it("Should emit RoboCop event when fund manager creates one or more rules", async () => {
         const { roboCop, chungerToContract, priceTrigger, testToken1, jerkshireHash, swapETHToTST1Action } = await loadFixture(
           deployedFundsFixture
@@ -547,6 +547,8 @@ describe("BarrenWuffet", () => {
         const { crackBlockHash, roboCop, chungerToContract,
           fairyToContract, priceTrigger, jerkshireHash, testToken1, swapETHToTST1Action } = _fixtureVars;
         
+        // Why fundHash and not ruleHash? dont know. the event is emitted by roboCop but the field is fundHash.
+        // the "fundHash" key isnt part of the abi (only the type is), so this could be an ethers issue.
         const ruleHash = await getHashFromEvent(
           chungerToContract.createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action]),
           "Created",
@@ -600,7 +602,7 @@ describe("BarrenWuffet", () => {
           .emit(roboCop, "Deactivated").withArgs(ruleHash);
       });
 
-      it("xx Should emit RoboCop events and adjust funds from jerkshire when fund manager adds / removes / cancels native collateral for a rule", async () => {
+      it("Should emit RoboCop events and adjust funds from jerkshire when fund manager adds / removes / cancels native collateral for a rule", async () => {
 
         const fixtureVars = await loadFixture(
           deployedFundsFixture
@@ -611,15 +613,16 @@ describe("BarrenWuffet", () => {
         const { ruleIndex, ruleHash } = await createTwoRules(fixtureVars);
 
         const addAmt = [utils.parseEther("1")];
+        console.log(addAmt);
         await expect(chungerToContract.addRuleCollateral(jerkshireHash, ruleIndex, [ETH_ADDRESS], addAmt)).to
-          .changeEtherBalances([barrenWuffet, roboCop, marlieChungerWallet], [-addAmt[0], addAmt[0], 0])
+          .changeEtherBalances([barrenWuffet, roboCop, marlieChungerWallet], [addAmt[0].mul(-1), addAmt[0], 0])
           .emit(roboCop, "CollateralAdded").withArgs(ruleHash, addAmt);
 
-        // const redAmt = [utils.parseEther("0.6")];
-        // await expect(chungerToContract.reduceRuleCollateral(jerkshireHash, ruleIndex, redAmt)).to
-        //   .changeEtherBalances([barrenWuffet, roboCop, marlieChungerWallet], [redAmt[0], -redAmt[0], 0])
-        //   .emit(roboCop, "CollateralReduced").withArgs(
-        //     ruleHash, redAmt);
+        const redAmt = [utils.parseEther("0.6")];
+        await expect(chungerToContract.reduceRuleCollateral(jerkshireHash, ruleIndex, redAmt)).to
+          .changeEtherBalances([barrenWuffet, roboCop, marlieChungerWallet], [redAmt[0], redAmt[0].mul(-1), 0])
+          .emit(roboCop, "CollateralReduced").withArgs(
+            ruleHash, redAmt);
 
       });
 
@@ -636,7 +639,7 @@ describe("BarrenWuffet", () => {
         await chungerToContract.addRuleCollateral(jerkshireHash, ruleIndex, [ETH_ADDRESS], collateral).to
 
         await expect(chungerToContract.cancelRule(jerkshireHash, ruleIndex)).to
-          .changeEtherBalances([barrenWuffet, roboCop, marlieChungerWallet], [collateral[0], -collateral[0], 0])
+          .changeEtherBalances([barrenWuffet, roboCop, marlieChungerWallet], [collateral[0], collateral[0].mul(-1), 0])
           .emit(roboCop, "Deactivated").withArgs(
             ruleHash)
           .emit(roboCop, "CollateralReduced").withArgs(
@@ -652,20 +655,15 @@ describe("BarrenWuffet", () => {
           fairyToContract.createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action])
         ).to.be.revertedWithoutReason();
 
-        const ruleHash = await getHashFromEvent(
-          chungerToContract.createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action]),
-          "Created",
-          roboCop.address,
-          "ruleHash"
-        );
+        
+        await chungerToContract.createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action]);
 
         const ruleFns = [
-          () => fairyToContract.activateRule(jerkshireHash, ruleHash),
-          () => fairyToContract.deactivateRule(jerkshireHash, ruleHash),
-          () => fairyToContract.addRuleCollateral(jerkshireHash, ruleHash, [ETH_ADDRESS], [utils.parseEther("1")],
-            { value: utils.parseEther("1") }),
-          () => fairyToContract.reduceRuleCollateral(jerkshireHash, ruleHash, [utils.parseEther("0.6")]),
-          () => fairyToContract.cancelRule(jerkshireHash, ruleHash)
+          () => fairyToContract.activateRule(jerkshireHash, 0),
+          () => fairyToContract.deactivateRule(jerkshireHash, 0),
+          () => fairyToContract.addRuleCollateral(jerkshireHash, 0, [ETH_ADDRESS], [utils.parseEther("1")]),
+          () => fairyToContract.reduceRuleCollateral(jerkshireHash, 0, [utils.parseEther("0.6")]),
+          () => fairyToContract.cancelRule(jerkshireHash, 0)
         ]
 
         for (const fn of ruleFns) {
