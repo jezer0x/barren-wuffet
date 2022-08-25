@@ -28,11 +28,10 @@ import {
   PRICE_TRIGGER_DECIMALS,
   TST1_PRICE_IN_ETH,
   ETH_PRICE_IN_TST1,
-  TST1_PRICE_IN_ETH_PARAM,
   LT,
-  ETH_PRICE_IN_TST1_PARAM,
   GT,
   ETH_ADDRESS,
+  PRICE_TRIGGER_TYPE,
 } from "./Constants";
 import { RuleStructOutput } from "../typechain-types/contracts/rules/RoboCop";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
@@ -66,7 +65,7 @@ describe("RoboCop", () => {
       const { roboCop, swapUniSingleAction, ruleMakerWallet, testToken1, whitelistService, trigWlHash, actWlHash } =
         await loadFixture(deployRoboCopFixture);
 
-      const badTrigger = makePassingTrigger(constants.AddressZero); // passing trigger with bad address
+      const badTrigger = await await makePassingTrigger(constants.AddressZero); // passing trigger with bad address
       const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
 
       whitelistService.disableWhitelist(trigWlHash);
@@ -83,7 +82,7 @@ describe("RoboCop", () => {
       const BadPriceTrigger = await ethers.getContractFactory("BadPriceTrigger");
       const badPriceTrigger = await BadPriceTrigger.deploy();
 
-      const badTrigger = makePassingTrigger(badPriceTrigger.address);
+      const badTrigger = await makePassingTrigger(badPriceTrigger.address);
       const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
 
       whitelistService.disableWhitelist(trigWlHash);
@@ -107,7 +106,7 @@ describe("RoboCop", () => {
         trigWlHash,
         actWlHash,
       } = await loadFixture(deployRoboCopFixture);
-      const passingTrigger = makePassingTrigger(priceTrigger.address);
+      const passingTrigger = await makePassingTrigger(priceTrigger.address);
       whitelistService.disableWhitelist(trigWlHash);
       whitelistService.disableWhitelist(actWlHash);
       await expect(roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [])).to.be.revertedWithoutReason();
@@ -117,7 +116,7 @@ describe("RoboCop", () => {
       const { roboCop, priceTrigger, ruleMakerWallet, testToken1, whitelistService, trigWlHash, actWlHash } =
         await loadFixture(deployRoboCopFixture);
 
-      const passingTrigger = makePassingTrigger(priceTrigger.address);
+      const passingTrigger = await makePassingTrigger(priceTrigger.address);
       const badAction = makeSwapAction(constants.AddressZero, [testToken1.address]);
       whitelistService.disableWhitelist(trigWlHash);
       whitelistService.disableWhitelist(actWlHash);
@@ -137,7 +136,7 @@ describe("RoboCop", () => {
     it("Should revert if trigger has not been whitelisted", async () => {
       const { roboCop, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1, whitelistService, trigWlHash } =
         await loadFixture(deployRoboCopFixture);
-      const passingTrigger = makePassingTrigger(priceTrigger.address);
+      const passingTrigger = await makePassingTrigger(priceTrigger.address);
       whitelistService.removeFromWhitelist(trigWlHash, priceTrigger.address);
       const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
 
@@ -150,7 +149,7 @@ describe("RoboCop", () => {
       const { roboCop, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1, whitelistService, actWlHash } =
         await loadFixture(deployRoboCopFixture);
 
-      const passingTrigger = makeFailingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
+      const passingTrigger = await makePassingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
       const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
       whitelistService.removeFromWhitelist(actWlHash, swapUniSingleAction.address);
 
@@ -171,7 +170,7 @@ describe("RoboCop", () => {
         actWlHash,
       } = await loadFixture(deployRoboCopFixture);
 
-      const passingTrigger = makeFailingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
+      const passingTrigger = await makePassingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
       const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
 
       const reward = utils.parseEther("0.02");
@@ -186,7 +185,7 @@ describe("RoboCop", () => {
         deployRoboCopFixture
       );
 
-      const failingTrigger = makeFailingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
+      const failingTrigger = await makePassingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
       const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
       await expect(roboCop.connect(ruleMakerWallet).createRule([failingTrigger], [executableAction])).to.emit(
         roboCop,
@@ -198,7 +197,7 @@ describe("RoboCop", () => {
       const { roboCop, swapUniSingleAction, priceTrigger, ruleMakerWallet, ruleSubscriberWallet, testToken1 } =
         await loadFixture(deployRoboCopFixture);
 
-      const passingTrigger = makePassingTrigger(priceTrigger.address);
+      const passingTrigger = await makePassingTrigger(priceTrigger.address);
       const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
 
       var rule1Hash: string;
@@ -250,7 +249,7 @@ describe("RoboCop", () => {
 
       const ruleMakerWallet2 = botWallet;
 
-      const passingTrigger = makePassingTrigger(priceTrigger.address);
+      const passingTrigger = await makePassingTrigger(priceTrigger.address);
       const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
 
       var rule1Hash: string;
@@ -281,7 +280,7 @@ describe("RoboCop", () => {
         actWlHash,
       } = await loadFixture(deployRoboCopFixture);
 
-      const failingTrigger = makeFailingTrigger(priceTrigger.address);
+      const failingTrigger = await makeFailingTrigger(priceTrigger.address);
       const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address], [ETH_ADDRESS]);
       const ruleHash = await createRule(
         whitelistService,
@@ -315,7 +314,7 @@ describe("RoboCop", () => {
         actWlHash,
       } = await loadFixture(deployRoboCopFixture);
 
-      const passingTrigger = makePassingTrigger(priceTrigger.address);
+      const passingTrigger = await makePassingTrigger(priceTrigger.address);
       const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address], [ETH_ADDRESS]);
       const ruleHash = await createRule(
         whitelistService,
@@ -343,8 +342,8 @@ describe("RoboCop", () => {
         actWlHash,
       } = await loadFixture(deployRoboCopFixture);
 
-      const passingTrigger = makePassingTrigger(priceTrigger.address);
-      const failingTrigger = makeFailingTrigger(priceTrigger.address);
+      const passingTrigger = await makePassingTrigger(priceTrigger.address);
+      const failingTrigger = await makeFailingTrigger(priceTrigger.address);
       const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address], [ETH_ADDRESS]);
       const ruleHash = await createRule(
         whitelistService,
@@ -359,7 +358,7 @@ describe("RoboCop", () => {
       expect(await roboCop.connect(botWallet).checkRule(ruleHash)).to.equal(false);
     });
 
-    it.skip("should return true if all of multiple triggers are valid", async () => { });
+    it.skip("should return true if all of multiple triggers are valid", async () => {});
   });
 
   describe("Execute Rule with Failing Trigger", () => {
@@ -379,7 +378,7 @@ describe("RoboCop", () => {
         actWlHash,
       } = await loadFixture(deployRoboCopFixture);
 
-      const passingTrigger = makeFailingTrigger(priceTrigger.address);
+      const passingTrigger = await makeFailingTrigger(priceTrigger.address);
       const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address], [ETH_ADDRESS]);
       const ruleHash = await createRule(
         whitelistService,
@@ -414,17 +413,21 @@ describe("RoboCop", () => {
     } = await loadFixture(deployRoboCopFixture);
 
     const ethTst1PassingTrigger = {
-      op: GT,
-      param: ETH_PRICE_IN_TST1_PARAM,
+      createTimeParams: utils.defaultAbiCoder.encode(
+        ["address", "address", "uint8", "uint256"], // TODO: Ops is not present in typechain
+        [ETH_ADDRESS, testToken1.address, GT, ETH_PRICE_IN_TST1.sub(1)]
+      ),
+      triggerType: PRICE_TRIGGER_TYPE,
       callee: priceTrigger.address,
-      value: ETH_PRICE_IN_TST1.sub(1),
     };
 
     const tst1EthPassingTrigger = {
-      op: LT,
-      param: TST1_PRICE_IN_ETH_PARAM,
+      createTimeParams: utils.defaultAbiCoder.encode(
+        ["address", "address", "uint8", "uint256"], // TODO: Ops is not present in typechain
+        [testToken1.address, ETH_ADDRESS, LT, ETH_PRICE_IN_TST1.add(1)]
+      ),
+      triggerType: PRICE_TRIGGER_TYPE,
       callee: priceTrigger.address,
-      value: TST1_PRICE_IN_ETH.add(1),
     };
 
     // to get ETH from uniswap, you need to set the output token as WETH.
@@ -657,7 +660,7 @@ describe("RoboCop", () => {
     // should not allow adding collateral to a cancelled or executed rule
     // this is handled in the rule cancellation section.
 
-    it.skip("should allow adding collateral based on the first action, even if subsequent actions have different collateral requirements", () => { });
+    it.skip("should allow adding collateral based on the first action, even if subsequent actions have different collateral requirements", () => {});
   });
 
   describe("Execute Rule", () => {
@@ -674,11 +677,11 @@ describe("RoboCop", () => {
       await expect(roboCop.connect(botWallet).executeRule(ruleHashToken)).to.be.rejectedWith("Action unsuccessful");
     });
 
-    it.skip("placeholder for multiple triggers / actions", async () => { });
+    it.skip("placeholder for multiple triggers / actions", async () => {});
     // TODO Merge this and the native rule
     // Check for single and multiple triggers, and single and multiple actions
 
-    it.skip("should not revert if anyone tries to execute a rule with no collateral", async () => { });
+    it.skip("should not revert if anyone tries to execute a rule with no collateral", async () => {});
 
     // For some insane reason, if the native test is after the erc20 test,
     // the addCollateral fails in the erc20 test.
@@ -896,7 +899,7 @@ describe("RoboCop", () => {
       );
     });
 
-    it.skip("Should redeem balance only from the final action if multiple actions were executed", async () => { });
+    it.skip("Should redeem balance only from the final action if multiple actions were executed", async () => {});
   });
 
   describe("Change Reward", () => {
@@ -1019,15 +1022,8 @@ describe("RoboCop", () => {
     // OR perhaps we could be even more generic and check that unless excluded, all state-changing external / public fns do get blocked on pause.
     it("should prevent a bunch of functions from being executed when paused and re-allows them when unpaused", async () => {
       const fixtureVars = await loadFixture(deployValidRuleFixture);
-      const {
-        ruleHashEth,
-        ruleSubscriberWallet,
-        priceTrigger,
-        swapUniSingleAction,
-        roboCop,
-        testToken1,
-        ownerWallet
-      } = fixtureVars;
+      const { ruleHashEth, ruleSubscriberWallet, priceTrigger, swapUniSingleAction, roboCop, testToken1, ownerWallet } =
+        fixtureVars;
 
       // If we want to make sure that certain works even after pausing,
       // that needs to be tested separately.
@@ -1036,10 +1032,11 @@ describe("RoboCop", () => {
       const reSub = roboCop.connect(ruleSubscriberWallet);
 
       const reSuite = [
-        () => reSub.createRule(
-          [makePassingTrigger(priceTrigger.address)],
-          [makeSwapAction(swapUniSingleAction.address, [testToken1.address])]
-        ),
+        async () =>
+          reSub.createRule(
+            [await makePassingTrigger(priceTrigger.address)],
+            [makeSwapAction(swapUniSingleAction.address, [testToken1.address])]
+          ),
         () => reSub.deactivateRule(ruleHashEth),
         () => reSub.activateRule(ruleHashEth),
         () => reSub.addCollateral(ruleHashEth, [collateralAmount], { value: collateralAmount }),
