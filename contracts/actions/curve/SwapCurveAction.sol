@@ -21,20 +21,23 @@ interface ISwapper {
 }
 
 /*
-    https://curve.readthedocs.io/registry-exchanges.html
-    
-    The other way to do it is to locate the pool and then do a direct exchange https://curve.readthedocs.io/exchange-pools.html#StableSwap.exchange
+    Reference: 
+        https://curve.readthedocs.io/registry-exchanges.html
+        The other way to do it is to locate the pool and then do a direct exchange https://curve.readthedocs.io/exchange-pools.html#StableSwap.exchange
 
-    runtimeParams.triggerReturn must be in decimals = 8
-    Notes with examples: 
-    ETH/USD -> USD per ETH -> ETH Price in USD -> triggerReturn = ["eth", "usd"] -> Must use when tokenIn = ETH and tokenOut = USD (i.e. buying USD with ETH)
-    USD/ETH -> ETH per USD -> USD Price in ETH -> triggerReturn = ["usd", "eth"] -> Must use when tokenIn = USD* and tokenOut = ETH (i.e. buying ETH with USD)
- 
-    action.data must be in the form of (address)
+    Tokens: 
+        Will only have 1 input token and 1 output token
 
-    only 1 input token and 1 output token
+    TriggerReturn: 
+        Applicable TriggerReturn must be in (asset1, asset2, val) where val.decimals = 8, asset1 = inputToken and asset2 = outputToken
+            Example: 
+            ETH/USD -> USD per ETH -> ETH Price in USD -> triggerReturn = [ETH, USD, val] -> Must use when tokenIn = ETH and tokenOut = USD (i.e. buying USD with ETH)
+            USD/ETH -> ETH per USD -> USD Price in ETH -> triggerReturn = [USD, ETH, val] -> Must use when tokenIn = USD* and tokenOut = ETH (i.e. buying ETH with USD)
 
- */
+    Action: 
+        action.data must be in the form of (address)
+
+*/
 contract SwapCurveAction is AddressProvider, IAction {
     using SafeERC20 for IERC20;
 
@@ -45,6 +48,24 @@ contract SwapCurveAction is AddressProvider, IAction {
 
     function _getSwapper() internal view returns (address) {
         return address_provider.get_address(2);
+    }
+
+    function _parseRuntimeParams(Action calldata action, ActionRuntimeParams calldata runtimeParams)
+        internal
+        pure
+        returns (uint256)
+    {
+        for (uint256 i = 0; i < runtimeParams.triggerReturnArr.length; i++) {
+            TriggerReturn memory triggerReturn = runtimeParams.triggerReturnArr[i];
+            if (triggerReturn.triggerType == TriggerType.Price) {
+                (address asset1, address asset2, uint256 res) = decodePriceTriggerReturn(triggerReturn.runtimeData);
+                if (asset1 == action.inputTokens[0] && asset2 == action.outputTokens[0]) {
+                    return res;
+                }
+            }
+        }
+
+        return 0;
     }
 
     function validate(Action calldata action) external view returns (bool) {
@@ -80,7 +101,7 @@ contract SwapCurveAction is AddressProvider, IAction {
             action.inputTokens[0],
             action.outputTokens[0],
             runtimeParams.collateralAmounts[0],
-            (runtimeParams.triggerReturn * runtimeParams.collateralAmounts[0]) / 10**8,
+            (_parseRuntimeParams(action, runtimeParams) * runtimeParams.collateralAmounts[0]) / 10**8,
             msg.sender
         );
         IERC20(action.inputTokens[0]).safeApprove(address(swapper), 0);

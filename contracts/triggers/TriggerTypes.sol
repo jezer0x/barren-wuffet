@@ -7,7 +7,7 @@ enum Ops {
 }
 
 enum TriggerType {
-    PriceFeed,
+    Price,
     Timestamp
 }
 
@@ -15,11 +15,30 @@ struct Trigger {
     address callee;
     TriggerType triggerType;
     bytes createTimeParams; // any custom param to send to the callee, encoded at compileTime
-    bytes runtimeData;
-    Ops op; //eg. GT
 }
 
-function decodePriceFeedTriggerReturn(bytes memory runtimeData)
+struct TriggerReturn {
+    TriggerType triggerType;
+    bytes runtimeData;
+}
+
+function decodePriceTriggerCreateTimeParams(bytes memory createTimeParams)
+    pure
+    returns (
+        address,
+        address,
+        Ops,
+        uint256
+    )
+{
+    return abi.decode(createTimeParams, (address, address, Ops, uint256));
+}
+
+function decodeTimestampTriggerCreateTimeParams(bytes memory createTimeParams) pure returns (Ops, uint256) {
+    return abi.decode(createTimeParams, (Ops, uint256));
+}
+
+function decodePriceTriggerReturn(bytes memory runtimeData)
     pure
     returns (
         address,

@@ -275,9 +275,10 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         });
 
         uint256[] memory outputs;
+        uint256 ethCollateral;
         for (uint256 i = 0; i < rule.actions.length; i++) {
             Action storage action = rule.actions[i];
-            uint256 ethCollateral = 0;
+            ethCollateral = 0;
 
             for (uint256 j = 0; j < action.inputTokens.length; j++) {
                 if (action.inputTokens[j] != Constants.ETH) {
@@ -289,7 +290,7 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
 
             outputs = IAction(action.callee).perform{value: ethCollateral}(action, runtimeParams);
 
-            runtimeParams.collateralAmounts = outputs;
+            runtimeParams.collateralAmounts = outputs; // changes because outputTokens of action[i-1] is inputTokens of action[i]
         }
 
         rule.outputAmounts = outputs;
