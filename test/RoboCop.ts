@@ -469,7 +469,7 @@ describe("RoboCop", () => {
     };
   }
 
-  describe("Add / Reduce Collateral", function () {
+  describe("xx Add / Reduce Collateral", function () {
     it("should revert if add / reduce collateral is called on a non-existent ruleHash", async () => {
       const { ruleSubscriberWallet, roboCop } = await deployValidRuleFixture();
       // these error with onlyRuleOwner because the non existent hash doesnt belong to the subscriber

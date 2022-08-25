@@ -18,23 +18,12 @@ import {
 } from "./Constants";
 import { getHashFromEvent, tx } from "./helper";
 
-// for caching
-var G_TEST_TOKEN_1: Contract;
-var G_TEST_TOKEN_2: Contract;
-var G_WETH: Contract;
 export async function setupTestTokens() {
-  if (G_TEST_TOKEN_1 == undefined) {
-    const TestToken = await ethers.getContractFactory("TestToken");
-    G_TEST_TOKEN_1 = await TestToken.deploy(BigNumber.from("1000000").mul(ERC20_DECIMALS), "Test1", "TST1");
-    G_TEST_TOKEN_2 = await TestToken.deploy(BigNumber.from("1000000").mul(ERC20_DECIMALS), "Test2", "TST2");
-    G_WETH = await TestToken.deploy(BigNumber.from("1000000").mul(ERC20_DECIMALS), "WETH", "WETH");
-  }
-
-  const testToken1 = G_TEST_TOKEN_1;
-  const testToken2 = G_TEST_TOKEN_2;
-  const WETH = G_WETH;
-
-  return { testToken1, testToken2, WETH };
+  return {
+    testToken1: await ethers.getContract("TestToken1"),
+    testToken2: await ethers.getContract("TestToken2"),
+    WETH: await ethers.getContract("WETH"),
+  };
 }
 
 export function makePassingTrigger(triggerContract: string, testToken1: Contract): TriggerStruct {
