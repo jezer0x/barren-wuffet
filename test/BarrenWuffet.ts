@@ -661,6 +661,7 @@ describe("BarrenWuffet", () => {
 
         for (const fn of ruleFns) {
           await fn().to.be.revertedWithoutReason();
+          await expect(fn()).to.be.revertedWithoutReason();
         }
 
       });
