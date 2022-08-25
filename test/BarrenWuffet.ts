@@ -6,8 +6,7 @@ import { BigNumber, constants, Contract, FixedNumber, utils } from "ethers";
 import { makeFailingTrigger, makePassingTrigger, setupBarrenWuffet } from "./Fixtures";
 import { BAD_FUND_HASH, BAD_TRADE_HASH, ETH_ADDRESS, FUND_STATUS } from "./Constants";
 import { depositMaxCollateral, getHashFromEvent } from "./helper";
-import { Provider } from "@ethersproject/providers";
-import { assert } from "console";
+
 /**
  * These tests are organized by
  * 1. Contract Deployment, settings
@@ -613,7 +612,7 @@ describe("BarrenWuffet", () => {
         const { ruleIndex, ruleHash } = await createTwoRules(fixtureVars);
 
         const addAmt = [utils.parseEther("1")];
-        console.log(addAmt);
+
         await expect(chungerToContract.addRuleCollateral(jerkshireHash, ruleIndex, [ETH_ADDRESS], addAmt)).to
           .changeEtherBalances([barrenWuffet, roboCop, marlieChungerWallet], [addAmt[0].mul(-1), addAmt[0], 0])
           .emit(roboCop, "CollateralAdded").withArgs(ruleHash, addAmt);
@@ -625,26 +624,39 @@ describe("BarrenWuffet", () => {
             ruleHash, redAmt);
 
       });
+      [0, 1].forEach(isActive => {
+        const activation = isActive ? "active" : "inactive";
+        it(`Should return all collateral added when ${activation} rule is cancelled and make it inactive`, async () => {
+          const fixtureVars = await loadFixture(
+            deployedFundsFixture
+          );
+          const { barrenWuffet, marlieChungerWallet, roboCop, chungerToContract,
+            jerkshireHash } = fixtureVars;
+  
+          const {ruleIndex, ruleHash} = await createTwoRules(fixtureVars);
+  
+          const collateral = [utils.parseEther("0.6")];
+          await chungerToContract.addRuleCollateral(jerkshireHash, ruleIndex, [ETH_ADDRESS], collateral);
 
-      it("Should return all collateral added when the rule is cancelled", async () => {
-        const fixtureVars = await loadFixture(
-          deployedFundsFixture
-        );
-        const { barrenWuffet, marlieChungerWallet, roboCop, chungerToContract,
-          jerkshireHash } = fixtureVars;
+          if(isActive){
+            await chungerToContract.activateRule(jerkshireHash, ruleIndex);
+          }
+  
+          const e = expect(chungerToContract.cancelRule(jerkshireHash, ruleIndex)).to
+            .changeEtherBalances([barrenWuffet, roboCop, marlieChungerWallet], [collateral[0], collateral[0].mul(-1), 0])            
+            .emit(roboCop, "CollateralReduced").withArgs(
+              ruleHash, collateral);
 
-        const {ruleIndex, ruleHash} = await createTwoRules(fixtureVars);
-
-        const collateral = [utils.parseEther("0.6")];
-        await chungerToContract.addRuleCollateral(jerkshireHash, ruleIndex, [ETH_ADDRESS], collateral).to
-
-        await expect(chungerToContract.cancelRule(jerkshireHash, ruleIndex)).to
-          .changeEtherBalances([barrenWuffet, roboCop, marlieChungerWallet], [collateral[0], collateral[0].mul(-1), 0])
-          .emit(roboCop, "Deactivated").withArgs(
-            ruleHash)
-          .emit(roboCop, "CollateralReduced").withArgs(
-            ruleHash, collateral);
+          if (isActive){
+            await e.emit(roboCop, "Deactivated").withArgs(
+              ruleHash);
+          } else {
+            await e;
+          }
+          
+        })
       })
+      
 
       it("Should not allow anyone other than the fund manager to manage rules", async () => {
         const { barrenWuffet, roboCop, chungerToContract, fairyToContract, priceTrigger, testToken1, jerkshireHash, swapETHToTST1Action } = await loadFixture(
