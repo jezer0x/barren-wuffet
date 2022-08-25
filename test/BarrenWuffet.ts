@@ -389,12 +389,12 @@ describe("BarrenWuffet", () => {
     });
 
     it("should not allow creating a rule for a raising fund", async () => {
-      const { jerkshireHash, chungerToContract, priceTrigger, swapETHToTST1Action } = await loadFixture(
+      const { jerkshireHash, chungerToContract, priceTrigger, testToken1, swapETHToTST1Action } = await loadFixture(
         raisingFundsFixture
       );
 
       await expect(chungerToContract
-        .createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address)], [swapETHToTST1Action])).be.revertedWithoutReason();
+        .createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action])).be.revertedWithoutReason();
 
     });
     it("should revert if rewards withdrawal is attempted on a raising fund", async () => {
@@ -530,32 +530,32 @@ describe("BarrenWuffet", () => {
 
     describe("xx Manage rules", () => {
       it("Should emit RoboCop event when fund manager creates one or more rules", async () => {
-        const { roboCop, chungerToContract, priceTrigger, jerkshireHash, swapETHToTST1Action } = await loadFixture(
+        const { roboCop, chungerToContract, priceTrigger, testToken1, jerkshireHash, swapETHToTST1Action } = await loadFixture(
           deployedFundsFixture
         );
 
         await expect(
-          chungerToContract.createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address)], [swapETHToTST1Action])
+          chungerToContract.createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action])
         ).to.emit(roboCop, "Created").withArgs(anyValue);
 
         await expect(
-          chungerToContract.createRule(jerkshireHash, [makeFailingTrigger(priceTrigger.address)], [swapETHToTST1Action])
+          chungerToContract.createRule(jerkshireHash, [makeFailingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action])
         ).to.emit(roboCop, "Created").withArgs(anyValue);
       });
 
       //@ts-ignore
       async function createTwoRules(_fixtureVars) {
         const { crackBlockHash, roboCop, chungerToContract,
-          fairyToContract, priceTrigger, jerkshireHash, swapETHToTST1Action } = _fixtureVars;
+          fairyToContract, priceTrigger, jerkshireHash, testToken1, swapETHToTST1Action } = _fixtureVars;
         const ruleHash = await getHashFromEvent(
-          chungerToContract.createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address)], [swapETHToTST1Action]),
+          chungerToContract.createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action]),
           "Created",
           roboCop.address,
           "ruleHash"
         );
         // create the same rule in a different fund to confirm that we dont mix things up.
         const ruleHash2 = await getHashFromEvent(
-          fairyToContract.createRule(crackBlockHash, [makePassingTrigger(priceTrigger.address)], [swapETHToTST1Action]),
+          fairyToContract.createRule(crackBlockHash, [makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action]),
           "Created",
           roboCop.address,
           "ruleHash"
@@ -635,16 +635,16 @@ describe("BarrenWuffet", () => {
       })
 
       it("Should not allow anyone other than the fund manager to manage rules", async () => {
-        const { barrenWuffet, roboCop, chungerToContract, fairyToContract, priceTrigger, jerkshireHash, swapETHToTST1Action } = await loadFixture(
+        const { barrenWuffet, roboCop, chungerToContract, fairyToContract, priceTrigger, testToken1, jerkshireHash, swapETHToTST1Action } = await loadFixture(
           deployedFundsFixture
         );
 
         await expect(
-          fairyToContract.createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address)], [swapETHToTST1Action])
+          fairyToContract.createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action])
         ).to.be.revertedWithoutReason();
 
         const ruleHash = await getHashFromEvent(
-          chungerToContract.createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address)], [swapETHToTST1Action]),
+          chungerToContract.createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action]),
           "Created",
           roboCop.address,
           "ruleHash"

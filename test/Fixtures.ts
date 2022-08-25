@@ -38,8 +38,7 @@ export async function setupTestTokens() {
   return { testToken1, testToken2, WETH };
 }
 
-export async function makePassingTrigger(triggerContract: string): Promise<TriggerStruct> {
-  const { testToken1 } = await setupTestTokens();
+export function makePassingTrigger(triggerContract: string, testToken1: Contract): TriggerStruct {
   return {
     createTimeParams: utils.defaultAbiCoder.encode(
       ["address", "address", "uint8", "uint256"],
@@ -50,8 +49,7 @@ export async function makePassingTrigger(triggerContract: string): Promise<Trigg
   };
 }
 
-export async function makeFailingTrigger(triggerContract: string): Promise<TriggerStruct> {
-  const { testToken1 } = await setupTestTokens();
+export function makeFailingTrigger(triggerContract: string, testToken1: Contract): TriggerStruct {
 
   return {
     createTimeParams: utils.defaultAbiCoder.encode(

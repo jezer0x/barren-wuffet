@@ -65,7 +65,7 @@ describe("RoboCop", () => {
       const { roboCop, swapUniSingleAction, ruleMakerWallet, testToken1, whitelistService, trigWlHash, actWlHash } =
         await loadFixture(deployRoboCopFixture);
 
-      const badTrigger = await await makePassingTrigger(constants.AddressZero); // passing trigger with bad address
+      const badTrigger = await makePassingTrigger(constants.AddressZero, testToken1); // passing trigger with bad address
       const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
 
       whitelistService.disableWhitelist(trigWlHash);
@@ -82,7 +82,7 @@ describe("RoboCop", () => {
       const BadPriceTrigger = await ethers.getContractFactory("BadPriceTrigger");
       const badPriceTrigger = await BadPriceTrigger.deploy();
 
-      const badTrigger = await makePassingTrigger(badPriceTrigger.address);
+      const badTrigger = makePassingTrigger(badPriceTrigger.address, testToken1);
       const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
 
       whitelistService.disableWhitelist(trigWlHash);
@@ -106,7 +106,7 @@ describe("RoboCop", () => {
         trigWlHash,
         actWlHash,
       } = await loadFixture(deployRoboCopFixture);
-      const passingTrigger = await makePassingTrigger(priceTrigger.address);
+      const passingTrigger = makePassingTrigger(priceTrigger.address, testToken1);
       whitelistService.disableWhitelist(trigWlHash);
       whitelistService.disableWhitelist(actWlHash);
       await expect(roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [])).to.be.revertedWithoutReason();
@@ -116,7 +116,7 @@ describe("RoboCop", () => {
       const { roboCop, priceTrigger, ruleMakerWallet, testToken1, whitelistService, trigWlHash, actWlHash } =
         await loadFixture(deployRoboCopFixture);
 
-      const passingTrigger = await makePassingTrigger(priceTrigger.address);
+      const passingTrigger = makePassingTrigger(priceTrigger.address, testToken1);
       const badAction = makeSwapAction(constants.AddressZero, [testToken1.address]);
       whitelistService.disableWhitelist(trigWlHash);
       whitelistService.disableWhitelist(actWlHash);
@@ -136,7 +136,7 @@ describe("RoboCop", () => {
     it("Should revert if trigger has not been whitelisted", async () => {
       const { roboCop, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1, whitelistService, trigWlHash } =
         await loadFixture(deployRoboCopFixture);
-      const passingTrigger = await makePassingTrigger(priceTrigger.address);
+      const passingTrigger = makePassingTrigger(priceTrigger.address, testToken1);
       whitelistService.removeFromWhitelist(trigWlHash, priceTrigger.address);
       const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
 
@@ -149,7 +149,7 @@ describe("RoboCop", () => {
       const { roboCop, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1, whitelistService, actWlHash } =
         await loadFixture(deployRoboCopFixture);
 
-      const passingTrigger = await makePassingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
+      const passingTrigger = makePassingTrigger(priceTrigger.address, testToken1); // pass / fail shouldnt matter here
       const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
       whitelistService.removeFromWhitelist(actWlHash, swapUniSingleAction.address);
 
@@ -170,7 +170,7 @@ describe("RoboCop", () => {
         actWlHash,
       } = await loadFixture(deployRoboCopFixture);
 
-      const passingTrigger = await makePassingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
+      const passingTrigger = makePassingTrigger(priceTrigger.address, testToken1); // pass / fail shouldnt matter here
       const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
 
       const reward = utils.parseEther("0.02");
@@ -185,7 +185,7 @@ describe("RoboCop", () => {
         deployRoboCopFixture
       );
 
-      const failingTrigger = await makePassingTrigger(priceTrigger.address); // pass / fail shouldnt matter here
+      const failingTrigger = makePassingTrigger(priceTrigger.address, testToken1); // pass / fail shouldnt matter here
       const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
       await expect(roboCop.connect(ruleMakerWallet).createRule([failingTrigger], [executableAction])).to.emit(
         roboCop,
@@ -197,7 +197,7 @@ describe("RoboCop", () => {
       const { roboCop, swapUniSingleAction, priceTrigger, ruleMakerWallet, ruleSubscriberWallet, testToken1 } =
         await loadFixture(deployRoboCopFixture);
 
-      const passingTrigger = await makePassingTrigger(priceTrigger.address);
+      const passingTrigger = makePassingTrigger(priceTrigger.address, testToken1);
       const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
 
       var rule1Hash: string;
@@ -249,7 +249,7 @@ describe("RoboCop", () => {
 
       const ruleMakerWallet2 = botWallet;
 
-      const passingTrigger = await makePassingTrigger(priceTrigger.address);
+      const passingTrigger = makePassingTrigger(priceTrigger.address, testToken1);
       const executableAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address]);
 
       var rule1Hash: string;
@@ -280,7 +280,7 @@ describe("RoboCop", () => {
         actWlHash,
       } = await loadFixture(deployRoboCopFixture);
 
-      const failingTrigger = await makeFailingTrigger(priceTrigger.address);
+      const failingTrigger = makeFailingTrigger(priceTrigger.address, testToken1);
       const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address], [ETH_ADDRESS]);
       const ruleHash = await createRule(
         whitelistService,
@@ -314,7 +314,7 @@ describe("RoboCop", () => {
         actWlHash,
       } = await loadFixture(deployRoboCopFixture);
 
-      const passingTrigger = await makePassingTrigger(priceTrigger.address);
+      const passingTrigger = makePassingTrigger(priceTrigger.address, testToken1);
       const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address], [ETH_ADDRESS]);
       const ruleHash = await createRule(
         whitelistService,
@@ -342,8 +342,8 @@ describe("RoboCop", () => {
         actWlHash,
       } = await loadFixture(deployRoboCopFixture);
 
-      const passingTrigger = await makePassingTrigger(priceTrigger.address);
-      const failingTrigger = await makeFailingTrigger(priceTrigger.address);
+      const passingTrigger = makePassingTrigger(priceTrigger.address, testToken1);
+      const failingTrigger = makeFailingTrigger(priceTrigger.address, testToken1);
       const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address], [ETH_ADDRESS]);
       const ruleHash = await createRule(
         whitelistService,
@@ -358,7 +358,7 @@ describe("RoboCop", () => {
       expect(await roboCop.connect(botWallet).checkRule(ruleHash)).to.equal(false);
     });
 
-    it.skip("should return true if all of multiple triggers are valid", async () => {});
+    it.skip("should return true if all of multiple triggers are valid", async () => { });
   });
 
   describe("Execute Rule with Failing Trigger", () => {
@@ -378,7 +378,7 @@ describe("RoboCop", () => {
         actWlHash,
       } = await loadFixture(deployRoboCopFixture);
 
-      const passingTrigger = await makeFailingTrigger(priceTrigger.address);
+      const passingTrigger = makeFailingTrigger(priceTrigger.address, testToken1);
       const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address], [ETH_ADDRESS]);
       const ruleHash = await createRule(
         whitelistService,
@@ -660,7 +660,7 @@ describe("RoboCop", () => {
     // should not allow adding collateral to a cancelled or executed rule
     // this is handled in the rule cancellation section.
 
-    it.skip("should allow adding collateral based on the first action, even if subsequent actions have different collateral requirements", () => {});
+    it.skip("should allow adding collateral based on the first action, even if subsequent actions have different collateral requirements", () => { });
   });
 
   describe("Execute Rule", () => {
@@ -677,11 +677,11 @@ describe("RoboCop", () => {
       await expect(roboCop.connect(botWallet).executeRule(ruleHashToken)).to.be.rejectedWith("Action unsuccessful");
     });
 
-    it.skip("placeholder for multiple triggers / actions", async () => {});
+    it.skip("placeholder for multiple triggers / actions", async () => { });
     // TODO Merge this and the native rule
     // Check for single and multiple triggers, and single and multiple actions
 
-    it.skip("should not revert if anyone tries to execute a rule with no collateral", async () => {});
+    it.skip("should not revert if anyone tries to execute a rule with no collateral", async () => { });
 
     // For some insane reason, if the native test is after the erc20 test,
     // the addCollateral fails in the erc20 test.
@@ -899,7 +899,7 @@ describe("RoboCop", () => {
       );
     });
 
-    it.skip("Should redeem balance only from the final action if multiple actions were executed", async () => {});
+    it.skip("Should redeem balance only from the final action if multiple actions were executed", async () => { });
   });
 
   describe("Change Reward", () => {
@@ -1034,7 +1034,7 @@ describe("RoboCop", () => {
       const reSuite = [
         async () =>
           reSub.createRule(
-            [await makePassingTrigger(priceTrigger.address)],
+            [makePassingTrigger(priceTrigger.address, testToken1)],
             [makeSwapAction(swapUniSingleAction.address, [testToken1.address])]
           ),
         () => reSub.deactivateRule(ruleHashEth),
