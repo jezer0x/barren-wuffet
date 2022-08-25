@@ -3,7 +3,11 @@ import { expect } from "chai";
 import { BigNumber, constants, Contract, ContractReceipt, ContractTransaction } from "ethers";
 import { ETH_ADDRESS } from "./Constants";
 
-export async function testPauseAuthorization(contract: Contract, ownerWallet: SignerWithAddress, otherWallet: SignerWithAddress) {
+export async function testPauseAuthorization(
+  contract: Contract,
+  ownerWallet: SignerWithAddress,
+  otherWallet: SignerWithAddress
+) {
   const ownerCon = contract.connect(ownerWallet);
   const otherCon = contract.connect(otherWallet);
 
@@ -26,11 +30,14 @@ export async function testPauseFunctionality(connectedContract: Contract, fnSuit
   for (const f of fnSuite) {
     await expect(f()).to.not.be.reverted;
   }
-
 }
 
-
-export async function getHashFromEvent(fnPromise: Promise<ContractTransaction>, eventName: string, eventAddress: string, eventKey: string) {
+export async function getHashFromEvent(
+  fnPromise: Promise<ContractTransaction>,
+  eventName: string,
+  eventAddress: string,
+  eventKey: string
+) {
   const receipt: ContractReceipt = await tx(fnPromise);
 
   const events = receipt.events;
@@ -38,19 +45,23 @@ export async function getHashFromEvent(fnPromise: Promise<ContractTransaction>, 
   // Address is definitely part of the event object. Not sure why typescript wont recognize it.
   // Need the check to disambiguate same-name events from multiple objects
   //@ts-ignore
-    const hashEvent = events?.find((x: { event: string; address: string }) => x.event == eventName && x.address == eventAddress);
+  const hashEvent = events?.find(
+    //@ts-ignore
+    (x: { event: string; address: string }) => x.event == eventName && x.address == eventAddress
+  );
   const args = hashEvent?.args;
-    return (typeof args === "object") && args[eventKey];
+  return typeof args === "object" && args[eventKey];
 }
 
 export async function tx(fnPromise: Promise<ContractTransaction>): Promise<ContractReceipt> {
   return (await fnPromise).wait();
 }
 
-export async function depositMaxCollateral(subscriber1Conn: Contract,
+export async function depositMaxCollateral(
+  subscriber1Conn: Contract,
   subscriber2Conn: Contract,
   fundHash: string,
-    constraints: { maxCollateralTotal: any; maxCollateralPerSub: any; minCollateralPerSub: any; }
+  constraints: { maxCollateralTotal: any; maxCollateralPerSub: any; minCollateralPerSub: any }
 ) {
   const maxC = constraints.maxCollateralTotal;
   const depositAmt = constraints.maxCollateralPerSub;
@@ -60,19 +71,16 @@ export async function depositMaxCollateral(subscriber1Conn: Contract,
   let i = 0;
   for (; d.lte(maxC); d = d.add(depositAmt)) {
     // alternate deposits, so both subscribers have deposits.
-        await subscriberConns[(i++) % 2].deposit(
-            fundHash, ETH_ADDRESS, depositAmt,
-            { value: depositAmt });
+    await subscriberConns[i++ % 2].deposit(fundHash, ETH_ADDRESS, depositAmt, { value: depositAmt });
   }
 
   if (d.lt(maxC)) {
     const remDeposit = maxC.sub(d);
     if (remDeposit.lt(constraints.minCollateralPerSub)) {
-            expect.fail(`Cant hit max collateral. Stuck at ${d.toString()} Pls fix this test`)
+      expect.fail(`Cant hit max collateral. Stuck at ${d.toString()} Pls fix this test`);
+    }
+    await subscriberConns[i++ % 2].deposit(fundHash, ETH_ADDRESS, remDeposit, { value: remDeposit });
   }
-        await subscriberConns[(i++) % 2].deposit(
-            fundHash, ETH_ADDRESS, remDeposit,
-            { value: remDeposit });
 }
 
 export function expectEthersObjDeepEqual(_expectedResult: Array<any> & object, _actualResult: Array<any> & object) {
