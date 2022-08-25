@@ -3,7 +3,7 @@ import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
 import { ethers, deployments } from "hardhat";
 import { BigNumber, constants, Contract, utils } from "ethers";
-import { setupBarrenWuffet } from "./Fixtures";
+import { makePassingTrigger, setupBarrenWuffet } from "./Fixtures";
 import { SubscriptionConstraintsStruct } from "../typechain-types/contracts/funds/BarrenWuffet";
 import { BAD_FUND_HASH, BAD_TRADE_HASH, ETH_ADDRESS, FUND_STATUS } from "./Constants";
 import { depositMaxCollateral, getHashFromEvent } from "./helper";
@@ -140,6 +140,7 @@ describe("BarrenWuffet", () => {
 
   async function raisingFundsFixture() {
     const {
+      priceTrigger,
       barrenWuffet,
       marlieChungerWallet,
       fairyLinkWallet,
@@ -147,6 +148,7 @@ describe("BarrenWuffet", () => {
       testToken1,
       fundSubscriberWallet,
       fundSubscriber2Wallet,
+      swapETHToTST1Action
     } = await loadFixture(deployBarrenWuffetFixture);
 
     const latestTime = await time.latest();
@@ -190,6 +192,7 @@ describe("BarrenWuffet", () => {
 
     return {
       barrenWuffet,
+      priceTrigger,
       marlieChungerWallet,
       fairyLinkWallet,
       jerkshireHash,
@@ -202,6 +205,7 @@ describe("BarrenWuffet", () => {
       testToken1,
       fundSubscriberWallet,
       fundSubscriber2Wallet,
+      swapETHToTST1Action
     };
   }
   describe("Fund Status: Raising", () => {
@@ -382,6 +386,15 @@ describe("BarrenWuffet", () => {
       await expect(fairyToContract.closeFund(crackBlockHash)).to.emit(barrenWuffet, "Closed").withArgs(crackBlockHash);
     });
 
+    it("xx should not allow creating a rule for a raising fund", async () => {
+      const { jerkshireHash, chungerToContract, priceTrigger, swapETHToTST1Action } = await loadFixture(
+        raisingFundsFixture
+      );
+
+      await expect(chungerToContract
+        .createRule(jerkshireHash, [makePassingTrigger(priceTrigger.address)], [swapETHToTST1Action])).be.revertedWithoutReason();
+
+    });
     it("should revert if rewards withdrawal is attempted on a raising fund", async () => {
       const { barrenWuffet, jerkshireHash, chungerToContract, fundSubscriberWallet } = await loadFixture(
         raisingFundsFixture
@@ -425,7 +438,7 @@ describe("BarrenWuffet", () => {
     // we are creating this test here and not earlier because we want to have a
     // fund with deposits, and ensure these actions on a different fund dont
     // interfere with the funds on the existing fund.
-    it("should revert if opening / closing positions in a non-existent fund", async () => { });
+    it("should revert if creating rules positions in a non-existent fund", async () => { });
 
     it("should revert if performing actions on a non-existent fund", async () => { });
 
