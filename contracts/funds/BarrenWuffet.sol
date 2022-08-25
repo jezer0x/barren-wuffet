@@ -171,30 +171,28 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         ActionRuntimeParams calldata runtimeParams
     )
         external
-        payable
         onlyDeployedFund(fundHash)
         onlyFundManager(fundHash)
         whenNotPaused
         nonReentrant
         returns (uint256[] memory outputs)
     {
-        address token;
-        uint256 amount;
+        uint256 ethCollateral = 0;
         for (uint256 i = 0; i < action.inputTokens.length; i++) {
-            token = action.inputTokens[i];
-            amount = runtimeParams.collateralAmounts[i];
+            address token = action.inputTokens[i];
+            uint256 amount = runtimeParams.collateralAmounts[i];
             _decreaseAssetBalance(fundHash, token, amount);
             if (token != Constants.ETH) {
-                IERC20(token).safeApprove(action.callee, runtimeParams.collateralAmounts[i]);
+                IERC20(token).safeApprove(action.callee, amount);
+            } else {
+                ethCollateral = amount;
             }
         }
 
-        outputs = IAction(action.callee).perform{value: msg.value}(action, runtimeParams);
+        outputs = IAction(action.callee).perform{value: ethCollateral}(action, runtimeParams);
 
         for (uint256 i = 0; i < action.inputTokens.length; i++) {
-            token = action.outputTokens[i];
-            amount = outputs[i];
-            _increaseAssetBalance(fundHash, token, amount);
+            _increaseAssetBalance(fundHash, action.outputTokens[i], outputs[i]);
         }
     }
 
@@ -204,7 +202,6 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         Action[] calldata actions
     )
         external
-        payable
         nonReentrant
         whenNotPaused
         onlyDeployedFund(fundHash)
@@ -212,8 +209,27 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         returns (bytes32 ruleHash)
     {
         // Note: Rule is created through BarrenWuffet so that BarrenWuffet is rule.owner
-        ruleHash = roboCop.createRule{value: msg.value}(triggers, actions);
+        ruleHash = roboCop.createRule(triggers, actions);
         funds[fundHash].openRules.push(ruleHash);
+    }
+
+    function increaseRuleReward(
+        bytes32 fundHash,
+        uint256 openRuleIdx,
+        uint256 amount
+    ) external nonReentrant whenNotPaused onlyDeployedFund(fundHash) onlyFundManager(fundHash) {
+        _decreaseAssetBalance(fundHash, Constants.ETH, amount);
+        roboCop.increaseReward{value: amount}(funds[fundHash].openRules[openRuleIdx]);
+    }
+
+    function withdrawRuleReward(bytes32 fundHash, uint256 openRuleIdx)
+        external
+        nonReentrant
+        whenNotPaused
+        onlyDeployedFund(fundHash)
+        onlyFundManager(fundHash)
+    {
+        _decreaseAssetBalance(fundHash, Constants.ETH, roboCop.withdrawReward(funds[fundHash].openRules[openRuleIdx]));
     }
 
     function activateRule(bytes32 fundHash, uint256 openRuleIdx)
@@ -241,22 +257,23 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
         uint256 openRuleIdx,
         address[] memory collateralTokens,
         uint256[] memory collateralAmounts
-    ) external payable whenNotPaused nonReentrant onlyDeployedFund(fundHash) onlyFundManager(fundHash) {
+    ) external whenNotPaused nonReentrant onlyDeployedFund(fundHash) onlyFundManager(fundHash) {
         Fund storage fund = funds[fundHash];
 
-        address token;
-        uint256 amount;
+        uint256 ethCollateral = 0;
         for (uint256 i = 0; i < collateralTokens.length; i++) {
-            token = collateralTokens[i];
-            amount = collateralAmounts[i];
+            address token = collateralTokens[i];
+            uint256 amount = collateralAmounts[i];
             _decreaseAssetBalance(fundHash, token, amount);
             if (token != Constants.ETH) {
                 IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
                 IERC20(token).safeApprove(address(roboCop), amount);
+            } else {
+                ethCollateral = amount;
             }
         }
 
-        roboCop.addCollateral{value: msg.value}(fund.openRules[openRuleIdx], collateralAmounts);
+        roboCop.addCollateral{value: ethCollateral}(fund.openRules[openRuleIdx], collateralAmounts);
     }
 
     function reduceRuleCollateral(
@@ -351,6 +368,7 @@ contract BarrenWuffet is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyG
     ) private {
         Fund storage fund = funds[fundHash];
 
+        require(fundBalances[fundHash][token] >= amount);
         fundBalances[fundHash][token] -= amount;
 
         // TODO: could be made more efficient if we kept token => idx in storage
