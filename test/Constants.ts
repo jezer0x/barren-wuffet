@@ -1,4 +1,4 @@
-import { BigNumber, utils } from "ethers";
+import { BigNumber, utils, constants } from "ethers";
 
 export const GT = 0;
 export const LT = 1;
@@ -28,3 +28,4 @@ export const FUND_STATUS = {
 };
 
 export const ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+export const USD_ADDRESS = constants.AddressZero;
