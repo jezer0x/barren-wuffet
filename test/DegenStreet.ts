@@ -5,16 +5,7 @@ import { BigNumber, Bytes } from "ethers";
 import { deployments, ethers, network } from "hardhat";
 import { RuleStructOutput } from "../typechain-types/contracts/rules/RoboCop";
 import { SubscriptionConstraintsStruct, TradeStructOutput } from "../typechain-types/contracts/trades/DegenStreet";
-import {
-  BAD_RULE_HASH,
-  DEFAULT_REWARD,
-  ERC20_DECIMALS,
-  ETH_PRICE_IN_TST1,
-  TST1_PRICE_IN_ETH,
-  ETH_PRICE_IN_TST1_PARAM,
-  TST1_PRICE_IN_ETH_PARAM,
-  GT,
-} from "./Constants";
+import { BAD_RULE_HASH, DEFAULT_REWARD, ERC20_DECIMALS, ETH_PRICE_IN_TST1, TST1_PRICE_IN_ETH, GT } from "./Constants";
 import { makePassingTrigger, makeSwapAction, setupDegenStreet, setupSwapTrades } from "./Fixtures";
 import { getHashFromEvent } from "./helper";
 
@@ -90,8 +81,8 @@ describe.skip("DegenStreet", () => {
   });
 
   describe.skip("Admin functions", () => {
-    it("Should be able to X if owner", async function () { });
-    it("Should not be able to X if not owner", async function () { });
+    it("Should be able to X if owner", async function () {});
+    it("Should not be able to X if not owner", async function () {});
   });
 
   describe("Opening a Trade", () => {
@@ -133,12 +124,12 @@ describe.skip("DegenStreet", () => {
       try {
         await tx1.wait();
         tx1Success = true;
-      } catch { }
+      } catch {}
 
       try {
         await tx2.wait();
         tx2Success = true;
-      } catch { }
+      } catch {}
 
       expect(tx1Success).to.not.equal(tx2Success);
     });
@@ -436,7 +427,7 @@ describe.skip("DegenStreet", () => {
         .withArgs(tradeETHforTST1Hash, 2, ETH_ADDRESS, MIN_COLLATERAL_PER_SUB.add(MAX_COLLATERAL_PER_SUB).div(2));
     });
 
-    it.skip("Should only allow deposits in ACTIVE trades", async function () { });
+    it.skip("Should only allow deposits in ACTIVE trades", async function () {});
   });
 
   describe("Subscriber withdrawing", () => {

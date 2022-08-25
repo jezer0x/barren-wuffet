@@ -4,7 +4,7 @@ import { deployments, ethers } from "hardhat";
 import { setupPriceTrigger, setupEthToTst1PriceTrigger } from "./Fixtures";
 import { TriggerStruct } from "../typechain-types/contracts/rules/RoboCop";
 import { TriggerReturnStruct } from "../typechain-types/contracts/triggers/PriceTrigger";
-import { GT, LT, TST1_PRICE_IN_ETH_PARAM, TST1_PRICE_IN_ETH, ETH_ADDRESS, PRICE_TRIGGER_TYPE } from "./Constants";
+import { GT, LT, TST1_PRICE_IN_ETH, ETH_ADDRESS, PRICE_TRIGGER_TYPE } from "./Constants";
 
 describe("PriceTrigger", () => {
   // We define a fixture to reuse the same setup in every test.
