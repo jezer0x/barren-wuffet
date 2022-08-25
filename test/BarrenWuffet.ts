@@ -33,7 +33,7 @@ async function makeSubConstraints() {
 
 describe("BarrenWuffet", () => {
   async function deployBarrenWuffetFixture() {
-    await deployments.fixture();
+    await deployments.fixture(["BarrenWuffet"]);
     return await setupBarrenWuffet();
   }
 
@@ -136,7 +136,7 @@ describe("BarrenWuffet", () => {
     });
   });
 
-  async function raisingFundsFixture() {
+  async function setupRaisingFunds() {
     const {
       priceTrigger,
       barrenWuffet,
@@ -148,7 +148,7 @@ describe("BarrenWuffet", () => {
       fundSubscriberWallet,
       fundSubscriber2Wallet,
       swapETHToTST1Action,
-    } = await loadFixture(deployBarrenWuffetFixture);
+    } = await setupBarrenWuffet(); // loadFixture(deployBarrenWuffetFixture);
 
     const latestTime = await time.latest();
     // marlie chunger managers jerkshire
@@ -208,6 +208,12 @@ describe("BarrenWuffet", () => {
       swapETHToTST1Action,
     };
   }
+
+  async function raisingFundsFixture() {
+    await deployments.fixture(["BarrenWuffet"]);
+    return await setupRaisingFunds();
+  }
+
   describe("Fund Status: Raising", () => {
     const validDeposit = utils.parseEther("11");
     it("Should allow anyone to deposit native token into a raising fund and emit a Deposit event", async () => {
@@ -451,8 +457,8 @@ describe("BarrenWuffet", () => {
     it("should revert if an unknown fund or closed fund is closed", () => {});
   });
 
-  async function deployedFundsFixture() {
-    const vars = await loadFixture(raisingFundsFixture);
+  async function setupDeployedFunds() {
+    const vars = await setupRaisingFunds();
     const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet, fundSubscriber2Wallet } = vars;
 
     const deposits = {
@@ -486,6 +492,11 @@ describe("BarrenWuffet", () => {
       ...vars,
       deposits,
     };
+  }
+
+  async function deployedFundsFixture() {
+    await deployments.fixture(["BarrenWuffet"]);
+    return await setupDeployedFunds();
   }
 
   describe("Fund Status: Deployed", () => {
