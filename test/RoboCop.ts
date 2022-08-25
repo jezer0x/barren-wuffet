@@ -13,14 +13,8 @@ import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
 import { ethers, network, deployments } from "hardhat";
 import { BigNumber, constants, Contract, utils } from "ethers";
-import {
-  setupRoboCop,
-  makePassingTrigger,
-  makeFailingTrigger,
-  makeSwapAction,
-  createRule,
-  expectEthersObjDeepEqual,
-} from "./Fixtures";
+import { setupRoboCop, makePassingTrigger, makeFailingTrigger, makeSwapAction, createRule } from "./Fixtures";
+import { expectEthersObjDeepEqual } from "./helper";
 import {
   BAD_RULE_HASH,
   ERC20_DECIMALS,
@@ -358,7 +352,7 @@ describe("RoboCop", () => {
       expect(await roboCop.connect(botWallet).checkRule(ruleHash)).to.equal(false);
     });
 
-    it.skip("should return true if all of multiple triggers are valid", async () => { });
+    it.skip("should return true if all of multiple triggers are valid", async () => {});
   });
 
   describe("Execute Rule with Failing Trigger", () => {
@@ -660,7 +654,7 @@ describe("RoboCop", () => {
     // should not allow adding collateral to a cancelled or executed rule
     // this is handled in the rule cancellation section.
 
-    it.skip("should allow adding collateral based on the first action, even if subsequent actions have different collateral requirements", () => { });
+    it.skip("should allow adding collateral based on the first action, even if subsequent actions have different collateral requirements", () => {});
   });
 
   describe("Execute Rule", () => {
@@ -677,11 +671,11 @@ describe("RoboCop", () => {
       await expect(roboCop.connect(botWallet).executeRule(ruleHashToken)).to.be.rejectedWith("Action unsuccessful");
     });
 
-    it.skip("placeholder for multiple triggers / actions", async () => { });
+    it.skip("placeholder for multiple triggers / actions", async () => {});
     // TODO Merge this and the native rule
     // Check for single and multiple triggers, and single and multiple actions
 
-    it.skip("should not revert if anyone tries to execute a rule with no collateral", async () => { });
+    it.skip("should not revert if anyone tries to execute a rule with no collateral", async () => {});
 
     // For some insane reason, if the native test is after the erc20 test,
     // the addCollateral fails in the erc20 test.
@@ -899,7 +893,7 @@ describe("RoboCop", () => {
       );
     });
 
-    it.skip("Should redeem balance only from the final action if multiple actions were executed", async () => { });
+    it.skip("Should redeem balance only from the final action if multiple actions were executed", async () => {});
   });
 
   describe("Change Reward", () => {
