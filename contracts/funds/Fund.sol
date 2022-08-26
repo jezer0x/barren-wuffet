@@ -33,7 +33,7 @@ contract Fund is ISubscription, Ownable, Pausable, ReentrancyGuard {
     }
 
     RoboCop roboCop;
-    address payable platforFeeWallet;
+    address payable platforWallet;
 
     string name;
     address manager;
@@ -51,8 +51,7 @@ contract Fund is ISubscription, Ownable, Pausable, ReentrancyGuard {
         string memory _name,
         address _manager,
         SubscriptionConstraints memory _constraints,
-        address _roboCopAddr,
-        address platformWallet,
+        address _platformWallet,
         address _wlServiceAddr,
         bytes32 _triggerWhitelistHash,
         bytes32 _actionWhitelistHash
@@ -61,7 +60,8 @@ contract Fund is ISubscription, Ownable, Pausable, ReentrancyGuard {
         name = _name;
         constraints = _constraints;
         manager = _manager;
-        roboCop = new Robocop(_wlServiceAddr, _triggerWhitelistHash, _actionWhitelistHash);
+        platforWallet = payable(_platformWallet);
+        roboCop = new RoboCop(_wlServiceAddr, _triggerWhitelistHash, _actionWhitelistHash);
     }
 
     modifier onlyActiveSubscriber(uint256 subscriptionIdx) {
@@ -88,7 +88,7 @@ contract Fund is ISubscription, Ownable, Pausable, ReentrancyGuard {
         _unpause();
     }
 
-    function getInputTokens() external view returns (address[] memory) {
+    function getInputTokens() external pure returns (address[] memory) {
         address[] memory tokens = new address[](1);
         tokens[0] = Constants.ETH;
         return tokens;
