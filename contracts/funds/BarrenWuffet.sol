@@ -18,15 +18,30 @@ contract BarrenWuffet is Ownable, Pausable {
 
     address roboCopAddr;
     address platformWallet;
+    bytes32 triggerWhitelistHash;
+    bytes32 actionWhitelistHash;
+    address wlServiceAddr;
 
-    constructor(address _roboCopAddr, address _platformWallet) {
+    constructor(
+        address _roboCopAddr,
+        address _platformWallet,
+        bytes32 _triggerWhitelistHash,
+        bytes32 _actionWhitelistHash,
+        address _wlService
+    ) {
         roboCopAddr = _roboCopAddr;
         platformWallet = _platformWallet;
+
+        triggerWhitelistHash = _triggerWhitelistHash;
+        actionWhitelistHash = _actionWhitelistHash;
+        wlServiceAddr = _wlServiceAddr;
     }
 
     function setRoboCopAddress(address RcAddr) external onlyOwner {
         roboCopAddr = RcAddr;
     }
+
+    // TODO: need setters for everything else too
 
     function pause() public onlyOwner {
         _pause();
@@ -41,7 +56,15 @@ contract BarrenWuffet is Ownable, Pausable {
         whenNotPaused
         returns (address)
     {
-        Fund fund = new Fund(name, msg.sender, constraints);
+        Fund fund = new Fund(
+            name,
+            msg.sender,
+            constraints,
+            platformWallet,
+            wlServiceAddr,
+            triggerWhitelistHash,
+            actionWhitelistHash
+        );
         emit Created(address(fund));
         return address(fund);
     }

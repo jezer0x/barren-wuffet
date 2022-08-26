@@ -12,7 +12,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract Fund is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGuard {
+contract Fund is ISubscription, Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     event Closed(address indexed fundAddr);
@@ -52,14 +52,16 @@ contract Fund is ISubscription, IAssetIO, Ownable, Pausable, ReentrancyGuard {
         address _manager,
         SubscriptionConstraints memory _constraints,
         address _roboCopAddr,
-        address platformWallet
+        address platformWallet,
+        address _wlServiceAddr,
+        bytes32 _triggerWhitelistHash,
+        bytes32 _actionWhitelistHash
     ) {
         Utils._validateSubscriptionConstraintsBasic(_constraints);
         name = _name;
         constraints = _constraints;
         manager = _manager;
-
-        // roboCop = new Robocop() here
+        roboCop = new Robocop(_wlServiceAddr, _triggerWhitelistHash, _actionWhitelistHash);
     }
 
     modifier onlyActiveSubscriber(uint256 subscriptionIdx) {

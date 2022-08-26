@@ -12,10 +12,9 @@ import "../utils/Constants.sol";
 import "../actions/IAction.sol";
 import "../triggers/ITrigger.sol";
 import "./RuleTypes.sol";
-import "../utils/IAssetIO.sol";
 import "../utils/whitelists/WhitelistService.sol";
 
-contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
+contract RoboCop is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     event Created(bytes32 indexed ruleHash);
@@ -54,14 +53,6 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         _;
     }
 
-    function pause() public onlyOwner {
-        _pause();
-    }
-
-    function unpause() public onlyOwner {
-        _unpause();
-    }
-
     constructor(
         address wlServiceAddr,
         bytes32 trigWlHash,
@@ -85,7 +76,7 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         return rule.actions[rule.actions.length - 1].outputTokens;
     }
 
-    function redeemBalance(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) nonReentrant {
+    function redeemBalance(bytes32 ruleHash) external onlyRuleOwner(ruleHash) nonReentrant {
         Rule storage rule = rules[ruleHash];
         _setRuleStatus(ruleHash, RuleStatus.REDEEMED);
         address[] memory tokens = getOutputTokens(ruleHash);
@@ -98,7 +89,6 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
     function addCollateral(bytes32 ruleHash, uint256[] memory amounts)
         external
         payable
-        whenNotPaused
         onlyRuleOwner(ruleHash)
         nonReentrant
     {
@@ -124,7 +114,6 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
 
     function reduceCollateral(bytes32 ruleHash, uint256[] memory amounts)
         external
-        whenNotPaused
         onlyRuleOwner(ruleHash)
         nonReentrant
     {
@@ -147,14 +136,14 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         emit CollateralReduced(ruleHash, amounts);
     }
 
-    function increaseReward(bytes32 ruleHash) public payable whenNotPaused ruleExists(ruleHash) {
+    function increaseReward(bytes32 ruleHash) public payable ruleExists(ruleHash) {
         Rule storage rule = rules[ruleHash];
         require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE);
         rule.reward += msg.value;
         ruleRewardProviders[ruleHash][msg.sender] += msg.value;
     }
 
-    function withdrawReward(bytes32 ruleHash) external whenNotPaused ruleExists(ruleHash) returns (uint256 balance) {
+    function withdrawReward(bytes32 ruleHash) external ruleExists(ruleHash) returns (uint256 balance) {
         Rule storage rule = rules[ruleHash];
         require(rule.status != RuleStatus.EXECUTED && rule.status != RuleStatus.REDEEMED, "Reward paid");
         balance = ruleRewardProviders[ruleHash][msg.sender];
@@ -169,7 +158,6 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
     function createRule(Trigger[] calldata triggers, Action[] calldata actions)
         external
         payable
-        whenNotPaused
         nonReentrant
         onlyWhitelist(triggers, actions)
         returns (bytes32)
@@ -235,11 +223,11 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         rule.status = newStatus;
     }
 
-    function activateRule(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) {
+    function activateRule(bytes32 ruleHash) external onlyRuleOwner(ruleHash) {
         _setRuleStatus(ruleHash, RuleStatus.ACTIVE);
     }
 
-    function deactivateRule(bytes32 ruleHash) external whenNotPaused onlyRuleOwner(ruleHash) {
+    function deactivateRule(bytes32 ruleHash) external onlyRuleOwner(ruleHash) {
         _setRuleStatus(ruleHash, RuleStatus.INACTIVE);
     }
 
@@ -263,7 +251,7 @@ contract RoboCop is IAssetIO, Ownable, Pausable, ReentrancyGuard {
         (valid, ) = _checkTriggers(rules[ruleHash].triggers);
     }
 
-    function executeRule(bytes32 ruleHash) external whenNotPaused ruleExists(ruleHash) nonReentrant {
+    function executeRule(bytes32 ruleHash) external ruleExists(ruleHash) nonReentrant {
         Rule storage rule = rules[ruleHash];
         _setRuleStatus(ruleHash, RuleStatus.EXECUTED); // This ensures only active rules can be executed
         (bool valid, TriggerReturn[] memory triggerReturnArr) = _checkTriggers(rule.triggers);
