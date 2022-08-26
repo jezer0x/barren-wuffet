@@ -27,7 +27,7 @@ contract BarrenWuffet is Ownable, Pausable {
         address _platformWallet,
         bytes32 _triggerWhitelistHash,
         bytes32 _actionWhitelistHash,
-        address _wlService
+        address _wlServiceAddr
     ) {
         roboCopAddr = _roboCopAddr;
         platformWallet = _platformWallet;
