@@ -36,7 +36,7 @@ library Utils {
         }
     }
 
-    function _validateSubscriptionConstraintsBasic(SubscriptionConstraints calldata constraints) internal view {
+    function _validateSubscriptionConstraintsBasic(SubscriptionConstraints memory constraints) internal view {
         require(
             constraints.minCollateralPerSub <= constraints.maxCollateralPerSub,
             "minCollateralPerSub > maxCollateralPerSub"
