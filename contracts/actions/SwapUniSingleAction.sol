@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /*
-    ONLY TO BE USED VIA DELEGATECALL
+    PERFORM() CAN ONLY TO BE USED VIA DELEGATECALL
 
     Reference: 
         https://docs.uniswap.org/protocol/guides/swaps/single-swaps

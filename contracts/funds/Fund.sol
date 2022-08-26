@@ -141,6 +141,8 @@ contract Fund is ISubscription, Ownable, Pausable, ReentrancyGuard {
         nonReentrant
         returns (uint256[] memory outputs)
     {
+        IAction(action.callee).validate(action);
+
         uint256 ethCollateral = 0;
         for (uint256 i = 0; i < action.inputTokens.length; i++) {
             address token = action.inputTokens[i];
@@ -153,7 +155,7 @@ contract Fund is ISubscription, Ownable, Pausable, ReentrancyGuard {
             }
         }
 
-        outputs = IAction(action.callee).perform{value: ethCollateral}(action, runtimeParams);
+        outputs = Utils._delegatePerformAction(action, runtimeParams);
 
         for (uint256 i = 0; i < action.inputTokens.length; i++) {
             _increaseAssetBalance(action.outputTokens[i], outputs[i]);

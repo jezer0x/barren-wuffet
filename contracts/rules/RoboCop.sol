@@ -263,21 +263,14 @@ contract RoboCop is Ownable, ReentrancyGuard {
         });
 
         uint256[] memory outputs;
-        uint256 ethCollateral;
         for (uint256 i = 0; i < rule.actions.length; i++) {
             Action storage action = rule.actions[i];
-            ethCollateral = 0;
-
             for (uint256 j = 0; j < action.inputTokens.length; j++) {
                 if (action.inputTokens[j] != Constants.ETH) {
                     IERC20(action.inputTokens[j]).safeApprove(action.callee, runtimeParams.collateralAmounts[j]);
-                } else {
-                    ethCollateral = runtimeParams.collateralAmounts[j];
                 }
             }
-
-            outputs = IAction(action.callee).perform{value: ethCollateral}(action, runtimeParams);
-
+            outputs = Utils._delegatePerformAction(action, runtimeParams);
             runtimeParams.collateralAmounts = outputs; // changes because outputTokens of action[i-1] is inputTokens of action[i]
         }
 
