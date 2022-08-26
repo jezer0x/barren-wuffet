@@ -7,15 +7,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = deployments;
 
   const { deployer } = await getNamedAccounts();
-  const RoboCop = await (await ethers.getContract("RoboCop")).address;
 
   await deploy("BarrenWuffet", {
     from: deployer,
-    args: [RoboCop],
+    args: [],
     log: true,
   });
 };
 
 export default func;
 func.tags = ["BarrenWuffet"];
-func.dependencies = ["RoboCop"];
+func.dependencies = [];

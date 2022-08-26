@@ -23,22 +23,15 @@ contract BarrenWuffet is Ownable, Pausable {
     address wlServiceAddr;
 
     constructor(
-        address _roboCopAddr,
         address _platformWallet,
         bytes32 _triggerWhitelistHash,
         bytes32 _actionWhitelistHash,
         address _wlServiceAddr
     ) {
-        roboCopAddr = _roboCopAddr;
         platformWallet = _platformWallet;
-
         triggerWhitelistHash = _triggerWhitelistHash;
         actionWhitelistHash = _actionWhitelistHash;
         wlServiceAddr = _wlServiceAddr;
-    }
-
-    function setRoboCopAddress(address RcAddr) external onlyOwner {
-        roboCopAddr = RcAddr;
     }
 
     // TODO: need setters for everything else too
