@@ -80,7 +80,6 @@ export async function tx(fnPromise: Promise<ContractTransaction>): Promise<Contr
 export async function depositMaxCollateral(
   subscriber1Conn: Contract,
   subscriber2Conn: Contract,
-  fundHash: string,
   constraints: { maxCollateralTotal: any; maxCollateralPerSub: any; minCollateralPerSub: any }
 ) {
   const maxC = constraints.maxCollateralTotal;
@@ -91,7 +90,7 @@ export async function depositMaxCollateral(
   let i = 0;
   for (; d.lte(maxC); d = d.add(depositAmt)) {
     // alternate deposits, so both subscribers have deposits.
-    await subscriberConns[i++ % 2].deposit(fundHash, ETH_ADDRESS, depositAmt, { value: depositAmt });
+    await subscriberConns[i++ % 2].deposit(ETH_ADDRESS, depositAmt, { value: depositAmt });
   }
 
   if (d.lt(maxC)) {
@@ -99,7 +98,7 @@ export async function depositMaxCollateral(
     if (remDeposit.lt(constraints.minCollateralPerSub)) {
       expect.fail(`Cant hit max collateral. Stuck at ${d.toString()} Pls fix this test`);
     }
-    await subscriberConns[i++ % 2].deposit(fundHash, ETH_ADDRESS, remDeposit, { value: remDeposit });
+    await subscriberConns[i++ % 2].deposit(ETH_ADDRESS, remDeposit, { value: remDeposit });
   }
 }
 
