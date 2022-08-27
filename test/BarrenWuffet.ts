@@ -471,7 +471,7 @@ describe("BarrenWuffet", () => {
   }
 
   const deployedFundsFixture = deployments.createFixture(async (vars, options) => {
-    await deployments.fixture(["BarrenWuffet"]);
+    await deployments.fixture();
     return await setupDeployedFunds();
   });
 
