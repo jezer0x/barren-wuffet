@@ -425,6 +425,9 @@ describe("RoboCop", () => {
       callee: priceTrigger.address,
     };
 
+    console.log("here0");
+    console.log(roboCop);
+
     // to get ETH from uniswap, you need to set the output token as WETH.
     const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address], [ETH_ADDRESS]);
     const ethSwapAction = makeSwapAction(swapUniSingleAction.address, [ETH_ADDRESS], [testToken1.address]);

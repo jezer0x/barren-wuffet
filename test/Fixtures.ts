@@ -1,6 +1,7 @@
 import { ethers } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { TriggerStruct, ActionStruct, RoboCop } from "../typechain-types/contracts/rules/RoboCop";
+import { Fund } from "../typechain-types";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Contract, Bytes, BigNumber, utils } from "ethers";
 import {
@@ -130,8 +131,7 @@ export async function setupEthToTst1PriceTrigger() {
 export async function setupSwapUniSingleAction(testToken: Contract, WETH: Contract) {
   const [ownerWallet, ruleMakerWallet, ruleSubscriberWallet, botWallet, ethFundWallet] = await ethers.getSigners();
 
-  const TestSwapRouter = await ethers.getContractFactory("TestSwapRouter");
-  const testSwapRouter = await TestSwapRouter.deploy(WETH.address);
+  const testSwapRouter = await ethers.getContract("TestSwapRouter");
 
   // this lets us do 500 swaps of 2 eth each
   await testToken.transfer(
@@ -145,8 +145,6 @@ export async function setupSwapUniSingleAction(testToken: Contract, WETH: Contra
   });
 
   const swapUniSingleAction = await ethers.getContract("SwapUniSingleAction");
-  swapUniSingleAction.changeContractAddresses(testSwapRouter.address, WETH.address);
-
   return swapUniSingleAction;
 }
 
@@ -181,7 +179,8 @@ export async function setupRoboCop() {
     actWlHash,
   } = await setupBarrenWuffet();
 
-  const roboCop = await marlieChungerFund.roboCop();
+  const roboCopAddr = await marlieChungerFund.roboCop();
+  const roboCop = await ethers.getContractAt("RoboCop", roboCopAddr);
   const ruleMakerWallet = marlieChungerWallet;
   const ruleSubscriberWallet = fundSubscriberWallet;
 
@@ -326,13 +325,19 @@ export async function setupBarrenWuffet() {
     swapTST1ToETHAction,
   } = await setupSwapActions(priceTrigger, swapUniSingleAction, testToken1);
 
-  const marlieChungerFund = await barrenWuffet
+  const tx = await barrenWuffet
     .connect(marlieChungerWallet)
     .createFund("marlieChungerFund", await makeSubConstraints());
+  const rc = await tx.wait();
+  const event = rc.events.find((event: any) => event.event === "Created");
+  const [marlieChungerFundAddr] = event.args;
+  const marlieChungerFund: Fund = await ethers.getContractAt("Fund", marlieChungerFundAddr);
 
-  const fairyLinkFund = await barrenWuffet
-    .connect(fairyLinkWallet)
-    .createFund("fairyLinkFund", await makeSubConstraints());
+  const tx2 = await barrenWuffet.connect(fairyLinkWallet).createFund("fairyLinkFund", await makeSubConstraints());
+  const rc2 = await tx.wait();
+  const event2 = rc.events.find((event: any) => event.event === "Created");
+  const [fairyLinkFundAddr] = event.args;
+  const fairyLinkFund: Fund = await ethers.getContractAt("Fund", fairyLinkFundAddr);
 
   return {
     ownerWallet,

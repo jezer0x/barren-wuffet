@@ -38,10 +38,17 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
   });
 
-  await deploy("WETH", {
+  const WETH = await deploy("WETH", {
     contract: "TestToken",
     from: deployer,
     args: [startingSupply, "WETH", "WETH"],
+    log: true,
+  });
+
+  await deploy("TestSwapRouter", {
+    contract: "TestSwapRouter",
+    from: deployer,
+    args: [WETH.address],
     log: true,
   });
 };
