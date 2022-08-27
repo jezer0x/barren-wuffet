@@ -1,7 +1,7 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
-import { ETH_ADDRESS } from "../test/Constants";
-import { ethers } from "hardhat";
+import { ERC20_DECIMALS, ETH_PRICE_IN_USD, TST1_PRICE_IN_USD } from "../test/Constants";
+import { BigNumber } from "ethers";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
@@ -9,14 +9,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const { deployer } = await getNamedAccounts();
 
-  const uniswapAddr = ETH_ADDRESS; // TODO: fill in with proper addr
-  const weth9Addr = ETH_ADDRESS; // TODO: fill in with proper addr
-
-  await deploy("SwapUniSingleAction", {
+  await deploy("PriceTrigger", {
     from: deployer,
-    args: [uniswapAddr, weth9Addr],
+    args: [],
     log: true,
   });
+
+  // TODO: Deploy Timestamp Trigger
 };
+
 export default func;
-func.tags = ["SwapUniSingleAction"];
+func.tags = ["Triggers"];

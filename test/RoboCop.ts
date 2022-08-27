@@ -31,7 +31,7 @@ import { testPauseAuthorization, testPauseFunctionality } from "./helper";
 
 describe("RoboCop", () => {
   const deployRoboCopFixture = deployments.createFixture(async (env, options) => {
-    await deployments.fixture(["RoboCop"]);
+    await deployments.fixture();
     return await setupRoboCop();
   });
 

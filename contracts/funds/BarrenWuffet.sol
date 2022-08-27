@@ -1,17 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "../utils/subscriptions/ISubscription.sol";
-import "../utils/Constants.sol";
-import "../utils/Utils.sol";
-import "../actions/IAction.sol";
-import "../rules/RoboCop.sol";
-import "./Fund.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "./IFund.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/proxy/Clones.sol";
 
 contract BarrenWuffet is Ownable, Pausable {
     event Created(address indexed fundAddr);
@@ -21,17 +14,23 @@ contract BarrenWuffet is Ownable, Pausable {
     bytes32 triggerWhitelistHash;
     bytes32 actionWhitelistHash;
     address wlServiceAddr;
+    address roboCopImplAddr;
+    address fundImplAddr;
 
     constructor(
         address _platformWallet,
         bytes32 _triggerWhitelistHash,
         bytes32 _actionWhitelistHash,
-        address _wlServiceAddr
+        address _wlServiceAddr,
+        address _roboCopImplAddr,
+        address _fundImplAddr
     ) {
         platformWallet = _platformWallet;
         triggerWhitelistHash = _triggerWhitelistHash;
         actionWhitelistHash = _actionWhitelistHash;
         wlServiceAddr = _wlServiceAddr;
+        roboCopImplAddr = _roboCopImplAddr;
+        fundImplAddr = _fundImplAddr;
     }
 
     // TODO: need setters for everything else too
@@ -49,14 +48,16 @@ contract BarrenWuffet is Ownable, Pausable {
         whenNotPaused
         returns (address)
     {
-        Fund fund = new Fund(
+        IFund fund = IFund(Clones.clone(fundImplAddr));
+        fund.init(
             name,
             msg.sender,
             constraints,
             platformWallet,
             wlServiceAddr,
             triggerWhitelistHash,
-            actionWhitelistHash
+            actionWhitelistHash,
+            roboCopImplAddr
         );
         emit Created(address(fund));
         return address(fund);

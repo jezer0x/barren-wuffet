@@ -61,6 +61,19 @@ export function makeSwapAction(
   };
 }
 
+async function makeSubConstraints() {
+  const latestTime = await time.latest();
+  return {
+    minCollateralPerSub: BigNumber.from(10).mul(ERC20_DECIMALS),
+    maxCollateralPerSub: BigNumber.from(100).mul(ERC20_DECIMALS),
+    minCollateralTotal: BigNumber.from(200).mul(ERC20_DECIMALS),
+    maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
+    deadline: latestTime + 86400,
+    lockin: latestTime + 86400 * 10,
+    rewardPercentage: 100,
+  };
+}
+
 export async function createRule(
   _whitelistService: Contract,
   trigWlHash: Bytes,
@@ -150,17 +163,28 @@ export async function getWhitelistService() {
 }
 
 export async function setupRoboCop() {
-  // Contracts are deployed using the first signer/account by default
-  const [ownerWallet, ruleMakerWallet, ruleSubscriberWallet, botWallet, ethFundWallet] = await ethers.getSigners();
+  const {
+    ownerWallet,
+    priceTrigger,
+    swapUniSingleAction,
+    testOracleEth,
+    testOracleTst1,
+    testToken1,
+    testToken2,
+    WETH,
+    marlieChungerWallet,
+    marlieChungerFund,
+    fundSubscriberWallet,
+    botWallet,
+    whitelistService,
+    trigWlHash,
+    actWlHash,
+  } = await setupBarrenWuffet();
 
-  const { testToken1, testToken2, WETH } = await setupTestTokens();
-  const { testOracleEth, testOracleTst1, priceTrigger } = await setupEthToTst1PriceTrigger();
+  const roboCop = await marlieChungerFund.roboCop();
+  const ruleMakerWallet = marlieChungerWallet;
+  const ruleSubscriberWallet = fundSubscriberWallet;
 
-  const swapUniSingleAction = await setupSwapUniSingleAction(testToken1, WETH);
-
-  const { whitelistService, trigWlHash, actWlHash } = await getWhitelistService();
-
-  const roboCop = await ethers.getContract("RoboCop");
   return {
     roboCop,
     priceTrigger,
@@ -179,6 +203,8 @@ export async function setupRoboCop() {
     actWlHash,
   };
 }
+
+// TO DO: DELETE
 export async function setupDegenStreet() {
   const [ownerWallet, traderWallet, tradeSubscriberWallet, someOtherWallet] = await ethers.getSigners();
 
@@ -284,24 +310,15 @@ export async function setupSwapTrades(
 export async function setupBarrenWuffet() {
   // these wallets maybe reused to create trader / rule executor.
   // which shouldnt be a problem
+  // Contracts are deployed using the first signer/account by default
   const [ownerWallet, marlieChungerWallet, fairyLinkWallet, fundSubscriberWallet, fundSubscriber2Wallet, botWallet] =
     await ethers.getSigners();
 
-  const {
-    roboCop,
-    priceTrigger,
-    swapUniSingleAction,
-    testOracleEth,
-    testOracleTst1,
-    testToken1,
-    testToken2,
-    whitelistService,
-    trigWlHash,
-    actWlHash,
-  } = await setupRoboCop();
-
+  const { testToken1, testToken2, WETH } = await setupTestTokens();
+  const { testOracleEth, testOracleTst1, priceTrigger } = await setupEthToTst1PriceTrigger();
+  const swapUniSingleAction = await setupSwapUniSingleAction(testToken1, WETH);
+  const { whitelistService, trigWlHash, actWlHash } = await getWhitelistService();
   const barrenWuffet = await ethers.getContract("BarrenWuffet");
-  const latestBlock = await time.latest();
   const {
     passingETHtoTST1SwapPriceTrigger,
     passingTST1toETHSwapPriceTrigger,
@@ -309,17 +326,27 @@ export async function setupBarrenWuffet() {
     swapTST1ToETHAction,
   } = await setupSwapActions(priceTrigger, swapUniSingleAction, testToken1);
 
+  const marlieChungerFund = await barrenWuffet
+    .connect(marlieChungerWallet)
+    .createFund("marlieChungerFund", await makeSubConstraints());
+
+  const fairyLinkFund = await barrenWuffet
+    .connect(fairyLinkWallet)
+    .createFund("fairyLinkFund", await makeSubConstraints());
+
   return {
     ownerWallet,
-    roboCop,
     priceTrigger,
     swapUniSingleAction,
     testOracleEth,
     testOracleTst1,
     testToken1,
     testToken2,
+    WETH,
     marlieChungerWallet,
+    marlieChungerFund,
     fairyLinkWallet,
+    fairyLinkFund,
     fundSubscriberWallet,
     fundSubscriber2Wallet,
     botWallet,

@@ -1,29 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-// Import this file to use console.log
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../utils/Utils.sol";
 import "../utils/Constants.sol";
 import "../actions/IAction.sol";
 import "../triggers/ITrigger.sol";
 import "./RuleTypes.sol";
+import "./IRoboCop.sol";
 import "../utils/whitelists/WhitelistService.sol";
 
-contract RoboCop is Ownable, ReentrancyGuard {
+contract RoboCop is IRoboCop {
     using SafeERC20 for IERC20;
 
-    event Created(bytes32 indexed ruleHash);
-    event Activated(bytes32 indexed ruleHash);
-    event Deactivated(bytes32 indexed ruleHash);
-    event Executed(bytes32 indexed ruleHash, address executor);
-    event Redeemed(bytes32 indexed ruleHash);
-    event CollateralAdded(bytes32 indexed ruleHash, uint256[] amounts);
-    event CollateralReduced(bytes32 indexed ruleHash, uint256[] amounts);
+    // Storage Start
+    mapping(bytes32 => Rule) rules;
+    mapping(bytes32 => mapping(address => uint256)) public ruleRewardProviders;
+    bytes32 triggerWhitelistHash;
+    bytes32 actionWhitelistHash;
+    WhitelistService wlService;
+    // Storage End
 
     modifier onlyRuleOwner(bytes32 ruleHash) {
         require(rules[ruleHash].owner == msg.sender, "onlyRuleOwner");
@@ -35,14 +32,6 @@ contract RoboCop is Ownable, ReentrancyGuard {
         _;
     }
 
-    // hash -> Rule
-    mapping(bytes32 => Rule) rules;
-    mapping(bytes32 => mapping(address => uint256)) public ruleRewardProviders;
-
-    bytes32 triggerWhitelistHash;
-    bytes32 actionWhitelistHash;
-    WhitelistService wlService;
-
     modifier onlyWhitelist(Trigger[] calldata triggers, Action[] calldata actions) {
         for (uint256 i = 0; i < triggers.length; i++) {
             require(wlService.isWhitelisted(triggerWhitelistHash, triggers[i].callee), "Unauthorized Trigger");
@@ -53,11 +42,11 @@ contract RoboCop is Ownable, ReentrancyGuard {
         _;
     }
 
-    constructor(
+    function init(
         address wlServiceAddr,
         bytes32 trigWlHash,
         bytes32 actionWlHash
-    ) {
+    ) external {
         wlService = WhitelistService(wlServiceAddr);
         triggerWhitelistHash = trigWlHash;
         actionWhitelistHash = actionWlHash;
@@ -76,7 +65,7 @@ contract RoboCop is Ownable, ReentrancyGuard {
         return rule.actions[rule.actions.length - 1].outputTokens;
     }
 
-    function redeemBalance(bytes32 ruleHash) external onlyRuleOwner(ruleHash) nonReentrant {
+    function redeemBalance(bytes32 ruleHash) external onlyRuleOwner(ruleHash) {
         Rule storage rule = rules[ruleHash];
         _setRuleStatus(ruleHash, RuleStatus.REDEEMED);
         address[] memory tokens = getOutputTokens(ruleHash);
@@ -86,12 +75,7 @@ contract RoboCop is Ownable, ReentrancyGuard {
         }
     }
 
-    function addCollateral(bytes32 ruleHash, uint256[] memory amounts)
-        external
-        payable
-        onlyRuleOwner(ruleHash)
-        nonReentrant
-    {
+    function addCollateral(bytes32 ruleHash, uint256[] memory amounts) external payable onlyRuleOwner(ruleHash) {
         Rule storage rule = rules[ruleHash];
         require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE, "Can't add collateral");
 
@@ -112,11 +96,7 @@ contract RoboCop is Ownable, ReentrancyGuard {
         emit CollateralAdded(ruleHash, amounts);
     }
 
-    function reduceCollateral(bytes32 ruleHash, uint256[] memory amounts)
-        external
-        onlyRuleOwner(ruleHash)
-        nonReentrant
-    {
+    function reduceCollateral(bytes32 ruleHash, uint256[] memory amounts) external onlyRuleOwner(ruleHash) {
         Rule storage rule = rules[ruleHash];
         require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE, "Can't reduce collateral");
 
@@ -158,7 +138,6 @@ contract RoboCop is Ownable, ReentrancyGuard {
     function createRule(Trigger[] calldata triggers, Action[] calldata actions)
         external
         payable
-        nonReentrant
         onlyWhitelist(triggers, actions)
         returns (bytes32)
     {
@@ -217,7 +196,7 @@ contract RoboCop is Ownable, ReentrancyGuard {
             require(rule.status == RuleStatus.EXECUTED, "Rule isn't pending redemption");
             emit Redeemed(ruleHash);
         } else {
-            revert("Status not covered!");
+            revert("FundStatus not covered!");
         }
 
         rule.status = newStatus;
@@ -251,7 +230,7 @@ contract RoboCop is Ownable, ReentrancyGuard {
         (valid, ) = _checkTriggers(rules[ruleHash].triggers);
     }
 
-    function executeRule(bytes32 ruleHash) external ruleExists(ruleHash) nonReentrant {
+    function executeRule(bytes32 ruleHash) external ruleExists(ruleHash) {
         Rule storage rule = rules[ruleHash];
         _setRuleStatus(ruleHash, RuleStatus.EXECUTED); // This ensures only active rules can be executed
         (bool valid, TriggerReturn[] memory triggerReturnArr) = _checkTriggers(rule.triggers);

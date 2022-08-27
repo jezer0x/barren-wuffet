@@ -45,7 +45,7 @@ describe("BarrenWuffet", () => {
     });
   });
 
-  describe("Fund Status: Uninitialized", () => {
+  describe("Fund FundStatus: Uninitialized", () => {
     it("yy should allow anyone to create a fund and emit Created event with the fund hash", async () => {
       const { barrenWuffet, marlieChungerWallet } = await deployBarrenWuffetFixture();
       const validConstraints = await makeSubConstraints();
@@ -219,7 +219,7 @@ describe("BarrenWuffet", () => {
     return await setupRaisingFunds();
   });
 
-  describe("Fund Status: Raising", () => {
+  describe("Fund FundStatus: Raising", () => {
     const validDeposit = utils.parseEther("11");
     it("yy Should allow anyone to deposit native token into a raising fund and emit a Deposit event", async () => {
       const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await raisingFundsFixture();
@@ -491,7 +491,7 @@ describe("BarrenWuffet", () => {
     return await setupDeployedFunds();
   });
 
-  describe("Fund Status: Deployed", () => {
+  describe("Fund FundStatus: Deployed", () => {
     function getTotalDeposits(depositObj: { [key: string]: { [key: string]: BigNumber } }, fund: string) {
       return Object.values(depositObj[fund]).reduce((sum, current: BigNumber) => sum.add(current), BigNumber.from(0));
     }
@@ -759,7 +759,7 @@ describe("BarrenWuffet", () => {
     });
   });
 
-  describe.skip("Fund Status: Closed", () => {
+  describe.skip("Fund FundStatus: Closed", () => {
     it("should return fund status as CLOSED once the fund has been closed", async () => {});
 
     it("Should revert if deposit is attempted on a closable / closed fund", async () => {});
