@@ -240,7 +240,7 @@ describe("BarrenWuffet", () => {
         jerkshireFund.connect(fundSubscriberWallet).deposit(ETH_ADDRESS, validDeposit, { value: validDeposit })
       )
         .to.emit(jerkshireFund, "Deposit")
-        .withArgs(0, ETH_ADDRESS, validDeposit);
+        .withArgs(fundSubscriberWallet.address, 0, ETH_ADDRESS, validDeposit);
     });
 
     it("Should allow the fund manager to deposit native token into their own fund", async () => {
@@ -249,7 +249,7 @@ describe("BarrenWuffet", () => {
         jerkshireFund.connect(marlieChungerWallet).deposit(ETH_ADDRESS, validDeposit, { value: validDeposit })
       )
         .to.emit(jerkshireFund, "Deposit")
-        .withArgs(0, ETH_ADDRESS, validDeposit);
+        .withArgs(marlieChungerWallet.address, 0, ETH_ADDRESS, validDeposit);
     });
 
     it("Should not allow anyone to deposit ERC20 tokens into a raising fund. We only allow native right now", async () => {
@@ -296,14 +296,14 @@ describe("BarrenWuffet", () => {
         jerkshireFund.connect(fundSubscriberWallet).deposit(ETH_ADDRESS, depositAmt1, { value: depositAmt1 })
       )
         .to.emit(jerkshireFund, "Deposit")
-        .withArgs(0, ETH_ADDRESS, depositAmt1);
+        .withArgs(fundSubscriberWallet.address, 0, ETH_ADDRESS, depositAmt1);
 
       const depositAmt2 = jerkshireConstraints.minCollateralPerSub;
       await expect(
         jerkshireFund.connect(fundSubscriberWallet).deposit(ETH_ADDRESS, depositAmt2, { value: depositAmt2 })
       )
         .to.emit(jerkshireFund, "Deposit")
-        .withArgs(1, ETH_ADDRESS, depositAmt2);
+        .withArgs(fundSubscriberWallet.address, 1, ETH_ADDRESS, depositAmt2);
     });
 
     it("Should revert if deposit is attempted on a fund where collateral limit is reached", async () => {
@@ -327,7 +327,7 @@ describe("BarrenWuffet", () => {
           await expect(tx)
             .to.changeEtherBalance(fundSubscriberWallet, amt.mul(-1))
             .emit(jerkshireFund, "Deposit")
-            .withArgs(idOrError, ETH_ADDRESS, amt);
+            .withArgs(fundSubscriberWallet.address, idOrError, ETH_ADDRESS, amt);
         } else {
           await expect(tx).to.be.revertedWith(idOrError.toString());
         }
@@ -340,8 +340,8 @@ describe("BarrenWuffet", () => {
       const subscriptionId = 0;
       await expect(jerkshireFund.connect(fundSubscriberWallet).withdraw(subscriptionId))
         .to.changeEtherBalance(fundSubscriberWallet, validDeposit)
-        .emit(barrenWuffet, "Withdraw")
-        .withArgs(subscriptionId, ETH_ADDRESS, validDeposit);
+        .emit(jerkshireFund, "Withdraw")
+        .withArgs(fundSubscriberWallet.address, subscriptionId, ETH_ADDRESS, validDeposit);
     });
 
     it("should not allow withdrawing if there have not been any deposits from this user", async () => {
@@ -372,8 +372,8 @@ describe("BarrenWuffet", () => {
 
       await expect(jerkshireFund.connect(fundSubscriberWallet).withdraw(0))
         .to.changeEtherBalance(fundSubscriberWallet, validDeposit)
-        .emit(barrenWuffet, "Withdraw")
-        .withArgs(0, ETH_ADDRESS, validDeposit);
+        .emit(jerkshireFund, "Withdraw")
+        .withArgs(fundSubscriberWallet.address, 0, ETH_ADDRESS, validDeposit);
 
       // this is a clean fund
       await expect(crackBlockFund.connect(marlieChungerWallet).closeFund()).to.be.revertedWith(
@@ -535,12 +535,11 @@ describe("BarrenWuffet", () => {
       //@ts-ignore
       async function createTwoRules(_fixtureVars) {
         const {
-          crackBlockHash,
-          roboCop,
-          chungerToContract,
-          fairyToContract,
+          crackBlockFund,
+          marlieChungerWallet,
+          fairyLinkWallet,
           priceTrigger,
-          jerkshireHash,
+          jerkshireFund,
           testToken1,
           swapETHToTST1Action,
         } = _fixtureVars;
@@ -548,24 +547,20 @@ describe("BarrenWuffet", () => {
         // Why fundHash and not ruleHash? dont know. the event is emitted by roboCop but the field is fundHash.
         // the "fundHash" key isnt part of the abi (only the type is), so this could be an ethers issue.
         const ruleHash = await getHashFromEvent(
-          chungerToContract.createRule(
-            jerkshireHash,
-            [makePassingTrigger(priceTrigger.address, testToken1)],
-            [swapETHToTST1Action]
-          ),
+          jerkshireFund
+            .connect(marlieChungerWallet)
+            .createRule([makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action]),
           "Created",
-          roboCop.address,
+          await jerkshireFund.roboCop(),
           "fundHash"
         );
         // create the same rule in a different fund to confirm that we dont mix things up.
         const ruleHash2 = await getHashFromEvent(
-          fairyToContract.createRule(
-            crackBlockHash,
-            [makePassingTrigger(priceTrigger.address, testToken1)],
-            [swapETHToTST1Action]
-          ),
+          crackBlockFund
+            .connect(fairyLinkWallet)
+            .createRule([makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action]),
           "Created",
-          roboCop.address,
+          await crackBlockFund.roboCop(),
           "fundHash"
         );
 
