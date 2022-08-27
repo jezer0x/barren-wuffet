@@ -17,7 +17,7 @@ import {
   PRICE_TRIGGER_TYPE,
   LT,
 } from "./Constants";
-import { getHashFromEvent, tx } from "./helper";
+import { getAddressFromEvent, getHashFromEvent, tx } from "./helper";
 
 export async function setupTestTokens() {
   return {
@@ -325,18 +325,18 @@ export async function setupBarrenWuffet() {
     swapTST1ToETHAction,
   } = await setupSwapActions(priceTrigger, swapUniSingleAction, testToken1);
 
-  const tx = await barrenWuffet
-    .connect(marlieChungerWallet)
-    .createFund("marlieChungerFund", await makeSubConstraints());
-  const rc = await tx.wait();
-  const event = rc.events.find((event: any) => event.event === "Created");
-  const [marlieChungerFundAddr] = event.args;
+  const marlieChungerFundAddr = await getAddressFromEvent(
+    barrenWuffet.connect(marlieChungerWallet).createFund("marlieChungerFund", await makeSubConstraints()),
+    "Created",
+    barrenWuffet.address
+  );
   const marlieChungerFund: Fund = await ethers.getContractAt("Fund", marlieChungerFundAddr);
 
-  const tx2 = await barrenWuffet.connect(fairyLinkWallet).createFund("fairyLinkFund", await makeSubConstraints());
-  const rc2 = await tx.wait();
-  const event2 = rc.events.find((event: any) => event.event === "Created");
-  const [fairyLinkFundAddr] = event.args;
+  const fairyLinkFundAddr = await getAddressFromEvent(
+    barrenWuffet.connect(fairyLinkWallet).createFund("fairyLinkFund", await makeSubConstraints()),
+    "Created",
+    barrenWuffet.address
+  );
   const fairyLinkFund: Fund = await ethers.getContractAt("Fund", fairyLinkFundAddr);
 
   return {

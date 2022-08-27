@@ -32,6 +32,26 @@ export async function testPauseFunctionality(connectedContract: Contract, fnSuit
   }
 }
 
+export async function getAddressFromEvent(
+  fnPromise: Promise<ContractTransaction>,
+  eventName: string,
+  eventAddress: string
+) {
+  const receipt: ContractReceipt = await tx(fnPromise);
+  // Address is definitely part of the event object. Not sure why typescript wont recognize it.
+  // Need the check to disambiguate same-name events from multiple objects
+  //@ts-ignore
+  const event = receipt?.events.find(
+    //@ts-ignore
+    (x: { event: string; address: string }) => x.event === eventName && x.address == eventAddress
+  );
+
+  //@ts-ignore
+  const [addr] = event.args;
+
+  return addr;
+}
+
 export async function getHashFromEvent(
   fnPromise: Promise<ContractTransaction>,
   eventName: string,

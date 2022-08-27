@@ -5,7 +5,7 @@ import { ethers, deployments } from "hardhat";
 import { BigNumber, constants, Contract, FixedNumber, utils } from "ethers";
 import { makeFailingTrigger, makePassingTrigger, setupBarrenWuffet } from "./Fixtures";
 import { BAD_FUND_HASH, BAD_TRADE_HASH, ETH_ADDRESS, FUND_STATUS } from "./Constants";
-import { depositMaxCollateral, getHashFromEvent } from "./helper";
+import { depositMaxCollateral, getHashFromEvent, getAddressFromEvent } from "./helper";
 
 /**
  * These tests are organized by
@@ -138,16 +138,29 @@ describe("BarrenWuffet", () => {
 
   async function setupRaisingFunds() {
     const {
+      ownerWallet,
       priceTrigger,
-      barrenWuffet,
-      roboCop,
-      marlieChungerWallet,
-      fairyLinkWallet,
-      botWallet,
+      swapUniSingleAction,
+      testOracleEth,
+      testOracleTst1,
       testToken1,
+      testToken2,
+      WETH,
+      marlieChungerWallet,
+      marlieChungerFund,
+      fairyLinkWallet,
+      fairyLinkFund,
       fundSubscriberWallet,
       fundSubscriber2Wallet,
+      botWallet,
+      whitelistService,
+      trigWlHash,
+      actWlHash,
+      barrenWuffet,
+      passingETHtoTST1SwapPriceTrigger,
+      passingTST1toETHSwapPriceTrigger,
       swapETHToTST1Action,
+      swapTST1ToETHAction,
     } = await setupBarrenWuffet();
 
     const latestTime = await time.latest();
@@ -163,11 +176,10 @@ describe("BarrenWuffet", () => {
       rewardPercentage: 0,
     };
 
-    const jerkshireHash = await getHashFromEvent(
+    const jerkshireHash = await getAddressFromEvent(
       chungerToContract.createFund("Jerkshire Castaway", jerkshireConstraints),
       "Created",
-      barrenWuffet.address,
-      "fundHash"
+      barrenWuffet.address
     );
 
     // fairy link manages crackblock
@@ -182,11 +194,10 @@ describe("BarrenWuffet", () => {
       rewardPercentage: 10,
     };
 
-    const crackBlockHash = await getHashFromEvent(
+    const crackBlockHash = await getAddressFromEvent(
       fairyToContract.createFund("CrackBlock", crackBlockConstraints),
       "Created",
-      barrenWuffet.address,
-      "fundHash"
+      barrenWuffet.address
     );
 
     return {
