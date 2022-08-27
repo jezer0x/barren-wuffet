@@ -9,8 +9,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const { deployer } = await getNamedAccounts();
 
-  const uniswapAddr = ETH_ADDRESS; // TODO: fill in with proper addr
-  const weth9Addr = ETH_ADDRESS; // TODO: fill in with proper addr
+  // This is being done for tests
+  const uniswapAddr = (await ethers.getContract("TestSwapRouter")).address;
+  const weth9Addr = (await ethers.getContract("WETH")).address;
 
   await deploy("SwapUniSingleAction", {
     from: deployer,
