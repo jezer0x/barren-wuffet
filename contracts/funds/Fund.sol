@@ -20,7 +20,6 @@ contract Fund is IFund {
     string name;
     address manager;
     SubscriptionConstraints constraints;
-    FundStatus status;
     Subscription[] subscriptions;
     address[] assets; // tracking all the assets this fund has atm
     bytes32[] openRules;
@@ -323,6 +322,7 @@ contract Fund is IFund {
 
         subscription.status = SubscriptionStatus.WITHDRAWN;
 
+        FundStatus status = getStatus();
         if (status == FundStatus.CLOSABLE) {
             revert("Call closeFund before withdrawing!");
         } else if (status == FundStatus.RAISING) {
