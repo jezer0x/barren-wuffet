@@ -9,7 +9,6 @@ interface IAction {
     // returns (uint) if successful, else should revert
     function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
         external
-        payable
         returns (uint256[] memory);
 
     // reverts if action fails to validate, otherwise returns true

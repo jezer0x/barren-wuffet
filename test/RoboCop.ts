@@ -31,7 +31,7 @@ import { testPauseAuthorization, testPauseFunctionality } from "./helper";
 
 describe("RoboCop", () => {
   const deployRoboCopFixture = deployments.createFixture(async (env, options) => {
-    await deployments.fixture(["RoboCop"]);
+    await deployments.fixture();
     return await setupRoboCop();
   });
 
@@ -424,6 +424,9 @@ describe("RoboCop", () => {
       triggerType: PRICE_TRIGGER_TYPE,
       callee: priceTrigger.address,
     };
+
+    console.log("here0");
+    console.log(roboCop);
 
     // to get ETH from uniswap, you need to set the output token as WETH.
     const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address], [ETH_ADDRESS]);

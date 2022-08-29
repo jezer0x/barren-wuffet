@@ -9,12 +9,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const { deployer } = await getNamedAccounts();
 
-  await deploy("PriceTrigger", {
-    from: deployer,
-    args: [],
-    log: true,
-  });
-
   await deploy("TestOracleEth", {
     contract: "TestOracle",
     from: deployer,
@@ -44,12 +38,20 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
   });
 
-  await deploy("WETH", {
+  const WETH = await deploy("WETH", {
     contract: "TestToken",
     from: deployer,
     args: [startingSupply, "WETH", "WETH"],
     log: true,
   });
+
+  await deploy("TestSwapRouter", {
+    contract: "TestSwapRouter",
+    from: deployer,
+    args: [WETH.address],
+    log: true,
+  });
 };
+
 export default func;
-func.tags = ["PriceTrigger"];
+func.tags = ["TestStubs"];

@@ -8,16 +8,18 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const { deployer } = await getNamedAccounts();
 
-  const whitelistService = await ethers.getContract("WhitelistService");
-  const trigWlHash = await whitelistService.getWhitelistHash(deployer, "triggers");
-  const actWlHash = await whitelistService.getWhitelistHash(deployer, "actions");
+  // This is being done for tests
+  const uniswapAddr = (await ethers.getContract("TestSwapRouter")).address;
+  const weth9Addr = (await ethers.getContract("WETH")).address;
 
-  await deploy("RoboCop", {
+  await deploy("SwapUniSingleAction", {
     from: deployer,
-    args: [whitelistService.address, trigWlHash, actWlHash],
+    args: [uniswapAddr, weth9Addr],
     log: true,
   });
+
+  // TODO: deploy all the other actions
 };
 export default func;
-func.tags = ["RoboCop"];
-func.dependencies = ["WhitelistService"];
+func.tags = ["Actions"];
+func.dependencies = ["TestStubs"];

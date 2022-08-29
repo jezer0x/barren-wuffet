@@ -5,7 +5,7 @@ import { ethers, deployments } from "hardhat";
 import { BigNumber, constants, Contract, FixedNumber, utils } from "ethers";
 import { makeFailingTrigger, makePassingTrigger, setupBarrenWuffet } from "./Fixtures";
 import { BAD_FUND_HASH, BAD_TRADE_HASH, ETH_ADDRESS, FUND_STATUS } from "./Constants";
-import { depositMaxCollateral, getHashFromEvent } from "./helper";
+import { depositMaxCollateral, getHashFromEvent, getAddressFromEvent } from "./helper";
 
 /**
  * These tests are organized by
@@ -45,7 +45,7 @@ describe("BarrenWuffet", () => {
     });
   });
 
-  describe("Fund Status: Uninitialized", () => {
+  describe("Fund FundStatus: Uninitialized", () => {
     it("yy should allow anyone to create a fund and emit Created event with the fund hash", async () => {
       const { barrenWuffet, marlieChungerWallet } = await deployBarrenWuffetFixture();
       const validConstraints = await makeSubConstraints();
@@ -65,13 +65,13 @@ describe("BarrenWuffet", () => {
        */
     });
 
-    it("should revert if the same user creates 2 funds with the same name", async () => {
+    it("should allow if the same user creates 2 funds with the same name", async () => {
       const { barrenWuffet, marlieChungerWallet } = await deployBarrenWuffetFixture();
       const validConstraints = await makeSubConstraints();
       await barrenWuffet.connect(marlieChungerWallet).createFund("Fund1", validConstraints);
-      await expect(barrenWuffet.connect(marlieChungerWallet).createFund("Fund1", validConstraints)).to.be.revertedWith(
-        "Fund already exists!"
-      );
+      await expect(barrenWuffet.connect(marlieChungerWallet).createFund("Fund1", validConstraints))
+        .to.emit(barrenWuffet, "Created")
+        .withArgs(anyValue);
     });
 
     it("should allow the same user to create 2 funds with different names", async () => {
@@ -83,7 +83,7 @@ describe("BarrenWuffet", () => {
         .withArgs(anyValue);
     });
 
-    it("should not allow 2 different users to create funds with the same name", async () => {
+    it("should allow 2 different users to create funds with the same name", async () => {
       const { barrenWuffet, marlieChungerWallet, fairyLinkWallet } = await deployBarrenWuffetFixture();
       const validConstraints = await makeSubConstraints();
       await barrenWuffet.connect(marlieChungerWallet).createFund("Jerkshire", validConstraints);
@@ -99,18 +99,17 @@ describe("BarrenWuffet", () => {
       // As this functionality is extended, this test needs to expand
       const { barrenWuffet, marlieChungerWallet } = await deployBarrenWuffetFixture();
       const validConstraints = await makeSubConstraints();
-      let fundHash;
+      let fundAddr;
       await expect(barrenWuffet.connect(marlieChungerWallet).createFund("Jerkshire", validConstraints))
         .to.emit(barrenWuffet, "Created")
-        .withArgs((hash: string) => {
-          fundHash = hash;
+        .withArgs((addr: string) => {
+          fundAddr = addr;
           return true;
         });
-      await expect(
-        barrenWuffet.connect(marlieChungerWallet).getInputTokens(BAD_FUND_HASH)
-      ).to.be.revertedWithoutReason();
 
-      expect(await barrenWuffet.connect(marlieChungerWallet).getInputTokens(fundHash))
+      //@ts-ignore
+      const jerkshireFund = await ethers.getContractAt("Fund", fundAddr);
+      expect(await jerkshireFund.connect(marlieChungerWallet).getInputTokens())
         .to.have.length(1)
         .and.contain(ETH_ADDRESS);
     });
@@ -122,15 +121,17 @@ describe("BarrenWuffet", () => {
 
       const { barrenWuffet, marlieChungerWallet } = await deployBarrenWuffetFixture();
       const validConstraints = await makeSubConstraints();
-      let fundHash;
+      let fundAddr;
       await expect(barrenWuffet.connect(marlieChungerWallet).createFund("Jerkshire", validConstraints))
         .to.emit(barrenWuffet, "Created")
-        .withArgs((hash: string) => {
-          fundHash = hash;
+        .withArgs((addr: string) => {
+          fundAddr = addr;
           return true;
         });
 
-      await expect(barrenWuffet.connect(marlieChungerWallet).getOutputTokens(fundHash)).to.be.revertedWith(
+      //@ts-ignore
+      const jerkshireFund = await ethers.getContractAt("Fund", fundAddr);
+      await expect(jerkshireFund.connect(marlieChungerWallet).getOutputTokens()).to.be.revertedWith(
         "Undefined: Funds may have multiple output tokens, determined only after it's closed."
       );
     });
@@ -138,16 +139,29 @@ describe("BarrenWuffet", () => {
 
   async function setupRaisingFunds() {
     const {
+      ownerWallet,
       priceTrigger,
-      barrenWuffet,
-      roboCop,
-      marlieChungerWallet,
-      fairyLinkWallet,
-      botWallet,
+      swapUniSingleAction,
+      testOracleEth,
+      testOracleTst1,
       testToken1,
+      testToken2,
+      WETH,
+      marlieChungerWallet,
+      marlieChungerFund,
+      fairyLinkWallet,
+      fairyLinkFund,
       fundSubscriberWallet,
       fundSubscriber2Wallet,
+      botWallet,
+      whitelistService,
+      trigWlHash,
+      actWlHash,
+      barrenWuffet,
+      passingETHtoTST1SwapPriceTrigger,
+      passingTST1toETHSwapPriceTrigger,
       swapETHToTST1Action,
+      swapTST1ToETHAction,
     } = await setupBarrenWuffet();
 
     const latestTime = await time.latest();
@@ -163,12 +177,13 @@ describe("BarrenWuffet", () => {
       rewardPercentage: 0,
     };
 
-    const jerkshireHash = await getHashFromEvent(
+    const jerkshireAddr = await getAddressFromEvent(
       chungerToContract.createFund("Jerkshire Castaway", jerkshireConstraints),
       "Created",
-      barrenWuffet.address,
-      "fundHash"
+      barrenWuffet.address
     );
+
+    const jerkshireFund = await ethers.getContractAt("Fund", jerkshireAddr);
 
     // fairy link manages crackblock
     const fairyToContract = barrenWuffet.connect(fairyLinkWallet);
@@ -182,25 +197,23 @@ describe("BarrenWuffet", () => {
       rewardPercentage: 10,
     };
 
-    const crackBlockHash = await getHashFromEvent(
+    const crackBlockAddr = await getAddressFromEvent(
       fairyToContract.createFund("CrackBlock", crackBlockConstraints),
       "Created",
-      barrenWuffet.address,
-      "fundHash"
+      barrenWuffet.address
     );
+
+    const crackBlockFund = await ethers.getContractAt("Fund", crackBlockAddr);
 
     return {
       barrenWuffet,
       priceTrigger,
-      roboCop,
       marlieChungerWallet,
       fairyLinkWallet,
-      jerkshireHash,
-      crackBlockHash,
+      jerkshireFund,
+      crackBlockFund,
       jerkshireConstraints,
       crackBlockConstraints,
-      chungerToContract,
-      fairyToContract,
       botWallet,
       testToken1,
       fundSubscriberWallet,
@@ -219,90 +232,82 @@ describe("BarrenWuffet", () => {
     return await setupRaisingFunds();
   });
 
-  describe("Fund Status: Raising", () => {
+  describe("Fund FundStatus: Raising", () => {
     const validDeposit = utils.parseEther("11");
     it("yy Should allow anyone to deposit native token into a raising fund and emit a Deposit event", async () => {
-      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await raisingFundsFixture();
+      const { jerkshireFund, fundSubscriberWallet } = await raisingFundsFixture();
       await expect(
-        barrenWuffet
-          .connect(fundSubscriberWallet)
-          .deposit(jerkshireHash, ETH_ADDRESS, validDeposit, { value: validDeposit })
+        jerkshireFund.connect(fundSubscriberWallet).deposit(ETH_ADDRESS, validDeposit, { value: validDeposit })
       )
-        .to.emit(barrenWuffet, "Deposit")
-        .withArgs(jerkshireHash, 0, ETH_ADDRESS, validDeposit);
+        .to.emit(jerkshireFund, "Deposit")
+        .withArgs(fundSubscriberWallet.address, 0, ETH_ADDRESS, validDeposit);
     });
 
     it("Should allow the fund manager to deposit native token into their own fund", async () => {
-      const { barrenWuffet, jerkshireHash, chungerToContract } = await raisingFundsFixture();
-      await expect(chungerToContract.deposit(jerkshireHash, ETH_ADDRESS, validDeposit, { value: validDeposit }))
-        .to.emit(barrenWuffet, "Deposit")
-        .withArgs(jerkshireHash, 0, ETH_ADDRESS, validDeposit);
+      const { jerkshireFund, marlieChungerWallet } = await raisingFundsFixture();
+      await expect(
+        jerkshireFund.connect(marlieChungerWallet).deposit(ETH_ADDRESS, validDeposit, { value: validDeposit })
+      )
+        .to.emit(jerkshireFund, "Deposit")
+        .withArgs(marlieChungerWallet.address, 0, ETH_ADDRESS, validDeposit);
     });
 
     it("Should not allow anyone to deposit ERC20 tokens into a raising fund. We only allow native right now", async () => {
-      const { barrenWuffet, fundSubscriberWallet, jerkshireHash, testToken1 } = await raisingFundsFixture();
+      const { barrenWuffet, fundSubscriberWallet, jerkshireFund, testToken1 } = await raisingFundsFixture();
       await expect(
-        barrenWuffet.connect(fundSubscriberWallet).deposit(jerkshireHash, testToken1.address, utils.parseEther("11"))
+        jerkshireFund.connect(fundSubscriberWallet).deposit(testToken1.address, utils.parseEther("11"))
       ).to.be.revertedWithoutReason();
     });
 
     it("should return fund status as RAISING once the fund is created, deadline has NOT been hit and amount raised is LESS than min amount", async () => {
-      const { barrenWuffet, chungerToContract, fairyToContract, jerkshireHash, crackBlockHash, botWallet } =
+      const { barrenWuffet, jerkshireFund, crackBlockFund, botWallet, marlieChungerWallet, fairyLinkWallet } =
         await raisingFundsFixture();
 
-      expect(await barrenWuffet.connect(botWallet).getStatus(crackBlockHash)).to.be.equal(FUND_STATUS.RAISING);
+      expect(await crackBlockFund.connect(botWallet).getStatus()).to.be.equal(FUND_STATUS.RAISING);
       // barren is depositing into their own fund
-      await chungerToContract.deposit(jerkshireHash, ETH_ADDRESS, validDeposit, { value: validDeposit });
-      await fairyToContract.deposit(jerkshireHash, ETH_ADDRESS, validDeposit, { value: validDeposit });
+      await jerkshireFund.connect(marlieChungerWallet).deposit(ETH_ADDRESS, validDeposit, { value: validDeposit });
+      await jerkshireFund.connect(fairyLinkWallet).deposit(ETH_ADDRESS, validDeposit, { value: validDeposit });
 
-      expect(await barrenWuffet.connect(botWallet).getStatus(crackBlockHash)).to.be.equal(FUND_STATUS.RAISING);
+      expect(await crackBlockFund.connect(botWallet).getStatus()).to.be.equal(FUND_STATUS.RAISING);
     });
 
     it("Should not allow anyone to deposit less than min subscriber threshold into the fund", async () => {
-      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet } = await raisingFundsFixture();
+      const { barrenWuffet, jerkshireFund, jerkshireConstraints, fundSubscriberWallet } = await raisingFundsFixture();
       const depositAmt = jerkshireConstraints.minCollateralPerSub.sub(utils.parseEther("0.0001"));
       await expect(
-        barrenWuffet
-          .connect(fundSubscriberWallet)
-          .deposit(jerkshireHash, ETH_ADDRESS, depositAmt, { value: depositAmt })
+        jerkshireFund.connect(fundSubscriberWallet).deposit(ETH_ADDRESS, depositAmt, { value: depositAmt })
       ).to.be.revertedWith("Insufficient Collateral for Subscription");
     });
 
     it("Should not allow anyone to deposit more than max subscriber threshold into the fund", async () => {
-      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet } = await raisingFundsFixture();
+      const { barrenWuffet, jerkshireFund, jerkshireConstraints, fundSubscriberWallet } = await raisingFundsFixture();
       const depositAmt = jerkshireConstraints.maxCollateralPerSub.add(utils.parseEther("0.0001"));
       await expect(
-        barrenWuffet
-          .connect(fundSubscriberWallet)
-          .deposit(jerkshireHash, ETH_ADDRESS, depositAmt, { value: depositAmt })
+        jerkshireFund.connect(fundSubscriberWallet).deposit(ETH_ADDRESS, depositAmt, { value: depositAmt })
       ).to.be.revertedWith("Max Collateral for Subscription exceeded");
     });
 
     it("Should allow anyone to deposit more than max subscriber threshold by splitting the deposits into multiple subscriptions", async () => {
-      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet } = await raisingFundsFixture();
+      const { barrenWuffet, jerkshireFund, jerkshireConstraints, fundSubscriberWallet } = await raisingFundsFixture();
       // unclear if this is a feature or a bug, but we want to document the usecase
       // check if multiple smaller deposits, that exceed collateral limit in total, get reverted.
       const depositAmt1 = jerkshireConstraints.maxCollateralPerSub.sub(utils.parseEther("0.1"));
       await expect(
-        barrenWuffet
-          .connect(fundSubscriberWallet)
-          .deposit(jerkshireHash, ETH_ADDRESS, depositAmt1, { value: depositAmt1 })
+        jerkshireFund.connect(fundSubscriberWallet).deposit(ETH_ADDRESS, depositAmt1, { value: depositAmt1 })
       )
-        .to.emit(barrenWuffet, "Deposit")
-        .withArgs(jerkshireHash, 0, ETH_ADDRESS, depositAmt1);
+        .to.emit(jerkshireFund, "Deposit")
+        .withArgs(fundSubscriberWallet.address, 0, ETH_ADDRESS, depositAmt1);
 
       const depositAmt2 = jerkshireConstraints.minCollateralPerSub;
       await expect(
-        barrenWuffet
-          .connect(fundSubscriberWallet)
-          .deposit(jerkshireHash, ETH_ADDRESS, depositAmt2, { value: depositAmt2 })
+        jerkshireFund.connect(fundSubscriberWallet).deposit(ETH_ADDRESS, depositAmt2, { value: depositAmt2 })
       )
-        .to.emit(barrenWuffet, "Deposit")
-        .withArgs(jerkshireHash, 1, ETH_ADDRESS, depositAmt2);
+        .to.emit(jerkshireFund, "Deposit")
+        .withArgs(fundSubscriberWallet.address, 1, ETH_ADDRESS, depositAmt2);
     });
 
     it("Should revert if deposit is attempted on a fund where collateral limit is reached", async () => {
-      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await raisingFundsFixture();
+      const { barrenWuffet, jerkshireFund, fundSubscriberWallet } = await raisingFundsFixture();
       // true should succeed, false should error
       const deposits: [BigNumber, boolean, string | number][] = [
         [utils.parseEther("100"), true, 0],
@@ -317,12 +322,12 @@ describe("BarrenWuffet", () => {
 
       for (const deposit of deposits) {
         const [amt, shouldSucceed, idOrError] = deposit;
-        const tx = barrenWuffet.connect(fundSubscriberWallet).deposit(jerkshireHash, ETH_ADDRESS, amt, { value: amt });
+        const tx = jerkshireFund.connect(fundSubscriberWallet).deposit(ETH_ADDRESS, amt, { value: amt });
         if (shouldSucceed) {
           await expect(tx)
             .to.changeEtherBalance(fundSubscriberWallet, amt.mul(-1))
-            .emit(barrenWuffet, "Deposit")
-            .withArgs(jerkshireHash, idOrError, ETH_ADDRESS, amt);
+            .emit(jerkshireFund, "Deposit")
+            .withArgs(fundSubscriberWallet.address, idOrError, ETH_ADDRESS, amt);
         } else {
           await expect(tx).to.be.revertedWith(idOrError.toString());
         }
@@ -330,23 +335,19 @@ describe("BarrenWuffet", () => {
     });
 
     it("should allow withdrawing from a fund that's still raising", async () => {
-      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await raisingFundsFixture();
-      await barrenWuffet
-        .connect(fundSubscriberWallet)
-        .deposit(jerkshireHash, ETH_ADDRESS, validDeposit, { value: validDeposit });
+      const { barrenWuffet, jerkshireFund, fundSubscriberWallet } = await raisingFundsFixture();
+      await jerkshireFund.connect(fundSubscriberWallet).deposit(ETH_ADDRESS, validDeposit, { value: validDeposit });
       const subscriptionId = 0;
-      await expect(barrenWuffet.connect(fundSubscriberWallet).withdraw(jerkshireHash, subscriptionId))
+      await expect(jerkshireFund.connect(fundSubscriberWallet).withdraw(subscriptionId))
         .to.changeEtherBalance(fundSubscriberWallet, validDeposit)
-        .emit(barrenWuffet, "Withdraw")
-        .withArgs(jerkshireHash, subscriptionId, ETH_ADDRESS, validDeposit);
+        .emit(jerkshireFund, "Withdraw")
+        .withArgs(fundSubscriberWallet.address, subscriptionId, ETH_ADDRESS, validDeposit);
     });
 
     it("should not allow withdrawing if there have not been any deposits from this user", async () => {
-      const { barrenWuffet, jerkshireHash, fundSubscriberWallet, fundSubscriber2Wallet } = await raisingFundsFixture();
-      await barrenWuffet
-        .connect(fundSubscriberWallet)
-        .deposit(jerkshireHash, ETH_ADDRESS, validDeposit, { value: validDeposit });
-      await expect(barrenWuffet.connect(fundSubscriber2Wallet).withdraw(jerkshireHash, 0)).to.be.rejectedWith(
+      const { barrenWuffet, jerkshireFund, fundSubscriberWallet, fundSubscriber2Wallet } = await raisingFundsFixture();
+      await jerkshireFund.connect(fundSubscriberWallet).deposit(ETH_ADDRESS, validDeposit, { value: validDeposit });
+      await expect(jerkshireFund.connect(fundSubscriber2Wallet).withdraw(0)).to.be.rejectedWith(
         "You're not the subscriber!"
       );
     });
@@ -355,80 +356,67 @@ describe("BarrenWuffet", () => {
       const {
         barrenWuffet,
         marlieChungerWallet,
-        jerkshireHash,
-        crackBlockHash,
-        chungerToContract,
-        fairyToContract,
+        jerkshireFund,
+        crackBlockFund,
+        fairyLinkWallet,
         fundSubscriberWallet,
       } = await raisingFundsFixture();
       // add some funds so we can confirm that even a fund with funds can be closed
-      await barrenWuffet
-        .connect(fundSubscriberWallet)
-        .deposit(jerkshireHash, ETH_ADDRESS, validDeposit, { value: validDeposit });
-      await expect(fairyToContract.closeFund(jerkshireHash)).to.be.revertedWith(
+      await jerkshireFund.connect(fundSubscriberWallet).deposit(ETH_ADDRESS, validDeposit, { value: validDeposit });
+      await expect(jerkshireFund.connect(fairyLinkWallet).closeFund()).to.be.revertedWith(
         "Only the fund manager can close a fund prematurely"
       );
-      await expect(chungerToContract.closeFund(jerkshireHash))
+      await expect(jerkshireFund.connect(marlieChungerWallet).closeFund())
         .to.changeEtherBalances([marlieChungerWallet, barrenWuffet.address], [0, 0])
-        .emit(barrenWuffet, "Closed")
-        .withArgs(jerkshireHash);
+        .emit(jerkshireFund, "Closed");
 
-      await expect(barrenWuffet.connect(fundSubscriberWallet).withdraw(jerkshireHash, 0))
+      await expect(jerkshireFund.connect(fundSubscriberWallet).withdraw(0))
         .to.changeEtherBalance(fundSubscriberWallet, validDeposit)
-        .emit(barrenWuffet, "Withdraw")
-        .withArgs(jerkshireHash, 0, ETH_ADDRESS, validDeposit);
+        .emit(jerkshireFund, "Withdraw")
+        .withArgs(fundSubscriberWallet.address, 0, ETH_ADDRESS, validDeposit);
 
       // this is a clean fund
-      await expect(chungerToContract.closeFund(crackBlockHash)).to.be.revertedWith(
+      await expect(crackBlockFund.connect(marlieChungerWallet).closeFund()).to.be.revertedWith(
         "Only the fund manager can close a fund prematurely"
       );
-      await expect(fairyToContract.closeFund(crackBlockHash)).to.emit(barrenWuffet, "Closed").withArgs(crackBlockHash);
+      await expect(crackBlockFund.connect(fairyLinkWallet).closeFund()).to.emit(crackBlockFund, "Closed");
     });
 
     it("should not allow creating a rule for a raising fund", async () => {
-      const { jerkshireHash, chungerToContract, priceTrigger, testToken1, swapETHToTST1Action } =
+      const { jerkshireFund, marlieChungerWallet, priceTrigger, testToken1, swapETHToTST1Action } =
         await raisingFundsFixture();
 
       await expect(
-        chungerToContract.createRule(
-          jerkshireHash,
-          [makePassingTrigger(priceTrigger.address, testToken1)],
-          [swapETHToTST1Action]
-        )
+        jerkshireFund.createRule([makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action])
       ).be.revertedWithoutReason();
     });
     it("should revert if rewards withdrawal is attempted on a raising fund", async () => {
-      const { barrenWuffet, jerkshireHash, chungerToContract, fundSubscriberWallet } = await raisingFundsFixture();
-      await barrenWuffet
-        .connect(fundSubscriberWallet)
-        .deposit(jerkshireHash, ETH_ADDRESS, validDeposit, { value: validDeposit });
-      await expect(chungerToContract.withdrawReward(jerkshireHash)).to.be.revertedWith("Fund not closed");
+      const { barrenWuffet, jerkshireFund, marlieChungerWallet, fundSubscriberWallet } = await raisingFundsFixture();
+      await jerkshireFund.connect(fundSubscriberWallet).deposit(ETH_ADDRESS, validDeposit, { value: validDeposit });
+      await expect(jerkshireFund.connect(marlieChungerWallet).withdrawReward()).to.be.revertedWith("Fund not closed");
     });
 
     it("should return fund status as DEPLOYED once the fund is created, deadline has been hit (min collateral may or maynot be met)", async () => {
       // Min collateral is not playing the role it is supposed to. This behaviour will likely be changed.
-      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet } = await raisingFundsFixture();
-      await barrenWuffet
-        .connect(fundSubscriberWallet)
-        .deposit(jerkshireHash, ETH_ADDRESS, validDeposit, { value: validDeposit });
+      const { barrenWuffet, jerkshireFund, jerkshireConstraints, fundSubscriberWallet } = await raisingFundsFixture();
+      await jerkshireFund.connect(fundSubscriberWallet).deposit(ETH_ADDRESS, validDeposit, { value: validDeposit });
 
       await time.increaseTo(jerkshireConstraints.deadline);
 
-      expect(await barrenWuffet.connect(fundSubscriberWallet).getStatus(jerkshireHash)).to.equal(FUND_STATUS.DEPLOYED);
+      expect(await jerkshireFund.connect(fundSubscriberWallet).getStatus()).to.equal(FUND_STATUS.DEPLOYED);
     });
 
     it("should return fund status as DEPLOYED if max collateral has been raised (deadline may or may not be met)", async () => {
-      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet, fundSubscriber2Wallet } =
+      const { barrenWuffet, jerkshireFund, jerkshireConstraints, fundSubscriberWallet, fundSubscriber2Wallet } =
         await raisingFundsFixture();
 
       await depositMaxCollateral(
-        barrenWuffet.connect(fundSubscriberWallet),
-        barrenWuffet.connect(fundSubscriber2Wallet),
-        jerkshireHash,
+        jerkshireFund.connect(fundSubscriberWallet),
+        jerkshireFund.connect(fundSubscriber2Wallet),
         jerkshireConstraints
       );
 
-      expect(await barrenWuffet.connect(fundSubscriberWallet).getStatus(jerkshireHash)).to.equal(FUND_STATUS.DEPLOYED);
+      expect(await jerkshireFund.connect(fundSubscriberWallet).getStatus()).to.equal(FUND_STATUS.DEPLOYED);
     });
   });
 
@@ -451,7 +439,7 @@ describe("BarrenWuffet", () => {
 
   async function setupDeployedFunds() {
     const vars = await setupRaisingFunds();
-    const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet, fundSubscriber2Wallet } = vars;
+    const { barrenWuffet, jerkshireFund, jerkshireConstraints, fundSubscriberWallet, fundSubscriber2Wallet } = vars;
 
     const deposits = {
       jerkshire: {
@@ -461,22 +449,18 @@ describe("BarrenWuffet", () => {
     };
 
     // both subscribers have deposits
-    await barrenWuffet
-      .connect(fundSubscriberWallet)
-      .deposit(jerkshireHash, ETH_ADDRESS, deposits.jerkshire.subscription1, {
-        value: deposits.jerkshire.subscription1,
-      });
-    await barrenWuffet
-      .connect(fundSubscriber2Wallet)
-      .deposit(jerkshireHash, ETH_ADDRESS, deposits.jerkshire.subscription2, {
-        value: deposits.jerkshire.subscription2,
-      });
+    await jerkshireFund.connect(fundSubscriberWallet).deposit(ETH_ADDRESS, deposits.jerkshire.subscription1, {
+      value: deposits.jerkshire.subscription1,
+    });
+    await jerkshireFund.connect(fundSubscriber2Wallet).deposit(ETH_ADDRESS, deposits.jerkshire.subscription2, {
+      value: deposits.jerkshire.subscription2,
+    });
 
     // meet deadine also to be sure that the status is deployed
     await time.increaseTo(jerkshireConstraints.deadline);
 
     // confirm that the status is deployed
-    expect(await barrenWuffet.connect(fundSubscriberWallet).getStatus(jerkshireHash)).to.equal(FUND_STATUS.DEPLOYED);
+    expect(await jerkshireFund.connect(fundSubscriberWallet).getStatus()).to.equal(FUND_STATUS.DEPLOYED);
 
     // we arent deploying crackblock yet, we can deploy it with the appropriate state as needed.
 
@@ -487,17 +471,17 @@ describe("BarrenWuffet", () => {
   }
 
   const deployedFundsFixture = deployments.createFixture(async (vars, options) => {
-    await deployments.fixture(["BarrenWuffet"]);
+    await deployments.fixture();
     return await setupDeployedFunds();
   });
 
-  describe("Fund Status: Deployed", () => {
+  describe("Fund FundStatus: Deployed", () => {
     function getTotalDeposits(depositObj: { [key: string]: { [key: string]: BigNumber } }, fund: string) {
       return Object.values(depositObj[fund]).reduce((sum, current: BigNumber) => sum.add(current), BigNumber.from(0));
     }
 
     it("should revert if deposit is attempted on a deployed fund", async () => {
-      const { barrenWuffet, jerkshireHash, jerkshireConstraints, fundSubscriberWallet, deposits } =
+      const { barrenWuffet, jerkshireFund, jerkshireConstraints, fundSubscriberWallet, deposits } =
         await deployedFundsFixture();
 
       const depositAmt = jerkshireConstraints.minCollateralPerSub;
@@ -508,87 +492,84 @@ describe("BarrenWuffet", () => {
       );
 
       await expect(
-        barrenWuffet
-          .connect(fundSubscriberWallet)
-          .deposit(jerkshireHash, ETH_ADDRESS, depositAmt, { value: depositAmt })
+        jerkshireFund.connect(fundSubscriberWallet).deposit(ETH_ADDRESS, depositAmt, { value: depositAmt })
       ).to.be.revertedWith("Fund is not raising");
     });
 
     it("should revert if withdrawal is attempted on a deployed fund", async () => {
-      const { barrenWuffet, jerkshireHash, fundSubscriberWallet } = await deployedFundsFixture();
+      const { barrenWuffet, jerkshireFund, fundSubscriberWallet } = await deployedFundsFixture();
 
-      await expect(barrenWuffet.connect(fundSubscriberWallet).withdraw(jerkshireHash, 0)).to.be.revertedWith(
+      await expect(jerkshireFund.connect(fundSubscriberWallet).withdraw(0)).to.be.revertedWith(
         "Can't get money back from deployed fund!"
       );
     });
 
     it("should revert if rewards withdrawal is attempted on a deployed fund", async () => {
-      const { chungerToContract, jerkshireHash } = await deployedFundsFixture();
+      const { marlieChungerWallet, jerkshireFund } = await deployedFundsFixture();
 
-      await expect(chungerToContract.withdrawReward(jerkshireHash)).to.be.revertedWith("Fund not closed");
+      await expect(jerkshireFund.connect(marlieChungerWallet).withdrawReward()).to.be.revertedWith("Fund not closed");
     });
 
-    describe("xx Manage rules", () => {
+    describe("Manage rules", () => {
       it("Should emit RoboCop event when fund manager creates one or more rules", async () => {
-        const { roboCop, chungerToContract, priceTrigger, testToken1, jerkshireHash, swapETHToTST1Action } =
+        const { marlieChungerWallet, priceTrigger, testToken1, jerkshireFund, swapETHToTST1Action } =
           await deployedFundsFixture();
 
+        const roboCopAddr = await jerkshireFund.roboCop();
+        const roboCopInst = await ethers.getContractAt("RoboCop", roboCopAddr);
+
         await expect(
-          chungerToContract.createRule(
-            jerkshireHash,
-            [makePassingTrigger(priceTrigger.address, testToken1)],
-            [swapETHToTST1Action]
-          )
+          jerkshireFund
+            .connect(marlieChungerWallet)
+            .createRule([makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action])
         )
-          .to.emit(roboCop, "Created")
+          .to.emit(roboCopInst, "Created")
           .withArgs(anyValue);
 
         await expect(
-          chungerToContract.createRule(
-            jerkshireHash,
-            [makeFailingTrigger(priceTrigger.address, testToken1)],
-            [swapETHToTST1Action]
-          )
+          jerkshireFund
+            .connect(marlieChungerWallet)
+            .createRule([makeFailingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action])
         )
-          .to.emit(roboCop, "Created")
+          .to.emit(roboCopInst, "Created")
           .withArgs(anyValue);
       });
 
       //@ts-ignore
       async function createTwoRules(_fixtureVars) {
         const {
-          crackBlockHash,
-          roboCop,
-          chungerToContract,
-          fairyToContract,
+          crackBlockFund,
+          marlieChungerWallet,
+          fairyLinkWallet,
           priceTrigger,
-          jerkshireHash,
+          jerkshireFund,
           testToken1,
           swapETHToTST1Action,
         } = _fixtureVars;
 
+        const roboCopAddr1 = await jerkshireFund.roboCop();
+        const roboCopInst1 = await ethers.getContractAt("RoboCop", roboCopAddr1);
         // Why fundHash and not ruleHash? dont know. the event is emitted by roboCop but the field is fundHash.
         // the "fundHash" key isnt part of the abi (only the type is), so this could be an ethers issue.
         const ruleHash = await getHashFromEvent(
-          chungerToContract.createRule(
-            jerkshireHash,
-            [makePassingTrigger(priceTrigger.address, testToken1)],
-            [swapETHToTST1Action]
-          ),
+          jerkshireFund
+            .connect(marlieChungerWallet)
+            .createRule([makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action]),
           "Created",
-          roboCop.address,
-          "fundHash"
+          roboCopInst1,
+          "ruleHash"
         );
+
+        const roboCopAddr2 = await jerkshireFund.roboCop();
+        const roboCopInst2 = await ethers.getContractAt("RoboCop", roboCopAddr2);
         // create the same rule in a different fund to confirm that we dont mix things up.
         const ruleHash2 = await getHashFromEvent(
-          fairyToContract.createRule(
-            crackBlockHash,
-            [makePassingTrigger(priceTrigger.address, testToken1)],
-            [swapETHToTST1Action]
-          ),
+          crackBlockFund
+            .connect(fairyLinkWallet)
+            .createRule([makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action]),
           "Created",
-          roboCop.address,
-          "fundHash"
+          roboCopInst2,
+          "ruleHash"
         );
 
         expect(ruleHash).to.not.equal(ruleHash2);
@@ -600,85 +581,82 @@ describe("BarrenWuffet", () => {
       }
       it("Should emit RoboCop events when fund manager creates / activates / deactivates / cancels a rule", async () => {
         const fixtureVars = await deployedFundsFixture();
-        const {
-          barrenWuffet,
-          marlieChungerWallet,
-          crackBlockHash,
-          roboCop,
-          chungerToContract,
-          fairyToContract,
-          priceTrigger,
-          jerkshireHash,
-          swapETHToTST1Action,
-        } = fixtureVars;
+        const { barrenWuffet, marlieChungerWallet, jerkshireFund } = fixtureVars;
 
         const { ruleIndex, ruleHash } = await createTwoRules(fixtureVars);
-
-        await expect(chungerToContract.activateRule(jerkshireHash, ruleIndex))
-          .to.changeEtherBalances([barrenWuffet, roboCop], [0, 0])
-          .emit(roboCop, "Activated")
+        const jerkshireRcAddr = await jerkshireFund.roboCop();
+        const jerkshireRcInst = await ethers.getContractAt("RoboCop", jerkshireRcAddr);
+        await expect(jerkshireFund.connect(marlieChungerWallet).activateRule(ruleIndex))
+          .to.changeEtherBalances([jerkshireFund, jerkshireRcAddr], [0, 0])
+          .emit(jerkshireRcInst, "Activated")
           .withArgs(ruleHash);
 
-        await expect(chungerToContract.deactivateRule(jerkshireHash, ruleIndex))
-          .to.changeEtherBalances([barrenWuffet, roboCop], [0, 0])
-          .emit(roboCop, "Deactivated")
+        await expect(jerkshireFund.connect(marlieChungerWallet).deactivateRule(ruleIndex))
+          .to.changeEtherBalances([barrenWuffet, jerkshireRcAddr], [0, 0])
+          .emit(jerkshireRcInst, "Deactivated")
           .withArgs(ruleHash);
 
-        await expect(chungerToContract.activateRule(jerkshireHash, ruleIndex))
-          .to.changeEtherBalances([barrenWuffet, roboCop], [0, 0])
-          .emit(roboCop, "Activated")
+        await expect(jerkshireFund.connect(marlieChungerWallet).activateRule(ruleIndex))
+          .to.changeEtherBalances([barrenWuffet, jerkshireRcAddr], [0, 0])
+          .emit(jerkshireRcInst, "Activated")
           .withArgs(ruleHash);
 
-        await expect(chungerToContract.cancelRule(jerkshireHash, ruleIndex))
-          .to.changeEtherBalances([barrenWuffet, roboCop], [0, 0])
-          .emit(roboCop, "Deactivated")
+        await expect(jerkshireFund.connect(marlieChungerWallet).cancelRule(ruleIndex))
+          .to.changeEtherBalances([barrenWuffet, jerkshireRcAddr], [0, 0])
+          .emit(jerkshireRcInst, "Deactivated")
           .withArgs(ruleHash);
       });
 
       it("Should emit RoboCop events and adjust funds from jerkshire when fund manager adds / removes / cancels native collateral for a rule", async () => {
         const fixtureVars = await deployedFundsFixture();
-        const { barrenWuffet, marlieChungerWallet, roboCop, chungerToContract, jerkshireHash } = fixtureVars;
+        const { barrenWuffet, marlieChungerWallet, jerkshireFund } = fixtureVars;
 
         const { ruleIndex, ruleHash } = await createTwoRules(fixtureVars);
 
         const addAmt = [utils.parseEther("1")];
 
-        await expect(chungerToContract.addRuleCollateral(jerkshireHash, ruleIndex, [ETH_ADDRESS], addAmt))
-          .to.changeEtherBalances([barrenWuffet, roboCop, marlieChungerWallet], [addAmt[0].mul(-1), addAmt[0], 0])
-          .emit(roboCop, "CollateralAdded")
+        const roboCopAddr = await jerkshireFund.roboCop();
+        const roboCopInst = await ethers.getContractAt("RoboCop", roboCopAddr);
+
+        await expect(jerkshireFund.connect(marlieChungerWallet).addRuleCollateral(ruleIndex, [ETH_ADDRESS], addAmt))
+          .to.changeEtherBalances([jerkshireFund, roboCopAddr, marlieChungerWallet], [addAmt[0].mul(-1), addAmt[0], 0])
+          .emit(roboCopInst, "CollateralAdded")
           .withArgs(ruleHash, addAmt);
 
         const redAmt = [utils.parseEther("0.6")];
-        await expect(chungerToContract.reduceRuleCollateral(jerkshireHash, ruleIndex, redAmt))
-          .to.changeEtherBalances([barrenWuffet, roboCop, marlieChungerWallet], [redAmt[0], redAmt[0].mul(-1), 0])
-          .emit(roboCop, "CollateralReduced")
+        await expect(jerkshireFund.connect(marlieChungerWallet).reduceRuleCollateral(ruleIndex, redAmt))
+          .to.changeEtherBalances([jerkshireFund, roboCopAddr, marlieChungerWallet], [redAmt[0], redAmt[0].mul(-1), 0])
+          .emit(roboCopInst, "CollateralReduced")
           .withArgs(ruleHash, redAmt);
       });
       [0, 1].forEach((isActive) => {
         const activation = isActive ? "active" : "inactive";
         it(`Should return all collateral added when ${activation} rule is cancelled and make it inactive`, async () => {
           const fixtureVars = await deployedFundsFixture();
-          const { barrenWuffet, marlieChungerWallet, roboCop, chungerToContract, jerkshireHash } = fixtureVars;
+          const { barrenWuffet, marlieChungerWallet, jerkshireFund } = fixtureVars;
 
           const { ruleIndex, ruleHash } = await createTwoRules(fixtureVars);
 
           const collateral = [utils.parseEther("0.6")];
-          await chungerToContract.addRuleCollateral(jerkshireHash, ruleIndex, [ETH_ADDRESS], collateral);
+          await jerkshireFund.connect(marlieChungerWallet).addRuleCollateral(ruleIndex, [ETH_ADDRESS], collateral);
 
           if (isActive) {
-            await chungerToContract.activateRule(jerkshireHash, ruleIndex);
+            await jerkshireFund.connect(marlieChungerWallet).activateRule(ruleIndex);
           }
 
-          const e = expect(chungerToContract.cancelRule(jerkshireHash, ruleIndex))
+          const roboCopAddr = await jerkshireFund.roboCop();
+          const roboCopInst = await ethers.getContractAt("RoboCop", roboCopAddr);
+
+          const e = expect(jerkshireFund.connect(marlieChungerWallet).cancelRule(ruleIndex))
             .to.changeEtherBalances(
-              [barrenWuffet, roboCop, marlieChungerWallet],
+              [jerkshireFund, roboCopAddr, marlieChungerWallet],
               [collateral[0], collateral[0].mul(-1), 0]
             )
-            .emit(roboCop, "CollateralReduced")
+            .emit(roboCopInst, "CollateralReduced")
             .withArgs(ruleHash, collateral);
 
           if (isActive) {
-            await e.emit(roboCop, "Deactivated").withArgs(ruleHash);
+            await e.emit(roboCopInst, "Deactivated").withArgs(ruleHash);
           } else {
             await e;
           }
@@ -688,35 +666,30 @@ describe("BarrenWuffet", () => {
       it("Should not allow anyone other than the fund manager to manage rules", async () => {
         const {
           barrenWuffet,
-          roboCop,
-          chungerToContract,
-          fairyToContract,
           priceTrigger,
           testToken1,
-          jerkshireHash,
+          jerkshireFund,
           swapETHToTST1Action,
+          marlieChungerWallet,
+          fairyLinkWallet,
         } = await deployedFundsFixture();
 
         await expect(
-          fairyToContract.createRule(
-            jerkshireHash,
-            [makePassingTrigger(priceTrigger.address, testToken1)],
-            [swapETHToTST1Action]
-          )
+          jerkshireFund
+            .connect(fairyLinkWallet)
+            .createRule([makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action])
         ).to.be.revertedWithoutReason();
 
-        await chungerToContract.createRule(
-          jerkshireHash,
-          [makePassingTrigger(priceTrigger.address, testToken1)],
-          [swapETHToTST1Action]
-        );
+        await jerkshireFund
+          .connect(marlieChungerWallet)
+          .createRule([makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action]);
 
         const ruleFns = [
-          () => fairyToContract.activateRule(jerkshireHash, 0),
-          () => fairyToContract.deactivateRule(jerkshireHash, 0),
-          () => fairyToContract.addRuleCollateral(jerkshireHash, 0, [ETH_ADDRESS], [utils.parseEther("1")]),
-          () => fairyToContract.reduceRuleCollateral(jerkshireHash, 0, [utils.parseEther("0.6")]),
-          () => fairyToContract.cancelRule(jerkshireHash, 0),
+          () => jerkshireFund.connect(fairyLinkWallet).activateRule(0),
+          () => jerkshireFund.connect(fairyLinkWallet).deactivateRule(0),
+          () => jerkshireFund.connect(fairyLinkWallet).addRuleCollateral(0, [ETH_ADDRESS], [utils.parseEther("1")]),
+          () => jerkshireFund.connect(fairyLinkWallet).reduceRuleCollateral(0, [utils.parseEther("0.6")]),
+          () => jerkshireFund.connect(fairyLinkWallet).cancelRule(0),
         ];
 
         for (const fn of ruleFns) {
@@ -724,9 +697,7 @@ describe("BarrenWuffet", () => {
         }
       });
 
-      it.skip("should revert if an unknown rule is accessed", async () => {
-        const { chungerToContract, jerkshireHash } = await deployedFundsFixture();
-      });
+      it.skip("should revert if an unknown rule is accessed", async () => {});
     });
 
     describe.skip("Take Action", () => {
@@ -759,7 +730,7 @@ describe("BarrenWuffet", () => {
     });
   });
 
-  describe.skip("Fund Status: Closed", () => {
+  describe.skip("Fund FundStatus: Closed", () => {
     it("should return fund status as CLOSED once the fund has been closed", async () => {});
 
     it("Should revert if deposit is attempted on a closable / closed fund", async () => {});

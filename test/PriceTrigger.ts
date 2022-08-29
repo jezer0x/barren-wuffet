@@ -13,12 +13,12 @@ describe("PriceTrigger", () => {
   // and reset Hardhat Network to that snapshopt in every test.
 
   const deployPriceTriggerFixture = deployments.createFixture(async (env, options) => {
-    await deployments.fixture(["PriceTrigger"]);
+    await deployments.fixture(["Triggers"]);
     return await setupPriceTrigger();
   });
 
   const deployEthtoTst1TriggerFixture = deployments.createFixture(async (env, options) => {
-    await deployments.fixture(["PriceTrigger"]);
+    await deployments.fixture(["Triggers"]);
     return await setupEthToTst1PriceTrigger();
   });
 

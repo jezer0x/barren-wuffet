@@ -4,7 +4,7 @@ pragma solidity ^0.8.9;
 import "../IAction.sol";
 import "../../utils/Constants.sol";
 import "./IRegistry.sol";
-import "./AddressProvider.sol";
+import "./IAddressProvider.sol";
 import "./PlainPool.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -24,8 +24,10 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
     Action: 
         action.data must be in the form of (address)
  */
-contract AddLiquidityCurveAction is AddressProvider, PlainPool, IAction {
+contract AddLiquidityCurveAction is PlainPool, IAction {
     using SafeERC20 for IERC20;
+
+    IAddressProvider public immutable address_provider;
 
     constructor(address _address_provider) {
         // should be 0x0000000022D53366457F9d5E68Ec105046FC4383, per https://curve.readthedocs.io/registry-address-provider.html
@@ -34,7 +36,7 @@ contract AddLiquidityCurveAction is AddressProvider, PlainPool, IAction {
 
     function validate(Action calldata action) external view returns (bool) {
         address poolAddr = abi.decode(action.data, (address));
-        IRegistry registry = IRegistry(_getRegistry());
+        IRegistry registry = IRegistry(address_provider.get_address(0));
 
         require(action.inputTokens.length == 1);
         require(action.outputTokens.length > 1);
@@ -50,7 +52,6 @@ contract AddLiquidityCurveAction is AddressProvider, PlainPool, IAction {
 
     function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
         external
-        payable
         returns (uint256[] memory)
     {
         uint256[] memory outputs = new uint256[](action.outputTokens.length);
@@ -58,16 +59,9 @@ contract AddLiquidityCurveAction is AddressProvider, PlainPool, IAction {
         IPlainPool pool = IPlainPool(poolAddr);
         uint256[] memory _min_amounts = new uint256[](action.outputTokens.length); // TODO
 
-        IERC20(action.inputTokens[0]).safeTransferFrom(msg.sender, address(this), runtimeParams.collateralAmounts[0]);
         IERC20(action.inputTokens[0]).safeApprove(address(pool), runtimeParams.collateralAmounts[0]);
-
         outputs = pool.remove_liquidity(runtimeParams.collateralAmounts[0], _min_amounts);
-
         IERC20(action.inputTokens[0]).safeApprove(address(pool), 0);
-
-        for (uint256 i = 0; i < action.outputTokens.length; i++) {
-            IERC20(action.outputTokens[i]).safeTransferFrom(address(this), msg.sender, outputs[i]);
-        }
 
         return outputs;
     }
