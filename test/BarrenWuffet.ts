@@ -510,17 +510,20 @@ describe("BarrenWuffet", () => {
       await expect(jerkshireFund.connect(marlieChungerWallet).withdrawReward()).to.be.revertedWith("Fund not closed");
     });
 
-    describe("xx Manage rules", () => {
+    describe("Manage rules", () => {
       it("Should emit RoboCop event when fund manager creates one or more rules", async () => {
         const { marlieChungerWallet, priceTrigger, testToken1, jerkshireFund, swapETHToTST1Action } =
           await deployedFundsFixture();
+
+        const roboCopAddr = await jerkshireFund.roboCop();
+        const roboCopInst = await ethers.getContractAt("RoboCop", roboCopAddr);
 
         await expect(
           jerkshireFund
             .connect(marlieChungerWallet)
             .createRule([makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action])
         )
-          .to.emit(await jerkshireFund.roboCop(), "Created")
+          .to.emit(roboCopInst, "Created")
           .withArgs(anyValue);
 
         await expect(
@@ -528,7 +531,7 @@ describe("BarrenWuffet", () => {
             .connect(marlieChungerWallet)
             .createRule([makeFailingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action])
         )
-          .to.emit(await jerkshireFund.roboCop(), "Created")
+          .to.emit(roboCopInst, "Created")
           .withArgs(anyValue);
       });
 
@@ -581,25 +584,26 @@ describe("BarrenWuffet", () => {
         const { barrenWuffet, marlieChungerWallet, jerkshireFund } = fixtureVars;
 
         const { ruleIndex, ruleHash } = await createTwoRules(fixtureVars);
-        const jerkshireRc = await jerkshireFund.roboCop();
+        const jerkshireRcAddr = await jerkshireFund.roboCop();
+        const jerkshireRcInst = await ethers.getContractAt("RoboCop", jerkshireRcAddr);
         await expect(jerkshireFund.connect(marlieChungerWallet).activateRule(ruleIndex))
-          .to.changeEtherBalances([jerkshireFund, jerkshireRc], [0, 0])
-          .emit(jerkshireRc, "Activated")
+          .to.changeEtherBalances([jerkshireFund, jerkshireRcAddr], [0, 0])
+          .emit(jerkshireRcInst, "Activated")
           .withArgs(ruleHash);
 
         await expect(jerkshireFund.connect(marlieChungerWallet).deactivateRule(ruleIndex))
-          .to.changeEtherBalances([barrenWuffet, jerkshireRc], [0, 0])
-          .emit(jerkshireRc, "Deactivated")
+          .to.changeEtherBalances([barrenWuffet, jerkshireRcAddr], [0, 0])
+          .emit(jerkshireRcInst, "Deactivated")
           .withArgs(ruleHash);
 
         await expect(jerkshireFund.connect(marlieChungerWallet).activateRule(ruleIndex))
-          .to.changeEtherBalances([barrenWuffet, jerkshireRc], [0, 0])
-          .emit(jerkshireRc, "Activated")
+          .to.changeEtherBalances([barrenWuffet, jerkshireRcAddr], [0, 0])
+          .emit(jerkshireRcInst, "Activated")
           .withArgs(ruleHash);
 
         await expect(jerkshireFund.connect(marlieChungerWallet).cancelRule(ruleIndex))
-          .to.changeEtherBalances([barrenWuffet, jerkshireRc], [0, 0])
-          .emit(jerkshireRc, "Deactivated")
+          .to.changeEtherBalances([barrenWuffet, jerkshireRcAddr], [0, 0])
+          .emit(jerkshireRcInst, "Deactivated")
           .withArgs(ruleHash);
       });
 
@@ -611,17 +615,18 @@ describe("BarrenWuffet", () => {
 
         const addAmt = [utils.parseEther("1")];
 
-        const roboCop = await jerkshireFund.roboCop();
+        const roboCopAddr = await jerkshireFund.roboCop();
+        const roboCopInst = await ethers.getContractAt("RoboCop", roboCopAddr);
 
         await expect(jerkshireFund.connect(marlieChungerWallet).addRuleCollateral(ruleIndex, [ETH_ADDRESS], addAmt))
-          .to.changeEtherBalances([barrenWuffet, roboCop, marlieChungerWallet], [addAmt[0].mul(-1), addAmt[0], 0])
-          .emit(roboCop, "CollateralAdded")
+          .to.changeEtherBalances([jerkshireFund, roboCopAddr, marlieChungerWallet], [addAmt[0].mul(-1), addAmt[0], 0])
+          .emit(roboCopInst, "CollateralAdded")
           .withArgs(ruleHash, addAmt);
 
         const redAmt = [utils.parseEther("0.6")];
         await expect(jerkshireFund.connect(marlieChungerWallet).reduceRuleCollateral(ruleIndex, redAmt))
-          .to.changeEtherBalances([barrenWuffet, roboCop, marlieChungerWallet], [redAmt[0], redAmt[0].mul(-1), 0])
-          .emit(roboCop, "CollateralReduced")
+          .to.changeEtherBalances([jerkshireFund, roboCopAddr, marlieChungerWallet], [redAmt[0], redAmt[0].mul(-1), 0])
+          .emit(roboCopInst, "CollateralReduced")
           .withArgs(ruleHash, redAmt);
       });
       [0, 1].forEach((isActive) => {
@@ -639,18 +644,19 @@ describe("BarrenWuffet", () => {
             await jerkshireFund.connect(marlieChungerWallet).activateRule(ruleIndex);
           }
 
-          const roboCop = await jerkshireFund.roboCop();
+          const roboCopAddr = await jerkshireFund.roboCop();
+          const roboCopInst = await ethers.getContractAt("RoboCop", roboCopAddr);
 
           const e = expect(jerkshireFund.connect(marlieChungerWallet).cancelRule(ruleIndex))
             .to.changeEtherBalances(
-              [barrenWuffet, roboCop, marlieChungerWallet],
+              [jerkshireFund, roboCopAddr, marlieChungerWallet],
               [collateral[0], collateral[0].mul(-1), 0]
             )
-            .emit(roboCop, "CollateralReduced")
+            .emit(roboCopInst, "CollateralReduced")
             .withArgs(ruleHash, collateral);
 
           if (isActive) {
-            await e.emit(roboCop, "Deactivated").withArgs(ruleHash);
+            await e.emit(roboCopInst, "Deactivated").withArgs(ruleHash);
           } else {
             await e;
           }
