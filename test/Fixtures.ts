@@ -18,6 +18,7 @@ import {
   LT,
 } from "./Constants";
 import { getAddressFromEvent, getHashFromEvent, tx } from "./helper";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 export async function setupTestTokens() {
   return {
@@ -160,7 +161,7 @@ export async function getWhitelistService() {
   return { whitelistService, trigWlHash, actWlHash };
 }
 
-export async function setupRoboCop() {
+export async function setupRoboCop(hre: HardhatRuntimeEnvironment) {
   const {
     ownerWallet,
     priceTrigger,
@@ -170,19 +171,19 @@ export async function setupRoboCop() {
     testToken1,
     testToken2,
     WETH,
-    marlieChungerWallet,
     marlieChungerFund,
-    fundSubscriberWallet,
-    botWallet,
     whitelistService,
     trigWlHash,
     actWlHash,
-  } = await setupBarrenWuffet();
+  } = await setupBarrenWuffet(hre);
 
   const roboCopAddr = await marlieChungerFund.roboCop();
   const roboCop = await ethers.getContractAt("RoboCop", roboCopAddr);
-  const ruleMakerWallet = marlieChungerWallet;
-  const ruleSubscriberWallet = fundSubscriberWallet;
+
+  const { ruleMaker, ruleSubscriber, bot, deployer } = await hre.getNamedAccounts();
+  const ruleMakerWallet = await ethers.getSigner(ruleMaker);
+  const ruleSubscriberWallet = await ethers.getSigner(ruleSubscriber);
+  const botWallet = await ethers.getSigner(bot);
 
   return {
     roboCop,
@@ -194,50 +195,11 @@ export async function setupRoboCop() {
     testToken2,
     WETH,
     ownerWallet,
+    whitelistService,
+    trigWlHash,
+    actWlHash,
     ruleMakerWallet,
     ruleSubscriberWallet,
-    botWallet,
-    whitelistService,
-    trigWlHash,
-    actWlHash,
-  };
-}
-
-// TO DO: DELETE
-export async function setupDegenStreet() {
-  const [ownerWallet, traderWallet, tradeSubscriberWallet, someOtherWallet] = await ethers.getSigners();
-
-  const {
-    roboCop,
-    priceTrigger,
-    swapUniSingleAction,
-    testOracleEth,
-    testOracleTst1,
-    testToken1,
-    testToken2,
-    whitelistService,
-    trigWlHash,
-    actWlHash,
-    botWallet,
-  } = await setupRoboCop();
-  const degenStreet = await ethers.getContract("DegenStreet");
-
-  return {
-    roboCop,
-    priceTrigger,
-    swapUniSingleAction,
-    testOracleEth,
-    testOracleTst1,
-    testToken1,
-    testToken2,
-    ownerWallet,
-    traderWallet,
-    tradeSubscriberWallet,
-    someOtherWallet,
-    whitelistService,
-    trigWlHash,
-    actWlHash,
-    degenStreet,
     botWallet,
   };
 }
@@ -306,18 +268,22 @@ export async function setupSwapTrades(
   };
 }
 
-export async function setupBarrenWuffet() {
+export async function setupBarrenWuffet({ getNamedAccounts, ethers }: HardhatRuntimeEnvironment) {
   // these wallets maybe reused to create trader / rule executor.
   // which shouldnt be a problem
   // Contracts are deployed using the first signer/account by default
-  const [ownerWallet, marlieChungerWallet, fairyLinkWallet, fundSubscriberWallet, fundSubscriber2Wallet, botWallet] =
-    await ethers.getSigners();
+  // const [ownerWallet, marlieChungerWallet, fairyLinkWallet, fundSubscriberWallet, fundSubscriber2Wallet, botWallet] =
+
+  const { ownerWallet, marlieChunger, fairyLink } = await getNamedAccounts();
 
   const { testToken1, testToken2, WETH } = await setupTestTokens();
   const { testOracleEth, testOracleTst1, priceTrigger } = await setupEthToTst1PriceTrigger();
   const swapUniSingleAction = await setupSwapUniSingleAction(testToken1, WETH);
   const { whitelistService, trigWlHash, actWlHash } = await getWhitelistService();
+
   const barrenWuffet = await ethers.getContract("BarrenWuffet");
+  const barrenWuffetMarlie = await ethers.getContract("BarrenWuffet", marlieChunger);
+
   const {
     passingETHtoTST1SwapPriceTrigger,
     passingTST1toETHSwapPriceTrigger,
@@ -326,16 +292,17 @@ export async function setupBarrenWuffet() {
   } = await setupSwapActions(priceTrigger, swapUniSingleAction, testToken1);
 
   const marlieChungerFundAddr = await getAddressFromEvent(
-    barrenWuffet.connect(marlieChungerWallet).createFund("marlieChungerFund", await makeSubConstraints()),
+    barrenWuffetMarlie.createFund("marlieChungerFund", await makeSubConstraints()),
     "Created",
-    barrenWuffet.address
+    barrenWuffetMarlie.address
   );
   const marlieChungerFund: Fund = await ethers.getContractAt("Fund", marlieChungerFundAddr);
 
+  const barrenWuffetFairy = await ethers.getContract("BarrenWuffet", fairyLink);
   const fairyLinkFundAddr = await getAddressFromEvent(
-    barrenWuffet.connect(fairyLinkWallet).createFund("fairyLinkFund", await makeSubConstraints()),
+    barrenWuffetFairy.createFund("fairyLinkFund", await makeSubConstraints()),
     "Created",
-    barrenWuffet.address
+    barrenWuffetFairy.address
   );
   const fairyLinkFund: Fund = await ethers.getContractAt("Fund", fairyLinkFundAddr);
 
@@ -348,17 +315,14 @@ export async function setupBarrenWuffet() {
     testToken1,
     testToken2,
     WETH,
-    marlieChungerWallet,
     marlieChungerFund,
-    fairyLinkWallet,
     fairyLinkFund,
-    fundSubscriberWallet,
-    fundSubscriber2Wallet,
-    botWallet,
     whitelistService,
     trigWlHash,
     actWlHash,
     barrenWuffet,
+    barrenWuffetMarlie,
+    barrenWuffetFairy,
     passingETHtoTST1SwapPriceTrigger,
     passingTST1toETHSwapPriceTrigger,
     swapETHToTST1Action,

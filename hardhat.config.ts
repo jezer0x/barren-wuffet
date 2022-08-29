@@ -15,6 +15,13 @@ const config: HardhatUserConfig = {
   },
   namedAccounts: {
     deployer: 0,
+    marlieChunger: 1,
+    fairyLink: 2,
+    bot: 3,
+    fundSubscriber: 4,
+    fundSubscriber2: 5,
+    ruleSubscriber: 6,
+    ruleMaker: 7,
   },
   paths: {
     sources: "contracts",

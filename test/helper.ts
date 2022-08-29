@@ -5,18 +5,11 @@ import { BigNumber, constants, Contract, ContractReceipt, ContractTransaction } 
 import { ethers } from "hardhat";
 import { ETH_ADDRESS } from "./Constants";
 
-export async function testPauseAuthorization(
-  contract: Contract,
-  ownerWallet: SignerWithAddress,
-  otherWallet: SignerWithAddress
-) {
-  const ownerCon = contract.connect(ownerWallet);
-  const otherCon = contract.connect(otherWallet);
-
-  await expect(otherCon.pause()).to.be.revertedWith("Ownable: caller is not the owner");
-  await expect(ownerCon.pause()).to.emit(contract, "Paused");
-  await expect(otherCon.unpause()).to.be.revertedWith("Ownable: caller is not the owner");
-  await expect(ownerCon.unpause()).to.emit(contract, "Unpaused");
+export async function testPauseAuthorization(ownerContract: Contract, otherContract: Contract) {
+  await expect(otherContract.pause()).to.be.revertedWith("Ownable: caller is not the owner");
+  await expect(ownerContract.pause()).to.emit(ownerContract, "Paused");
+  await expect(otherContract.unpause()).to.be.revertedWith("Ownable: caller is not the owner");
+  await expect(ownerContract.unpause()).to.emit(ownerContract, "Unpaused");
 }
 
 export async function testPauseFunctionality(connectedContract: Contract, fnSuite: (() => Promise<any>)[]) {

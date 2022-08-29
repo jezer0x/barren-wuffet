@@ -28,18 +28,19 @@ import {
 } from "./Constants";
 import { RuleStructOutput } from "../typechain-types/contracts/rules/RoboCop";
 import { testPauseAuthorization, testPauseFunctionality } from "./helper";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 describe("RoboCop", () => {
-  const deployRoboCopFixture = deployments.createFixture(async (env, options) => {
+  const deployRoboCopFixture = deployments.createFixture(async (hre, options) => {
     await deployments.fixture();
-    return await setupRoboCop();
+    return await setupRoboCop(hre);
   });
 
   describe("Deployment", () => {
     it("Should set the right owner", async function () {
       const { roboCop, ownerWallet } = await deployRoboCopFixture();
 
-      expect(await roboCop.owner()).to.equal(ownerWallet.address);
+      expect(await roboCop.owner()).to.equal(ownerWallet);
     });
   });
 
@@ -359,9 +360,9 @@ describe("RoboCop", () => {
       const {
         roboCop,
         swapUniSingleAction,
-        priceTrigger,
         ruleMakerWallet,
         botWallet,
+        priceTrigger,
         testToken1,
         whitelistService,
         trigWlHash,
@@ -385,27 +386,28 @@ describe("RoboCop", () => {
     });
   });
 
-  const deployValidRuleFixture = deployments.createFixture(async (env, options) => {
+  const deployValidRuleFixture = deployments.createFixture(async (hre, options) => {
     await deployments.fixture(["RoboCop"]);
-    return await setupValidRuleFixture();
+    return await setupValidRuleFixture(hre);
   });
 
-  async function setupValidRuleFixture() {
+  async function setupValidRuleFixture(hre: HardhatRuntimeEnvironment) {
     const {
       roboCop,
       swapUniSingleAction,
       priceTrigger,
       ownerWallet,
-      ruleMakerWallet,
-      ruleSubscriberWallet,
-      botWallet,
       testToken1,
       testToken2,
-      WETH,
       whitelistService,
       trigWlHash,
       actWlHash,
-    } = await setupRoboCop();
+    } = await setupRoboCop(hre);
+
+    const { ruleMaker, ruleSubscriber, bot } = await hre.getNamedAccounts();
+    const ruleMakerWallet = await ethers.getSigner(ruleMaker);
+    const ruleSubscriberWallet = await ethers.getSigner(ruleSubscriber);
+    const botWallet = await ethers.getSigner(bot);
 
     const ethTst1PassingTrigger = {
       createTimeParams: utils.defaultAbiCoder.encode(
@@ -424,9 +426,6 @@ describe("RoboCop", () => {
       triggerType: PRICE_TRIGGER_TYPE,
       callee: priceTrigger.address,
     };
-
-    console.log("here0");
-    console.log(roboCop);
 
     // to get ETH from uniswap, you need to set the output token as WETH.
     const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address], [ETH_ADDRESS]);
@@ -990,7 +989,10 @@ describe("RoboCop", () => {
   describe("Pause Contract", () => {
     it("should revert if anyone but the owner tries to pause/ unpause the contract", async () => {
       const { ownerWallet, ruleSubscriberWallet, roboCop } = await deployValidRuleFixture();
-      await testPauseAuthorization(roboCop, ownerWallet, ruleSubscriberWallet);
+      const ownerCon = roboCop.connect(ownerWallet);
+      const otherCon = roboCop.connect(ruleSubscriberWallet);
+
+      await testPauseAuthorization(ownerCon, otherCon);
     });
     // TODO: Would it make more sense to just tag some tests a decorator, such that those test will execute with / without pause? We could do the same for other decorators. Downside is that you cant summarize the pause tests in one place.
     // OR perhaps we could be even more generic and check that unless excluded, all state-changing external / public fns do get blocked on pause.
