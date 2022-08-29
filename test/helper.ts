@@ -1,6 +1,8 @@
+import { LogDescription } from "@ethersproject/abi";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { BigNumber, constants, Contract, ContractReceipt, ContractTransaction } from "ethers";
+import { ethers } from "hardhat";
 import { ETH_ADDRESS } from "./Constants";
 
 export async function testPauseAuthorization(
@@ -55,20 +57,24 @@ export async function getAddressFromEvent(
 export async function getHashFromEvent(
   fnPromise: Promise<ContractTransaction>,
   eventName: string,
-  eventAddress: string,
+  parseContract: Contract,
   eventKey: string
 ) {
   const receipt: ContractReceipt = await tx(fnPromise);
 
   const events = receipt.events;
+  const parseFn = (x: any) => parseContract?.interface.parseLog(x) || { ...x, name: x.event };
+
+  const parsedEvents = events?.filter((x: { address: string }) => x.address == parseContract.address)?.map(parseFn);
 
   // Address is definitely part of the event object. Not sure why typescript wont recognize it.
   // Need the check to disambiguate same-name events from multiple objects
   //@ts-ignore
-  const hashEvent = events?.find(
+  const hashEvent = parsedEvents?.find(
     //@ts-ignore
-    (x: { event: string; address: string }) => x.event == eventName && x.address == eventAddress
+    (x: { name: string }) => x.name == eventName
   );
+
   const args = hashEvent?.args;
   return typeof args === "object" && args[eventKey];
 }

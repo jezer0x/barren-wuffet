@@ -544,6 +544,8 @@ describe("BarrenWuffet", () => {
           swapETHToTST1Action,
         } = _fixtureVars;
 
+        const roboCopAddr1 = await jerkshireFund.roboCop();
+        const roboCopInst1 = await ethers.getContractAt("RoboCop", roboCopAddr1);
         // Why fundHash and not ruleHash? dont know. the event is emitted by roboCop but the field is fundHash.
         // the "fundHash" key isnt part of the abi (only the type is), so this could be an ethers issue.
         const ruleHash = await getHashFromEvent(
@@ -551,17 +553,20 @@ describe("BarrenWuffet", () => {
             .connect(marlieChungerWallet)
             .createRule([makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action]),
           "Created",
-          await jerkshireFund.roboCop(),
-          "fundHash"
+          roboCopInst1,
+          "ruleHash"
         );
+
+        const roboCopAddr2 = await jerkshireFund.roboCop();
+        const roboCopInst2 = await ethers.getContractAt("RoboCop", roboCopAddr2);
         // create the same rule in a different fund to confirm that we dont mix things up.
         const ruleHash2 = await getHashFromEvent(
           crackBlockFund
             .connect(fairyLinkWallet)
             .createRule([makePassingTrigger(priceTrigger.address, testToken1)], [swapETHToTST1Action]),
           "Created",
-          await crackBlockFund.roboCop(),
-          "fundHash"
+          roboCopInst2,
+          "ruleHash"
         );
 
         expect(ruleHash).to.not.equal(ruleHash2);

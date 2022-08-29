@@ -93,7 +93,7 @@ export async function createRule(
   const ruleHash = getHashFromEvent(
     _roboCop.connect(wallet).createRule(triggers, actions, { value: DEFAULT_REWARD }),
     "Created",
-    _roboCop.address,
+    _roboCop,
     "ruleHash"
   );
 
@@ -292,13 +292,13 @@ export async function setupSwapTrades(
     .connect(traderWallet)
     .createTrade([passingTST1toETHSwapPriceTrigger], [swapTST1ToETHAction], constraints, { value: DEFAULT_REWARD });
 
-  const tradeTST1forETHHash: Bytes = await getHashFromEvent(tx, "Created", degenStreet.address, "tradeHash");
+  const tradeTST1forETHHash: Bytes = await getHashFromEvent(tx, "Created", degenStreet, "tradeHash");
 
   const tx2 = await degenStreet
     .connect(traderWallet)
     .createTrade([passingETHtoTST1SwapPriceTrigger], [swapETHToTST1Action], constraints, { value: DEFAULT_REWARD });
 
-  const tradeETHforTST1Hash: Bytes = await getHashFromEvent(tx2, "Created", degenStreet.address, "tradeHash");
+  const tradeETHforTST1Hash: Bytes = await getHashFromEvent(tx2, "Created", degenStreet, "tradeHash");
 
   return {
     tradeETHforTST1Hash,
