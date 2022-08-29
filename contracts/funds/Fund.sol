@@ -16,7 +16,7 @@ contract Fund is IFund {
 
     // Storage Start
     IRoboCop public roboCop;
-    address payable platforWallet;
+    address payable platformWallet;
     string name;
     address manager;
     SubscriptionConstraints constraints;
@@ -43,7 +43,7 @@ contract Fund is IFund {
         name = _name;
         constraints = _constraints;
         manager = _manager;
-        platforWallet = payable(_platformWallet);
+        platformWallet = payable(_platformWallet);
         roboCop = IRoboCop(Clones.clone(roboCopImplementationAddr));
         roboCop.init(_wlServiceAddr, _triggerWhitelistHash, _actionWhitelistHash);
     }
