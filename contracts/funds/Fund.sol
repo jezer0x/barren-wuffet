@@ -133,7 +133,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
         uint256 ethCollateral = 0;
         for (uint256 i = 0; i < action.inputTokens.length; i++) {
             address token = action.inputTokens[i];
-            uint256 amount = runtimeParams.collateralAmounts[i];
+            uint256 amount = runtimeParams.collaterals[i];
             _decreaseAssetBalance(token, amount);
             if (token != Constants.ETH) {
                 IERC20(token).safeApprove(action.callee, amount);
@@ -194,12 +194,12 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
     function addRuleCollateral(
         uint256 openRuleIdx,
         address[] memory collateralTokens,
-        uint256[] memory collateralAmounts
+        uint256[] memory collaterals
     ) external onlyDeployedFund onlyFundManager whenNotPaused nonReentrant {
         uint256 ethCollateral = 0;
         for (uint256 i = 0; i < collateralTokens.length; i++) {
             address token = collateralTokens[i];
-            uint256 amount = collateralAmounts[i];
+            uint256 amount = collaterals[i];
             _decreaseAssetBalance(token, amount);
             if (token != Constants.ETH) {
                 IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
@@ -209,26 +209,26 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
             }
         }
 
-        roboCop.addCollateral{value: ethCollateral}(openRules[openRuleIdx], collateralAmounts);
+        roboCop.addCollateral{value: ethCollateral}(openRules[openRuleIdx], collaterals);
     }
 
-    function reduceRuleCollateral(uint256 openRuleIdx, uint256[] memory collateralAmounts)
+    function reduceRuleCollateral(uint256 openRuleIdx, uint256[] memory collaterals)
         external
         onlyDeployedFund
         onlyFundManager
         whenNotPaused
         nonReentrant
     {
-        _reduceRuleCollateral(openRuleIdx, collateralAmounts);
+        _reduceRuleCollateral(openRuleIdx, collaterals);
     }
 
-    function _reduceRuleCollateral(uint256 openRuleIdx, uint256[] memory collateralAmounts) internal {
+    function _reduceRuleCollateral(uint256 openRuleIdx, uint256[] memory collaterals) internal {
         bytes32 ruleHash = openRules[openRuleIdx];
         address[] memory inputTokens = roboCop.getInputTokens(ruleHash);
-        roboCop.reduceCollateral(ruleHash, collateralAmounts);
+        roboCop.reduceCollateral(ruleHash, collaterals);
 
         for (uint256 i = 0; i < inputTokens.length; i++) {
-            _increaseAssetBalance(inputTokens[i], collateralAmounts[i]);
+            _increaseAssetBalance(inputTokens[i], collaterals[i]);
         }
     }
 
@@ -243,7 +243,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
         if (rule.status != RuleStatus.INACTIVE) {
             roboCop.deactivateRule(ruleHash);
         }
-        _reduceRuleCollateral(openRuleIdx, rule.collateralAmounts);
+        _reduceRuleCollateral(openRuleIdx, rule.collaterals);
     }
 
     function redeemRuleOutput(uint256 openRuleIdx)
@@ -260,12 +260,12 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
     function _redeemRuleOutput(uint256 openRuleIdx) internal {
         bytes32 ruleHash = openRules[openRuleIdx];
         Rule memory rule = roboCop.getRule(ruleHash);
-        address[] memory outputTokens = roboCop.getOutputTokens(ruleHash);
-        uint256[] memory outputAmounts = rule.outputAmounts;
+        Token[] memory outputTokens = roboCop.getOutputTokens(ruleHash);
+        uint256[] memory outputs = rule.outputs;
         roboCop.redeemBalance(ruleHash);
 
         for (uint256 i = 0; i < outputTokens.length; i++) {
-            _increaseAssetBalance(outputTokens[i], outputAmounts[i]);
+            _increaseAssetBalance(outputTokens[i], outputs[i]);
         }
     }
 
@@ -274,7 +274,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
         openRules.pop();
     }
 
-    function _increaseAssetBalance(address token, uint256 amount) private {
+    function _increaseAssetBalance(Token memory token, uint256 amount) private {
         if (fundBalances[token] == 0) {
             fundBalances[token] = amount;
             assets.push(token);

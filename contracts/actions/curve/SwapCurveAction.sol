@@ -97,13 +97,13 @@ contract SwapCurveAction is IAction, DelegatePerform {
         address poolAddr = abi.decode(action.data, (address));
         ISwapper swapper = ISwapper(_getSwapper());
 
-        IERC20(action.inputTokens[0]).safeApprove(address(swapper), runtimeParams.collateralAmounts[0]);
+        IERC20(action.inputTokens[0]).safeApprove(address(swapper), runtimeParams.collaterals[0]);
         outputs[0] = swapper.exchange(
             poolAddr,
             action.inputTokens[0],
             action.outputTokens[0],
-            runtimeParams.collateralAmounts[0],
-            (_parseRuntimeParams(action, runtimeParams) * runtimeParams.collateralAmounts[0]) / 10**8,
+            runtimeParams.collaterals[0],
+            (_parseRuntimeParams(action, runtimeParams) * runtimeParams.collaterals[0]) / 10**8,
             address(this)
         );
         IERC20(action.inputTokens[0]).safeApprove(address(swapper), 0);

@@ -5,6 +5,7 @@ import "../actions/ActionTypes.sol";
 import "./subscriptions/SubscriptionTypes.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./Token.sol";
 
 library Utils {
     using SafeERC20 for IERC20;
@@ -12,12 +13,16 @@ library Utils {
     function _send(
         address receiver,
         uint256 balance,
-        address token
+        Token memory token
     ) internal {
-        if (token != Constants.ETH) {
-            IERC20(token).safeTransfer(receiver, balance);
-        } else {
+        if (token.tokenType == TokenType.ERC20) {
+            IERC20(token.tokenAddr).safeTransfer(receiver, balance);
+        } else if (token.tokenType == TokenType.NATIVE) {
             payable(receiver).transfer(balance);
+        } else if (token.tokenType == TokenType.NFT) {
+            revert("Not implemented nft sends yet!");
+        } else {
+            revert("tokenType not found!");
         }
     }
 

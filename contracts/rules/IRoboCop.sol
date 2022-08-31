@@ -20,9 +20,9 @@ interface IRoboCop {
 
     function getRule(bytes32 ruleHash) external view returns (Rule memory);
 
-    function getInputTokens(bytes32 ruleHash) external view returns (address[] memory);
+    function getInputTokens(bytes32 ruleHash) external view returns (Token[] memory);
 
-    function getOutputTokens(bytes32 ruleHash) external view returns (address[] memory);
+    function getOutputTokens(bytes32 ruleHash) external view returns (Token[] memory);
 
     function redeemBalance(bytes32 ruleHash) external;
 

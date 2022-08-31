@@ -61,10 +61,10 @@ contract AddLiquidityCurveAction is PlainPool, IAction, DelegatePerform {
         uint256 _min_mint_amount = 0; // TODO
 
         for (uint256 i = 0; i < action.inputTokens.length; i++) {
-            IERC20(action.inputTokens[i]).safeApprove(address(pool), runtimeParams.collateralAmounts[i]);
+            IERC20(action.inputTokens[i]).safeApprove(address(pool), runtimeParams.collaterals[i]);
         }
 
-        outputs[0] = pool.add_liquidity(runtimeParams.collateralAmounts, _min_mint_amount);
+        outputs[0] = pool.add_liquidity(runtimeParams.collaterals, _min_mint_amount);
 
         for (uint256 i = 0; i < action.inputTokens.length; i++) {
             IERC20(action.inputTokens[i]).safeApprove(address(pool), 0);

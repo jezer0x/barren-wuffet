@@ -71,10 +71,10 @@ contract SwapUniSingleAction is IAction, DelegatePerform {
 
         if (action.inputTokens[0] == Constants.ETH) {
             inputToken = WETH9;
-            ethCollateral = runtimeParams.collateralAmounts[0];
+            ethCollateral = runtimeParams.collaterals[0];
         } else if (action.outputTokens[0] == Constants.ETH) {
             // won't have both input and output as ETH ever
-            IERC20(inputToken).safeApprove(address(swapRouter), runtimeParams.collateralAmounts[0]);
+            IERC20(inputToken).safeApprove(address(swapRouter), runtimeParams.collaterals[0]);
             outputToken = WETH9;
         }
 
@@ -84,8 +84,8 @@ contract SwapUniSingleAction is IAction, DelegatePerform {
             fee: 3000, // TODO: pass from action.data?
             recipient: address(this),
             deadline: block.timestamp, // need to do an immediate swap
-            amountIn: runtimeParams.collateralAmounts[0],
-            amountOutMinimum: (_parseRuntimeParams(action, runtimeParams) * runtimeParams.collateralAmounts[0]) / 10**8, // assumption: triggerReturn in the form of tokenIn/tokenOut.
+            amountIn: runtimeParams.collaterals[0],
+            amountOutMinimum: (_parseRuntimeParams(action, runtimeParams) * runtimeParams.collaterals[0]) / 10**8, // assumption: triggerReturn in the form of tokenIn/tokenOut.
             sqrtPriceLimitX96: 0
         });
         outputs[0] = swapRouter.exactInputSingle{value: ethCollateral}(params);

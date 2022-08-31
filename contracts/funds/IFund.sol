@@ -65,10 +65,10 @@ interface IFund is ISubscription {
     function addRuleCollateral(
         uint256 openRuleIdx,
         address[] memory collateralTokens,
-        uint256[] memory collateralAmounts
+        uint256[] memory collaterals
     ) external;
 
-    function reduceRuleCollateral(uint256 openRuleIdx, uint256[] memory collateralAmounts) external;
+    function reduceRuleCollateral(uint256 openRuleIdx, uint256[] memory collaterals) external;
 
     function cancelRule(uint256 openRuleIdx) external;
 

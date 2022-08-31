@@ -970,13 +970,13 @@ describe("RoboCop", () => {
       // We need a nested compar
       const expectedRule: Partial<RuleStructOutput> = {
         owner: ruleSubscriberWallet.address,
-        collateralAmounts: [collateralAmount],
+        collaterals: [collateralAmount],
         // @ts-ignore
         triggers: [ethTst1PassingTrigger],
         // @ts-ignore
         actions: [ethSwapAction],
         status: 2,
-        outputAmounts: [collateralAmount.mul(ETH_PRICE_IN_TST1).div(PRICE_TRIGGER_DECIMALS)],
+        outputs: [collateralAmount.mul(ETH_PRICE_IN_TST1).div(PRICE_TRIGGER_DECIMALS)],
         reward: DEFAULT_REWARD,
       };
 

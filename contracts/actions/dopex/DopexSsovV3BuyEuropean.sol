@@ -58,11 +58,11 @@ contract SwapUniSingleAction is IAction, DelegatePerform {
 
         // TODO: anything to do with triggerdata?
 
-        IERC20(action.inputTokens[0]).safeApprove(vaultAddr, runtimeParams.collateralAmounts[0]);
+        IERC20(action.inputTokens[0]).safeApprove(vaultAddr, runtimeParams.collaterals[0]);
         (uint256 premium, uint256 totalFees) = vault.purchase(strikeIdx, amount, address(this));
         IERC20(action.inputTokens[0]).safeApprove(vaultAddr, 0);
 
-        outputs[0] = runtimeParams.collateralAmounts[0] - (premium + totalFees);
+        outputs[0] = runtimeParams.collaterals[0] - (premium + totalFees);
         outputs[1] = amount;
         return outputs;
     }
