@@ -42,9 +42,9 @@ interface IFund is ISubscription {
         address roboCopImplementationAddr
     ) external;
 
-    function getInputTokens() external pure returns (address[] memory);
+    function getInputTokens() external pure returns (Token[] memory);
 
-    function getOutputTokens() external pure returns (address[] memory);
+    function getOutputTokens() external pure returns (Token[] memory);
 
     function closeFund() external;
 
@@ -64,7 +64,7 @@ interface IFund is ISubscription {
 
     function addRuleCollateral(
         uint256 openRuleIdx,
-        address[] memory collateralTokens,
+        Token[] memory collateralTokens,
         uint256[] memory collaterals
     ) external;
 
@@ -74,11 +74,7 @@ interface IFund is ISubscription {
 
     function redeemRuleOutput(uint256 openRuleIdx) external;
 
-    function deposit(address collateralToken, uint256 collateralAmount) external payable returns (uint256);
-
     function getStatus() external view returns (FundStatus);
-
-    function withdraw(uint256 subscriptionIdx) external returns (address[] memory, uint256[] memory);
 
     function withdrawReward() external;
 }
