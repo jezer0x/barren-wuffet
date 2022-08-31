@@ -212,7 +212,6 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
             uint256 amount = collaterals[i];
             _decreaseAssetBalance(token, amount);
             if (token.t == TokenType.ERC20) {
-                IERC20(token.addr).safeTransferFrom(msg.sender, address(this), amount);
                 IERC20(token.addr).safeApprove(address(roboCop), amount);
             } else if (token.t == TokenType.NATIVE) {
                 ethCollateral = amount;
