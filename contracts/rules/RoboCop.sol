@@ -15,8 +15,9 @@ import "./RuleTypes.sol";
 import "./IRoboCop.sol";
 import "../utils/whitelists/WhitelistService.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
-contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard {
+contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
     using SafeERC20 for IERC20;
 
     // Storage Start
@@ -302,4 +303,14 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard {
     }
 
     receive() external payable {}
+
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external pure returns (bytes4) {
+        // we don't need to save any info
+        return this.onERC721Received.selector;
+    }
 }

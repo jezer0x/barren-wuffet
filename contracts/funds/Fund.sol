@@ -14,8 +14,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
-contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
+contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
     using SafeERC20 for IERC20;
 
     // Storage Start
@@ -447,4 +448,14 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
     }
 
     receive() external payable {}
+
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external pure returns (bytes4) {
+        // we don't need to save any info
+        return this.onERC721Received.selector;
+    }
 }
