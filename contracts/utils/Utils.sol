@@ -19,7 +19,7 @@ library Utils {
             IERC20(token.addr).safeTransfer(receiver, balance);
         } else if (token.t == TokenType.NATIVE) {
             payable(receiver).transfer(balance);
-        } else if (token.t == TokenType.NFT) {
+        } else if (token.t == TokenType.ERC721) {
             revert("Not implemented nft sends yet!");
         } else {
             revert("t not found!");

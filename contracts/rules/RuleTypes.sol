@@ -15,8 +15,8 @@ struct Rule {
     address owner;
     Trigger[] triggers;
     Action[] actions;
-    uint256[] collaterals; // idx if NFT, amount if erc20 or native
+    uint256[] collaterals; // idx if ERC721, amount if erc20 or native
     RuleStatus status;
-    uint256[] outputs; //idx if NFT, amount if erc20 or native
+    uint256[] outputs; //idx if ERC721, amount if erc20 or native
     uint256 reward;
 }

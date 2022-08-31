@@ -20,7 +20,7 @@ import "./ISsovV3.sol";
     TriggerReturn: 
 
 */
-contract SwapUniSingleAction is IAction, DelegatePerform {
+contract DopexSsovV3SettleEuropean is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
 
     constructor() {}

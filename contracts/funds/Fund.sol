@@ -142,7 +142,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
             } else if (token.t == TokenType.NATIVE) {
                 ethCollateral = amount;
             } else {
-                revert("t not implemented yet!");
+                revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
             }
         }
 
@@ -214,7 +214,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
             } else if (token.t == TokenType.NATIVE) {
                 ethCollateral = amount;
             } else {
-                revert("Tokentype not implemented yet");
+                revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
             }
         }
 
@@ -284,7 +284,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
     }
 
     function _increaseAssetBalance(Token memory token, uint256 amount) private {
-        if (token.t == TokenType.NFT) {
+        if (token.t == TokenType.ERC721) {
             fundNFTs[token.addr] = amount;
             assets.push(token);
         } else if (token.t == TokenType.ERC20 || token.t == TokenType.NATIVE) {
@@ -295,12 +295,12 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
                 fundCoins[token.addr] += amount;
             }
         } else {
-            revert("t not recognized!");
+            revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
         }
     }
 
     function _decreaseAssetBalance(Token memory token, uint256 amount) private {
-        if (token.t == TokenType.NFT) {
+        if (token.t == TokenType.ERC721) {
             delete fundNFTs[token.addr];
             _removeFromAssets(token);
         } else if (token.t == TokenType.ERC20 || token.t == TokenType.NATIVE) {
@@ -311,7 +311,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
                 _removeFromAssets(token);
             }
         } else {
-            revert("t not recognized!");
+            revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
         }
     }
 
@@ -360,8 +360,8 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
     }
 
     function _getShares(uint256 subscriptionIdx, Token memory token) private view returns (uint256) {
-        if (token.t == TokenType.NFT) {
-            revert("cannot share nft");
+        if (token.t == TokenType.ERC721) {
+            revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
         } else if (token.t == TokenType.ERC20 || token.t == TokenType.NATIVE) {
             return (subscriptions[subscriptionIdx].collateralAmount * fundCoins[token.addr]) / totalCollateral;
         }
@@ -379,7 +379,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
         } else if (totalCollateral < constraints.maxCollateralTotal && block.timestamp < constraints.deadline) {
             return FundStatus.RAISING;
         } else {
-            revert("This state should never be reached!");
+            revert(Constants.UNREACHABLE_STATE);
         }
     }
 
@@ -421,8 +421,8 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
 
             // TODO: potentially won't need the loop anymore if closing == swap back to 1 asset
             for (uint256 i = 0; i < assets.length; i++) {
-                if (assets[i].t == TokenType.NFT) {
-                    revert("Cannot share NFTs!");
+                if (assets[i].t == TokenType.ERC721) {
+                    revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
                 } else if (assets[i].t == TokenType.ERC20 || assets[i].t == TokenType.NATIVE) {
                     tokens[i] = assets[i];
                     balances[i] = _getShares(subscriptionIdx, assets[i]);
@@ -435,7 +435,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
         } else if (status == FundStatus.DEPLOYED) {
             revert("Can't get money back from deployed fund!");
         } else {
-            revert("Should never reach this state!");
+            revert(Constants.UNREACHABLE_STATE);
         }
     }
 

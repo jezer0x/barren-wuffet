@@ -3,7 +3,7 @@ pragma solidity ^0.8.9;
 
 enum TokenType {
     NATIVE,
-    NFT,
+    ERC721,
     ERC20
 }
 
