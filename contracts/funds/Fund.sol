@@ -13,6 +13,7 @@ import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -141,6 +142,8 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
                 IERC20(token.addr).safeApprove(action.callee, amount);
             } else if (token.t == TokenType.NATIVE) {
                 ethCollateral = amount;
+            } else if (token.t == TokenType.ERC721) {
+                IERC721(token.addr).approve(action.callee, amount);
             } else {
                 revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
             }
@@ -213,6 +216,8 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
                 IERC20(token.addr).safeApprove(address(roboCop), amount);
             } else if (token.t == TokenType.NATIVE) {
                 ethCollateral = amount;
+            } else if (token.t == TokenType.ERC721) {
+                IERC721(token.addr).approve(address(roboCop), amount);
             } else {
                 revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
             }
@@ -421,15 +426,11 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
 
             // TODO: potentially won't need the loop anymore if closing == swap back to 1 asset
             for (uint256 i = 0; i < assets.length; i++) {
-                if (assets[i].t == TokenType.ERC721) {
-                    revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
-                } else if (assets[i].t == TokenType.ERC20 || assets[i].t == TokenType.NATIVE) {
-                    tokens[i] = assets[i];
-                    balances[i] = _getShares(subscriptionIdx, assets[i]);
-                    // TODO: keep rewardPercentage here for barrenWuffet.
-                    emit Withdraw(msg.sender, subscriptionIdx, tokens[i].addr, balances[i]);
-                    Utils._send(subscription.subscriber, balances[i], tokens[i]);
-                }
+                tokens[i] = assets[i];
+                balances[i] = _getShares(subscriptionIdx, assets[i]);
+                // TODO: keep rewardPercentage here for barrenWuffet.
+                emit Withdraw(msg.sender, subscriptionIdx, tokens[i].addr, balances[i]);
+                Utils._send(subscription.subscriber, balances[i], tokens[i]);
             }
             return (tokens, balances);
         } else if (status == FundStatus.DEPLOYED) {

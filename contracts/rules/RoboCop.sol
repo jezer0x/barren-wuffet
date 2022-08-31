@@ -14,6 +14,7 @@ import "../triggers/ITrigger.sol";
 import "./RuleTypes.sol";
 import "./IRoboCop.sol";
 import "../utils/whitelists/WhitelistService.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -107,6 +108,8 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard {
                 IERC20(tokens[i].addr).safeTransferFrom(msg.sender, address(this), amount);
             } else if (tokens[i].t == TokenType.NATIVE) {
                 require(amount == msg.value, "ETH: amount != msg.value");
+            } else if (tokens[i].t == TokenType.ERC721) {
+                IERC721(tokens[i].addr).safeTransferFrom(msg.sender, address(this), amount);
             } else {
                 revert("Wrong collateral type colalteral");
             }
@@ -136,6 +139,8 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard {
                 IERC20(tokens[i].addr).safeTransfer(msg.sender, amount);
             } else if (tokens[i].t == TokenType.NATIVE) {
                 payable(msg.sender).transfer(amount);
+            } else if (tokens[i].t == TokenType.ERC721) {
+                IERC721(tokens[i].addr).safeTransferFrom(address(this), msg.sender, amount);
             } else {
                 revert("Can't reduce collateral for this t");
             }
@@ -278,6 +283,8 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard {
                     IERC20(action.inputTokens[j].addr).safeApprove(action.callee, runtimeParams.collaterals[j]);
                 } else if (action.inputTokens[j].t == TokenType.NATIVE) {
                     // do nothing
+                } else if (action.inputTokens[j].t == TokenType.ERC721) {
+                    IERC721(action.inputTokens[j].addr).approve(action.callee, runtimeParams.collaterals[j]);
                 } else {
                     revert("can't handle t yet");
                 }

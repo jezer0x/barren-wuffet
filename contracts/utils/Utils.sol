@@ -5,6 +5,7 @@ import "../actions/ActionTypes.sol";
 import "./subscriptions/SubscriptionTypes.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./Token.sol";
 
 library Utils {
@@ -20,7 +21,7 @@ library Utils {
         } else if (token.t == TokenType.NATIVE) {
             payable(receiver).transfer(balance);
         } else if (token.t == TokenType.ERC721) {
-            revert("Not implemented nft sends yet!");
+            IERC721(token.addr).safeTransferFrom(address(this), receiver, balance);
         } else {
             revert("t not found!");
         }
