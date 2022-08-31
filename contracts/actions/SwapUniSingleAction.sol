@@ -26,11 +26,11 @@ contract SwapUniSingleAction is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
 
     ISwapRouter immutable swapRouter;
-    address immutable WETH9;
+    address immutable WETH9Addr;
 
     constructor(address swapRouterAddress, address wethAddress) {
         swapRouter = ISwapRouter(swapRouterAddress);
-        WETH9 = wethAddress;
+        WETH9Addr = wethAddress;
     }
 
     function validate(Action calldata action) external pure returns (bool) {
@@ -48,7 +48,7 @@ contract SwapUniSingleAction is IAction, DelegatePerform {
             TriggerReturn memory triggerReturn = runtimeParams.triggerReturnArr[i];
             if (triggerReturn.triggerType == TriggerType.Price) {
                 (address asset1, address asset2, uint256 res) = decodePriceTriggerReturn(triggerReturn.runtimeData);
-                if (asset1 == action.inputTokens[0] && asset2 == action.outputTokens[0]) {
+                if (asset1 == action.inputTokens[0].addr && asset2 == action.outputTokens[0].addr) {
                     return res;
                 }
             }
@@ -65,22 +65,22 @@ contract SwapUniSingleAction is IAction, DelegatePerform {
         ISwapRouter.ExactInputSingleParams memory params;
         uint256[] memory outputs = new uint256[](1);
 
-        address outputToken = action.outputTokens[0];
-        address inputToken = action.inputTokens[0];
+        Token memory outputToken = action.outputTokens[0];
+        Token memory inputToken = action.inputTokens[0];
         uint256 ethCollateral = 0;
 
-        if (action.inputTokens[0] == Constants.ETH) {
-            inputToken = WETH9;
+        if (equals(action.inputTokens[0], Token({t: TokenType.NATIVE, addr: Constants.ETH}))) {
+            inputToken = Token({t: TokenType.ERC20, addr: WETH9Addr});
             ethCollateral = runtimeParams.collaterals[0];
-        } else if (action.outputTokens[0] == Constants.ETH) {
+        } else if (equals(action.outputTokens[0], Token({t: TokenType.NATIVE, addr: Constants.ETH}))) {
             // won't have both input and output as ETH ever
-            IERC20(inputToken).safeApprove(address(swapRouter), runtimeParams.collaterals[0]);
-            outputToken = WETH9;
+            IERC20(inputToken.addr).safeApprove(address(swapRouter), runtimeParams.collaterals[0]);
+            outputToken = Token({t: TokenType.ERC20, addr: WETH9Addr});
         }
 
         params = ISwapRouter.ExactInputSingleParams({
-            tokenIn: inputToken,
-            tokenOut: outputToken,
+            tokenIn: inputToken.addr,
+            tokenOut: outputToken.addr,
             fee: 3000, // TODO: pass from action.data?
             recipient: address(this),
             deadline: block.timestamp, // need to do an immediate swap
@@ -90,8 +90,8 @@ contract SwapUniSingleAction is IAction, DelegatePerform {
         });
         outputs[0] = swapRouter.exactInputSingle{value: ethCollateral}(params);
 
-        if (action.inputTokens[0] == Constants.ETH) {
-            IERC20(inputToken).safeApprove(address(swapRouter), 0);
+        if (equals(action.inputTokens[0], Token({t: TokenType.NATIVE, addr: Constants.ETH}))) {
+            IERC20(inputToken.addr).safeApprove(address(swapRouter), 0);
         }
 
         return outputs;

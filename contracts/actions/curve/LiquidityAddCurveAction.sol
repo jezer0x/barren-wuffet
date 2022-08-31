@@ -40,11 +40,11 @@ contract AddLiquidityCurveAction is PlainPool, IAction, DelegatePerform {
 
         require(action.inputTokens.length > 1);
         require(action.outputTokens.length == 1);
-        require(registry.get_pool_from_lp_token(action.outputTokens[0]) == poolAddr);
+        require(registry.get_pool_from_lp_token(action.outputTokens[0].addr) == poolAddr);
         address[8] memory poolTokens = registry.get_coins(poolAddr);
 
         for (uint256 i = 0; i < action.inputTokens.length; i++) {
-            require(_coinInPool(action.inputTokens[i], poolTokens));
+            require(_coinInPool(action.inputTokens[i].addr, poolTokens));
         }
 
         return true;
@@ -61,13 +61,13 @@ contract AddLiquidityCurveAction is PlainPool, IAction, DelegatePerform {
         uint256 _min_mint_amount = 0; // TODO
 
         for (uint256 i = 0; i < action.inputTokens.length; i++) {
-            IERC20(action.inputTokens[i]).safeApprove(address(pool), runtimeParams.collaterals[i]);
+            IERC20(action.inputTokens[i].addr).safeApprove(address(pool), runtimeParams.collaterals[i]);
         }
 
         outputs[0] = pool.add_liquidity(runtimeParams.collaterals, _min_mint_amount);
 
         for (uint256 i = 0; i < action.inputTokens.length; i++) {
-            IERC20(action.inputTokens[i]).safeApprove(address(pool), 0);
+            IERC20(action.inputTokens[i].addr).safeApprove(address(pool), 0);
         }
 
         return outputs;

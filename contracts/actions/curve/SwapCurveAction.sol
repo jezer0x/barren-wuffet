@@ -62,7 +62,7 @@ contract SwapCurveAction is IAction, DelegatePerform {
             TriggerReturn memory triggerReturn = runtimeParams.triggerReturnArr[i];
             if (triggerReturn.triggerType == TriggerType.Price) {
                 (address asset1, address asset2, uint256 res) = decodePriceTriggerReturn(triggerReturn.runtimeData);
-                if (asset1 == action.inputTokens[0] && asset2 == action.outputTokens[0]) {
+                if (asset1 == action.inputTokens[0].addr && asset2 == action.outputTokens[0].addr) {
                     return res;
                 }
             }
@@ -81,8 +81,8 @@ contract SwapCurveAction is IAction, DelegatePerform {
         // TODO: reverts if poolAddr does not match in/out tokens
         (int128 i, int128 j, bool exchange_underlying) = registry.get_coin_indices(
             poolAddr,
-            action.inputTokens[0],
-            action.outputTokens[0]
+            action.inputTokens[0].addr,
+            action.outputTokens[0].addr
         );
 
         return true;
@@ -97,16 +97,16 @@ contract SwapCurveAction is IAction, DelegatePerform {
         address poolAddr = abi.decode(action.data, (address));
         ISwapper swapper = ISwapper(_getSwapper());
 
-        IERC20(action.inputTokens[0]).safeApprove(address(swapper), runtimeParams.collaterals[0]);
+        IERC20(action.inputTokens[0].addr).safeApprove(address(swapper), runtimeParams.collaterals[0]);
         outputs[0] = swapper.exchange(
             poolAddr,
-            action.inputTokens[0],
-            action.outputTokens[0],
+            action.inputTokens[0].addr,
+            action.outputTokens[0].addr,
             runtimeParams.collaterals[0],
             (_parseRuntimeParams(action, runtimeParams) * runtimeParams.collaterals[0]) / 10**8,
             address(this)
         );
-        IERC20(action.inputTokens[0]).safeApprove(address(swapper), 0);
+        IERC20(action.inputTokens[0].addr).safeApprove(address(swapper), 0);
 
         return outputs;
     }
