@@ -103,9 +103,9 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard {
         for (uint256 i = 0; i < tokens.length; i++) {
             amount = amounts[i];
             require(amount > 0, "amount <= 0");
-            if (tokens[i].tokenType == TokenType.ERC20) {
-                IERC20(tokens[i].tokenAddr).safeTransferFrom(msg.sender, address(this), amount);
-            } else if (tokens[i].tokenType == TokenType.NATIVE) {
+            if (tokens[i].t == TokenType.ERC20) {
+                IERC20(tokens[i].addr).safeTransferFrom(msg.sender, address(this), amount);
+            } else if (tokens[i].t == TokenType.NATIVE) {
                 require(amount == msg.value, "ETH: amount != msg.value");
             } else {
                 revert("Wrong collateral type colalteral");
@@ -132,12 +132,12 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard {
             amount = amounts[i];
             require(rule.collaterals[i] >= amount, "Not enough collateral.");
             rule.collaterals[i] -= amount;
-            if (tokens[i].tokenType == TokenType.ERC20) {
-                IERC20(tokens[i].tokenAddr).safeTransfer(msg.sender, amount);
-            } else if (tokens[i].tokenType == TokenType.NATIVE) {
+            if (tokens[i].t == TokenType.ERC20) {
+                IERC20(tokens[i].addr).safeTransfer(msg.sender, amount);
+            } else if (tokens[i].t == TokenType.NATIVE) {
                 payable(msg.sender).transfer(amount);
             } else {
-                revert("Can't reduce collateral for this tokenType");
+                revert("Can't reduce collateral for this t");
             }
         }
         emit CollateralReduced(ruleHash, amounts);
@@ -274,12 +274,12 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard {
         for (uint256 i = 0; i < rule.actions.length; i++) {
             Action storage action = rule.actions[i];
             for (uint256 j = 0; j < action.inputTokens.length; j++) {
-                if (action.inputTokens[j].tokenType == TokenType.ERC20) {
-                    IERC20(action.inputTokens[j].tokenAddr).safeApprove(action.callee, runtimeParams.collaterals[j]);
-                } else if (action.inputTokens[j].tokenType == TokenType.NATIVE) {
+                if (action.inputTokens[j].t == TokenType.ERC20) {
+                    IERC20(action.inputTokens[j].addr).safeApprove(action.callee, runtimeParams.collaterals[j]);
+                } else if (action.inputTokens[j].t == TokenType.NATIVE) {
                     // do nothing
                 } else {
-                    revert("can't handle tokenType yet");
+                    revert("can't handle t yet");
                 }
             }
             outputs = Utils._delegatePerformAction(action, runtimeParams);

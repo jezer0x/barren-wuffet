@@ -8,10 +8,10 @@ enum TokenType {
 }
 
 struct Token {
-    TokenType tokenType;
-    address tokenAddr;
+    TokenType t;
+    address addr;
 }
 
 function equals(Token memory t1, Token memory t2) pure returns (bool) {
-    return (t1.tokenType == t2.tokenType && t1.tokenAddr == t2.tokenAddr);
+    return (t1.t == t2.t && t1.addr == t2.addr);
 }

@@ -15,14 +15,14 @@ library Utils {
         uint256 balance,
         Token memory token
     ) internal {
-        if (token.tokenType == TokenType.ERC20) {
-            IERC20(token.tokenAddr).safeTransfer(receiver, balance);
-        } else if (token.tokenType == TokenType.NATIVE) {
+        if (token.t == TokenType.ERC20) {
+            IERC20(token.addr).safeTransfer(receiver, balance);
+        } else if (token.t == TokenType.NATIVE) {
             payable(receiver).transfer(balance);
-        } else if (token.tokenType == TokenType.NFT) {
+        } else if (token.t == TokenType.NFT) {
             revert("Not implemented nft sends yet!");
         } else {
-            revert("tokenType not found!");
+            revert("t not found!");
         }
     }
 

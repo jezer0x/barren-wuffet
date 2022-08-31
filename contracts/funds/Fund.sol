@@ -78,7 +78,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
 
     function getInputTokens() external pure returns (Token[] memory) {
         Token[] memory tokens = new Token[](1);
-        tokens[0] = Token({tokenType: TokenType.NATIVE, tokenAddr: Constants.ETH});
+        tokens[0] = Token({t: TokenType.NATIVE, addr: Constants.ETH});
         return tokens;
     }
 
@@ -137,12 +137,12 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
             uint256 amount = runtimeParams.collaterals[i];
             _decreaseAssetBalance(token, amount);
 
-            if (token.tokenType == TokenType.ERC20) {
-                IERC20(token.tokenAddr).safeApprove(action.callee, amount);
-            } else if (token.tokenType == TokenType.NATIVE) {
+            if (token.t == TokenType.ERC20) {
+                IERC20(token.addr).safeApprove(action.callee, amount);
+            } else if (token.t == TokenType.NATIVE) {
                 ethCollateral = amount;
             } else {
-                revert("tokenType not implemented yet!");
+                revert("t not implemented yet!");
             }
         }
 
@@ -173,7 +173,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
         whenNotPaused
         nonReentrant
     {
-        _decreaseAssetBalance(Token({tokenType: TokenType.NATIVE, tokenAddr: Constants.ETH}), amount);
+        _decreaseAssetBalance(Token({t: TokenType.NATIVE, addr: Constants.ETH}), amount);
         roboCop.increaseReward{value: amount}(openRules[openRuleIdx]);
     }
 
@@ -185,7 +185,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
         nonReentrant
     {
         _decreaseAssetBalance(
-            Token({tokenType: TokenType.NATIVE, tokenAddr: Constants.ETH}),
+            Token({t: TokenType.NATIVE, addr: Constants.ETH}),
             roboCop.withdrawReward(openRules[openRuleIdx])
         );
     }
@@ -208,10 +208,10 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
             Token memory token = collateralTokens[i];
             uint256 amount = collaterals[i];
             _decreaseAssetBalance(token, amount);
-            if (token.tokenType == TokenType.ERC20) {
-                IERC20(token.tokenAddr).safeTransferFrom(msg.sender, address(this), amount);
-                IERC20(token.tokenAddr).safeApprove(address(roboCop), amount);
-            } else if (token.tokenType == TokenType.NATIVE) {
+            if (token.t == TokenType.ERC20) {
+                IERC20(token.addr).safeTransferFrom(msg.sender, address(this), amount);
+                IERC20(token.addr).safeApprove(address(roboCop), amount);
+            } else if (token.t == TokenType.NATIVE) {
                 ethCollateral = amount;
             } else {
                 revert("Tokentype not implemented yet");
@@ -284,34 +284,34 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
     }
 
     function _increaseAssetBalance(Token memory token, uint256 amount) private {
-        if (token.tokenType == TokenType.NFT) {
-            fundNFTs[token.tokenAddr] = amount;
+        if (token.t == TokenType.NFT) {
+            fundNFTs[token.addr] = amount;
             assets.push(token);
-        } else if (token.tokenType == TokenType.ERC20 || token.tokenType == TokenType.NATIVE) {
-            if (fundCoins[token.tokenAddr] == 0) {
-                fundCoins[token.tokenAddr] = amount;
+        } else if (token.t == TokenType.ERC20 || token.t == TokenType.NATIVE) {
+            if (fundCoins[token.addr] == 0) {
+                fundCoins[token.addr] = amount;
                 assets.push(token);
             } else {
-                fundCoins[token.tokenAddr] += amount;
+                fundCoins[token.addr] += amount;
             }
         } else {
-            revert("tokenType not recognized!");
+            revert("t not recognized!");
         }
     }
 
     function _decreaseAssetBalance(Token memory token, uint256 amount) private {
-        if (token.tokenType == TokenType.NFT) {
-            delete fundNFTs[token.tokenAddr];
+        if (token.t == TokenType.NFT) {
+            delete fundNFTs[token.addr];
             _removeFromAssets(token);
-        } else if (token.tokenType == TokenType.ERC20 || token.tokenType == TokenType.NATIVE) {
-            require(fundCoins[token.tokenAddr] >= amount);
-            fundCoins[token.tokenAddr] -= amount;
+        } else if (token.t == TokenType.ERC20 || token.t == TokenType.NATIVE) {
+            require(fundCoins[token.addr] >= amount);
+            fundCoins[token.addr] -= amount;
             // TODO: could be made more efficient if we kept token => idx in storage
-            if (fundCoins[token.tokenAddr] == 0) {
+            if (fundCoins[token.addr] == 0) {
                 _removeFromAssets(token);
             }
         } else {
-            revert("tokenType not recognized!");
+            revert("t not recognized!");
         }
     }
 
@@ -327,7 +327,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
 
     function _validateCollateral(Token memory collateralToken, uint256 collateralAmount) private view {
         // For now we'll only allow subscribing with ETH
-        require(equals(collateralToken, Token({tokenType: TokenType.NATIVE, tokenAddr: Constants.ETH})));
+        require(equals(collateralToken, Token({t: TokenType.NATIVE, addr: Constants.ETH})));
         require(collateralAmount == msg.value);
         require(constraints.minCollateralPerSub <= collateralAmount, "Insufficient Collateral for Subscription");
         require(constraints.maxCollateralPerSub >= collateralAmount, "Max Collateral for Subscription exceeded");
@@ -355,15 +355,15 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
         _increaseAssetBalance(collateralToken, collateralAmount);
         totalCollateral += collateralAmount;
 
-        emit Deposit(msg.sender, subscriptions.length - 1, collateralToken.tokenAddr, collateralAmount);
+        emit Deposit(msg.sender, subscriptions.length - 1, collateralToken.addr, collateralAmount);
         return subscriptions.length - 1;
     }
 
     function _getShares(uint256 subscriptionIdx, Token memory token) private view returns (uint256) {
-        if (token.tokenType == TokenType.NFT) {
+        if (token.t == TokenType.NFT) {
             revert("cannot share nft");
-        } else if (token.tokenType == TokenType.ERC20 || token.tokenType == TokenType.NATIVE) {
-            return (subscriptions[subscriptionIdx].collateralAmount * fundCoins[token.tokenAddr]) / totalCollateral;
+        } else if (token.t == TokenType.ERC20 || token.t == TokenType.NATIVE) {
+            return (subscriptions[subscriptionIdx].collateralAmount * fundCoins[token.addr]) / totalCollateral;
         }
     }
 
@@ -398,21 +398,18 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
         if (status == FundStatus.CLOSABLE) {
             revert("Call closeFund before withdrawing!");
         } else if (status == FundStatus.RAISING) {
-            _decreaseAssetBalance(
-                Token({tokenType: TokenType.NATIVE, tokenAddr: Constants.ETH}),
-                subscription.collateralAmount
-            );
+            _decreaseAssetBalance(Token({t: TokenType.NATIVE, addr: Constants.ETH}), subscription.collateralAmount);
             subscription.status = SubscriptionStatus.WITHDRAWN;
 
             emit Withdraw(msg.sender, subscriptionIdx, Constants.ETH, subscription.collateralAmount);
             Utils._send(
                 subscription.subscriber,
                 subscription.collateralAmount,
-                Token({tokenType: TokenType.NATIVE, tokenAddr: Constants.ETH})
+                Token({t: TokenType.NATIVE, addr: Constants.ETH})
             );
 
             Token[] memory tokens = new Token[](1);
-            tokens[0] = Token({tokenType: TokenType.NATIVE, tokenAddr: Constants.ETH});
+            tokens[0] = Token({t: TokenType.NATIVE, addr: Constants.ETH});
             uint256[] memory balances = new uint256[](1);
             balances[0] = subscription.collateralAmount;
             return (tokens, balances);
@@ -424,13 +421,13 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
 
             // TODO: potentially won't need the loop anymore if closing == swap back to 1 asset
             for (uint256 i = 0; i < assets.length; i++) {
-                if (assets[i].tokenType == TokenType.NFT) {
+                if (assets[i].t == TokenType.NFT) {
                     revert("Cannot share NFTs!");
-                } else if (assets[i].tokenType == TokenType.ERC20 || assets[i].tokenType == TokenType.NATIVE) {
+                } else if (assets[i].t == TokenType.ERC20 || assets[i].t == TokenType.NATIVE) {
                     tokens[i] = assets[i];
                     balances[i] = _getShares(subscriptionIdx, assets[i]);
                     // TODO: keep rewardPercentage here for barrenWuffet.
-                    emit Withdraw(msg.sender, subscriptionIdx, tokens[i].tokenAddr, balances[i]);
+                    emit Withdraw(msg.sender, subscriptionIdx, tokens[i].addr, balances[i]);
                     Utils._send(subscription.subscriber, balances[i], tokens[i]);
                 }
             }
