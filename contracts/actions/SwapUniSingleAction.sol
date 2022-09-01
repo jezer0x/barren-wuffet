@@ -58,6 +58,52 @@ contract SwapUniSingleAction is IAction {
         return 0;
     }
 
+    function perform_v2(Action calldata action, ActionRuntimeParams calldata runtimeParams)
+        external
+        returns (ActionResponse memory)
+    {
+        ISwapRouter.ExactInputSingleParams memory params;
+        ResponseValue[] memory outputs = new ResponseValue[](1);
+
+        address outputToken = action.outputTokens[0];
+        address inputToken = action.inputTokens[0];
+        uint256 ethCollateral = 0;
+
+        if (action.inputTokens[0] == Constants.ETH) {
+            inputToken = WETH9;
+            ethCollateral = runtimeParams.collateralAmounts[0];
+        } else if (action.outputTokens[0] == Constants.ETH) {
+            // won't have both input and output as ETH ever
+            IERC20(inputToken).safeApprove(address(swapRouter), runtimeParams.collateralAmounts[0]);
+            outputToken = WETH9;
+        }
+
+        params = ISwapRouter.ExactInputSingleParams({
+            tokenIn: inputToken,
+            tokenOut: outputToken,
+            fee: 3000, // TODO: pass from action.data?
+            recipient: address(this),
+            deadline: block.timestamp, // need to do an immediate swap
+            amountIn: runtimeParams.collateralAmounts[0],
+            amountOutMinimum: (_parseRuntimeParams(action, runtimeParams) * runtimeParams.collateralAmounts[0]) / 10**8, // assumption: triggerReturn in the form of tokenIn/tokenOut.
+            sqrtPriceLimitX96: 0
+        });
+        
+        outputs[0] = ResponseValue({
+            val: swapRouter.exactInputSingle{value: ethCollateral}(params),
+            // we could also do keccack256(abi.encodePacked(addr)) to get an identifier.
+            datatype: bytes32(uint256(uint160(action.outputTokens[0])))
+        });
+
+        if (action.inputTokens[0] == Constants.ETH) {
+            IERC20(inputToken).safeApprove(address(swapRouter), 0);
+        }
+
+        bytes memory none;
+
+        return ActionResponse({outputs: outputs, position: none});
+    }
+
     function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
         external
         returns (uint256[] memory)
