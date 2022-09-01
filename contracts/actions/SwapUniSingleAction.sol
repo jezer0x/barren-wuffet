@@ -4,13 +4,12 @@ pragma solidity ^0.8.9;
 import "./IAction.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "../utils/Constants.sol";
+import "./DelegatePerform.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /*
-    PERFORM() CAN ONLY TO BE USED VIA DELEGATECALL
-
     Reference: 
         https://docs.uniswap.org/protocol/guides/swaps/single-swaps
 
@@ -23,7 +22,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
             ETH/USD -> USD per ETH -> ETH Price in USD -> triggerReturn = [ETH, USD, val] -> Must use when tokenIn = ETH and tokenOut = USD (i.e. buying USD with ETH)
             USD/ETH -> ETH per USD -> USD Price in ETH -> triggerReturn = [USD, ETH, val] -> Must use when tokenIn = USD* and tokenOut = ETH (i.e. buying ETH with USD)
 */
-contract SwapUniSingleAction is IAction {
+contract SwapUniSingleAction is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
 
     ISwapRouter immutable swapRouter;
@@ -106,6 +105,7 @@ contract SwapUniSingleAction is IAction {
 
     function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
         external
+        delegateOnly
         returns (uint256[] memory)
     {
         ISwapRouter.ExactInputSingleParams memory params;

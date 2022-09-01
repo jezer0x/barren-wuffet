@@ -10,8 +10,11 @@ import "./IFund.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract Fund is IFund {
+contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     // Storage Start
@@ -29,6 +32,14 @@ contract Fund is IFund {
 
     // Storage End
 
+    function pause() public onlyOwner {
+        _pause();
+    }
+
+    function unpause() public onlyOwner {
+        _unpause();
+    }
+
     function init(
         string memory _name,
         address _manager,
@@ -38,7 +49,7 @@ contract Fund is IFund {
         bytes32 _triggerWhitelistHash,
         bytes32 _actionWhitelistHash,
         address roboCopImplementationAddr
-    ) external {
+    ) external whenNotPaused nonReentrant {
         Utils._validateSubscriptionConstraintsBasic(_constraints);
         name = _name;
         constraints = _constraints;
@@ -74,7 +85,7 @@ contract Fund is IFund {
         revert("Undefined: Funds may have multiple output tokens, determined only after it's closed.");
     }
 
-    function closeFund() external {
+    function closeFund() external whenNotPaused nonReentrant {
         if (getStatus() == FundStatus.CLOSABLE) {
             _closeFund();
         } else {
@@ -111,6 +122,8 @@ contract Fund is IFund {
 
     function takeAction(Action calldata action, ActionRuntimeParams calldata runtimeParams)
         external
+        whenNotPaused
+        nonReentrant
         onlyDeployedFund
         onlyFundManager
         returns (uint256[] memory outputs)
@@ -138,6 +151,8 @@ contract Fund is IFund {
 
     function createRule(Trigger[] calldata triggers, Action[] calldata actions)
         external
+        whenNotPaused
+        nonReentrant
         onlyDeployedFund
         onlyFundManager
         returns (bytes32 ruleHash)
@@ -147,20 +162,32 @@ contract Fund is IFund {
         openRules.push(ruleHash);
     }
 
-    function increaseRuleReward(uint256 openRuleIdx, uint256 amount) external onlyDeployedFund onlyFundManager {
+    function increaseRuleReward(uint256 openRuleIdx, uint256 amount)
+        external
+        onlyDeployedFund
+        onlyFundManager
+        whenNotPaused
+        nonReentrant
+    {
         _decreaseAssetBalance(Constants.ETH, amount);
         roboCop.increaseReward{value: amount}(openRules[openRuleIdx]);
     }
 
-    function withdrawRuleReward(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager {
+    function withdrawRuleReward(uint256 openRuleIdx)
+        external
+        onlyDeployedFund
+        onlyFundManager
+        whenNotPaused
+        nonReentrant
+    {
         _decreaseAssetBalance(Constants.ETH, roboCop.withdrawReward(openRules[openRuleIdx]));
     }
 
-    function activateRule(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager {
+    function activateRule(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager whenNotPaused nonReentrant {
         roboCop.activateRule(openRules[openRuleIdx]);
     }
 
-    function deactivateRule(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager {
+    function deactivateRule(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager whenNotPaused nonReentrant {
         roboCop.deactivateRule(openRules[openRuleIdx]);
     }
 
@@ -168,7 +195,7 @@ contract Fund is IFund {
         uint256 openRuleIdx,
         address[] memory collateralTokens,
         uint256[] memory collateralAmounts
-    ) external onlyDeployedFund onlyFundManager {
+    ) external onlyDeployedFund onlyFundManager whenNotPaused nonReentrant {
         uint256 ethCollateral = 0;
         for (uint256 i = 0; i < collateralTokens.length; i++) {
             address token = collateralTokens[i];
@@ -189,6 +216,8 @@ contract Fund is IFund {
         external
         onlyDeployedFund
         onlyFundManager
+        whenNotPaused
+        nonReentrant
     {
         _reduceRuleCollateral(openRuleIdx, collateralAmounts);
     }
@@ -203,7 +232,7 @@ contract Fund is IFund {
         }
     }
 
-    function cancelRule(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager {
+    function cancelRule(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager whenNotPaused nonReentrant {
         _cancelRule(openRuleIdx);
         _removeOpenRuleIdx(openRuleIdx);
     }
@@ -217,7 +246,13 @@ contract Fund is IFund {
         _reduceRuleCollateral(openRuleIdx, rule.collateralAmounts);
     }
 
-    function redeemRuleOutput(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager {
+    function redeemRuleOutput(uint256 openRuleIdx)
+        external
+        onlyDeployedFund
+        onlyFundManager
+        whenNotPaused
+        nonReentrant
+    {
         _redeemRuleOutput(openRuleIdx);
         _removeOpenRuleIdx(openRuleIdx);
     }
@@ -277,7 +312,12 @@ contract Fund is IFund {
         require(block.timestamp < constraints.deadline);
     }
 
-    function deposit(address collateralToken, uint256 collateralAmount) external payable returns (uint256) {
+    function deposit(address collateralToken, uint256 collateralAmount)
+        external
+        payable
+        whenNotPaused
+        returns (uint256)
+    {
         require(getStatus() == FundStatus.RAISING, "Fund is not raising");
         _validateCollateral(collateralToken, collateralAmount);
 
@@ -315,6 +355,8 @@ contract Fund is IFund {
 
     function withdraw(uint256 subscriptionIdx)
         external
+        whenNotPaused
+        nonReentrant
         onlyActiveSubscriber(subscriptionIdx)
         returns (address[] memory, uint256[] memory)
     {
@@ -359,7 +401,7 @@ contract Fund is IFund {
         }
     }
 
-    function withdrawReward() public onlyFundManager {
+    function withdrawReward() public onlyFundManager whenNotPaused nonReentrant {
         require(getStatus() == FundStatus.CLOSED, "Fund not closed");
         // TODO: get rewards from each asset in the
         // profit share? (if yes, input asset == output asset? How to ensure?)

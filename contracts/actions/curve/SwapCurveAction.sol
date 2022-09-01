@@ -2,6 +2,7 @@
 pragma solidity ^0.8.9;
 
 import "../IAction.sol";
+import "../DelegatePerform.sol";
 import "../../utils/Constants.sol";
 import "./IRegistry.sol";
 import "./IAddressProvider.sol";
@@ -38,7 +39,7 @@ interface ISwapper {
         action.data must be in the form of (address)
 
 */
-contract SwapCurveAction is IAction {
+contract SwapCurveAction is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
 
     IAddressProvider public immutable address_provider;
@@ -89,6 +90,7 @@ contract SwapCurveAction is IAction {
 
     function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
         external
+        delegateOnly
         returns (uint256[] memory)
     {
         uint256[] memory outputs = new uint256[](1);
