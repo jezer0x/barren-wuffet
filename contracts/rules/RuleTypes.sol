@@ -17,7 +17,7 @@ struct Rule {
     Action[] actions;
     uint256[] collaterals; // idx if ERC721, amount if erc20 or native
     RuleStatus status;
-    uint256[] outputs; //DEPRECATED. idx if ERC721, amount if erc20 or native
-    // ActionResponse response;
+    // uint256[] outputs; //DEPRECATED. idx if ERC721, amount if erc20 or native
+    ActionResponse response;
     uint256 reward;
 }

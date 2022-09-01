@@ -275,7 +275,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
         bytes32 ruleHash = openRules[openRuleIdx];
         Rule memory rule = roboCop.getRule(ruleHash);
         Token[] memory outputTokens = roboCop.getOutputTokens(ruleHash);
-        uint256[] memory outputs = rule.outputs;
+        uint256[] memory outputs = rule.response.tokenOutputs;
         roboCop.redeemBalance(ruleHash);
 
         for (uint256 i = 0; i < outputTokens.length; i++) {

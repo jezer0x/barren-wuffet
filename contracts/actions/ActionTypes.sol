@@ -29,7 +29,7 @@ struct Position {
 
 struct ActionResponse {
     //array of amounts with datatype.
-    uint256[] tokenOutputs;
+    uint256[] tokenOutputs; // idx if ERC721, amount if erc20 or native
     // In future, we may have non-token outputs to be interpreted by the receiver
     // bytes otherOutputs;
 
