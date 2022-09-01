@@ -50,7 +50,7 @@ interface IFund is ISubscription {
 
     function takeAction(Action calldata action, ActionRuntimeParams calldata runtimeParams)
         external
-        returns (uint256[] memory outputs);
+        returns (ActionResponse memory outputs);
 
     function createRule(Trigger[] calldata triggers, Action[] calldata actions) external returns (bytes32 ruleHash);
 

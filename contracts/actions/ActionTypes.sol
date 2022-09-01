@@ -15,20 +15,23 @@ struct Action {
     Token[] outputTokens; // token to be gotten as output
 }
 
-struct ResponseValue {
-    // should this be bytes? i\f so, how do we parse it? 
-    uint256 val;
-    // can be any string or address. we use bytes32 because it's cheap to compare.    
-    // how do we ensure we dont conflict? global enum would need to be updated on every new action
-    // where will this be used? you can use this to plug into another trigger?    
-    bytes32 datatype;
+struct Position {
+    // this uniquely defines a position.
+    // If any other action returns the same positionId, it will override this action
+    // A positionId can be used only once (like an UTXO), unless it is returned again by another action.
+    bytes32 id;
+    uint256 expiry; // this position cant be used after this time
+    uint256 activation; // this position cant be used before this time
+    // A list of actions that can be taken as next-steps to this action.
+    // the next step in this action (which will typically be to close an open position).
+    Action[] nextActions;
 }
 
 struct ActionResponse {
     //array of amounts with datatype.
-    ResponseValue[] outputs;
-    // position is any param than can be sent back to the same callee as "data" to take 
-    // the next step in this action (which will typically be to close an open position).
-    // It should uniquely represent this position for this account
-    Action position;
+    uint256[] tokenOutputs;
+    // In future, we may have non-token outputs to be interpreted by the receiver
+    // bytes otherOutputs;
+
+    Position position;
 }

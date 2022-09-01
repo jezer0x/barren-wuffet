@@ -276,7 +276,7 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
             collaterals: rule.collaterals
         });
 
-        uint256[] memory outputs;
+        ActionResponse memory response;
         for (uint256 i = 0; i < rule.actions.length; i++) {
             Action storage action = rule.actions[i];
             for (uint256 j = 0; j < action.inputTokens.length; j++) {
@@ -290,11 +290,12 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
                     revert("can't handle t yet");
                 }
             }
-            outputs = Utils._delegatePerformAction(action, runtimeParams);
-            runtimeParams.collaterals = outputs; // changes because outputTokens of action[i-1] is inputTokens of action[i]
+
+            response = Utils._delegatePerformV2Action(action, runtimeParams);
+            runtimeParams.collaterals = response.tokenOutputs; // changes because outputTokens of action[i-1] is inputTokens of action[i]
         }
 
-        rule.outputs = outputs;
+        rule.outputs = response.tokenOutputs;
         // We dont need to check sender here.
         // As long as the execution reaches this point, the reward is there
         // for the taking.

@@ -129,7 +129,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
         nonReentrant
         onlyDeployedFund
         onlyFundManager
-        returns (uint256[] memory outputs)
+        returns (ActionResponse memory resp)
     {
         IAction(action.callee).validate(action);
 
@@ -150,10 +150,10 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
             }
         }
 
-        outputs = Utils._delegatePerformAction(action, runtimeParams);
+        resp = Utils._delegatePerformV2Action(action, runtimeParams);
 
         for (uint256 i = 0; i < action.inputTokens.length; i++) {
-            _increaseAssetBalance(action.outputTokens[i], outputs[i]);
+            _increaseAssetBalance(action.outputTokens[i], resp.tokenOutputs[i]);
         }
     }
 

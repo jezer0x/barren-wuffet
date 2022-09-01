@@ -44,6 +44,35 @@ library Utils {
         require(constraints.rewardPercentage <= 100 * 100, "reward > 100%");
     }
 
+    function _delegatePerformV2Action(Action memory action, ActionRuntimeParams memory runtimeParams)
+        internal
+        returns (ActionResponse memory)
+    {
+        (bool success, bytes memory returndata) = action.callee.delegatecall(
+            abi.encodeWithSignature(
+                "perform_v2((address,bytes,address[],address[]),((uint8,bytes)[],uint256[]))",
+                action,
+                runtimeParams
+            )
+        );
+
+        // Taken from: https://eip2535diamonds.substack.com/p/understanding-delegatecall-and-how
+        if (success == false) {
+            // if there is a return reason string
+            if (returndata.length > 0) {
+                // bubble up any reason for revert
+                assembly {
+                    let returndata_size := mload(returndata)
+                    revert(add(32, returndata), returndata_size)
+                }
+            } else {
+                revert("Function call reverted");
+            }
+        } else {
+            return abi.decode(returndata, (ActionResponse));
+        }
+    }
+
     function _delegatePerformAction(Action memory action, ActionRuntimeParams memory runtimeParams)
         internal
         returns (uint256[] memory outputs)
