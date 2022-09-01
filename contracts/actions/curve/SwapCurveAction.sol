@@ -91,7 +91,7 @@ contract SwapCurveAction is IAction, DelegatePerform {
     function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
         external
         delegateOnly
-        returns (uint256[] memory)
+        returns (ActionResponse memory)
     {
         uint256[] memory outputs = new uint256[](1);
         address poolAddr = abi.decode(action.data, (address));
@@ -108,6 +108,7 @@ contract SwapCurveAction is IAction, DelegatePerform {
         );
         IERC20(action.inputTokens[0].addr).safeApprove(address(swapper), 0);
 
-        return outputs;
+        Position memory none;
+        return ActionResponse({tokenOutputs: outputs, position: none});
     }
 }

@@ -150,7 +150,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
             }
         }
 
-        resp = Utils._delegatePerformV2Action(action, runtimeParams);
+        resp = Utils._delegatePerformAction(action, runtimeParams);
 
         for (uint256 i = 0; i < action.inputTokens.length; i++) {
             _increaseAssetBalance(action.outputTokens[i], resp.tokenOutputs[i]);

@@ -57,7 +57,7 @@ contract SwapUniSingleAction is IAction, DelegatePerform {
         return 0;
     }
 
-    function perform_v2(Action calldata action, ActionRuntimeParams calldata runtimeParams)
+    function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
         external
         delegateOnly
         returns (ActionResponse memory)
@@ -96,45 +96,5 @@ contract SwapUniSingleAction is IAction, DelegatePerform {
 
         Position memory none;
         return ActionResponse({tokenOutputs: outputs, position: none});
-    }
-
-    function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
-        external
-        delegateOnly
-        returns (uint256[] memory)
-    {
-        ISwapRouter.ExactInputSingleParams memory params;
-        uint256[] memory outputs = new uint256[](1);
-
-        Token memory outputToken = action.outputTokens[0];
-        Token memory inputToken = action.inputTokens[0];
-        uint256 ethCollateral = 0;
-
-        if (equals(action.inputTokens[0], Token({t: TokenType.NATIVE, addr: Constants.ETH}))) {
-            inputToken = Token({t: TokenType.ERC20, addr: WETH9Addr});
-            ethCollateral = runtimeParams.collaterals[0];
-        } else if (equals(action.outputTokens[0], Token({t: TokenType.NATIVE, addr: Constants.ETH}))) {
-            // won't have both input and output as ETH ever
-            IERC20(inputToken.addr).safeApprove(address(swapRouter), runtimeParams.collaterals[0]);
-            outputToken = Token({t: TokenType.ERC20, addr: WETH9Addr});
-        }
-
-        params = ISwapRouter.ExactInputSingleParams({
-            tokenIn: inputToken.addr,
-            tokenOut: outputToken.addr,
-            fee: 3000, // TODO: pass from action.data?
-            recipient: address(this),
-            deadline: block.timestamp, // need to do an immediate swap
-            amountIn: runtimeParams.collaterals[0],
-            amountOutMinimum: (_parseRuntimeParams(action, runtimeParams) * runtimeParams.collaterals[0]) / 10**8, // assumption: triggerReturn in the form of tokenIn/tokenOut.
-            sqrtPriceLimitX96: 0
-        });
-        outputs[0] = swapRouter.exactInputSingle{value: ethCollateral}(params);
-
-        if (equals(action.inputTokens[0], Token({t: TokenType.NATIVE, addr: Constants.ETH}))) {
-            IERC20(inputToken.addr).safeApprove(address(swapRouter), 0);
-        }
-
-        return outputs;
     }
 }

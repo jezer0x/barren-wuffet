@@ -41,7 +41,7 @@ contract CapFinanceAction is IAction, DelegatePerform {
         return true;
     }
 
-    function perform_v2(Action calldata action, ActionRuntimeParams calldata runtimeParams)
+    function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
         external
         delegateOnly
         returns (ActionResponse memory)
@@ -51,15 +51,5 @@ contract CapFinanceAction is IAction, DelegatePerform {
 
         Position memory none;
         return ActionResponse({tokenOutputs: outputs, position: none});
-    }
-
-    function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
-        external
-        delegateOnly
-        returns (uint256[] memory)
-    {
-        uint256[] memory outputs = new uint256[](1);
-        outputs[0] = 1;
-        return outputs;
     }
 }

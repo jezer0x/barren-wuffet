@@ -54,7 +54,7 @@ contract AddLiquidityCurveAction is PlainPool, IAction, DelegatePerform {
     function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
         external
         delegateOnly
-        returns (uint256[] memory)
+        returns (ActionResponse memory)
     {
         uint256[] memory outputs = new uint256[](action.outputTokens.length);
         address poolAddr = abi.decode(action.data, (address));
@@ -65,6 +65,7 @@ contract AddLiquidityCurveAction is PlainPool, IAction, DelegatePerform {
         outputs = pool.remove_liquidity(runtimeParams.collaterals[0], _min_amounts);
         IERC20(action.inputTokens[0].addr).safeApprove(address(pool), 0);
 
-        return outputs;
+        Position memory none;
+        return ActionResponse({tokenOutputs: outputs, position: none});
     }
 }
