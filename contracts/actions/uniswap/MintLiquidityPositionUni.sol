@@ -51,9 +51,9 @@ contract MintLiquidityPositionUni is IAction, DelegatePerform {
         // For this example, we will provide equal amounts of liquidity in both assets.
         // Providing liquidity in both assets means liquidity will be earning fees and is considered in-range.
         uint256 amount0ToMint = runtimeParams.collaterals[0];
-        address token0Addr = action.inputTokens[0];
+        address token0Addr = action.inputTokens[0].addr;
         uint256 amount1ToMint = runtimeParams.collaterals[1];
-        address token1Addr = action.inputTokens[1];
+        address token1Addr = action.inputTokens[1].addr;
 
         // Approve the position manager
         IERC20(token0Addr).safeApprove(address(nonfungiblePositionManager), amount0ToMint);
@@ -64,7 +64,7 @@ contract MintLiquidityPositionUni is IAction, DelegatePerform {
         INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams({
             token0: token0Addr,
             token1: token1Addr,
-            fee: poolFee,
+            fee: 3000, // TODO:
             tickLower: TickMath.MIN_TICK,
             tickUpper: TickMath.MAX_TICK,
             amount0Desired: amount0ToMint,
@@ -75,7 +75,9 @@ contract MintLiquidityPositionUni is IAction, DelegatePerform {
             deadline: block.timestamp
         });
 
-        (tokenId, liquidity, amount0, amount1) = nonfungiblePositionManager.mint(params);
+        (uint256 tokenId, uint256 liquidity, uint256 amount0, uint256 amount1) = nonfungiblePositionManager.mint(
+            params
+        );
 
         // Remove allowance and refund in both assets.
         IERC20(token0Addr).safeApprove(address(nonfungiblePositionManager), 0);
