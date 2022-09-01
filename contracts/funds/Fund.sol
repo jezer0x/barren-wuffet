@@ -13,8 +13,10 @@ import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
-contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
+contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
     using SafeERC20 for IERC20;
 
     // Storage Start
@@ -24,11 +26,12 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
     address manager;
     SubscriptionConstraints constraints;
     Subscription[] subscriptions;
-    address[] assets; // tracking all the assets this fund has atm
+    Token[] assets; // tracking all the assets this fund has atm
     bytes32[] openRules;
     uint256 totalCollateral;
     bool closed;
-    mapping(address => uint256) fundBalances; // tracking balances of assets
+    mapping(address => uint256) fundCoins; // tracking balances of ERC20 and ETH
+    mapping(address => uint256) fundNFTs; // tracking ids of NFTs
 
     // Storage End
 
@@ -75,13 +78,13 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
         _;
     }
 
-    function getInputTokens() external pure returns (address[] memory) {
-        address[] memory tokens = new address[](1);
-        tokens[0] = Constants.ETH;
+    function getInputTokens() external pure returns (Token[] memory) {
+        Token[] memory tokens = new Token[](1);
+        tokens[0] = Token({t: TokenType.NATIVE, addr: Constants.ETH});
         return tokens;
     }
 
-    function getOutputTokens() external pure returns (address[] memory) {
+    function getOutputTokens() external pure returns (Token[] memory) {
         revert("Undefined: Funds may have multiple output tokens, determined only after it's closed.");
     }
 
@@ -132,13 +135,18 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
 
         uint256 ethCollateral = 0;
         for (uint256 i = 0; i < action.inputTokens.length; i++) {
-            address token = action.inputTokens[i];
-            uint256 amount = runtimeParams.collateralAmounts[i];
+            Token memory token = action.inputTokens[i];
+            uint256 amount = runtimeParams.collaterals[i];
             _decreaseAssetBalance(token, amount);
-            if (token != Constants.ETH) {
-                IERC20(token).safeApprove(action.callee, amount);
-            } else {
+
+            if (token.t == TokenType.ERC20) {
+                IERC20(token.addr).safeApprove(action.callee, amount);
+            } else if (token.t == TokenType.NATIVE) {
                 ethCollateral = amount;
+            } else if (token.t == TokenType.ERC721) {
+                IERC721(token.addr).approve(action.callee, amount);
+            } else {
+                revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
             }
         }
 
@@ -169,7 +177,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
         whenNotPaused
         nonReentrant
     {
-        _decreaseAssetBalance(Constants.ETH, amount);
+        _decreaseAssetBalance(Token({t: TokenType.NATIVE, addr: Constants.ETH}), amount);
         roboCop.increaseReward{value: amount}(openRules[openRuleIdx]);
     }
 
@@ -180,7 +188,10 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
         whenNotPaused
         nonReentrant
     {
-        _decreaseAssetBalance(Constants.ETH, roboCop.withdrawReward(openRules[openRuleIdx]));
+        _decreaseAssetBalance(
+            Token({t: TokenType.NATIVE, addr: Constants.ETH}),
+            roboCop.withdrawReward(openRules[openRuleIdx])
+        );
     }
 
     function activateRule(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager whenNotPaused nonReentrant {
@@ -193,42 +204,45 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
 
     function addRuleCollateral(
         uint256 openRuleIdx,
-        address[] memory collateralTokens,
-        uint256[] memory collateralAmounts
+        Token[] memory collateralTokens,
+        uint256[] memory collaterals
     ) external onlyDeployedFund onlyFundManager whenNotPaused nonReentrant {
         uint256 ethCollateral = 0;
         for (uint256 i = 0; i < collateralTokens.length; i++) {
-            address token = collateralTokens[i];
-            uint256 amount = collateralAmounts[i];
+            Token memory token = collateralTokens[i];
+            uint256 amount = collaterals[i];
             _decreaseAssetBalance(token, amount);
-            if (token != Constants.ETH) {
-                IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
-                IERC20(token).safeApprove(address(roboCop), amount);
-            } else {
+            if (token.t == TokenType.ERC20) {
+                IERC20(token.addr).safeApprove(address(roboCop), amount);
+            } else if (token.t == TokenType.NATIVE) {
                 ethCollateral = amount;
+            } else if (token.t == TokenType.ERC721) {
+                IERC721(token.addr).approve(address(roboCop), amount);
+            } else {
+                revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
             }
         }
 
-        roboCop.addCollateral{value: ethCollateral}(openRules[openRuleIdx], collateralAmounts);
+        roboCop.addCollateral{value: ethCollateral}(openRules[openRuleIdx], collaterals);
     }
 
-    function reduceRuleCollateral(uint256 openRuleIdx, uint256[] memory collateralAmounts)
+    function reduceRuleCollateral(uint256 openRuleIdx, uint256[] memory collaterals)
         external
         onlyDeployedFund
         onlyFundManager
         whenNotPaused
         nonReentrant
     {
-        _reduceRuleCollateral(openRuleIdx, collateralAmounts);
+        _reduceRuleCollateral(openRuleIdx, collaterals);
     }
 
-    function _reduceRuleCollateral(uint256 openRuleIdx, uint256[] memory collateralAmounts) internal {
+    function _reduceRuleCollateral(uint256 openRuleIdx, uint256[] memory collaterals) internal {
         bytes32 ruleHash = openRules[openRuleIdx];
-        address[] memory inputTokens = roboCop.getInputTokens(ruleHash);
-        roboCop.reduceCollateral(ruleHash, collateralAmounts);
+        Token[] memory inputTokens = roboCop.getInputTokens(ruleHash);
+        roboCop.reduceCollateral(ruleHash, collaterals);
 
         for (uint256 i = 0; i < inputTokens.length; i++) {
-            _increaseAssetBalance(inputTokens[i], collateralAmounts[i]);
+            _increaseAssetBalance(inputTokens[i], collaterals[i]);
         }
     }
 
@@ -243,7 +257,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
         if (rule.status != RuleStatus.INACTIVE) {
             roboCop.deactivateRule(ruleHash);
         }
-        _reduceRuleCollateral(openRuleIdx, rule.collateralAmounts);
+        _reduceRuleCollateral(openRuleIdx, rule.collaterals);
     }
 
     function redeemRuleOutput(uint256 openRuleIdx)
@@ -260,12 +274,12 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
     function _redeemRuleOutput(uint256 openRuleIdx) internal {
         bytes32 ruleHash = openRules[openRuleIdx];
         Rule memory rule = roboCop.getRule(ruleHash);
-        address[] memory outputTokens = roboCop.getOutputTokens(ruleHash);
-        uint256[] memory outputAmounts = rule.outputAmounts;
+        Token[] memory outputTokens = roboCop.getOutputTokens(ruleHash);
+        uint256[] memory outputs = rule.outputs;
         roboCop.redeemBalance(ruleHash);
 
         for (uint256 i = 0; i < outputTokens.length; i++) {
-            _increaseAssetBalance(outputTokens[i], outputAmounts[i]);
+            _increaseAssetBalance(outputTokens[i], outputs[i]);
         }
     }
 
@@ -274,34 +288,51 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
         openRules.pop();
     }
 
-    function _increaseAssetBalance(address token, uint256 amount) private {
-        if (fundBalances[token] == 0) {
-            fundBalances[token] = amount;
+    function _increaseAssetBalance(Token memory token, uint256 amount) private {
+        if (token.t == TokenType.ERC721) {
+            fundNFTs[token.addr] = amount;
             assets.push(token);
+        } else if (token.t == TokenType.ERC20 || token.t == TokenType.NATIVE) {
+            if (fundCoins[token.addr] == 0) {
+                fundCoins[token.addr] = amount;
+                assets.push(token);
+            } else {
+                fundCoins[token.addr] += amount;
+            }
         } else {
-            fundBalances[token] += amount;
+            revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
         }
     }
 
-    function _decreaseAssetBalance(address token, uint256 amount) private {
-        require(fundBalances[token] >= amount);
-        fundBalances[token] -= amount;
+    function _decreaseAssetBalance(Token memory token, uint256 amount) private {
+        if (token.t == TokenType.ERC721) {
+            delete fundNFTs[token.addr];
+            _removeFromAssets(token);
+        } else if (token.t == TokenType.ERC20 || token.t == TokenType.NATIVE) {
+            require(fundCoins[token.addr] >= amount);
+            fundCoins[token.addr] -= amount;
+            // TODO: could be made more efficient if we kept token => idx in storage
+            if (fundCoins[token.addr] == 0) {
+                _removeFromAssets(token);
+            }
+        } else {
+            revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
+        }
+    }
 
-        // TODO: could be made more efficient if we kept token => idx in storage
-        if (fundBalances[token] == 0) {
-            for (uint256 i = 0; i < assets.length; i++) {
-                if (assets[i] == token) {
-                    assets[i] = assets[assets.length - 1];
-                    assets.pop();
-                    break;
-                }
+    function _removeFromAssets(Token memory token) private {
+        for (uint256 i = 0; i < assets.length; i++) {
+            if (equals(assets[i], token)) {
+                assets[i] = assets[assets.length - 1];
+                assets.pop();
+                break;
             }
         }
     }
 
-    function _validateCollateral(address collateralToken, uint256 collateralAmount) private view {
+    function _validateCollateral(Token memory collateralToken, uint256 collateralAmount) private view {
         // For now we'll only allow subscribing with ETH
-        require(collateralToken == Constants.ETH);
+        require(equals(collateralToken, Token({t: TokenType.NATIVE, addr: Constants.ETH})));
         require(collateralAmount == msg.value);
         require(constraints.minCollateralPerSub <= collateralAmount, "Insufficient Collateral for Subscription");
         require(constraints.maxCollateralPerSub >= collateralAmount, "Max Collateral for Subscription exceeded");
@@ -312,7 +343,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
         require(block.timestamp < constraints.deadline);
     }
 
-    function deposit(address collateralToken, uint256 collateralAmount)
+    function deposit(Token memory collateralToken, uint256 collateralAmount)
         external
         payable
         whenNotPaused
@@ -329,12 +360,16 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
         _increaseAssetBalance(collateralToken, collateralAmount);
         totalCollateral += collateralAmount;
 
-        emit Deposit(msg.sender, subscriptions.length - 1, collateralToken, collateralAmount);
+        emit Deposit(msg.sender, subscriptions.length - 1, collateralToken.addr, collateralAmount);
         return subscriptions.length - 1;
     }
 
-    function _getShares(uint256 subscriptionIdx, address token) private view returns (uint256) {
-        return (subscriptions[subscriptionIdx].collateralAmount * fundBalances[token]) / totalCollateral;
+    function _getShares(uint256 subscriptionIdx, Token memory token) private view returns (uint256) {
+        if (token.t == TokenType.ERC721) {
+            revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
+        } else if (token.t == TokenType.ERC20 || token.t == TokenType.NATIVE) {
+            return (subscriptions[subscriptionIdx].collateralAmount * fundCoins[token.addr]) / totalCollateral;
+        }
     }
 
     function getStatus() public view returns (FundStatus) {
@@ -349,7 +384,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
         } else if (totalCollateral < constraints.maxCollateralTotal && block.timestamp < constraints.deadline) {
             return FundStatus.RAISING;
         } else {
-            revert("This state should never be reached!");
+            revert(Constants.UNREACHABLE_STATE);
         }
     }
 
@@ -358,7 +393,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
         whenNotPaused
         nonReentrant
         onlyActiveSubscriber(subscriptionIdx)
-        returns (address[] memory, uint256[] memory)
+        returns (Token[] memory, uint256[] memory)
     {
         Subscription storage subscription = subscriptions[subscriptionIdx];
 
@@ -368,21 +403,25 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
         if (status == FundStatus.CLOSABLE) {
             revert("Call closeFund before withdrawing!");
         } else if (status == FundStatus.RAISING) {
-            _decreaseAssetBalance(Constants.ETH, subscription.collateralAmount);
+            _decreaseAssetBalance(Token({t: TokenType.NATIVE, addr: Constants.ETH}), subscription.collateralAmount);
             subscription.status = SubscriptionStatus.WITHDRAWN;
 
             emit Withdraw(msg.sender, subscriptionIdx, Constants.ETH, subscription.collateralAmount);
-            Utils._send(subscription.subscriber, subscription.collateralAmount, Constants.ETH);
+            Utils._send(
+                subscription.subscriber,
+                subscription.collateralAmount,
+                Token({t: TokenType.NATIVE, addr: Constants.ETH})
+            );
 
-            address[] memory tokens = new address[](1);
-            tokens[0] = Constants.ETH;
+            Token[] memory tokens = new Token[](1);
+            tokens[0] = Token({t: TokenType.NATIVE, addr: Constants.ETH});
             uint256[] memory balances = new uint256[](1);
             balances[0] = subscription.collateralAmount;
             return (tokens, balances);
         } else if (status == FundStatus.CLOSED) {
             // TODO:
             // Fund manager can collect rewards by opening and closing and not doing anything with the funds.
-            address[] memory tokens = new address[](assets.length);
+            Token[] memory tokens = new Token[](assets.length);
             uint256[] memory balances = new uint256[](assets.length);
 
             // TODO: potentially won't need the loop anymore if closing == swap back to 1 asset
@@ -390,14 +429,14 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
                 tokens[i] = assets[i];
                 balances[i] = _getShares(subscriptionIdx, assets[i]);
                 // TODO: keep rewardPercentage here for barrenWuffet.
-                emit Withdraw(msg.sender, subscriptionIdx, tokens[i], balances[i]);
+                emit Withdraw(msg.sender, subscriptionIdx, tokens[i].addr, balances[i]);
                 Utils._send(subscription.subscriber, balances[i], tokens[i]);
             }
             return (tokens, balances);
         } else if (status == FundStatus.DEPLOYED) {
             revert("Can't get money back from deployed fund!");
         } else {
-            revert("Should never reach this state!");
+            revert(Constants.UNREACHABLE_STATE);
         }
     }
 
@@ -409,4 +448,14 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard {
     }
 
     receive() external payable {}
+
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external pure returns (bytes4) {
+        // we don't need to save any info
+        return this.onERC721Received.selector;
+    }
 }

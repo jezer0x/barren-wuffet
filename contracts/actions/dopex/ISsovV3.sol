@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import {IERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 /// @title SSOV V3 interface
 interface ISsovV3 is IERC721Enumerable {

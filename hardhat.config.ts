@@ -11,7 +11,7 @@ import "hardhat-gas-reporter";
 const config: HardhatUserConfig = {
   solidity: {
     version: "0.8.9",
-    settings: { optimizer: { enabled: true, runs: 50000 } },
+    settings: { optimizer: { enabled: true, runs: 200 } },
   },
   namedAccounts: {
     deployer: 0,

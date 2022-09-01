@@ -8,13 +8,16 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../utils/Utils.sol";
 import "../utils/Constants.sol";
+import "../utils/Token.sol";
 import "../actions/IAction.sol";
 import "../triggers/ITrigger.sol";
 import "./RuleTypes.sol";
 import "./IRoboCop.sol";
 import "../utils/whitelists/WhitelistService.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
-contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard {
+contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
     using SafeERC20 for IERC20;
 
     // Storage Start
@@ -67,11 +70,11 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard {
         return rules[ruleHash];
     }
 
-    function getInputTokens(bytes32 ruleHash) public view ruleExists(ruleHash) returns (address[] memory) {
+    function getInputTokens(bytes32 ruleHash) public view ruleExists(ruleHash) returns (Token[] memory) {
         return rules[ruleHash].actions[0].inputTokens;
     }
 
-    function getOutputTokens(bytes32 ruleHash) public view ruleExists(ruleHash) returns (address[] memory) {
+    function getOutputTokens(bytes32 ruleHash) public view ruleExists(ruleHash) returns (Token[] memory) {
         Rule storage rule = rules[ruleHash];
         return rule.actions[rule.actions.length - 1].outputTokens;
     }
@@ -79,10 +82,10 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard {
     function redeemBalance(bytes32 ruleHash) external whenNotPaused nonReentrant onlyRuleOwner(ruleHash) {
         Rule storage rule = rules[ruleHash];
         _setRuleStatus(ruleHash, RuleStatus.REDEEMED);
-        address[] memory tokens = getOutputTokens(ruleHash);
+        Token[] memory tokens = getOutputTokens(ruleHash);
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            Utils._send(rule.owner, rule.outputAmounts[i], tokens[i]);
+            Utils._send(rule.owner, rule.outputs[i], tokens[i]);
         }
     }
 
@@ -96,18 +99,22 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard {
         Rule storage rule = rules[ruleHash];
         require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE, "Can't add collateral");
 
-        address[] memory tokens = getInputTokens(ruleHash);
+        Token[] memory tokens = getInputTokens(ruleHash);
         uint256 amount;
 
         for (uint256 i = 0; i < tokens.length; i++) {
             amount = amounts[i];
             require(amount > 0, "amount <= 0");
-            if (tokens[i] != Constants.ETH) {
-                IERC20(tokens[i]).safeTransferFrom(msg.sender, address(this), amount);
-            } else {
+            if (tokens[i].t == TokenType.ERC20) {
+                IERC20(tokens[i].addr).safeTransferFrom(msg.sender, address(this), amount);
+            } else if (tokens[i].t == TokenType.NATIVE) {
                 require(amount == msg.value, "ETH: amount != msg.value");
+            } else if (tokens[i].t == TokenType.ERC721) {
+                IERC721(tokens[i].addr).safeTransferFrom(msg.sender, address(this), amount);
+            } else {
+                revert("Wrong collateral type colalteral");
             }
-            rule.collateralAmounts[i] += amount;
+            rule.collaterals[i] += amount;
         }
 
         emit CollateralAdded(ruleHash, amounts);
@@ -122,17 +129,21 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard {
         Rule storage rule = rules[ruleHash];
         require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE, "Can't reduce collateral");
 
-        address[] memory tokens = getInputTokens(ruleHash);
+        Token[] memory tokens = getInputTokens(ruleHash);
         uint256 amount;
 
         for (uint256 i = 0; i < tokens.length; i++) {
             amount = amounts[i];
-            require(rule.collateralAmounts[i] >= amount, "Not enough collateral.");
-            rule.collateralAmounts[i] -= amount;
-            if (tokens[i] != Constants.ETH) {
-                IERC20(tokens[i]).safeTransfer(msg.sender, amount);
-            } else {
+            require(rule.collaterals[i] >= amount, "Not enough collateral.");
+            rule.collaterals[i] -= amount;
+            if (tokens[i].t == TokenType.ERC20) {
+                IERC20(tokens[i].addr).safeTransfer(msg.sender, amount);
+            } else if (tokens[i].t == TokenType.NATIVE) {
                 payable(msg.sender).transfer(amount);
+            } else if (tokens[i].t == TokenType.ERC721) {
+                IERC721(tokens[i].addr).safeTransferFrom(address(this), msg.sender, amount);
+            } else {
+                revert("Can't reduce collateral for this t");
             }
         }
         emit CollateralReduced(ruleHash, amounts);
@@ -176,10 +187,10 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard {
         for (uint256 i = 0; i < actions.length; i++) {
             require(IAction(actions[i].callee).validate(actions[i]), "Invalid Action");
             if (i != actions.length - 1) {
-                address[] memory inputTokens = actions[i + 1].inputTokens;
-                address[] memory outputTokens = actions[i].outputTokens;
+                Token[] memory inputTokens = actions[i + 1].inputTokens;
+                Token[] memory outputTokens = actions[i].outputTokens;
                 for (uint256 j = 0; j < outputTokens.length; j++) {
-                    require(outputTokens[j] == inputTokens[j], "Invalid inputTokens->outputTokens");
+                    require(equals(outputTokens[j], inputTokens[j]), "Invalid inputTokens->outputTokens");
                 }
             }
             rule.actions.push(actions[i]);
@@ -188,7 +199,7 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard {
         rule.status = RuleStatus.INACTIVE;
 
         for (uint256 i = 0; i < actions[0].inputTokens.length; i++) {
-            rule.collateralAmounts.push();
+            rule.collaterals.push();
         }
 
         increaseReward(ruleHash);
@@ -262,22 +273,28 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard {
 
         ActionRuntimeParams memory runtimeParams = ActionRuntimeParams({
             triggerReturnArr: triggerReturnArr,
-            collateralAmounts: rule.collateralAmounts
+            collaterals: rule.collaterals
         });
 
         uint256[] memory outputs;
         for (uint256 i = 0; i < rule.actions.length; i++) {
             Action storage action = rule.actions[i];
             for (uint256 j = 0; j < action.inputTokens.length; j++) {
-                if (action.inputTokens[j] != Constants.ETH) {
-                    IERC20(action.inputTokens[j]).safeApprove(action.callee, runtimeParams.collateralAmounts[j]);
+                if (action.inputTokens[j].t == TokenType.ERC20) {
+                    IERC20(action.inputTokens[j].addr).safeApprove(action.callee, runtimeParams.collaterals[j]);
+                } else if (action.inputTokens[j].t == TokenType.NATIVE) {
+                    // do nothing
+                } else if (action.inputTokens[j].t == TokenType.ERC721) {
+                    IERC721(action.inputTokens[j].addr).approve(action.callee, runtimeParams.collaterals[j]);
+                } else {
+                    revert("can't handle t yet");
                 }
             }
             outputs = Utils._delegatePerformAction(action, runtimeParams);
-            runtimeParams.collateralAmounts = outputs; // changes because outputTokens of action[i-1] is inputTokens of action[i]
+            runtimeParams.collaterals = outputs; // changes because outputTokens of action[i-1] is inputTokens of action[i]
         }
 
-        rule.outputAmounts = outputs;
+        rule.outputs = outputs;
         // We dont need to check sender here.
         // As long as the execution reaches this point, the reward is there
         // for the taking.
@@ -286,4 +303,14 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard {
     }
 
     receive() external payable {}
+
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external pure returns (bytes4) {
+        // we don't need to save any info
+        return this.onERC721Received.selector;
+    }
 }

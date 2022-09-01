@@ -20,7 +20,7 @@ import "./ISsovV3.sol";
     TriggerReturn: 
 
 */
-contract SwapUniSingleAction is IAction, DelegatePerform {
+contract DopexSsovV3BuyEuropean is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
 
     constructor() {}
@@ -36,8 +36,8 @@ contract SwapUniSingleAction is IAction, DelegatePerform {
         ISsovV3.EpochData memory eData = vault.getEpochData(epoch);
         require(amount > 0);
         require(!eData.expired);
-        require(address(vault.collateralToken()) == action.inputTokens[0]);
-        require(vault.getEpochStrikeData(epoch, strikeIdx).strikeToken == action.outputTokens[0]);
+        require(address(vault.collateralToken()) == action.inputTokens[0].addr);
+        require(vault.getEpochStrikeData(epoch, strikeIdx).strikeToken == action.outputTokens[0].addr);
         require(strikeIdx < eData.strikes.length);
 
         return true;
@@ -58,11 +58,11 @@ contract SwapUniSingleAction is IAction, DelegatePerform {
 
         // TODO: anything to do with triggerdata?
 
-        IERC20(action.inputTokens[0]).safeApprove(vaultAddr, runtimeParams.collateralAmounts[0]);
+        IERC20(action.inputTokens[0].addr).safeApprove(vaultAddr, runtimeParams.collaterals[0]);
         (uint256 premium, uint256 totalFees) = vault.purchase(strikeIdx, amount, address(this));
-        IERC20(action.inputTokens[0]).safeApprove(vaultAddr, 0);
+        IERC20(action.inputTokens[0].addr).safeApprove(vaultAddr, 0);
 
-        outputs[0] = runtimeParams.collateralAmounts[0] - (premium + totalFees);
+        outputs[0] = runtimeParams.collaterals[0] - (premium + totalFees);
         outputs[1] = amount;
         return outputs;
     }
