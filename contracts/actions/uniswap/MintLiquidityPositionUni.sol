@@ -50,9 +50,9 @@ contract MintLiquidityPositionUni is IAction, DelegatePerform {
 
         // For this example, we will provide equal amounts of liquidity in both assets.
         // Providing liquidity in both assets means liquidity will be earning fees and is considered in-range.
-        uint256 amount0ToMint = runtimeParams.collateralAmounts[0];
+        uint256 amount0ToMint = runtimeParams.collaterals[0];
         address token0Addr = action.inputTokens[0];
-        uint256 amount1ToMint = runtimeParams.collateralAmounts[1];
+        uint256 amount1ToMint = runtimeParams.collaterals[1];
         address token1Addr = action.inputTokens[1];
 
         // Approve the position manager
