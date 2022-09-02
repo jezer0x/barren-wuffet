@@ -139,6 +139,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
             Token memory token = action.inputTokens[i];
             uint256 amount = runtimeParams.collaterals[i];
             _decreaseAssetBalance(token, amount);
+            // only 1 of these tokens should be ETH, so we can just overwrite
             ethCollateral = approveToken(token, amount, action.callee);
         }
 

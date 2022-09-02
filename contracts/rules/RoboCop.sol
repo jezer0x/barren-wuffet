@@ -22,7 +22,7 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
 
     // Storage Start
     mapping(bytes32 => Rule) rules;
-    mapping(bytes32 => mapping(bytes32 => Position)) pendingPositions;
+    mapping(bytes32 => Position) pendingPositions;
     mapping(bytes32 => mapping(address => uint256)) public ruleRewardProviders;
     bytes32 triggerWhitelistHash;
     bytes32 actionWhitelistHash;
@@ -266,6 +266,21 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
         (valid, ) = _checkTriggers(rules[ruleHash].triggers);
     }
 
+    function _takeAction(Action storage action, ActionRuntimeParams memory runtimeParams)
+        private
+        returns (uint256[] memory)
+    {
+        for (uint256 j = 0; j < action.inputTokens.length; j++) {
+            // ignore return value
+            approveToken(action.inputTokens[j], runtimeParams.collaterals[j], action.callee);
+        }
+
+        ActionResponse memory response = Utils._delegatePerformAction(action, runtimeParams);
+
+        Utils._savePositions(response, pendingPositions);
+        return response.tokenOutputs;
+    }
+
     function executeRule(bytes32 ruleHash) external ruleExists(ruleHash) whenNotPaused nonReentrant {
         Rule storage rule = rules[ruleHash];
         _setRuleStatus(ruleHash, RuleStatus.EXECUTED); // This ensures only active rules can be executed
@@ -277,22 +292,14 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
             collaterals: rule.collaterals
         });
 
-        ActionResponse memory response;
+        uint256[] memory outputs;
         for (uint256 i = 0; i < rule.actions.length; i++) {
             Action storage action = rule.actions[i];
-            for (uint256 j = 0; j < action.inputTokens.length; j++) {
-                // ignore return value
-                approveToken(action.inputTokens[j], runtimeParams.collaterals[j], action.callee);
-            }
-
-            response = Utils._delegatePerformAction(action, runtimeParams);
-
-            rule.outputs = response.tokenOutputs;
-            Utils._savePositions(response, pendingPositions);
-
-            runtimeParams.collaterals = response.tokenOutputs; // changes because outputTokens of action[i-1] is inputTokens of action[i]
+            outputs = _takeAction(action, runtimeParams);
+            runtimeParams.collaterals = outputs; // changes because outputTokens of action[i-1] is inputTokens of action[i]
         }
 
+        rule.outputs = outputs;
         payable(msg.sender).transfer(rule.reward); // slither-disable-next-line arbitrary-send // for the taking. // As long as the execution reaches this point, the reward is there // We dont need to check sender here.
     }
 
