@@ -46,6 +46,13 @@ We want 100% coverage on any smart contract code that gets deployed. If code doe
 
 To generate the coverage badge, run `yarn run istanbul-badges-readme` after running coverage. It generates the badge from `coverage/coverage-summary.json`
 
+### Testing on Forked Local Node
+
+If you want to test against smart contracts that are live, you need to use an alchemy archival node (with an API key) and ask hardhat to run a local instance forked from mainnet.
+
+Step 1: `yarn hardhat node --fork https://arb-mainnet.g.alchemy.com/v2/<API KEY> --fork-ignore-unknown-tx-type true --fork-block-number 22330560 --no-deploy`
+Step 2: `yarn hardhat test --network localhost`
+
 ### Deploying
 
 `yarn hardhat deploy` (`--network localhost` if you're running `yarn hardhat node` in another terminal)
