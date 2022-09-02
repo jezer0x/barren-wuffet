@@ -22,8 +22,8 @@ function equals(Token memory t1, Token memory t2) pure returns (bool) {
 
 function approveToken(
     Token memory token,
-    uint256 amount,
-    address to
+    address to,
+    uint256 amount
 ) returns (uint256 ethCollateral) {
     if (token.t == TokenType.ERC20) {
         SafeERC20.safeIncreaseAllowance(IERC20(token.addr), to, amount);
@@ -33,5 +33,23 @@ function approveToken(
         IERC721(token.addr).approve(to, amount);
     } else {
         revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
+    }
+}
+
+function transferToken(
+    Token memory token,
+    // from is ignored if it's a ERC20 transfer
+    address from,
+    address to,
+    uint256 amount
+) {
+    if (token.t == TokenType.ERC20) {
+        SafeERC20.safeTransfer(IERC20(token.addr), to, amount);
+    } else if (token.t == TokenType.NATIVE) {
+        payable(to).transfer(amount);
+    } else if (token.t == TokenType.ERC721) {
+        IERC721(token.addr).safeTransferFrom(from, to, amount);
+    } else {
+        revert("Can't transfer this token");
     }
 }

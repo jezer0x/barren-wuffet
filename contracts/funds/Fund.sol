@@ -140,7 +140,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
             uint256 amount = runtimeParams.collaterals[i];
             _decreaseAssetBalance(token, amount);
             // only 1 of these tokens should be ETH, so we can just overwrite
-            ethCollateral = approveToken(token, amount, action.callee);
+            ethCollateral = approveToken(token, action.callee, amount);
         }
 
         resp = Utils._delegatePerformAction(action, runtimeParams);
@@ -208,7 +208,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
             Token memory token = collateralTokens[i];
             uint256 amount = collaterals[i];
             _decreaseAssetBalance(token, amount);
-            ethCollateral = approveToken(token, amount, address(roboCop));
+            ethCollateral = approveToken(token, address(roboCop), amount);
         }
 
         roboCop.addCollateral{value: ethCollateral}(openRules[openRuleIdx], collaterals);
