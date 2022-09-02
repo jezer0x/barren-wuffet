@@ -264,7 +264,7 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
     {
         for (uint256 j = 0; j < action.inputTokens.length; j++) {
             // ignore return value
-            approveToken(action.inputTokens[j], runtimeParams.collaterals[j], action.callee);
+            approveToken(action.inputTokens[j], action.callee, runtimeParams.collaterals[j]);
         }
 
         ActionResponse memory response = Utils._delegatePerformAction(action, runtimeParams);
