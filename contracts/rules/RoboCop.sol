@@ -22,6 +22,7 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
 
     // Storage Start
     mapping(bytes32 => Rule) rules;
+    mapping(bytes32 => Position) pendingPositions;
     mapping(bytes32 => mapping(address => uint256)) public ruleRewardProviders;
     bytes32 triggerWhitelistHash;
     bytes32 actionWhitelistHash;
@@ -136,15 +137,7 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
             amount = amounts[i];
             require(rule.collaterals[i] >= amount, "Not enough collateral.");
             rule.collaterals[i] -= amount;
-            if (tokens[i].t == TokenType.ERC20) {
-                IERC20(tokens[i].addr).safeTransfer(msg.sender, amount);
-            } else if (tokens[i].t == TokenType.NATIVE) {
-                payable(msg.sender).transfer(amount);
-            } else if (tokens[i].t == TokenType.ERC721) {
-                IERC721(tokens[i].addr).safeTransferFrom(address(this), msg.sender, amount);
-            } else {
-                revert("Can't reduce collateral for this t");
-            }
+            transferToken(tokens[i], address(this), msg.sender, amount);
         }
         emit CollateralReduced(ruleHash, amounts);
     }
@@ -265,6 +258,21 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
         (valid, ) = _checkTriggers(rules[ruleHash].triggers);
     }
 
+    function _takeAction(Action storage action, ActionRuntimeParams memory runtimeParams)
+        private
+        returns (uint256[] memory)
+    {
+        for (uint256 j = 0; j < action.inputTokens.length; j++) {
+            // ignore return value
+            approveToken(action.inputTokens[j], action.callee, runtimeParams.collaterals[j]);
+        }
+
+        ActionResponse memory response = Utils._delegatePerformAction(action, runtimeParams);
+
+        Utils._savePositions(response, pendingPositions);
+        return response.tokenOutputs;
+    }
+
     function executeRule(bytes32 ruleHash) external ruleExists(ruleHash) whenNotPaused nonReentrant {
         Rule storage rule = rules[ruleHash];
         _setRuleStatus(ruleHash, RuleStatus.EXECUTED); // This ensures only active rules can be executed
@@ -279,27 +287,12 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
         uint256[] memory outputs;
         for (uint256 i = 0; i < rule.actions.length; i++) {
             Action storage action = rule.actions[i];
-            for (uint256 j = 0; j < action.inputTokens.length; j++) {
-                if (action.inputTokens[j].t == TokenType.ERC20) {
-                    IERC20(action.inputTokens[j].addr).safeApprove(action.callee, runtimeParams.collaterals[j]);
-                } else if (action.inputTokens[j].t == TokenType.NATIVE) {
-                    // do nothing
-                } else if (action.inputTokens[j].t == TokenType.ERC721) {
-                    IERC721(action.inputTokens[j].addr).approve(action.callee, runtimeParams.collaterals[j]);
-                } else {
-                    revert("can't handle t yet");
-                }
-            }
-            outputs = Utils._delegatePerformAction(action, runtimeParams);
+            outputs = _takeAction(action, runtimeParams);
             runtimeParams.collaterals = outputs; // changes because outputTokens of action[i-1] is inputTokens of action[i]
         }
 
         rule.outputs = outputs;
-        // We dont need to check sender here.
-        // As long as the execution reaches this point, the reward is there
-        // for the taking.
-        // slither-disable-next-line arbitrary-send
-        payable(msg.sender).transfer(rule.reward);
+        payable(msg.sender).transfer(rule.reward); // slither-disable-next-line arbitrary-send // for the taking. // As long as the execution reaches this point, the reward is there // We dont need to check sender here.
     }
 
     receive() external payable {}

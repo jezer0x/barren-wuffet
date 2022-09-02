@@ -60,7 +60,7 @@ contract SwapUniSingleAction is IAction, DelegatePerform {
     function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
         external
         delegateOnly
-        returns (uint256[] memory)
+        returns (ActionResponse memory)
     {
         ISwapRouter.ExactInputSingleParams memory params;
         uint256[] memory outputs = new uint256[](1);
@@ -94,6 +94,7 @@ contract SwapUniSingleAction is IAction, DelegatePerform {
             IERC20(inputToken.addr).safeApprove(address(swapRouter), 0);
         }
 
-        return outputs;
+        Position memory none;
+        return ActionResponse({tokenOutputs: outputs, position: none});
     }
 }

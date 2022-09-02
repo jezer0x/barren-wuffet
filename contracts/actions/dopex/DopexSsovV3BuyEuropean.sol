@@ -46,7 +46,7 @@ contract DopexSsovV3BuyEuropean is IAction, DelegatePerform {
     function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
         external
         delegateOnly
-        returns (uint256[] memory)
+        returns (ActionResponse memory)
     {
         uint256[] memory outputs = new uint256[](2);
         (address vaultAddr, uint256 epoch, uint256 strikeIdx, uint256 amount) = abi.decode(
@@ -64,6 +64,7 @@ contract DopexSsovV3BuyEuropean is IAction, DelegatePerform {
 
         outputs[0] = runtimeParams.collaterals[0] - (premium + totalFees);
         outputs[1] = amount;
-        return outputs;
+        Position memory none;
+        return ActionResponse({tokenOutputs: outputs, position: none});
     }
 }

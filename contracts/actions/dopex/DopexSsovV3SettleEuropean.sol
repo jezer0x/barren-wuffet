@@ -46,7 +46,7 @@ contract DopexSsovV3SettleEuropean is IAction, DelegatePerform {
     function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
         external
         delegateOnly
-        returns (uint256[] memory)
+        returns (ActionResponse memory)
     {
         uint256[] memory outputs = new uint256[](1);
         (address vaultAddr, uint256 epoch, uint256 strikeIdx, uint256 amount) = abi.decode(
@@ -61,6 +61,7 @@ contract DopexSsovV3SettleEuropean is IAction, DelegatePerform {
         uint256 pnl = vault.settle(strikeIdx, amount, epoch, address(this));
         IERC20(action.inputTokens[0].addr).safeApprove(vaultAddr, 0);
         outputs[0] = pnl;
-        return outputs;
+        Position memory none;
+        return ActionResponse({tokenOutputs: outputs, position: none});
     }
 }

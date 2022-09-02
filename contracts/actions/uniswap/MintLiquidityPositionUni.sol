@@ -44,7 +44,7 @@ contract MintLiquidityPositionUni is IAction, DelegatePerform {
     function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
         external
         delegateOnly
-        returns (uint256[] memory)
+        returns (ActionResponse memory)
     {
         uint256[] memory outputs = new uint256[](3);
 
@@ -96,5 +96,8 @@ contract MintLiquidityPositionUni is IAction, DelegatePerform {
         outputs[0] = refund0;
         outputs[1] = refund1;
         outputs[2] = tokenId;
+
+        Position memory none;
+        return ActionResponse({tokenOutputs: outputs, position: none});
     }
 }

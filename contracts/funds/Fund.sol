@@ -28,6 +28,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
     Subscription[] subscriptions;
     Token[] assets; // tracking all the assets this fund has atm
     bytes32[] openRules;
+    mapping(bytes32 => Position) pendingPositions;
     uint256 totalCollateral;
     bool closed;
     mapping(address => uint256) fundCoins; // tracking balances of ERC20 and ETH
@@ -129,7 +130,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
         nonReentrant
         onlyDeployedFund
         onlyFundManager
-        returns (uint256[] memory outputs)
+        returns (ActionResponse memory resp)
     {
         IAction(action.callee).validate(action);
 
@@ -138,23 +139,17 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
             Token memory token = action.inputTokens[i];
             uint256 amount = runtimeParams.collaterals[i];
             _decreaseAssetBalance(token, amount);
-
-            if (token.t == TokenType.ERC20) {
-                IERC20(token.addr).safeApprove(action.callee, amount);
-            } else if (token.t == TokenType.NATIVE) {
-                ethCollateral = amount;
-            } else if (token.t == TokenType.ERC721) {
-                IERC721(token.addr).approve(action.callee, amount);
-            } else {
-                revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
-            }
+            // only 1 of these tokens should be ETH, so we can just overwrite
+            ethCollateral = approveToken(token, action.callee, amount);
         }
 
-        outputs = Utils._delegatePerformAction(action, runtimeParams);
+        resp = Utils._delegatePerformAction(action, runtimeParams);
 
         for (uint256 i = 0; i < action.inputTokens.length; i++) {
-            _increaseAssetBalance(action.outputTokens[i], outputs[i]);
+            _increaseAssetBalance(action.outputTokens[i], resp.tokenOutputs[i]);
         }
+
+        Utils._savePositions(resp, pendingPositions);
     }
 
     function createRule(Trigger[] calldata triggers, Action[] calldata actions)
@@ -208,19 +203,12 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
         uint256[] memory collaterals
     ) external onlyDeployedFund onlyFundManager whenNotPaused nonReentrant {
         uint256 ethCollateral = 0;
+
         for (uint256 i = 0; i < collateralTokens.length; i++) {
             Token memory token = collateralTokens[i];
             uint256 amount = collaterals[i];
             _decreaseAssetBalance(token, amount);
-            if (token.t == TokenType.ERC20) {
-                IERC20(token.addr).safeApprove(address(roboCop), amount);
-            } else if (token.t == TokenType.NATIVE) {
-                ethCollateral = amount;
-            } else if (token.t == TokenType.ERC721) {
-                IERC721(token.addr).approve(address(roboCop), amount);
-            } else {
-                revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
-            }
+            ethCollateral = approveToken(token, address(roboCop), amount);
         }
 
         roboCop.addCollateral{value: ethCollateral}(openRules[openRuleIdx], collaterals);
