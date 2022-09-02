@@ -28,6 +28,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
     Subscription[] subscriptions;
     Token[] assets; // tracking all the assets this fund has atm
     bytes32[] openRules;
+    mapping(bytes32 => Position) pendingPositions;
     uint256 totalCollateral;
     bool closed;
     mapping(address => uint256) fundCoins; // tracking balances of ERC20 and ETH
@@ -155,6 +156,8 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
         for (uint256 i = 0; i < action.inputTokens.length; i++) {
             _increaseAssetBalance(action.outputTokens[i], resp.tokenOutputs[i]);
         }
+
+        Utils._savePositions(resp, pendingPositions);
     }
 
     function createRule(Trigger[] calldata triggers, Action[] calldata actions)

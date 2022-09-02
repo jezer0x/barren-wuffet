@@ -22,7 +22,7 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
 
     // Storage Start
     mapping(bytes32 => Rule) rules;
-    mapping(bytes32 => Position) pendingPositions;
+    mapping(bytes32 => mapping(bytes32 => Position)) pendingPositions;
     mapping(bytes32 => mapping(address => uint256)) public ruleRewardProviders;
     bytes32 triggerWhitelistHash;
     bytes32 actionWhitelistHash;
@@ -266,25 +266,6 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
         (valid, ) = _checkTriggers(rules[ruleHash].triggers);
     }
 
-    function _savePositions(ActionResponse memory response) private {
-        Position storage p = pendingPositions[response.position.id];
-        p.expiry = response.position.expiry;
-        p.activation = response.position.activation;
-
-        for (uint256 i = 0; i < response.position.nextActions.length; i++) {
-            Action memory a_m = response.position.nextActions[i];
-            Action storage a_s = p.nextActions.push();
-            a_s.callee = a_m.callee;
-            a_s.data = a_m.data;
-            for (uint256 j = 0; j < a_m.inputTokens.length; j++) {
-                a_s.inputTokens.push(a_m.inputTokens[j]);
-            }
-            for (uint256 j = 0; j < a_m.outputTokens.length; j++) {
-                a_s.outputTokens.push(a_m.outputTokens[j]);
-            }
-        }
-    }
-
     function executeRule(bytes32 ruleHash) external ruleExists(ruleHash) whenNotPaused nonReentrant {
         Rule storage rule = rules[ruleHash];
         _setRuleStatus(ruleHash, RuleStatus.EXECUTED); // This ensures only active rules can be executed
@@ -314,7 +295,7 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
             response = Utils._delegatePerformAction(action, runtimeParams);
 
             rule.outputs = response.tokenOutputs;
-            _savePositions(response);
+            Utils._savePositions(response, pendingPositions[ruleHash]);
 
             runtimeParams.collaterals = response.tokenOutputs; // changes because outputTokens of action[i-1] is inputTokens of action[i]
         }
