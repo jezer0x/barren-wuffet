@@ -139,16 +139,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
             Token memory token = action.inputTokens[i];
             uint256 amount = runtimeParams.collaterals[i];
             _decreaseAssetBalance(token, amount);
-
-            if (token.t == TokenType.ERC20) {
-                IERC20(token.addr).safeApprove(action.callee, amount);
-            } else if (token.t == TokenType.NATIVE) {
-                ethCollateral = amount;
-            } else if (token.t == TokenType.ERC721) {
-                IERC721(token.addr).approve(action.callee, amount);
-            } else {
-                revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
-            }
+            ethCollateral = approveToken(token, amount, action.callee);
         }
 
         resp = Utils._delegatePerformAction(action, runtimeParams);
@@ -211,19 +202,12 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
         uint256[] memory collaterals
     ) external onlyDeployedFund onlyFundManager whenNotPaused nonReentrant {
         uint256 ethCollateral = 0;
+
         for (uint256 i = 0; i < collateralTokens.length; i++) {
             Token memory token = collateralTokens[i];
             uint256 amount = collaterals[i];
             _decreaseAssetBalance(token, amount);
-            if (token.t == TokenType.ERC20) {
-                IERC20(token.addr).safeApprove(address(roboCop), amount);
-            } else if (token.t == TokenType.NATIVE) {
-                ethCollateral = amount;
-            } else if (token.t == TokenType.ERC721) {
-                IERC721(token.addr).approve(address(roboCop), amount);
-            } else {
-                revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
-            }
+            ethCollateral = approveToken(token, amount, address(roboCop));
         }
 
         roboCop.addCollateral{value: ethCollateral}(openRules[openRuleIdx], collaterals);

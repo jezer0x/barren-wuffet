@@ -281,21 +281,14 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
         for (uint256 i = 0; i < rule.actions.length; i++) {
             Action storage action = rule.actions[i];
             for (uint256 j = 0; j < action.inputTokens.length; j++) {
-                if (action.inputTokens[j].t == TokenType.ERC20) {
-                    IERC20(action.inputTokens[j].addr).safeApprove(action.callee, runtimeParams.collaterals[j]);
-                } else if (action.inputTokens[j].t == TokenType.NATIVE) {
-                    // do nothing
-                } else if (action.inputTokens[j].t == TokenType.ERC721) {
-                    IERC721(action.inputTokens[j].addr).approve(action.callee, runtimeParams.collaterals[j]);
-                } else {
-                    revert("can't handle it yet");
-                }
+                // ignore return value
+                approveToken(action.inputTokens[j], runtimeParams.collaterals[j], action.callee);
             }
 
             response = Utils._delegatePerformAction(action, runtimeParams);
 
             rule.outputs = response.tokenOutputs;
-            Utils._savePositions(response, pendingPositions[ruleHash]);
+            Utils._savePositions(response, pendingPositions);
 
             runtimeParams.collaterals = response.tokenOutputs; // changes because outputTokens of action[i-1] is inputTokens of action[i]
         }
