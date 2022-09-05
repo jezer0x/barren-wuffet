@@ -14,9 +14,9 @@ library Utils {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
     function _send(
+        Token memory token,
         address receiver,
-        uint256 balance,
-        Token memory token
+        uint256 balance
     ) internal {
         if (token.t == TokenType.ERC20) {
             IERC20(token.addr).safeTransfer(receiver, balance);
@@ -30,9 +30,9 @@ library Utils {
     }
 
     function _receive(
+        Token memory token,
         address sender,
-        uint256 amount,
-        Token memory token
+        uint256 amount
     ) internal {
         if (token.t == TokenType.ERC20) {
             IERC20(token.addr).safeTransferFrom(sender, address(this), amount);

@@ -88,7 +88,7 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
         Token[] memory tokens = getOutputTokens(ruleHash);
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            Utils._send(rule.owner, rule.outputs[i], tokens[i]);
+            Utils._send(tokens[i], rule.owner, rule.outputs[i]);
         }
     }
 
@@ -111,7 +111,7 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
             if (tokens[i].t == TokenType.NATIVE) {
                 require(amount == msg.value, "ETH: amount != msg.value");
             } else {
-                Utils._receive(msg.sender, amount, tokens[i]);
+                Utils._receive(tokens[i], msg.sender, amount);
             }
 
             rule.collaterals[i] += amount;

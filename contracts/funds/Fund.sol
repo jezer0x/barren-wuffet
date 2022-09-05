@@ -400,9 +400,9 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
 
             emit Withdraw(msg.sender, subscriptionIdx, Constants.ETH, subscription.collateralAmount);
             Utils._send(
+                Token({t: TokenType.NATIVE, addr: Constants.ETH}),
                 subscription.subscriber,
-                subscription.collateralAmount,
-                Token({t: TokenType.NATIVE, addr: Constants.ETH})
+                subscription.collateralAmount
             );
 
             Token[] memory tokens = new Token[](1);
@@ -422,7 +422,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
                 balances[i] = _getShares(subscriptionIdx, assets[i]);
                 // TODO: keep rewardPercentage here for barrenWuffet.
                 emit Withdraw(msg.sender, subscriptionIdx, tokens[i].addr, balances[i]);
-                Utils._send(subscription.subscriber, balances[i], tokens[i]);
+                Utils._send(tokens[i], subscription.subscriber, balances[i]);
             }
             return (tokens, balances);
         } else if (status == FundStatus.DEPLOYED) {
