@@ -32,15 +32,15 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 describe("RoboCop", () => {
   const deployRoboCopFixture = deployments.createFixture(async (hre, options) => {
-    await deployments.fixture();
+    await deployments.fixture(["RoboCopImplementation"]);
     return await setupRoboCop(hre);
   });
 
   describe("Deployment", () => {
     it("Should set the right owner", async function () {
-      const { roboCop, ownerWallet } = await deployRoboCopFixture();
+      const { roboCop, deployerWallet } = await deployRoboCopFixture();
 
-      expect(await roboCop.owner()).to.equal(ownerWallet);
+      expect(await roboCop.owner()).to.equal(deployerWallet.address);
     });
   });
 
@@ -387,7 +387,7 @@ describe("RoboCop", () => {
   });
 
   const deployValidRuleFixture = deployments.createFixture(async (hre, options) => {
-    await deployments.fixture(["RoboCop"]);
+    await deployments.fixture(["RoboCopImplementation"]);
     return await setupValidRuleFixture(hre);
   });
 
@@ -396,7 +396,7 @@ describe("RoboCop", () => {
       roboCop,
       swapUniSingleAction,
       priceTrigger,
-      ownerWallet,
+      deployerWallet,
       testToken1,
       testToken2,
       whitelistService,
@@ -456,7 +456,7 @@ describe("RoboCop", () => {
       ruleHashEth,
       ruleHashToken,
       roboCop,
-      ownerWallet,
+      deployerWallet,
       ruleMakerWallet,
       ruleSubscriberWallet,
       botWallet,
@@ -509,7 +509,7 @@ describe("RoboCop", () => {
       ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
     });
 
-    it("should not allow anyone other than rule owner to add / reduce collateral to a rule", async () => {
+    it("yy should not allow anyone other than rule owner to add / reduce collateral to a rule", async () => {
       const { ruleHashEth, ruleHashToken, roboCop, testToken1, ruleSubscriberWallet, botWallet } =
         await deployValidRuleFixture();
       const collateralAmount = utils.parseEther("1");
@@ -988,8 +988,8 @@ describe("RoboCop", () => {
 
   describe("Pause Contract", () => {
     it("should revert if anyone but the owner tries to pause/ unpause the contract", async () => {
-      const { ownerWallet, ruleSubscriberWallet, roboCop } = await deployValidRuleFixture();
-      const ownerCon = roboCop.connect(ownerWallet);
+      const { deployerWallet, ruleSubscriberWallet, roboCop } = await deployValidRuleFixture();
+      const ownerCon = roboCop.connect(deployerWallet);
       const otherCon = roboCop.connect(ruleSubscriberWallet);
 
       await testPauseAuthorization(ownerCon, otherCon);
@@ -998,8 +998,15 @@ describe("RoboCop", () => {
     // OR perhaps we could be even more generic and check that unless excluded, all state-changing external / public fns do get blocked on pause.
     it("should prevent a bunch of functions from being executed when paused and re-allows them when unpaused", async () => {
       const fixtureVars = await deployValidRuleFixture();
-      const { ruleHashEth, ruleSubscriberWallet, priceTrigger, swapUniSingleAction, roboCop, testToken1, ownerWallet } =
-        fixtureVars;
+      const {
+        ruleHashEth,
+        ruleSubscriberWallet,
+        priceTrigger,
+        swapUniSingleAction,
+        roboCop,
+        testToken1,
+        deployerWallet,
+      } = fixtureVars;
 
       // If we want to make sure that certain works even after pausing,
       // that needs to be tested separately.
@@ -1023,7 +1030,7 @@ describe("RoboCop", () => {
         () => reSub.redeemBalance(ruleHashEth),
       ];
 
-      await testPauseFunctionality(roboCop.connect(ownerWallet), reSuite);
+      await testPauseFunctionality(roboCop.connect(deployerWallet), reSuite);
     });
   });
 });

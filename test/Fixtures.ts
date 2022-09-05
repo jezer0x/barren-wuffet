@@ -169,28 +169,22 @@ export async function getWhitelistService() {
 }
 
 export async function setupRoboCop(hre: HardhatRuntimeEnvironment) {
-  const {
-    ownerWallet,
-    priceTrigger,
-    swapUniSingleAction,
-    testOracleEth,
-    testOracleTst1,
-    testToken1,
-    testToken2,
-    WETH,
-    marlieChungerFund,
-    whitelistService,
-    trigWlHash,
-    actWlHash,
-  } = await setupBarrenWuffet(hre);
-
-  const roboCopAddr = await marlieChungerFund.roboCop();
-  const roboCop = await ethers.getContractAt("RoboCop", roboCopAddr);
+  // We use the Impl contract as the instance.
+  // The assumption is that it's
+  const roboCop = await ethers.getContract("RoboCop");
+  const { testToken1, testToken2, WETH } = await setupTestTokens();
+  const { testOracleEth, testOracleTst1, priceTrigger } = await setupEthToTst1PriceTrigger();
+  const swapUniSingleAction = await setupSwapUniSingleAction(testToken1, WETH);
+  const { whitelistService, trigWlHash, actWlHash } = await getWhitelistService();
 
   const { ruleMaker, ruleSubscriber, bot, deployer } = await hre.getNamedAccounts();
   const ruleMakerWallet = await ethers.getSigner(ruleMaker);
   const ruleSubscriberWallet = await ethers.getSigner(ruleSubscriber);
   const botWallet = await ethers.getSigner(bot);
+  const deployerWallet = await ethers.getSigner(deployer);
+
+  const roboCopDeployer = await ethers.getContract("RoboCop", deployer);
+  await tx(roboCopDeployer.init(whitelistService.address, trigWlHash, actWlHash));
 
   return {
     roboCop,
@@ -201,7 +195,7 @@ export async function setupRoboCop(hre: HardhatRuntimeEnvironment) {
     testToken1,
     testToken2,
     WETH,
-    ownerWallet,
+    deployerWallet,
     whitelistService,
     trigWlHash,
     actWlHash,

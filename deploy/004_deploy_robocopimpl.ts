@@ -16,4 +16,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 export default func;
 func.tags = ["RoboCopImplementation"];
-func.dependencies = ["WhitelistService"];
+func.dependencies = ["WhitelistService", "TestStubs"];
