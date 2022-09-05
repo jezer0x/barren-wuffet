@@ -35,3 +35,8 @@ export const TOKEN_TYPE = {
 
 export const ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 export const USD_ADDRESS = constants.AddressZero;
+
+export const ETH_TOKEN = {
+  t: TOKEN_TYPE.NATIVE,
+  addr: ETH_ADDRESS,
+};

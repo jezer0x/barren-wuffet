@@ -4,8 +4,8 @@ import { expect } from "chai";
 import { ethers, deployments, getNamedAccounts } from "hardhat";
 import { BigNumber, constants, Contract, FixedNumber, utils } from "ethers";
 import { makeFailingTrigger, makePassingTrigger, setupBarrenWuffet } from "./Fixtures";
-import { BAD_FUND_HASH, BAD_TRADE_HASH, ETH_ADDRESS, FUND_STATUS } from "./Constants";
-import { depositMaxCollateral, getHashFromEvent, getAddressFromEvent } from "./helper";
+import { BAD_FUND_HASH, BAD_TRADE_HASH, ETH_ADDRESS, ETH_TOKEN, FUND_STATUS, TOKEN_TYPE } from "./Constants";
+import { depositMaxCollateral, getHashFromEvent, getAddressFromEvent, expectEthersObjDeepEqual, erc20 } from "./helper";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const ERC20_DECIMALS = BigNumber.from(10).pow(18);
@@ -103,9 +103,7 @@ describe("BarrenWuffet", () => {
 
       //@ts-ignore
       const jerkshireFund = await ethers.getContractAt("Fund", fundAddr, marlieChunger);
-      expect(await jerkshireFund.getInputTokens())
-        .to.have.length(1)
-        .and.contain(ETH_ADDRESS);
+      expectEthersObjDeepEqual([ETH_TOKEN], await jerkshireFund.getInputTokens());
     });
 
     it("Should revert on getOutputToken", async () => {
@@ -204,12 +202,12 @@ describe("BarrenWuffet", () => {
     return await setupRaisingFunds(hre);
   });
 
-  describe("Fund FundStatus: Raising", () => {
+  describe("yy Fund FundStatus: Raising", () => {
     const validDeposit = utils.parseEther("11");
     it("Should allow anyone to deposit native token into a raising fund and emit a Deposit event", async () => {
       const { jerkshireFund } = await raisingFundsFixture();
       const { fundSubscriber } = await getNamedAccounts();
-      await expect(jerkshireFund.subscriber.deposit(ETH_ADDRESS, validDeposit, { value: validDeposit }))
+      await expect(jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit }))
         .to.emit(jerkshireFund.x, "Deposit")
         .withArgs(fundSubscriber, 0, ETH_ADDRESS, validDeposit);
     });
@@ -217,7 +215,7 @@ describe("BarrenWuffet", () => {
     it("Should allow the fund manager to deposit native token into their own fund", async () => {
       const { jerkshireFund } = await raisingFundsFixture();
       const { marlieChunger } = await getNamedAccounts();
-      await expect(jerkshireFund.marlieChunger.deposit(ETH_ADDRESS, validDeposit, { value: validDeposit }))
+      await expect(jerkshireFund.marlieChunger.deposit(ETH_TOKEN, validDeposit, { value: validDeposit }))
         .to.emit(jerkshireFund.x, "Deposit")
         .withArgs(marlieChunger, 0, ETH_ADDRESS, validDeposit);
     });
@@ -225,7 +223,7 @@ describe("BarrenWuffet", () => {
     it("Should not allow anyone to deposit ERC20 tokens into a raising fund. We only allow native right now", async () => {
       const { jerkshireFund, testToken1 } = await raisingFundsFixture();
       await expect(
-        jerkshireFund.subscriber.deposit(testToken1.address, utils.parseEther("11"))
+        jerkshireFund.subscriber.deposit(erc20(testToken1.address), utils.parseEther("11"))
       ).to.be.revertedWithoutReason();
     });
 
@@ -234,8 +232,8 @@ describe("BarrenWuffet", () => {
 
       expect(await crackBlockFund.bot.getStatus()).to.be.equal(FUND_STATUS.RAISING);
       // barren is depositing into their own fund
-      await jerkshireFund.marlieChunger.deposit(ETH_ADDRESS, validDeposit, { value: validDeposit });
-      await jerkshireFund.fairyLink.deposit(ETH_ADDRESS, validDeposit, { value: validDeposit });
+      await jerkshireFund.marlieChunger.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
+      await jerkshireFund.fairyLink.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
 
       expect(await crackBlockFund.bot.getStatus()).to.be.equal(FUND_STATUS.RAISING);
     });
@@ -243,7 +241,7 @@ describe("BarrenWuffet", () => {
     it("Should not allow anyone to deposit less than min subscriber threshold into the fund", async () => {
       const { jerkshireFund, jerkshireConstraints } = await raisingFundsFixture();
       const depositAmt = jerkshireConstraints.minCollateralPerSub.sub(utils.parseEther("0.0001"));
-      await expect(jerkshireFund.subscriber.deposit(ETH_ADDRESS, depositAmt, { value: depositAmt })).to.be.revertedWith(
+      await expect(jerkshireFund.subscriber.deposit(ETH_TOKEN, depositAmt, { value: depositAmt })).to.be.revertedWith(
         "Insufficient Collateral for Subscription"
       );
     });
@@ -251,7 +249,7 @@ describe("BarrenWuffet", () => {
     it("Should not allow anyone to deposit more than max subscriber threshold into the fund", async () => {
       const { jerkshireFund, jerkshireConstraints } = await raisingFundsFixture();
       const depositAmt = jerkshireConstraints.maxCollateralPerSub.add(utils.parseEther("0.0001"));
-      await expect(jerkshireFund.subscriber.deposit(ETH_ADDRESS, depositAmt, { value: depositAmt })).to.be.revertedWith(
+      await expect(jerkshireFund.subscriber.deposit(ETH_TOKEN, depositAmt, { value: depositAmt })).to.be.revertedWith(
         "Max Collateral for Subscription exceeded"
       );
     });
@@ -262,12 +260,12 @@ describe("BarrenWuffet", () => {
       // check if multiple smaller deposits, that exceed collateral limit in total, get reverted.
       const depositAmt1 = jerkshireConstraints.maxCollateralPerSub.sub(utils.parseEther("0.1"));
       const { fundSubscriber } = await getNamedAccounts();
-      await expect(jerkshireFund.subscriber.deposit(ETH_ADDRESS, depositAmt1, { value: depositAmt1 }))
+      await expect(jerkshireFund.subscriber.deposit(ETH_TOKEN, depositAmt1, { value: depositAmt1 }))
         .to.emit(jerkshireFund.x, "Deposit")
         .withArgs(fundSubscriber, 0, ETH_ADDRESS, depositAmt1);
 
       const depositAmt2 = jerkshireConstraints.minCollateralPerSub;
-      await expect(jerkshireFund.subscriber.deposit(ETH_ADDRESS, depositAmt2, { value: depositAmt2 }))
+      await expect(jerkshireFund.subscriber.deposit(ETH_TOKEN, depositAmt2, { value: depositAmt2 }))
         .to.emit(jerkshireFund.x, "Deposit")
         .withArgs(fundSubscriber, 1, ETH_ADDRESS, depositAmt2);
     });
@@ -289,7 +287,7 @@ describe("BarrenWuffet", () => {
 
       for (const deposit of deposits) {
         const [amt, shouldSucceed, idOrError] = deposit;
-        const tx = jerkshireFund.subscriber.deposit(ETH_ADDRESS, amt, { value: amt });
+        const tx = jerkshireFund.subscriber.deposit(ETH_TOKEN, amt, { value: amt });
         if (shouldSucceed) {
           await expect(tx)
             .to.changeEtherBalance(fundSubscriber, amt.mul(-1))
@@ -303,7 +301,7 @@ describe("BarrenWuffet", () => {
 
     it("should allow withdrawing from a fund that's still raising", async () => {
       const { jerkshireFund } = await raisingFundsFixture();
-      await jerkshireFund.subscriber.deposit(ETH_ADDRESS, validDeposit, { value: validDeposit });
+      await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
       const subscriptionId = 0;
       const { fundSubscriber } = await getNamedAccounts();
       await expect(jerkshireFund.subscriber.withdraw(subscriptionId))
@@ -314,14 +312,14 @@ describe("BarrenWuffet", () => {
 
     it("should not allow withdrawing if there have not been any deposits from this user", async () => {
       const { jerkshireFund } = await raisingFundsFixture();
-      await jerkshireFund.subscriber.deposit(ETH_ADDRESS, validDeposit, { value: validDeposit });
+      await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
       await expect(jerkshireFund.subscriber2.withdraw(0)).to.be.rejectedWith("You're not the subscriber!");
     });
 
     it("should allow only the fund manager to close a Raising fund, and the subscriber to withdraw funds", async () => {
       const { barrenWuffet, jerkshireFund, crackBlockFund } = await raisingFundsFixture();
       // add some funds so we can confirm that even a fund with funds can be closed
-      await jerkshireFund.subscriber.deposit(ETH_ADDRESS, validDeposit, { value: validDeposit });
+      await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
       await expect(jerkshireFund.fairyLink.closeFund()).to.be.revertedWith(
         "Only the fund manager can close a fund prematurely"
       );
@@ -354,14 +352,14 @@ describe("BarrenWuffet", () => {
     });
     it("should revert if rewards withdrawal is attempted on a raising fund", async () => {
       const { jerkshireFund } = await raisingFundsFixture();
-      await jerkshireFund.subscriber.deposit(ETH_ADDRESS, validDeposit, { value: validDeposit });
+      await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
       await expect(jerkshireFund.marlieChunger.withdrawReward()).to.be.revertedWith("Fund not closed");
     });
 
     it("should return fund status as DEPLOYED once the fund is created, deadline has been hit (min collateral may or maynot be met)", async () => {
       // Min collateral is not playing the role it is supposed to. This behaviour will likely be changed.
       const { jerkshireFund, jerkshireConstraints } = await raisingFundsFixture();
-      await jerkshireFund.subscriber.deposit(ETH_ADDRESS, validDeposit, { value: validDeposit });
+      await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
 
       await time.increaseTo(jerkshireConstraints.deadline);
 
@@ -406,10 +404,10 @@ describe("BarrenWuffet", () => {
     };
 
     // both subscribers have deposits
-    await jerkshireFund.subscriber.deposit(ETH_ADDRESS, deposits.jerkshire.subscription1, {
+    await jerkshireFund.subscriber.deposit(ETH_TOKEN, deposits.jerkshire.subscription1, {
       value: deposits.jerkshire.subscription1,
     });
-    await jerkshireFund.subscriber2.deposit(ETH_ADDRESS, deposits.jerkshire.subscription2, {
+    await jerkshireFund.subscriber2.deposit(ETH_TOKEN, deposits.jerkshire.subscription2, {
       value: deposits.jerkshire.subscription2,
     });
 
@@ -447,7 +445,7 @@ describe("BarrenWuffet", () => {
         jerkshireConstraints.maxCollateralTotal
       );
 
-      await expect(jerkshireFund.subscriber.deposit(ETH_ADDRESS, depositAmt, { value: depositAmt })).to.be.revertedWith(
+      await expect(jerkshireFund.subscriber.deposit(ETH_TOKEN, depositAmt, { value: depositAmt })).to.be.revertedWith(
         "Fund is not raising"
       );
     });
@@ -564,7 +562,7 @@ describe("BarrenWuffet", () => {
 
         const addAmt = [utils.parseEther("1")];
 
-        await expect(jerkshireFund.marlieChunger.addRuleCollateral(ruleIndex, [ETH_ADDRESS], addAmt))
+        await expect(jerkshireFund.marlieChunger.addRuleCollateral(ruleIndex, [ETH_TOKEN], addAmt))
           .to.changeEtherBalances([jerkshireFund.x, rcInstance, marlieChunger], [addAmt[0].mul(-1), addAmt[0], 0])
           .emit(rcInstance, "CollateralAdded")
           .withArgs(ruleHash, addAmt);
@@ -585,7 +583,7 @@ describe("BarrenWuffet", () => {
           const { ruleIndex, ruleHash, rcInstance } = await createTwoRules(fixtureVars);
 
           const collateral = [utils.parseEther("0.6")];
-          await jerkshireFund.marlieChunger.addRuleCollateral(ruleIndex, [ETH_ADDRESS], collateral);
+          await jerkshireFund.marlieChunger.addRuleCollateral(ruleIndex, [ETH_TOKEN], collateral);
 
           if (isActive) {
             await jerkshireFund.marlieChunger.activateRule(ruleIndex);
@@ -625,7 +623,7 @@ describe("BarrenWuffet", () => {
         const ruleFns = [
           () => jerkshireFund.fairyLink.activateRule(0),
           () => jerkshireFund.fairyLink.deactivateRule(0),
-          () => jerkshireFund.fairyLink.addRuleCollateral(0, [ETH_ADDRESS], [utils.parseEther("1")]),
+          () => jerkshireFund.fairyLink.addRuleCollateral(0, [ETH_TOKEN], [utils.parseEther("1")]),
           () => jerkshireFund.fairyLink.reduceRuleCollateral(0, [utils.parseEther("0.6")]),
           () => jerkshireFund.fairyLink.cancelRule(0),
         ];

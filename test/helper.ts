@@ -3,7 +3,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { BigNumber, constants, Contract, ContractReceipt, ContractTransaction } from "ethers";
 import { ethers } from "hardhat";
-import { ETH_ADDRESS } from "./Constants";
+import { ETH_ADDRESS, TOKEN_TYPE } from "./Constants";
 
 export async function testPauseAuthorization(ownerContract: Contract, otherContract: Contract) {
   await expect(otherContract.pause()).to.be.revertedWith("Ownable: caller is not the owner");
@@ -74,6 +74,13 @@ export async function getHashFromEvent(
 
 export async function tx(fnPromise: Promise<ContractTransaction>): Promise<ContractReceipt> {
   return (await fnPromise).wait();
+}
+
+export async function erc20(addr: string) {
+  return {
+    t: TOKEN_TYPE.ERC20,
+    addr,
+  };
 }
 
 export async function depositMaxCollateral(
