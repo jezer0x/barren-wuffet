@@ -117,13 +117,16 @@ library Utils {
         Action[] calldata nextActions,
         EnumerableSet.Bytes32Set storage _pendingPositions,
         mapping(bytes32 => bytes32[]) storage _actionPositionsMap
-    ) public {
+    ) public returns (bytes32 positionHash) {
+        if (nextActions.length == 0) {
+            return positionHash;
+        }
         bytes32[] memory actionHashes = new bytes32[](nextActions.length);
         for (uint32 i = 0; i < nextActions.length; i++) {
             actionHashes[i] = _getActionHash(nextActions[i]);
         }
 
-        bytes32 positionHash = _getPositionHash(actionHashes);
+        positionHash = _getPositionHash(actionHashes);
 
         for (uint32 i = 0; i < actionHashes.length; i++) {
             _actionPositionsMap[actionHashes[i]].push(positionHash);
@@ -135,7 +138,7 @@ library Utils {
         Action calldata action,
         EnumerableSet.Bytes32Set storage _pendingPositions,
         mapping(bytes32 => bytes32[]) storage _actionPositionsMap
-    ) public {
+    ) public returns (bool) {
         bytes32 actionHash = _getActionHash(action);
         bytes32[] storage positionHashes = _actionPositionsMap[actionHash];
         if (positionHashes.length > 0) {
@@ -144,6 +147,9 @@ library Utils {
                 _pendingPositions.remove(positionHashes[i]);
             }
             delete _actionPositionsMap[actionHash];
+            return true;
+        } else {
+            return false;
         }
     }
 }
