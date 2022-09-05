@@ -139,7 +139,7 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
             amount = amounts[i];
             require(rule.collaterals[i] >= amount, "Not enough collateral.");
             rule.collaterals[i] -= amount;
-            transferToken(tokens[i], address(this), msg.sender, amount);
+            Utils._send(tokens[i], msg.sender, amount);
         }
         emit CollateralReduced(ruleHash, amounts);
     }
