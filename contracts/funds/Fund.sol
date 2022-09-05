@@ -56,7 +56,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
         bytes32 _triggerWhitelistHash,
         bytes32 _actionWhitelistHash,
         address roboCopImplementationAddr
-    ) external whenNotPaused nonReentrant {
+    ) external onlyOwner whenNotPaused nonReentrant {
         Utils._validateSubscriptionConstraintsBasic(_constraints);
         name = _name;
         constraints = _constraints;

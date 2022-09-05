@@ -63,7 +63,7 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
         address wlServiceAddr,
         bytes32 trigWlHash,
         bytes32 actionWlHash
-    ) external whenNotPaused nonReentrant {
+    ) external onlyOwner whenNotPaused nonReentrant {
         wlService = WhitelistService(wlServiceAddr);
         triggerWhitelistHash = trigWlHash;
         actionWhitelistHash = actionWlHash;
