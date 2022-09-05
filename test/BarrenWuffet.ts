@@ -202,7 +202,7 @@ describe("BarrenWuffet", () => {
     return await setupRaisingFunds(hre);
   });
 
-  describe("yy Fund FundStatus: Raising", () => {
+  describe("Fund FundStatus: Raising", () => {
     const validDeposit = utils.parseEther("11");
     it("Should allow anyone to deposit native token into a raising fund and emit a Deposit event", async () => {
       const { jerkshireFund } = await raisingFundsFixture();

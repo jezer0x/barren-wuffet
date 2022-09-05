@@ -3,7 +3,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { BigNumber, constants, Contract, ContractReceipt, ContractTransaction } from "ethers";
 import { ethers } from "hardhat";
-import { ETH_ADDRESS, TOKEN_TYPE } from "./Constants";
+import { ETH_ADDRESS, ETH_TOKEN, TOKEN_TYPE } from "./Constants";
 
 export async function testPauseAuthorization(ownerContract: Contract, otherContract: Contract) {
   await expect(otherContract.pause()).to.be.revertedWith("Ownable: caller is not the owner");
@@ -76,7 +76,7 @@ export async function tx(fnPromise: Promise<ContractTransaction>): Promise<Contr
   return (await fnPromise).wait();
 }
 
-export async function erc20(addr: string) {
+export function erc20(addr: string) {
   return {
     t: TOKEN_TYPE.ERC20,
     addr,
@@ -96,7 +96,7 @@ export async function depositMaxCollateral(
   let i = 0;
   for (; d.lte(maxC); d = d.add(depositAmt)) {
     // alternate deposits, so both subscribers have deposits.
-    await subscriberConns[i++ % 2].deposit(ETH_ADDRESS, depositAmt, { value: depositAmt });
+    await subscriberConns[i++ % 2].deposit(ETH_TOKEN, depositAmt, { value: depositAmt });
   }
 
   if (d.lt(maxC)) {
@@ -104,7 +104,7 @@ export async function depositMaxCollateral(
     if (remDeposit.lt(constraints.minCollateralPerSub)) {
       expect.fail(`Cant hit max collateral. Stuck at ${d.toString()} Pls fix this test`);
     }
-    await subscriberConns[i++ % 2].deposit(ETH_ADDRESS, remDeposit, { value: remDeposit });
+    await subscriberConns[i++ % 2].deposit(ETH_TOKEN, remDeposit, { value: remDeposit });
   }
 }
 
