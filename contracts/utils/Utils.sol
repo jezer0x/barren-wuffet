@@ -96,34 +96,31 @@ library Utils {
         }
     }
 
-    function _getActionHash(Action calldata action) public pure returns (bytes32) {
-        return keccak256(abi.encode(action));
-    }
-
-    function _getPositionHash(bytes32[] memory actionHashes) public pure returns (bytes32) {
+    function _getPositionHash(bytes32[] memory actionHashes) internal pure returns (bytes32) {
         return keccak256(abi.encode(actionHashes));
     }
 
-    function _getPositionHash(Action[] calldata actions) public pure returns (bytes32) {
+    function _getPositionHash(Action[] calldata actions) internal pure returns (bytes32) {
         bytes32[] memory actionHashes = new bytes32[](actions.length);
         for (uint32 i = 0; i < actions.length; i++) {
-            actionHashes[i] = _getActionHash(actions[i]);
+            actionHashes[i] = keccak256(abi.encode(actions[i]));
         }
 
         return _getPositionHash(actionHashes);
     }
 
     function _createPosition(
-        Action[] calldata nextActions,
+        // a position in created when a response is generated, so the type is memory.
+        Action[] memory nextActions,
         EnumerableSet.Bytes32Set storage _pendingPositions,
         mapping(bytes32 => bytes32[]) storage _actionPositionsMap
-    ) public returns (bytes32 positionHash) {
+    ) internal returns (bytes32 positionHash) {
         if (nextActions.length == 0) {
             return positionHash;
         }
         bytes32[] memory actionHashes = new bytes32[](nextActions.length);
         for (uint32 i = 0; i < nextActions.length; i++) {
-            actionHashes[i] = _getActionHash(nextActions[i]);
+            actionHashes[i] = keccak256(abi.encode(nextActions[i]));
         }
 
         positionHash = _getPositionHash(actionHashes);
@@ -135,11 +132,12 @@ library Utils {
     }
 
     function _closePosition(
+        // a position in closed by an external call, so the type is calldata
         Action calldata action,
         EnumerableSet.Bytes32Set storage _pendingPositions,
         mapping(bytes32 => bytes32[]) storage _actionPositionsMap
-    ) public returns (bool) {
-        bytes32 actionHash = _getActionHash(action);
+    ) internal returns (bool) {
+        bytes32 actionHash = keccak256(abi.encode(action));
         bytes32[] storage positionHashes = _actionPositionsMap[actionHash];
         if (positionHashes.length > 0) {
             // this action is part of a position, so before using it, we need to discard the position
