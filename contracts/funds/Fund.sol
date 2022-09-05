@@ -16,8 +16,9 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
+contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver, Initializable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
@@ -47,7 +48,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
         _unpause();
     }
 
-    function init(
+    function initialize(
         string memory _name,
         address _manager,
         SubscriptionConstraints memory _constraints,
@@ -56,14 +57,14 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
         bytes32 _triggerWhitelistHash,
         bytes32 _actionWhitelistHash,
         address roboCopImplementationAddr
-    ) external whenNotPaused nonReentrant {
+    ) external whenNotPaused nonReentrant initializer {
         Utils._validateSubscriptionConstraintsBasic(_constraints);
         name = _name;
         constraints = _constraints;
         manager = _manager;
         platformWallet = payable(_platformWallet);
         roboCop = IRoboCop(Clones.clone(roboCopImplementationAddr));
-        roboCop.init(_wlServiceAddr, _triggerWhitelistHash, _actionWhitelistHash);
+        roboCop.initialize(_wlServiceAddr, _triggerWhitelistHash, _actionWhitelistHash);
     }
 
     modifier onlyActiveSubscriber(uint256 subscriptionIdx) {

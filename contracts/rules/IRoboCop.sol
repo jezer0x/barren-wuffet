@@ -12,7 +12,7 @@ interface IRoboCop {
     event CollateralAdded(bytes32 indexed ruleHash, uint256[] amounts);
     event CollateralReduced(bytes32 indexed ruleHash, uint256[] amounts);
 
-    function init(
+    function initialize(
         address wlServiceAddr,
         bytes32 trigWlHash,
         bytes32 actionWlHash

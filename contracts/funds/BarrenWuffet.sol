@@ -49,7 +49,7 @@ contract BarrenWuffet is Ownable, Pausable {
         returns (address)
     {
         IFund fund = IFund(Clones.clone(fundImplAddr));
-        fund.init(
+        fund.initialize(
             name,
             msg.sender,
             constraints,

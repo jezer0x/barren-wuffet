@@ -31,7 +31,7 @@ enum FundStatus {
 interface IFund is ISubscription {
     event Closed(address indexed fundAddr);
 
-    function init(
+    function initialize(
         string memory _name,
         address _manager,
         SubscriptionConstraints memory _constraints,

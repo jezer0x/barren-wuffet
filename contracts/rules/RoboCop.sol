@@ -17,8 +17,9 @@ import "../utils/whitelists/WhitelistService.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
+contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receiver, Initializable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
     // Storage Start
@@ -59,11 +60,11 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
         _unpause();
     }
 
-    function init(
+    function initialize(
         address wlServiceAddr,
         bytes32 trigWlHash,
         bytes32 actionWlHash
-    ) external whenNotPaused nonReentrant {
+    ) external whenNotPaused nonReentrant initializer {
         wlService = WhitelistService(wlServiceAddr);
         triggerWhitelistHash = trigWlHash;
         actionWhitelistHash = actionWlHash;

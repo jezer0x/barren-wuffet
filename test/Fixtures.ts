@@ -184,7 +184,7 @@ export async function setupRoboCop(hre: HardhatRuntimeEnvironment) {
   const deployerWallet = await ethers.getSigner(deployer);
 
   const roboCopDeployer = await ethers.getContract("RoboCop", deployer);
-  await tx(roboCopDeployer.init(whitelistService.address, trigWlHash, actWlHash));
+  await tx(roboCopDeployer.initialize(whitelistService.address, trigWlHash, actWlHash));
 
   return {
     roboCop,
