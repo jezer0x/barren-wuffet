@@ -16,6 +16,7 @@ import {
   ETH_ADDRESS,
   PRICE_TRIGGER_TYPE,
   LT,
+  TOKEN_TYPE,
 } from "./Constants";
 import { getAddressFromEvent, getHashFromEvent, tx } from "./helper";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
@@ -58,8 +59,14 @@ export function makeSwapAction(
   return {
     callee: swapContract,
     data: "0x0000000000000000000000000000000000000000000000000000000000000000",
-    inputTokens: inputTokens, // eth
-    outputTokens: outputTokens,
+    inputTokens: inputTokens.map((addr) => ({
+      t: TOKEN_TYPE.ERC20,
+      addr: addr,
+    })), // eth
+    outputTokens: outputTokens.map((addr) => ({
+      t: TOKEN_TYPE.ERC20,
+      addr: addr,
+    })),
   };
 }
 

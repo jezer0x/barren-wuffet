@@ -27,5 +27,11 @@ export const FUND_STATUS = {
   CLOSED: 2,
 };
 
+export const TOKEN_TYPE = {
+  NATIVE: 0,
+  ERC721: 1,
+  ERC20: 2,
+};
+
 export const ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 export const USD_ADDRESS = constants.AddressZero;
