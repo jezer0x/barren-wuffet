@@ -60,11 +60,11 @@ export function makeSwapAction(
     callee: swapContract,
     data: "0x0000000000000000000000000000000000000000000000000000000000000000",
     inputTokens: inputTokens.map((addr) => ({
-      t: TOKEN_TYPE.ERC20,
+      t: addr === ETH_ADDRESS ? TOKEN_TYPE.NATIVE : TOKEN_TYPE.ERC20,
       addr: addr,
     })), // eth
     outputTokens: outputTokens.map((addr) => ({
-      t: TOKEN_TYPE.ERC20,
+      t: addr === ETH_ADDRESS ? TOKEN_TYPE.NATIVE : TOKEN_TYPE.ERC20,
       addr: addr,
     })),
   };
