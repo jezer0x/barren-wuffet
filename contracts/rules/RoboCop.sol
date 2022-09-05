@@ -60,6 +60,11 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
         _unpause();
     }
 
+    // disable calling initialize() on the implementation contract
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(
         address wlServiceAddr,
         bytes32 trigWlHash,

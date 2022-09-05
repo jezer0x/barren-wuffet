@@ -48,6 +48,11 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver, Ini
         _unpause();
     }
 
+    // disable calling initialize() on the implementation contract
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(
         string memory _name,
         address _manager,
