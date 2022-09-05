@@ -36,17 +36,14 @@ struct Position {
     Action[] nextActions;
 }
 
-// used to store positions
-struct PositionStub {
-    bytes32 hash;
-    bytes32[] actionHashes;
-}
-
 struct ActionResponse {
     //array of amounts with datatype.
     uint256[] tokenOutputs; // idx if ERC721, amount if erc20 or native
     // In future, we may have non-token outputs to be interpreted by the receiver
     // bytes otherOutputs;
 
+    // The position should provide an exhaustive list of actions that can be used to close
+    // the position for a given action. Otherwise, a position might end up being closed, but the
+    // contract wouldnt know and will keep it marked pending.
     Position position;
 }

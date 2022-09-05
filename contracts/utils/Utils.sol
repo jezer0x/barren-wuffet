@@ -6,10 +6,12 @@ import "./subscriptions/SubscriptionTypes.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./Token.sol";
 
 library Utils {
     using SafeERC20 for IERC20;
+    using EnumerableSet for EnumerableSet.Bytes32Set;
 
     function _send(
         address receiver,
@@ -109,5 +111,39 @@ library Utils {
         }
 
         return _getPositionHash(actionHashes);
+    }
+
+    function _createPosition(
+        Action[] calldata nextActions,
+        EnumerableSet.Bytes32Set storage _pendingPositions,
+        mapping(bytes32 => bytes32[]) storage _actionPositionsMap
+    ) public {
+        bytes32[] memory actionHashes = new bytes32[](nextActions.length);
+        for (uint32 i = 0; i < nextActions.length; i++) {
+            actionHashes[i] = _getActionHash(nextActions[i]);
+        }
+
+        bytes32 positionHash = _getPositionHash(actionHashes);
+
+        for (uint32 i = 0; i < actionHashes.length; i++) {
+            _actionPositionsMap[actionHashes[i]].push(positionHash);
+            _pendingPositions.add(positionHash);
+        }
+    }
+
+    function _closePosition(
+        Action calldata action,
+        EnumerableSet.Bytes32Set storage _pendingPositions,
+        mapping(bytes32 => bytes32[]) storage _actionPositionsMap
+    ) public {
+        bytes32 actionHash = _getActionHash(action);
+        bytes32[] storage positionHashes = _actionPositionsMap[actionHash];
+        if (positionHashes.length > 0) {
+            // this action is part of a position, so before using it, we need to discard the position
+            for (uint32 i = 0; i < positionHashes.length; i++) {
+                _pendingPositions.remove(positionHashes[i]);
+            }
+            delete _actionPositionsMap[actionHash];
+        }
     }
 }
