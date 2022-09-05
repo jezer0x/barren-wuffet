@@ -25,7 +25,21 @@ library Utils {
         } else if (token.t == TokenType.ERC721) {
             IERC721(token.addr).safeTransferFrom(address(this), receiver, balance);
         } else {
-            revert("t not found!");
+            revert("Wrong token type!");
+        }
+    }
+
+    function _receive(
+        address sender,
+        uint256 amount,
+        Token memory token
+    ) internal {
+        if (token.t == TokenType.ERC20) {
+            IERC20(token.addr).safeTransferFrom(sender, address(this), amount);
+        } else if (token.t == TokenType.ERC721) {
+            IERC721(token.addr).safeTransferFrom(sender, address(this), amount);
+        } else if (token.t != TokenType.NATIVE) {
+            revert("Wrong token type!");
         }
     }
 
