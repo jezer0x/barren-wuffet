@@ -148,7 +148,7 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
         ruleRewardProviders[ruleHash][msg.sender] += msg.value;
     }
 
-    function withdrawReward(bytes32 ruleHash) external ruleExists(ruleHash) returns (uint256 balance) {
+    function withdrawReward(bytes32 ruleHash) external ruleExists(ruleHash) whenNotPaused returns (uint256 balance) {
         Rule storage rule = rules[ruleHash];
         require(rule.status != RuleStatus.EXECUTED && rule.status != RuleStatus.REDEEMED, "Reward paid");
         balance = ruleRewardProviders[ruleHash][msg.sender];
