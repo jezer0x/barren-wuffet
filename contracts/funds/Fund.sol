@@ -15,9 +15,11 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
     using SafeERC20 for IERC20;
+    using EnumerableSet for EnumerableSet.Bytes32Set;
 
     // Storage Start
     IRoboCop public roboCop;
@@ -28,7 +30,8 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
     Subscription[] subscriptions;
     Token[] assets; // tracking all the assets this fund has atm
     bytes32[] openRules;
-    mapping(bytes32 => Position) pendingPositions;
+    mapping(bytes32 => bytes32[]) public actionPositionsMap;
+    EnumerableSet.Bytes32Set private pendingPositions;
     uint256 totalCollateral;
     bool closed;
     mapping(address => uint256) fundCoins; // tracking balances of ERC20 and ETH
@@ -125,7 +128,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
     }
 
     function takeAction(Action calldata action, ActionRuntimeParams calldata runtimeParams)
-        external
+        public
         whenNotPaused
         nonReentrant
         onlyDeployedFund
@@ -133,6 +136,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
         returns (ActionResponse memory resp)
     {
         IAction(action.callee).validate(action);
+        Utils._closePosition(action, pendingPositions, actionPositionsMap);
 
         uint256 ethCollateral = 0;
         for (uint256 i = 0; i < action.inputTokens.length; i++) {
@@ -149,7 +153,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
             _increaseAssetBalance(action.outputTokens[i], resp.tokenOutputs[i]);
         }
 
-        Utils._savePositions(resp, pendingPositions);
+        Utils._createPosition(resp.position.nextActions, pendingPositions, actionPositionsMap);
     }
 
     function createRule(Trigger[] calldata triggers, Action[] calldata actions)

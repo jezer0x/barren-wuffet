@@ -16,13 +16,15 @@ import "./IRoboCop.sol";
 import "../utils/whitelists/WhitelistService.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
     using SafeERC20 for IERC20;
-
+    using EnumerableSet for EnumerableSet.Bytes32Set;
     // Storage Start
     mapping(bytes32 => Rule) rules;
-    mapping(bytes32 => Position) pendingPositions;
+    mapping(bytes32 => bytes32[]) public actionPositionsMap;
+    EnumerableSet.Bytes32Set private pendingPositions;
     mapping(bytes32 => mapping(address => uint256)) public ruleRewardProviders;
     bytes32 triggerWhitelistHash;
     bytes32 actionWhitelistHash;
@@ -179,6 +181,8 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
         }
         for (uint256 i = 0; i < actions.length; i++) {
             require(IAction(actions[i].callee).validate(actions[i]), "Invalid Action");
+            Utils._closePosition(actions[i], pendingPositions, actionPositionsMap);
+
             if (i != actions.length - 1) {
                 Token[] memory inputTokens = actions[i + 1].inputTokens;
                 Token[] memory outputTokens = actions[i].outputTokens;
@@ -269,7 +273,8 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
 
         ActionResponse memory response = Utils._delegatePerformAction(action, runtimeParams);
 
-        Utils._savePositions(response, pendingPositions);
+        Utils._createPosition(response.position.nextActions, pendingPositions, actionPositionsMap);
+
         return response.tokenOutputs;
     }
 
