@@ -75,14 +75,16 @@ library Utils {
 
     function _savePositions(ActionResponse memory response, mapping(bytes32 => Position) storage positionMap) internal {
         Position storage p = positionMap[response.position.id];
-        p.expiry = response.position.expiry;
-        p.activation = response.position.activation;
 
         for (uint256 i = 0; i < response.position.nextActions.length; i++) {
             Action memory a_m = response.position.nextActions[i];
             Action storage a_s = p.nextActions.push();
+            ActionConstraints memory ac_m = response.position.actionConstraints[i];
+            ActionConstraints storage ac_s = p.actionConstraints.push();
             a_s.callee = a_m.callee;
             a_s.data = a_m.data;
+            ac_s.expiry = ac_m.expiry;
+            ac_s.activation = ac_m.activation;
             for (uint256 j = 0; j < a_m.inputTokens.length; j++) {
                 a_s.inputTokens.push(a_m.inputTokens[j]);
             }
@@ -90,5 +92,22 @@ library Utils {
                 a_s.outputTokens.push(a_m.outputTokens[j]);
             }
         }
+    }
+
+    function _getActionHash(Action calldata action) public pure returns (bytes32) {
+        return keccak256(abi.encode(action));
+    }
+
+    function _getPositionHash(bytes32[] memory actionHashes) public pure returns (bytes32) {
+        return keccak256(abi.encode(actionHashes));
+    }
+
+    function _getPositionHash(Action[] calldata actions) public pure returns (bytes32) {
+        bytes32[] memory actionHashes = new bytes32[](actions.length);
+        for (uint32 i = 0; i < actions.length; i++) {
+            actionHashes[i] = _getActionHash(actions[i]);
+        }
+
+        return _getPositionHash(actionHashes);
     }
 }
