@@ -471,7 +471,7 @@ describe("RoboCop", () => {
     };
   }
 
-  describe("xx Add / Reduce Collateral", function () {
+  describe("Add / Reduce Collateral", function () {
     it("should revert if add / reduce collateral is called on a non-existent ruleHash", async () => {
       const { ruleSubscriberWallet, roboCop } = await deployValidRuleFixture();
       // these error with onlyRuleOwner because the non existent hash doesnt belong to the subscriber
@@ -509,7 +509,7 @@ describe("RoboCop", () => {
       ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
     });
 
-    it("yy should not allow anyone other than rule owner to add / reduce collateral to a rule", async () => {
+    it("should not allow anyone other than rule owner to add / reduce collateral to a rule", async () => {
       const { ruleHashEth, ruleHashToken, roboCop, testToken1, ruleSubscriberWallet, botWallet } =
         await deployValidRuleFixture();
       const collateralAmount = utils.parseEther("1");
@@ -676,7 +676,7 @@ describe("RoboCop", () => {
 
     // For some insane reason, if the native test is after the erc20 test,
     // the addCollateral fails in the erc20 test.
-    it("xx Should allow anyone to execute the rule once (native) and get a reward if gas is paid, and the trigger passes", async () => {
+    it("Should allow anyone to execute the rule once (native) and get a reward if gas is paid, and the trigger passes", async () => {
       // execute valid rule with collateral by someone else. and get a reward.
       const { ruleHashEth, ruleSubscriberWallet, botWallet, roboCop, testToken1 } = await deployValidRuleFixture();
       const collateral = utils.parseEther("2");
