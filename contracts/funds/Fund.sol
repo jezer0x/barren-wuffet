@@ -15,28 +15,35 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "../utils/whitelists/WhitelistService.sol";
 
 contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
-    // Storage Start
-    IRoboCop public roboCop;
-    address payable platformWallet;
+    // unique identifier for fund
     string name;
     address manager;
+
+    // subscription stuff
     SubscriptionConstraints constraints;
     Subscription[] subscriptions;
+
+    // addresses the fund needs to know
+    IRoboCop public roboCop; // roboCop dedicated to this fund
+    address payable platformWallet; // fees for using Fund goes here
+    WhitelistService public wlService;
+    bytes32 actionWhitelistHash;
+
+    // fund state that is modified over time
     Token[] assets; // tracking all the assets this fund has atm
-    bytes32[] openRules;
+    bytes32[] openRules; // tracking all rules that the fund created but did not complete
     mapping(bytes32 => bytes32[]) public actionPositionsMap;
     EnumerableSet.Bytes32Set private pendingPositions;
-    uint256 totalCollateral;
+    uint256 totalCollateral; // tracking total ETH received from subscriptions
     bool closed;
     mapping(address => uint256) fundCoins; // tracking balances of ERC20 and ETH
     mapping(address => uint256) fundNFTs; // tracking ids of NFTs
-
-    // Storage End
 
     // disable calling initialize() on the implementation contract
     constructor() {
@@ -58,6 +65,11 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         constraints = _constraints;
         manager = _manager;
         platformWallet = payable(_platformWallet);
+
+        // same action whitelist as RoboCop
+        wlService = WhitelistService(_wlServiceAddr);
+        actionWhitelistHash = _actionWhitelistHash;
+
         roboCop = IRoboCop(Clones.clone(roboCopImplementationAddr));
         roboCop.initialize(_wlServiceAddr, _triggerWhitelistHash, _actionWhitelistHash);
     }
@@ -93,7 +105,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
             _closeFund();
         } else {
             require(manager == msg.sender, "Only the fund manager can close a fund prematurely");
-            // closed prematurely by barrenWuffet (so that people can withdraw their capital)
+            // closed prematurely (so that people can withdraw their capital)
             _closeFund();
             // TODO: block rewards since closed before lockin
         }
@@ -130,6 +142,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         onlyFundManager
         returns (ActionResponse memory resp)
     {
+        require(wlService.isWhitelisted(actionWhitelistHash, action.callee), "Unauthorized Action");
         IAction(action.callee).validate(action);
         Utils._closePosition(action, pendingPositions, actionPositionsMap);
 
