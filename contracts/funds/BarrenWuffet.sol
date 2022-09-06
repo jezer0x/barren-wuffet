@@ -13,7 +13,7 @@ contract BarrenWuffet is Ownable, Pausable {
     // wallet that will receive fees
     // may be different from owner of this contract
     address public platformFeeWallet;
-    uint256 platformFeePercentage;
+    uint256 platformFeePercentage; // 1% = 100
 
     // whitelist service passed onto Fund
     bytes32 public triggerWhitelistHash;

@@ -5,7 +5,8 @@ import { ETH_TOKEN, TOKEN_TYPE } from "./Constants";
 export async function getAddressFromEvent(
   fnPromise: Promise<ContractTransaction>,
   eventName: string,
-  eventAddress: string
+  eventAddress: string,
+  position: Number = 0
 ) {
   const receipt: ContractReceipt = await tx(fnPromise);
   // Address is definitely part of the event object. Not sure why typescript wont recognize it.
@@ -17,9 +18,7 @@ export async function getAddressFromEvent(
   );
 
   //@ts-ignore
-  const [addr] = event.args;
-
-  return addr;
+  return event.args[position];
 }
 
 export async function getHashFromEvent(

@@ -35,7 +35,7 @@ describe("BarrenWuffet", () => {
       const validConstraints = await makeSubConstraints();
       await expect(barrenWuffetMarlie.createFund("Fund1", validConstraints))
         .to.emit(barrenWuffetMarlie, "Created")
-        .withArgs(anyValue);
+        .withArgs(anyValue, anyValue);
     });
 
     it.skip("Should revert if a fund is created with inconsistent subscription constraints", async () => {
@@ -55,7 +55,7 @@ describe("BarrenWuffet", () => {
       await barrenWuffetMarlie.createFund("Fund1", validConstraints);
       await expect(barrenWuffetMarlie.createFund("Fund1", validConstraints))
         .to.emit(barrenWuffetMarlie, "Created")
-        .withArgs(anyValue);
+        .withArgs(anyValue, anyValue);
     });
 
     it("should allow the same user to create 2 funds with different names", async () => {
@@ -64,7 +64,7 @@ describe("BarrenWuffet", () => {
       await barrenWuffetMarlie.createFund("Jerkshire", validConstraints);
       await expect(barrenWuffetMarlie.createFund("Clerkshire", validConstraints))
         .to.emit(barrenWuffetMarlie, "Created")
-        .withArgs(anyValue);
+        .withArgs(anyValue, anyValue);
     });
 
     it("should allow 2 different users to create funds with the same name", async () => {
@@ -73,7 +73,7 @@ describe("BarrenWuffet", () => {
       await barrenWuffetMarlie.createFund("Jerkshire", validConstraints);
       await expect(barrenWuffetFairy.createFund("Jerkshire", validConstraints))
         .to.emit(barrenWuffet, "Created")
-        .withArgs(anyValue);
+        .withArgs(anyValue, anyValue);
     });
   });
 
@@ -87,7 +87,7 @@ describe("BarrenWuffet", () => {
       let fundAddr;
       await expect(barrenWuffetMarlie.createFund("Jerkshire", validConstraints))
         .to.emit(barrenWuffet, "Created")
-        .withArgs((addr: string) => {
+        .withArgs(anyValue, (addr: string) => {
           fundAddr = addr;
           return true;
         });
@@ -108,7 +108,7 @@ describe("BarrenWuffet", () => {
       let fundAddr;
       await expect(barrenWuffetMarlie.createFund("Jerkshire", validConstraints))
         .to.emit(barrenWuffet, "Created")
-        .withArgs((addr: string) => {
+        .withArgs(anyValue, (addr: string) => {
           fundAddr = addr;
           return true;
         });
@@ -140,7 +140,8 @@ describe("BarrenWuffet", () => {
     const jerkshireAddr = await getAddressFromEvent(
       barrenWuffetMarlie.createFund("Jerkshire Castaway", jerkshireConstraints),
       "Created",
-      barrenWuffet.address
+      barrenWuffet.address,
+      1
     );
     const { fundSubscriber, fundSubscriber2, fairyLink, marlieChunger, bot } = await getNamedAccounts();
 
@@ -165,7 +166,8 @@ describe("BarrenWuffet", () => {
     const crackBlockAddr = await getAddressFromEvent(
       barrenWuffetFairy.createFund("CrackBlock", crackBlockConstraints),
       "Created",
-      barrenWuffetFairy.address
+      barrenWuffetFairy.address,
+      1
     );
     const crackBlockFund = {
       x: await ethers.getContractAt("Fund", crackBlockAddr),

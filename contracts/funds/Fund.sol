@@ -17,7 +17,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../utils/whitelists/WhitelistService.sol";
 
-abstract contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
+contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
 

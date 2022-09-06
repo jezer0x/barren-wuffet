@@ -17,6 +17,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     from: deployer,
     args: [
       deployer,
+      0, // taking no fee for now
       trigWlHash,
       actWlHash,
       whitelistService.address,
