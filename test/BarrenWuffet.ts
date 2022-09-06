@@ -33,7 +33,7 @@ describe("BarrenWuffet", () => {
     it("should allow anyone to create a fund and emit Created event with the fund hash", async () => {
       const { barrenWuffetMarlie } = await deployBarrenWuffetFixture();
       const validConstraints = await makeSubConstraints();
-      await expect(barrenWuffetMarlie.createFund("Fund1", validConstraints))
+      await expect(barrenWuffetMarlie.createFund("Fund1", validConstraints, []))
         .to.emit(barrenWuffetMarlie, "Created")
         .withArgs(anyValue, anyValue);
     });
@@ -52,8 +52,8 @@ describe("BarrenWuffet", () => {
     it("should allow if the same user creates 2 funds with the same name", async () => {
       const { barrenWuffetMarlie } = await deployBarrenWuffetFixture();
       const validConstraints = await makeSubConstraints();
-      await barrenWuffetMarlie.createFund("Fund1", validConstraints);
-      await expect(barrenWuffetMarlie.createFund("Fund1", validConstraints))
+      await barrenWuffetMarlie.createFund("Fund1", validConstraints, []);
+      await expect(barrenWuffetMarlie.createFund("Fund1", validConstraints, []))
         .to.emit(barrenWuffetMarlie, "Created")
         .withArgs(anyValue, anyValue);
     });
@@ -61,8 +61,8 @@ describe("BarrenWuffet", () => {
     it("should allow the same user to create 2 funds with different names", async () => {
       const { barrenWuffetMarlie } = await deployBarrenWuffetFixture();
       const validConstraints = await makeSubConstraints();
-      await barrenWuffetMarlie.createFund("Jerkshire", validConstraints);
-      await expect(barrenWuffetMarlie.createFund("Clerkshire", validConstraints))
+      await barrenWuffetMarlie.createFund("Jerkshire", validConstraints, []);
+      await expect(barrenWuffetMarlie.createFund("Clerkshire", validConstraints, []))
         .to.emit(barrenWuffetMarlie, "Created")
         .withArgs(anyValue, anyValue);
     });
@@ -70,8 +70,8 @@ describe("BarrenWuffet", () => {
     it("should allow 2 different users to create funds with the same name", async () => {
       const { barrenWuffet, barrenWuffetMarlie, barrenWuffetFairy } = await deployBarrenWuffetFixture();
       const validConstraints = await makeSubConstraints();
-      await barrenWuffetMarlie.createFund("Jerkshire", validConstraints);
-      await expect(barrenWuffetFairy.createFund("Jerkshire", validConstraints))
+      await barrenWuffetMarlie.createFund("Jerkshire", validConstraints, []);
+      await expect(barrenWuffetFairy.createFund("Jerkshire", validConstraints, []))
         .to.emit(barrenWuffet, "Created")
         .withArgs(anyValue, anyValue);
     });
@@ -85,7 +85,7 @@ describe("BarrenWuffet", () => {
       const { marlieChunger } = await getNamedAccounts();
       const validConstraints = await makeSubConstraints();
       let fundAddr;
-      await expect(barrenWuffetMarlie.createFund("Jerkshire", validConstraints))
+      await expect(barrenWuffetMarlie.createFund("Jerkshire", validConstraints, []))
         .to.emit(barrenWuffet, "Created")
         .withArgs(anyValue, (addr: string) => {
           fundAddr = addr;
@@ -106,7 +106,7 @@ describe("BarrenWuffet", () => {
       const validConstraints = await makeSubConstraints();
       const { marlieChunger } = await getNamedAccounts();
       let fundAddr;
-      await expect(barrenWuffetMarlie.createFund("Jerkshire", validConstraints))
+      await expect(barrenWuffetMarlie.createFund("Jerkshire", validConstraints, []))
         .to.emit(barrenWuffet, "Created")
         .withArgs(anyValue, (addr: string) => {
           fundAddr = addr;
@@ -138,7 +138,7 @@ describe("BarrenWuffet", () => {
     };
 
     const jerkshireAddr = await getAddressFromEvent(
-      barrenWuffetMarlie.createFund("Jerkshire Castaway", jerkshireConstraints),
+      barrenWuffetMarlie.createFund("Jerkshire Castaway", jerkshireConstraints, []),
       "Created",
       barrenWuffet.address,
       1
@@ -164,7 +164,7 @@ describe("BarrenWuffet", () => {
       managementFeePercentage: 10,
     };
     const crackBlockAddr = await getAddressFromEvent(
-      barrenWuffetFairy.createFund("CrackBlock", crackBlockConstraints),
+      barrenWuffetFairy.createFund("CrackBlock", crackBlockConstraints, []),
       "Created",
       barrenWuffetFairy.address,
       1

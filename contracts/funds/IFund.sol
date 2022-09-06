@@ -34,7 +34,8 @@ interface IFund is ISubscription {
         address _wlServiceAddr,
         bytes32 _triggerWhitelistHash,
         bytes32 _actionWhitelistHash,
-        address roboCopImplementationAddr
+        address roboCopImplementationAddr,
+        address[] calldata _declaredTokens
     ) external;
 
     function getInputTokens() external pure returns (Token[] memory);

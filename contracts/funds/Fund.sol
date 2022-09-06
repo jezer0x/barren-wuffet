@@ -29,6 +29,8 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     SubscriptionConstraints constraints;
     Subscription[] subscriptions;
 
+    bool public degenMode; // if true, then ignore declaredTokens and let traders trade whatever token
+
     // vars the fund needs to know
     IRoboCop public roboCop; // roboCop dedicated to this fund
     address payable platformFeeWallet; // fees for using Fund goes here
@@ -60,7 +62,8 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         address _wlServiceAddr,
         bytes32 _triggerWhitelistHash,
         bytes32 _actionWhitelistHash,
-        address roboCopImplementationAddr
+        address roboCopImplementationAddr,
+        address[] calldata _declaredTokenAddrs
     ) external nonReentrant initializer {
         Utils._validateSubscriptionConstraintsBasic(_constraints);
         name = _name;
@@ -69,12 +72,33 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         platformFeeWallet = payable(_platformFeeWallet);
         platformFeePercentage = _platformFeePercentage;
 
+        if (_declaredTokenAddrs.length == 0) {
+            degenMode = true;
+        } else {
+            bytes32 declaredTokenAddrWlHash = wlService.createWhitelist(_name);
+            for (uint256 i = 0; i < _declaredTokenAddrs.length; i++) {
+                wlService.addToWhitelist(declaredTokenAddrWlHash, _declaredTokenAddrs[i]);
+            }
+        }
+
         // same action whitelist as RoboCop
         wlService = WhitelistService(_wlServiceAddr);
         actionWhitelistHash = _actionWhitelistHash;
 
         roboCop = IRoboCop(Clones.clone(roboCopImplementationAddr));
         roboCop.initialize(_wlServiceAddr, _triggerWhitelistHash, _actionWhitelistHash);
+    }
+
+    function _onlyDeclaredTokens(Token[] calldata tokens) internal view returns (bool) {
+        if (degenMode) return true;
+        else {
+            for (uint256 i = 0; i < tokens.length; i++) {
+                if (!wlService.isWhitelisted(wlService.getWhitelistHash(address(this), name), tokens[i].addr)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     modifier onlyActiveSubscriber(uint256 subscriptionIdx) {
@@ -146,6 +170,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         returns (ActionResponse memory resp)
     {
         require(wlService.isWhitelisted(actionWhitelistHash, action.callee), "Unauthorized Action");
+        require(_onlyDeclaredTokens(action.outputTokens), "Unauthorized Token");
         IAction(action.callee).validate(action);
         Utils._closePosition(action, pendingPositions, actionPositionsMap);
 
@@ -174,6 +199,9 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         onlyFundManager
         returns (bytes32 ruleHash)
     {
+        for (uint256 i = 0; i < actions.length; i++) {
+            require(_onlyDeclaredTokens(actions[i].outputTokens), "Unauthorized Token");
+        }
         // Note: Rule is created through BarrenWuffet so that BarrenWuffet is rule.owner
         ruleHash = roboCop.createRule(triggers, actions);
         openRules.push(ruleHash);
