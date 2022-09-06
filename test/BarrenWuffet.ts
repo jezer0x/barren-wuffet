@@ -343,10 +343,10 @@ describe("BarrenWuffet", () => {
         )
       ).be.revertedWithoutReason();
     });
-    it("should revert if rewards withdrawal is attempted on a raising fund", async () => {
+    it("should revert if ManagementFee withdrawal is attempted on a raising fund", async () => {
       const { jerkshireFund } = await raisingFundsFixture();
       await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
-      await expect(jerkshireFund.marlieChunger.withdrawReward()).to.be.revertedWith("Fund not closed");
+      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("Fund not closed");
     });
 
     it("should return fund status as DEPLOYED once the fund is created, deadline has been hit (min collateral may or maynot be met)", async () => {
@@ -366,6 +366,12 @@ describe("BarrenWuffet", () => {
 
       expect(await jerkshireFund.subscriber.getStatus()).to.equal(FUND_STATUS.DEPLOYED);
     });
+
+    it.skip("If deadline passed but minCollateral is not reached, can't deploy", async () => {});
+
+    it.skip("If raised between minCollateralTotal and maxCollateralTotal, can't deploy until deadline", async () => {});
+
+    it.skip("If can't reach minCollateral, no ManagementFee for trader", async () => {});
   });
 
   describe.skip("Fund Actions on a non-existent fund", async () => {
@@ -376,7 +382,7 @@ describe("BarrenWuffet", () => {
 
     it("should revert if performing actions on a non-existent fund", async () => {});
 
-    it("should revert if withdrawing rewards from  a non-existent fund", async () => {});
+    it("should revert if withdrawing ManagementFee from  a non-existent fund", async () => {});
 
     it("should revert if depositing / withdrawing from  a non-existent fund", async () => {});
 
@@ -449,10 +455,10 @@ describe("BarrenWuffet", () => {
       await expect(jerkshireFund.subscriber.withdraw(0)).to.be.revertedWith("Can't get money back from deployed fund!");
     });
 
-    it("should revert if rewards withdrawal is attempted on a deployed fund", async () => {
+    it("should revert if ManagementFee withdrawal is attempted on a deployed fund", async () => {
       const { jerkshireFund } = await deployedFundsFixture();
 
-      await expect(jerkshireFund.marlieChunger.withdrawReward()).to.be.revertedWith("Fund not closed");
+      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("Fund not closed");
     });
 
     describe("Manage rules", () => {
@@ -646,7 +652,7 @@ describe("BarrenWuffet", () => {
     // All other restrictions apply the same to closable and closed funds (so it makes sense to reuse the tests.)
     it("should revert if withdrawal is attempted on a closable fund", async () => {});
 
-    it("should revert if rewards withdrawal is attempted on a closable fund", async () => {});
+    it("should revert if ManagementFee withdrawal is attempted on a closable fund", async () => {});
   });
 
   describe.skip("Fund transition: Close Fund", () => {
@@ -671,12 +677,12 @@ describe("BarrenWuffet", () => {
     });
   });
 
-  describe.skip("Rewards", () => {
-    it("should return the correct value of reward to each fund manager, when multiple fund managers have pending rewards", async () => {});
+  describe.skip("ManagementFee", () => {
+    it("should return the correct value of ManagementFee to each fund manager, when multiple fund managers have pending ManagementFee", async () => {});
 
-    it("should not allow access to rewards from a fund that the manager doesnt own", async () => {});
+    it("should not allow access to ManagementFee from a fund that the manager doesnt own", async () => {});
 
-    it("should not allow multiple withdrawals of the reward", async () => {});
+    it("should not allow multiple withdrawals of the ManagementFee", async () => {});
   });
 
   describe.skip("User Stories", () => {

@@ -19,7 +19,7 @@ export const BAD_RULE_HASH = "0x" + "1234".repeat(16);
 export const BAD_TRADE_HASH = "0x" + "1234".repeat(16);
 export const BAD_FUND_HASH = "0x" + "1234".repeat(16);
 
-export const DEFAULT_REWARD = utils.parseEther("0.01");
+export const DEFAULT_INCENTIVE = utils.parseEther("0.01");
 
 export const FUND_STATUS = {
   RAISING: 0,

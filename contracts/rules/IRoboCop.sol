@@ -30,9 +30,9 @@ interface IRoboCop {
 
     function reduceCollateral(bytes32 ruleHash, uint256[] memory amounts) external;
 
-    function increaseReward(bytes32 ruleHash) external payable;
+    function increaseIncentive(bytes32 ruleHash) external payable;
 
-    function withdrawReward(bytes32 ruleHash) external returns (uint256 balance);
+    function withdrawIncentive(bytes32 ruleHash) external returns (uint256 balance);
 
     function createRule(Trigger[] calldata triggers, Action[] calldata actions) external payable returns (bytes32);
 

@@ -24,7 +24,7 @@ contract RoboCop is IRoboCop, ReentrancyGuard, IERC721Receiver, Initializable {
     mapping(bytes32 => Rule) rules;
     mapping(bytes32 => bytes32[]) public actionPositionsMap;
     EnumerableSet.Bytes32Set private pendingPositions;
-    mapping(bytes32 => mapping(address => uint256)) public ruleRewardProviders;
+    mapping(bytes32 => mapping(address => uint256)) public ruleIncentiveProviders;
     bytes32 triggerWhitelistHash;
     bytes32 actionWhitelistHash;
     WhitelistService wlService;
@@ -135,20 +135,20 @@ contract RoboCop is IRoboCop, ReentrancyGuard, IERC721Receiver, Initializable {
         emit CollateralReduced(ruleHash, amounts);
     }
 
-    function increaseReward(bytes32 ruleHash) public payable ruleExists(ruleHash) {
+    function increaseIncentive(bytes32 ruleHash) public payable ruleExists(ruleHash) {
         Rule storage rule = rules[ruleHash];
         require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE);
-        rule.reward += msg.value;
-        ruleRewardProviders[ruleHash][msg.sender] += msg.value;
+        rule.incentive += msg.value;
+        ruleIncentiveProviders[ruleHash][msg.sender] += msg.value;
     }
 
-    function withdrawReward(bytes32 ruleHash) external ruleExists(ruleHash) returns (uint256 balance) {
+    function withdrawIncentive(bytes32 ruleHash) external ruleExists(ruleHash) returns (uint256 balance) {
         Rule storage rule = rules[ruleHash];
-        require(rule.status != RuleStatus.EXECUTED && rule.status != RuleStatus.REDEEMED, "Reward paid");
-        balance = ruleRewardProviders[ruleHash][msg.sender];
+        require(rule.status != RuleStatus.EXECUTED && rule.status != RuleStatus.REDEEMED, "Incentive paid");
+        balance = ruleIncentiveProviders[ruleHash][msg.sender];
         require(balance > 0, "0 contribution");
-        rule.reward -= balance;
-        ruleRewardProviders[ruleHash][msg.sender] = 0;
+        rule.incentive -= balance;
+        ruleIncentiveProviders[ruleHash][msg.sender] = 0;
 
         // slither-disable-next-line arbitrary-send
         payable(msg.sender).transfer(balance);
@@ -189,7 +189,7 @@ contract RoboCop is IRoboCop, ReentrancyGuard, IERC721Receiver, Initializable {
             rule.collaterals.push();
         }
 
-        increaseReward(ruleHash);
+        increaseIncentive(ruleHash);
 
         emit Created(ruleHash);
         return ruleHash;
@@ -287,7 +287,7 @@ contract RoboCop is IRoboCop, ReentrancyGuard, IERC721Receiver, Initializable {
         }
 
         rule.outputs = outputs;
-        payable(msg.sender).transfer(rule.reward); // slither-disable-next-line arbitrary-send // for the taking. // As long as the execution reaches this point, the reward is there // We dont need to check sender here.
+        payable(msg.sender).transfer(rule.incentive); // slither-disable-next-line arbitrary-send // for the taking. // As long as the execution reaches this point, the incentive is there // We dont need to check sender here.
     }
 
     receive() external payable {}

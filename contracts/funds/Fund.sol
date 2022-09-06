@@ -131,13 +131,13 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         if (getStatus() == FundStatus.CLOSABLE) {
             // anyone can call if closable
             if (totalCollateral < constraints.minCollateralTotal) {
-                // never reached minCollateral, no rewards
+                // never reached minCollateral, no managementFee
                 constraints.managementFeePercentage = 0;
             }
         } else {
             require(manager == msg.sender, "Only the fund manager can close a fund prematurely");
             // closed prematurely (so that people can withdraw their capital)
-            // no reward since did not see through lockin
+            // no managementFee since did not see through lockin
             constraints.managementFeePercentage = 0;
         }
 
@@ -213,20 +213,20 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         openRules.push(ruleHash);
     }
 
-    function increaseRuleReward(uint256 openRuleIdx, uint256 amount)
+    function increaseRuleIncentive(uint256 openRuleIdx, uint256 amount)
         external
         onlyDeployedFund
         onlyFundManager
         nonReentrant
     {
         _decreaseAssetBalance(Token({t: TokenType.NATIVE, addr: Constants.ETH}), amount);
-        roboCop.increaseReward{value: amount}(openRules[openRuleIdx]);
+        roboCop.increaseIncentive{value: amount}(openRules[openRuleIdx]);
     }
 
-    function withdrawRuleReward(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager nonReentrant {
+    function withdrawRuleIncentive(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager nonReentrant {
         _decreaseAssetBalance(
             Token({t: TokenType.NATIVE, addr: Constants.ETH}),
-            roboCop.withdrawReward(openRules[openRuleIdx])
+            roboCop.withdrawIncentive(openRules[openRuleIdx])
         );
     }
 
@@ -443,8 +443,6 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
             balances[0] = subscription.collateralAmount;
             return (tokens, balances);
         } else if (status == FundStatus.CLOSED) {
-            // TODO:
-            // Fund manager can collect rewards by opening and closing and not doing anything with the funds.
             Token[] memory tokens = new Token[](assets.length);
             uint256[] memory balances = new uint256[](assets.length);
 
@@ -464,9 +462,9 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         }
     }
 
-    function withdrawReward() public onlyFundManager nonReentrant {
+    function withdrawManagementFee() public onlyFundManager nonReentrant {
         require(getStatus() == FundStatus.CLOSED, "Fund not closed");
-        // TODO: get rewards from each asset in the
+        // TODO: get managementFee from each asset in the
         // profit share? (if yes, input asset == output asset? How to ensure?)
         // % of input instead? (don't have to tackle the problems above yet)
     }

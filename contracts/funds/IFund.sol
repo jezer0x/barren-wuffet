@@ -19,7 +19,7 @@ enum FundStatus {
     RAISING, // deposits possible, withdraws possible (inputToken), manager can't move funds
     DEPLOYED, // deposits not possible, withdraws not possible, manager can move funds
     CLOSABLE, // deposits not possible, withdraws not possible, manager can't move funds
-    CLOSED // deposits not possible, withdraws possible (outputTokens), manager can take out rewards but not move funds
+    CLOSED // deposits not possible, withdraws possible (outputTokens), manager can take out managementFee but not move funds
 }
 
 interface IFund is ISubscription {
@@ -50,9 +50,9 @@ interface IFund is ISubscription {
 
     function createRule(Trigger[] calldata triggers, Action[] calldata actions) external returns (bytes32 ruleHash);
 
-    function increaseRuleReward(uint256 openRuleIdx, uint256 amount) external;
+    function increaseRuleIncentive(uint256 openRuleIdx, uint256 amount) external;
 
-    function withdrawRuleReward(uint256 openRuleIdx) external;
+    function withdrawRuleIncentive(uint256 openRuleIdx) external;
 
     function activateRule(uint256 openRuleIdx) external;
 
@@ -72,5 +72,5 @@ interface IFund is ISubscription {
 
     function getStatus() external view returns (FundStatus);
 
-    function withdrawReward() external;
+    function withdrawManagementFee() external;
 }

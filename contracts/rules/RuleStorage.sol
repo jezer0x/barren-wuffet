@@ -6,7 +6,7 @@ import "../utils/whitelists/WhitelistService.sol";
 struct RuleStorage {
     // hash -> Rule
     mapping(bytes32 => Rule) rules;
-    mapping(bytes32 => mapping(address => uint256)) ruleRewardProviders;
+    mapping(bytes32 => mapping(address => uint256)) ruleIncentiveProviders;
     bytes32 triggerWhitelistHash;
     bytes32 actionWhitelistHash;
     WhitelistService wlService;

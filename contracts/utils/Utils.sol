@@ -57,7 +57,7 @@ library Utils {
         require(constraints.deadline >= block.timestamp, "deadline is in the past");
         require(constraints.lockin >= block.timestamp, "lockin is in the past");
         require(constraints.lockin > constraints.deadline, "lockin <= deadline");
-        require(constraints.managementFeePercentage <= 100 * 100, "reward > 100%");
+        require(constraints.managementFeePercentage <= 100 * 100, "managementFee > 100%");
     }
 
     function _delegatePerformAction(Action memory action, ActionRuntimeParams memory runtimeParams)
