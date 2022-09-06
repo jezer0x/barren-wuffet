@@ -169,9 +169,6 @@ export async function getWhitelistService() {
 }
 
 export async function setupRoboCop(hre: HardhatRuntimeEnvironment) {
-  // We use the Impl contract as the instance.
-  // The assumption is that it's
-  const roboCop = await ethers.getContract("RoboCop");
   const { testToken1, testToken2, WETH } = await setupTestTokens();
   const { testOracleEth, testOracleTst1, priceTrigger } = await setupEthToTst1PriceTrigger();
   const swapUniSingleAction = await setupSwapUniSingleAction(testToken1, WETH);
@@ -183,8 +180,14 @@ export async function setupRoboCop(hre: HardhatRuntimeEnvironment) {
   const botWallet = await ethers.getSigner(bot);
   const deployerWallet = await ethers.getSigner(deployer);
 
-  const roboCopDeployer = await ethers.getContract("RoboCop", deployer);
-  await tx(roboCopDeployer.initialize(whitelistService.address, trigWlHash, actWlHash));
+  const roboCopFactoryDeployer = await ethers.getContract("RoboCopFactory", deployer);
+  const roboCopAddr = await getAddressFromEvent(
+    roboCopFactoryDeployer.createRoboCop(),
+    "Created",
+    roboCopFactoryDeployer.address
+  );
+
+  const roboCop = await ethers.getContractAt("RoboCop", roboCopAddr);
 
   return {
     roboCop,

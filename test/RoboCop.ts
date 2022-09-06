@@ -32,7 +32,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 describe("RoboCop", () => {
   const deployRoboCopFixture = deployments.createFixture(async (hre, options) => {
-    await deployments.fixture(["RoboCopImplementation"]);
+    await deployments.fixture(["RoboCopFactory"]);
     return await setupRoboCop(hre);
   });
 
@@ -387,7 +387,7 @@ describe("RoboCop", () => {
   });
 
   const deployValidRuleFixture = deployments.createFixture(async (hre, options) => {
-    await deployments.fixture(["RoboCopImplementation"]);
+    await deployments.fixture(["RoboCopFactory"]);
     return await setupValidRuleFixture(hre);
   });
 
