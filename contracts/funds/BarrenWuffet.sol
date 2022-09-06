@@ -12,7 +12,8 @@ contract BarrenWuffet is Ownable, Pausable {
 
     // wallet that will receive fees
     // may be different from owner of this contract
-    address public platformWallet;
+    address public platformFeeWallet;
+    uint256 platformFeePercentage;
 
     // whitelist service passed onto Fund
     bytes32 public triggerWhitelistHash;
@@ -24,14 +25,16 @@ contract BarrenWuffet is Ownable, Pausable {
     address public fundImplAddr;
 
     constructor(
-        address _platformWallet,
+        address _platformFeeWallet,
+        uint256 _platformFeePercentage,
         bytes32 _triggerWhitelistHash,
         bytes32 _actionWhitelistHash,
         address _wlServiceAddr,
         address _roboCopImplAddr,
         address _fundImplAddr
     ) {
-        platformWallet = _platformWallet;
+        platformFeeWallet = _platformFeeWallet;
+        setPlatformFeePercentage(_platformFeePercentage);
         triggerWhitelistHash = _triggerWhitelistHash;
         actionWhitelistHash = _actionWhitelistHash;
         wlServiceAddr = _wlServiceAddr;
@@ -39,8 +42,13 @@ contract BarrenWuffet is Ownable, Pausable {
         fundImplAddr = _fundImplAddr;
     }
 
-    function setPlatformWallet(address _platformWallet) public onlyOwner {
-        platformWallet = _platformWallet;
+    function setPlatformFeeWallet(address _platformFeeWallet) public onlyOwner {
+        platformFeeWallet = _platformFeeWallet;
+    }
+
+    function setPlatformFeePercentage(uint256 _platformFeePercentage) public onlyOwner {
+        require(_platformFeePercentage < 100_00);
+        platformFeePercentage = _platformFeePercentage;
     }
 
     function setTriggerWhitelistHash(bytes32 _triggerWhitelistHash) public onlyOwner {
@@ -81,7 +89,8 @@ contract BarrenWuffet is Ownable, Pausable {
             name,
             msg.sender,
             constraints,
-            platformWallet,
+            platformFeeWallet,
+            platformFeePercentage,
             wlServiceAddr,
             triggerWhitelistHash,
             actionWhitelistHash,

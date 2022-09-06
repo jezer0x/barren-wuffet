@@ -17,7 +17,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../utils/whitelists/WhitelistService.sol";
 
-contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
+abstract contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
@@ -29,9 +29,10 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     SubscriptionConstraints constraints;
     Subscription[] subscriptions;
 
-    // addresses the fund needs to know
+    // vars the fund needs to know
     IRoboCop public roboCop; // roboCop dedicated to this fund
-    address payable platformWallet; // fees for using Fund goes here
+    address payable platformFeeWallet; // fees for using Fund goes here
+    uint256 platformFeePercentage; // fee percentage for using the platform
     WhitelistService public wlService;
     bytes32 actionWhitelistHash;
 
@@ -54,7 +55,8 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         string memory _name,
         address _manager,
         SubscriptionConstraints memory _constraints,
-        address _platformWallet,
+        address _platformFeeWallet,
+        uint256 _platformFeePercentage,
         address _wlServiceAddr,
         bytes32 _triggerWhitelistHash,
         bytes32 _actionWhitelistHash,
@@ -64,7 +66,8 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         name = _name;
         constraints = _constraints;
         manager = _manager;
-        platformWallet = payable(_platformWallet);
+        platformFeeWallet = payable(_platformFeeWallet);
+        platformFeePercentage = _platformFeePercentage;
 
         // same action whitelist as RoboCop
         wlService = WhitelistService(_wlServiceAddr);
@@ -336,11 +339,14 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         newSub.subscriber = msg.sender;
         newSub.status = SubscriptionStatus.ACTIVE;
 
-        newSub.collateralAmount = collateralAmount;
-        _increaseAssetBalance(collateralToken, collateralAmount);
-        totalCollateral += collateralAmount;
+        uint256 platformFee = (collateralAmount * platformFeePercentage) / 100_00;
+        Utils._send(collateralToken, platformFeeWallet, platformFee);
+        uint256 remainingColalteralAmount = collateralAmount - platformFee;
+        newSub.collateralAmount = remainingColalteralAmount;
+        _increaseAssetBalance(collateralToken, remainingColalteralAmount);
+        totalCollateral += remainingColalteralAmount;
 
-        emit Deposit(msg.sender, subscriptions.length - 1, collateralToken.addr, collateralAmount);
+        emit Deposit(msg.sender, subscriptions.length - 1, collateralToken.addr, remainingColalteralAmount);
         return subscriptions.length - 1;
     }
 
@@ -407,7 +413,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
             for (uint256 i = 0; i < assets.length; i++) {
                 tokens[i] = assets[i];
                 balances[i] = _getShares(subscriptionIdx, assets[i]);
-                // TODO: keep rewardPercentage here for barrenWuffet.
+                // TODO: keep managementFeePercentage here for Manager.
                 emit Withdraw(msg.sender, subscriptionIdx, tokens[i].addr, balances[i]);
                 Utils._send(tokens[i], subscription.subscriber, balances[i]);
             }

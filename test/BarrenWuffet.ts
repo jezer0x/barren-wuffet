@@ -19,7 +19,7 @@ async function makeSubConstraints() {
     maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
     deadline: latestTime + 86400,
     lockin: latestTime + 86400 * 10,
-    rewardPercentage: 100,
+    managementFeePercentage: 100,
   };
 }
 
@@ -134,7 +134,7 @@ describe("BarrenWuffet", () => {
       maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
       deadline: latestTime + 86400,
       lockin: latestTime + 86400 * 10,
-      rewardPercentage: 0,
+      managementFeePercentage: 0,
     };
 
     const jerkshireAddr = await getAddressFromEvent(
@@ -160,7 +160,7 @@ describe("BarrenWuffet", () => {
       maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
       deadline: latestTime + 86400,
       lockin: latestTime + 86400 * 10,
-      rewardPercentage: 10,
+      managementFeePercentage: 10,
     };
     const crackBlockAddr = await getAddressFromEvent(
       barrenWuffetFairy.createFund("CrackBlock", crackBlockConstraints),
