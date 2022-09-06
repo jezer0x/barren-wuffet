@@ -24,7 +24,8 @@ export const DEFAULT_INCENTIVE = utils.parseEther("0.01");
 export const FUND_STATUS = {
   RAISING: 0,
   DEPLOYED: 1,
-  CLOSED: 2,
+  CLOSABLE: 2,
+  CLOSED: 3,
 };
 
 export const TOKEN_TYPE = {
