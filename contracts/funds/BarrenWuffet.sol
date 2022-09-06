@@ -7,15 +7,21 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 
 contract BarrenWuffet is Ownable, Pausable {
-    event Created(address indexed fundAddr);
+    // event used by frontend to pick up newly created funds
+    event Created(address indexed manager, address fundAddr);
 
-    address roboCopAddr;
-    address platformWallet;
-    bytes32 triggerWhitelistHash;
-    bytes32 actionWhitelistHash;
-    address wlServiceAddr;
-    address roboCopImplAddr;
-    address fundImplAddr;
+    // wallet that will receive fees
+    // may be different from owner of this contract
+    address public platformWallet;
+
+    // whitelist service passed onto Fund
+    bytes32 public triggerWhitelistHash;
+    bytes32 public actionWhitelistHash;
+    address public wlServiceAddr;
+
+    // singletons used for light clones later
+    address public roboCopImplAddr;
+    address public fundImplAddr;
 
     constructor(
         address _platformWallet,
@@ -33,7 +39,29 @@ contract BarrenWuffet is Ownable, Pausable {
         fundImplAddr = _fundImplAddr;
     }
 
-    // TODO: need setters for everything else too
+    function setPlatformWallet(address _platformWallet) public onlyOwner {
+        platformWallet = _platformWallet;
+    }
+
+    function setTriggerWhitelistHash(bytes32 _triggerWhitelistHash) public onlyOwner {
+        triggerWhitelistHash = _triggerWhitelistHash;
+    }
+
+    function setActionWhitelistHash(bytes32 _actionWhitelistHash) public onlyOwner {
+        actionWhitelistHash = _actionWhitelistHash;
+    }
+
+    function setWhitelistServiceAddress(address _wlServiceAddr) public onlyOwner {
+        wlServiceAddr = _wlServiceAddr;
+    }
+
+    function setRoboCopImplementationAddress(address _roboCopImplAddr) public onlyOwner {
+        roboCopImplAddr = _roboCopImplAddr;
+    }
+
+    function setFundImplementationAddress(address _fundImplAddr) public onlyOwner {
+        fundImplAddr = _fundImplAddr;
+    }
 
     function pause() public onlyOwner {
         _pause();
@@ -59,7 +87,7 @@ contract BarrenWuffet is Ownable, Pausable {
             actionWhitelistHash,
             roboCopImplAddr
         );
-        emit Created(address(fund));
+        emit Created(msg.sender, address(fund));
         return address(fund);
     }
 }
