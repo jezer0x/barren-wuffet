@@ -27,21 +27,12 @@ import {
   PRICE_TRIGGER_TYPE,
 } from "./Constants";
 import { RuleStructOutput } from "../typechain-types/contracts/rules/RoboCop";
-import { testPauseAuthorization, testPauseFunctionality } from "./helper";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 describe("RoboCop", () => {
   const deployRoboCopFixture = deployments.createFixture(async (hre, options) => {
     await deployments.fixture(["RoboCopFactory"]);
     return await setupRoboCop(hre);
-  });
-
-  describe("Deployment", () => {
-    it("Should set the right owner", async function () {
-      const { roboCop, deployerWallet } = await deployRoboCopFixture();
-
-      expect(await roboCop.owner()).to.equal(deployerWallet.address);
-    });
   });
 
   describe("Add Rule By Anyone", () => {
@@ -983,54 +974,6 @@ describe("RoboCop", () => {
       const actualRule = await roboCop.getRule(ruleHashEth);
       // @ts-ignore
       expectEthersObjDeepEqual(expectedRule, actualRule);
-    });
-  });
-
-  describe("Pause Contract", () => {
-    it("should revert if anyone but the owner tries to pause/ unpause the contract", async () => {
-      const { deployerWallet, ruleSubscriberWallet, roboCop } = await deployValidRuleFixture();
-      const ownerCon = roboCop.connect(deployerWallet);
-      const otherCon = roboCop.connect(ruleSubscriberWallet);
-
-      await testPauseAuthorization(ownerCon, otherCon);
-    });
-    // TODO: Would it make more sense to just tag some tests a decorator, such that those test will execute with / without pause? We could do the same for other decorators. Downside is that you cant summarize the pause tests in one place.
-    // OR perhaps we could be even more generic and check that unless excluded, all state-changing external / public fns do get blocked on pause.
-    it("should prevent a bunch of functions from being executed when paused and re-allows them when unpaused", async () => {
-      const fixtureVars = await deployValidRuleFixture();
-      const {
-        ruleHashEth,
-        ruleSubscriberWallet,
-        priceTrigger,
-        swapUniSingleAction,
-        roboCop,
-        testToken1,
-        deployerWallet,
-      } = fixtureVars;
-
-      // If we want to make sure that certain works even after pausing,
-      // that needs to be tested separately.
-
-      const collateralAmount = utils.parseEther("2");
-      const reSub = roboCop.connect(ruleSubscriberWallet);
-
-      const reSuite = [
-        async () =>
-          reSub.createRule(
-            [makePassingTrigger(priceTrigger.address, testToken1)],
-            [makeSwapAction(swapUniSingleAction.address, [testToken1.address])]
-          ),
-        () => reSub.deactivateRule(ruleHashEth),
-        () => reSub.activateRule(ruleHashEth),
-        () => reSub.addCollateral(ruleHashEth, [collateralAmount], { value: collateralAmount }),
-        () => reSub.reduceCollateral(ruleHashEth, [utils.parseEther("1.5")]),
-        () => reSub.increaseReward(ruleHashEth, { value: DEFAULT_REWARD }),
-        () => reSub.withdrawReward(ruleHashEth),
-        () => reSub.executeRule(ruleHashEth),
-        () => reSub.redeemBalance(ruleHashEth),
-      ];
-
-      await testPauseFunctionality(roboCop.connect(deployerWallet), reSuite);
     });
   });
 });

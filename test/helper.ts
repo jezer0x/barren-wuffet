@@ -1,31 +1,6 @@
-import { LogDescription } from "@ethersproject/abi";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
-import { BigNumber, constants, Contract, ContractReceipt, ContractTransaction } from "ethers";
-import { ethers } from "hardhat";
-import { ETH_ADDRESS, ETH_TOKEN, TOKEN_TYPE } from "./Constants";
-
-export async function testPauseAuthorization(ownerContract: Contract, otherContract: Contract) {
-  await expect(otherContract.pause()).to.be.revertedWith("Ownable: caller is not the owner");
-  await expect(ownerContract.pause()).to.emit(ownerContract, "Paused");
-  await expect(otherContract.unpause()).to.be.revertedWith("Ownable: caller is not the owner");
-  await expect(ownerContract.unpause()).to.emit(ownerContract, "Unpaused");
-}
-
-export async function testPauseFunctionality(connectedContract: Contract, fnSuite: (() => Promise<any>)[]) {
-  await connectedContract.pause();
-
-  // we want to execute these sequentially incase some depend on others
-  for (const f of fnSuite) {
-    await expect(f()).to.be.revertedWith("Pausable: paused");
-  }
-
-  await connectedContract.unpause();
-
-  for (const f of fnSuite) {
-    await expect(f()).to.not.be.reverted;
-  }
-}
+import { BigNumber, Contract, ContractReceipt, ContractTransaction } from "ethers";
+import { ETH_TOKEN, TOKEN_TYPE } from "./Constants";
 
 export async function getAddressFromEvent(
   fnPromise: Promise<ContractTransaction>,

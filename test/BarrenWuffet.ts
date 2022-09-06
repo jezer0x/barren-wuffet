@@ -29,15 +29,6 @@ describe("BarrenWuffet", () => {
     return await setupBarrenWuffet(hre);
   });
 
-  describe("Deployment", () => {
-    it("Should set the right owner", async function () {
-      const { barrenWuffetMarlie } = await deployBarrenWuffetFixture();
-      const { deployer } = await getNamedAccounts();
-
-      expect(await barrenWuffetMarlie.owner()).to.equal(deployer);
-    });
-  });
-
   describe("Fund FundStatus: Uninitialized", () => {
     it("should allow anyone to create a fund and emit Created event with the fund hash", async () => {
       const { barrenWuffetMarlie } = await deployBarrenWuffetFixture();
