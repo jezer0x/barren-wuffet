@@ -10,15 +10,13 @@ import "./IFund.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver, Initializable {
+contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
@@ -40,14 +38,6 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver, Ini
 
     // Storage End
 
-    function pause() public onlyOwner {
-        _pause();
-    }
-
-    function unpause() public onlyOwner {
-        _unpause();
-    }
-
     // disable calling initialize() on the implementation contract
     constructor() {
         _disableInitializers();
@@ -62,7 +52,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver, Ini
         bytes32 _triggerWhitelistHash,
         bytes32 _actionWhitelistHash,
         address roboCopImplementationAddr
-    ) external whenNotPaused nonReentrant initializer {
+    ) external nonReentrant initializer {
         Utils._validateSubscriptionConstraintsBasic(_constraints);
         name = _name;
         constraints = _constraints;
@@ -98,7 +88,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver, Ini
         revert("Undefined: Funds may have multiple output tokens, determined only after it's closed.");
     }
 
-    function closeFund() external whenNotPaused nonReentrant {
+    function closeFund() external nonReentrant {
         if (getStatus() == FundStatus.CLOSABLE) {
             _closeFund();
         } else {
@@ -135,7 +125,6 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver, Ini
 
     function takeAction(Action calldata action, ActionRuntimeParams calldata runtimeParams)
         public
-        whenNotPaused
         nonReentrant
         onlyDeployedFund
         onlyFundManager
@@ -164,7 +153,6 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver, Ini
 
     function createRule(Trigger[] calldata triggers, Action[] calldata actions)
         external
-        whenNotPaused
         nonReentrant
         onlyDeployedFund
         onlyFundManager
@@ -179,31 +167,24 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver, Ini
         external
         onlyDeployedFund
         onlyFundManager
-        whenNotPaused
         nonReentrant
     {
         _decreaseAssetBalance(Token({t: TokenType.NATIVE, addr: Constants.ETH}), amount);
         roboCop.increaseReward{value: amount}(openRules[openRuleIdx]);
     }
 
-    function withdrawRuleReward(uint256 openRuleIdx)
-        external
-        onlyDeployedFund
-        onlyFundManager
-        whenNotPaused
-        nonReentrant
-    {
+    function withdrawRuleReward(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager nonReentrant {
         _decreaseAssetBalance(
             Token({t: TokenType.NATIVE, addr: Constants.ETH}),
             roboCop.withdrawReward(openRules[openRuleIdx])
         );
     }
 
-    function activateRule(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager whenNotPaused nonReentrant {
+    function activateRule(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager nonReentrant {
         roboCop.activateRule(openRules[openRuleIdx]);
     }
 
-    function deactivateRule(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager whenNotPaused nonReentrant {
+    function deactivateRule(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager nonReentrant {
         roboCop.deactivateRule(openRules[openRuleIdx]);
     }
 
@@ -211,7 +192,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver, Ini
         uint256 openRuleIdx,
         Token[] memory collateralTokens,
         uint256[] memory collaterals
-    ) external onlyDeployedFund onlyFundManager whenNotPaused nonReentrant {
+    ) external onlyDeployedFund onlyFundManager nonReentrant {
         uint256 ethCollateral = 0;
 
         for (uint256 i = 0; i < collateralTokens.length; i++) {
@@ -228,7 +209,6 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver, Ini
         external
         onlyDeployedFund
         onlyFundManager
-        whenNotPaused
         nonReentrant
     {
         _reduceRuleCollateral(openRuleIdx, collaterals);
@@ -244,7 +224,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver, Ini
         }
     }
 
-    function cancelRule(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager whenNotPaused nonReentrant {
+    function cancelRule(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager nonReentrant {
         _cancelRule(openRuleIdx);
         _removeOpenRuleIdx(openRuleIdx);
     }
@@ -258,13 +238,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver, Ini
         _reduceRuleCollateral(openRuleIdx, rule.collaterals);
     }
 
-    function redeemRuleOutput(uint256 openRuleIdx)
-        external
-        onlyDeployedFund
-        onlyFundManager
-        whenNotPaused
-        nonReentrant
-    {
+    function redeemRuleOutput(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager nonReentrant {
         _redeemRuleOutput(openRuleIdx);
         _removeOpenRuleIdx(openRuleIdx);
     }
@@ -341,12 +315,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver, Ini
         require(block.timestamp < constraints.deadline);
     }
 
-    function deposit(Token memory collateralToken, uint256 collateralAmount)
-        external
-        payable
-        whenNotPaused
-        returns (uint256)
-    {
+    function deposit(Token memory collateralToken, uint256 collateralAmount) external payable returns (uint256) {
         require(getStatus() == FundStatus.RAISING, "Fund is not raising");
         _validateCollateral(collateralToken, collateralAmount);
 
@@ -388,7 +357,6 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver, Ini
 
     function withdraw(uint256 subscriptionIdx)
         external
-        whenNotPaused
         nonReentrant
         onlyActiveSubscriber(subscriptionIdx)
         returns (Token[] memory, uint256[] memory)
@@ -438,7 +406,7 @@ contract Fund is IFund, Ownable, Pausable, ReentrancyGuard, IERC721Receiver, Ini
         }
     }
 
-    function withdrawReward() public onlyFundManager whenNotPaused nonReentrant {
+    function withdrawReward() public onlyFundManager nonReentrant {
         require(getStatus() == FundStatus.CLOSED, "Fund not closed");
         // TODO: get rewards from each asset in the
         // profit share? (if yes, input asset == output asset? How to ensure?)

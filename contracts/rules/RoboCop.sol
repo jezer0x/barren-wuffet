@@ -3,8 +3,6 @@ pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../utils/Utils.sol";
 import "../utils/Constants.sol";
@@ -19,7 +17,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receiver, Initializable {
+contract RoboCop is IRoboCop, ReentrancyGuard, IERC721Receiver, Initializable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
     // Storage Start
@@ -52,14 +50,6 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
         _;
     }
 
-    function pause() public onlyOwner {
-        _pause();
-    }
-
-    function unpause() public onlyOwner {
-        _unpause();
-    }
-
     // disable calling initialize() on the implementation contract
     constructor() {
         _disableInitializers();
@@ -69,7 +59,7 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
         address wlServiceAddr,
         bytes32 trigWlHash,
         bytes32 actionWlHash
-    ) external whenNotPaused nonReentrant initializer {
+    ) external nonReentrant initializer {
         wlService = WhitelistService(wlServiceAddr);
         triggerWhitelistHash = trigWlHash;
         actionWhitelistHash = actionWlHash;
@@ -88,7 +78,7 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
         return rule.actions[rule.actions.length - 1].outputTokens;
     }
 
-    function redeemBalance(bytes32 ruleHash) external whenNotPaused nonReentrant onlyRuleOwner(ruleHash) {
+    function redeemBalance(bytes32 ruleHash) external nonReentrant onlyRuleOwner(ruleHash) {
         Rule storage rule = rules[ruleHash];
         _setRuleStatus(ruleHash, RuleStatus.REDEEMED);
         Token[] memory tokens = getOutputTokens(ruleHash);
@@ -102,7 +92,6 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
         external
         payable
         onlyRuleOwner(ruleHash)
-        whenNotPaused
         nonReentrant
     {
         Rule storage rule = rules[ruleHash];
@@ -129,7 +118,6 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
     function reduceCollateral(bytes32 ruleHash, uint256[] memory amounts)
         external
         onlyRuleOwner(ruleHash)
-        whenNotPaused
         nonReentrant
     {
         Rule storage rule = rules[ruleHash];
@@ -147,14 +135,14 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
         emit CollateralReduced(ruleHash, amounts);
     }
 
-    function increaseReward(bytes32 ruleHash) public payable ruleExists(ruleHash) whenNotPaused {
+    function increaseReward(bytes32 ruleHash) public payable ruleExists(ruleHash) {
         Rule storage rule = rules[ruleHash];
         require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE);
         rule.reward += msg.value;
         ruleRewardProviders[ruleHash][msg.sender] += msg.value;
     }
 
-    function withdrawReward(bytes32 ruleHash) external ruleExists(ruleHash) whenNotPaused returns (uint256 balance) {
+    function withdrawReward(bytes32 ruleHash) external ruleExists(ruleHash) returns (uint256 balance) {
         Rule storage rule = rules[ruleHash];
         require(rule.status != RuleStatus.EXECUTED && rule.status != RuleStatus.REDEEMED, "Reward paid");
         balance = ruleRewardProviders[ruleHash][msg.sender];
@@ -169,7 +157,6 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
     function createRule(Trigger[] calldata triggers, Action[] calldata actions)
         external
         payable
-        whenNotPaused
         nonReentrant
         onlyWhitelist(triggers, actions)
         returns (bytes32)
@@ -237,11 +224,11 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
         rule.status = newStatus;
     }
 
-    function activateRule(bytes32 ruleHash) external onlyRuleOwner(ruleHash) whenNotPaused {
+    function activateRule(bytes32 ruleHash) external onlyRuleOwner(ruleHash) {
         _setRuleStatus(ruleHash, RuleStatus.ACTIVE);
     }
 
-    function deactivateRule(bytes32 ruleHash) external onlyRuleOwner(ruleHash) whenNotPaused {
+    function deactivateRule(bytes32 ruleHash) external onlyRuleOwner(ruleHash) {
         _setRuleStatus(ruleHash, RuleStatus.INACTIVE);
     }
 
@@ -281,7 +268,7 @@ contract RoboCop is IRoboCop, Ownable, Pausable, ReentrancyGuard, IERC721Receive
         return response.tokenOutputs;
     }
 
-    function executeRule(bytes32 ruleHash) external ruleExists(ruleHash) whenNotPaused nonReentrant {
+    function executeRule(bytes32 ruleHash) external ruleExists(ruleHash) nonReentrant {
         Rule storage rule = rules[ruleHash];
         _setRuleStatus(ruleHash, RuleStatus.EXECUTED); // This ensures only active rules can be executed
         (bool valid, TriggerReturn[] memory triggerReturnArr) = _checkTriggers(rule.triggers);
