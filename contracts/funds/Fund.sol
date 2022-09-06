@@ -4,6 +4,7 @@ pragma solidity ^0.8.9;
 import "../utils/subscriptions/ISubscription.sol";
 import "../utils/Constants.sol";
 import "../utils/Utils.sol";
+import "../utils/FeeParams.sol";
 import "../actions/IAction.sol";
 import "../rules/IRoboCop.sol";
 import "./IFund.sol";
@@ -33,8 +34,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
 
     // vars the fund needs to know
     IRoboCop public roboCop; // roboCop dedicated to this fund
-    address payable platformFeeWallet; // fees for using Fund goes here
-    uint256 platformFeePercentage; // fee percentage for using the platform
+    FeeParams feeParams;
     WhitelistService public wlService;
     bytes32 actionWhitelistHash;
 
@@ -57,8 +57,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         string memory _name,
         address _manager,
         SubscriptionConstraints memory _constraints,
-        address _platformFeeWallet,
-        uint256 _platformFeePercentage,
+        FeeParams calldata _feeParams,
         address _wlServiceAddr,
         bytes32 _triggerWhitelistHash,
         bytes32 _actionWhitelistHash,
@@ -69,8 +68,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         name = _name;
         constraints = _constraints;
         manager = _manager;
-        platformFeeWallet = payable(_platformFeeWallet);
-        platformFeePercentage = _platformFeePercentage;
+        feeParams = _feeParams;
 
         if (_declaredTokenAddrs.length == 0) {
             degenMode = true;
@@ -183,6 +181,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         uint256 ethCollateral = 0;
         for (uint256 i = 0; i < action.inputTokens.length; i++) {
             Token memory token = action.inputTokens[i];
+            // TODO: take managerFeePercentage from collaterals[i] here; what about NFT?
             uint256 amount = runtimeParams.collaterals[i];
             _decreaseAssetBalance(token, amount);
             // only 1 of these tokens should be ETH, so we can just overwrite
@@ -373,8 +372,8 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         newSub.subscriber = msg.sender;
         newSub.status = SubscriptionStatus.ACTIVE;
 
-        uint256 platformFee = (collateralAmount * platformFeePercentage) / 100_00;
-        Utils._send(collateralToken, platformFeeWallet, platformFee);
+        uint256 platformFee = (collateralAmount * feeParams.subscriberFeePercentage) / 100_00;
+        Utils._send(collateralToken, feeParams.platformFeeWallet, platformFee);
         uint256 remainingColalteralAmount = collateralAmount - platformFee;
         newSub.collateralAmount = remainingColalteralAmount;
         _increaseAssetBalance(collateralToken, remainingColalteralAmount);

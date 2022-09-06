@@ -4,6 +4,7 @@ pragma solidity ^0.8.9;
 import "../utils/subscriptions/ISubscription.sol";
 import "../utils/Constants.sol";
 import "../utils/Utils.sol";
+import "../utils/FeeParams.sol";
 import "../actions/IAction.sol";
 import "../rules/IRoboCop.sol";
 
@@ -29,8 +30,7 @@ interface IFund is ISubscription {
         string memory _name,
         address _manager,
         SubscriptionConstraints memory _constraints,
-        address _platformFeeWallet,
-        uint256 _platformFeePercentage,
+        FeeParams calldata _feeParams,
         address _wlServiceAddr,
         bytes32 _triggerWhitelistHash,
         bytes32 _actionWhitelistHash,
