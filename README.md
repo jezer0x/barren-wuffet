@@ -1,4 +1,4 @@
-Branch Coverage: ![Branches](https://img.shields.io/badge/branches-49.64%25-red.svg?style=flat)
+Branch Coverage: ![Branches](https://img.shields.io/badge/branches-50%25-red.svg?style=flat)
 
 # Olympus Mons
 
