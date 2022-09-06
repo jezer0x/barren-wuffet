@@ -129,13 +129,19 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
 
     function closeFund() external nonReentrant {
         if (getStatus() == FundStatus.CLOSABLE) {
-            _closeFund();
+            // anyone can call if closable
+            if (totalCollateral < constraints.minCollateralTotal) {
+                // never reached minCollateral, no rewards
+                constraints.managementFeePercentage = 0;
+            }
         } else {
             require(manager == msg.sender, "Only the fund manager can close a fund prematurely");
             // closed prematurely (so that people can withdraw their capital)
-            _closeFund();
-            // TODO: block rewards since closed before lockin
+            // no reward since did not see through lockin
+            constraints.managementFeePercentage = 0;
         }
+
+        _closeFund();
     }
 
     function _closeFund() internal {
@@ -389,17 +395,22 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     function getStatus() public view returns (FundStatus) {
         if (closed) {
             return FundStatus.CLOSED;
-        } else if (!closed && block.timestamp >= constraints.lockin) {
-            return FundStatus.CLOSABLE;
-        } else if (totalCollateral == constraints.maxCollateralTotal || block.timestamp >= constraints.deadline) {
-            // Question: If it hits maxCollateralTotal, do we want to immediately go to DEPLOYED state?
-            // Question: If it DOESN't hit minColalteralTotal do we go to DEPLOYED state after deadline is reached?
-            return FundStatus.DEPLOYED;
-        } else if (totalCollateral < constraints.maxCollateralTotal && block.timestamp < constraints.deadline) {
-            return FundStatus.RAISING;
         } else {
-            revert(Constants.UNREACHABLE_STATE);
+            if (block.timestamp < constraints.deadline) {
+                return FundStatus.RAISING;
+            } else {
+                if (block.timestamp >= constraints.lockin) {
+                    return FundStatus.CLOSABLE;
+                } else {
+                    if (totalCollateral < constraints.minCollateralTotal) {
+                        return FundStatus.CLOSABLE;
+                    } else {
+                        return FundStatus.DEPLOYED;
+                    }
+                }
+            }
         }
+        revert(Constants.UNREACHABLE_STATE);
     }
 
     function withdraw(uint256 subscriptionIdx)
