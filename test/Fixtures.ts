@@ -296,7 +296,7 @@ export async function setupBarrenWuffet({ getNamedAccounts, ethers }: HardhatRun
   } = await setupSwapActions(priceTrigger, swapUniSingleAction, testToken1);
 
   const marlieChungerFundAddr = await getAddressFromEvent(
-    barrenWuffetMarlie.createFund("marlieChungerFund", await makeSubConstraints()),
+    barrenWuffetMarlie.createFund("marlieChungerFund", await makeSubConstraints(), []),
     "Created",
     barrenWuffetMarlie.address
   );
@@ -304,7 +304,7 @@ export async function setupBarrenWuffet({ getNamedAccounts, ethers }: HardhatRun
 
   const barrenWuffetFairy = await ethers.getContract("BarrenWuffet", fairyLink);
   const fairyLinkFundAddr = await getAddressFromEvent(
-    barrenWuffetFairy.createFund("fairyLinkFund", await makeSubConstraints()),
+    barrenWuffetFairy.createFund("fairyLinkFund", await makeSubConstraints(), []),
     "Created",
     barrenWuffetFairy.address
   );

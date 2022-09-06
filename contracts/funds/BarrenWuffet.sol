@@ -79,11 +79,11 @@ contract BarrenWuffet is Ownable, Pausable {
         _unpause();
     }
 
-    function createFund(string calldata name, SubscriptionConstraints calldata constraints)
-        external
-        whenNotPaused
-        returns (address)
-    {
+    function createFund(
+        string calldata name,
+        SubscriptionConstraints calldata constraints,
+        address[] calldata declaredTokens
+    ) external whenNotPaused returns (address) {
         IFund fund = IFund(Clones.clone(fundImplAddr));
         fund.initialize(
             name,
@@ -94,7 +94,8 @@ contract BarrenWuffet is Ownable, Pausable {
             wlServiceAddr,
             triggerWhitelistHash,
             actionWhitelistHash,
-            roboCopImplAddr
+            roboCopImplAddr,
+            declaredTokens
         );
         emit Created(msg.sender, address(fund));
         return address(fund);
