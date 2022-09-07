@@ -400,10 +400,10 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     }
 
     function _getShares(uint256 subscriptionIdx, Token memory token) private view returns (uint256) {
-        if (token.t == TokenType.ERC721) {
-            revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
-        } else if (token.t == TokenType.ERC20 || token.t == TokenType.NATIVE) {
+        if (token.t == TokenType.ERC20 || token.t == TokenType.NATIVE) {
             return (subscriptions[subscriptionIdx].collateralAmount * fundCoins[token.addr]) / totalCollateral;
+        } else {
+            revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
         }
     }
 
@@ -425,7 +425,6 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
                 }
             }
         }
-        revert(Constants.UNREACHABLE_STATE);
     }
 
     function withdraw(uint256 subscriptionIdx)
