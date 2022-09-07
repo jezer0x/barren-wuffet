@@ -66,3 +66,9 @@ Fund and RoboCop maintain separate lists of Positions because positions are typi
 The action defined in a position can also subsequenty return a `Position` when called, essentially encoding a state machine as a sequence of actions.
 
 To save on storage, `Fund` and `RoboCop` do not store the details of the position itself. They only store a todo list of hashes of pending positions (so we know for example, whether the fund can be closed). To close the position, the corresponding action and all of its details needs to be provided by the user (directly via `takeAction` in a Fund; By adding a rule to a RoboCop).
+
+## Fees
+
+Barren Wuffet takes subscriberFeePercentage of every deposit from subscribers (denominated in ETH).
+Barren Wuffet takes managerFeePercentage from `takeAction::action.inputTokens`/`createRule::actions[0].inputTokens`, but ignores ERC721 tokens.
+Manager takes managementFeePercentage from the output of the fund (given all positions are closed and fund was not closed prematurely).
