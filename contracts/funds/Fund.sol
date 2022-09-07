@@ -145,6 +145,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     function _closeFund() internal {
         closed = true;
 
+        // TODO: this is potentially broken after the position stuff
         for (uint256 i = 0; i < openRules.length; i++) {
             bytes32 ruleHash = openRules[i];
             Rule memory rule = roboCop.getRule(ruleHash);
@@ -166,16 +167,29 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         emit Closed(address(this));
     }
 
-    function takeAction(Action calldata action, ActionRuntimeParams calldata runtimeParams)
-        public
-        nonReentrant
-        onlyDeployedFund
-        onlyFundManager
-        returns (ActionResponse memory resp)
-    {
+    function _validateAndTakeFees(
+        Token[] calldata tokens,
+        uint256[] calldata collaterals,
+        uint256[] calldata fees
+    ) internal {
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (tokens[i].t == TokenType.ERC20 || tokens[i].t == TokenType.NATIVE) {
+                require(fees[i] >= ((collaterals[i] * feeParams.managerFeePercentage) / 100_00));
+                Utils._send(tokens[i], feeParams.platformFeeWallet, fees[i]);
+            }
+        }
+    }
+
+    function takeAction(
+        Action calldata action,
+        ActionRuntimeParams calldata runtimeParams,
+        uint256[] calldata fees
+    ) public nonReentrant onlyDeployedFund onlyFundManager returns (ActionResponse memory resp) {
         require(wlService.isWhitelisted(actionWhitelistHash, action.callee), "Unauthorized Action");
         require(_onlyDeclaredTokens(action.outputTokens), "Unauthorized Token");
         IAction(action.callee).validate(action);
+        _validateAndTakeFees(action.inputTokens, runtimeParams.collaterals, fees);
+
         Utils._closePosition(action, pendingPositions, actionPositionsMap);
 
         uint256 ethCollateral = 0;
@@ -239,9 +253,11 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
 
     function addRuleCollateral(
         uint256 openRuleIdx,
-        Token[] memory collateralTokens,
-        uint256[] memory collaterals
+        Token[] calldata collateralTokens,
+        uint256[] calldata collaterals,
+        uint256[] calldata fees
     ) external onlyDeployedFund onlyFundManager nonReentrant {
+        _validateAndTakeFees(collateralTokens, collaterals, fees);
         uint256 ethCollateral = 0;
 
         for (uint256 i = 0; i < collateralTokens.length; i++) {
@@ -254,7 +270,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         roboCop.addCollateral{value: ethCollateral}(openRules[openRuleIdx], collaterals);
     }
 
-    function reduceRuleCollateral(uint256 openRuleIdx, uint256[] memory collaterals)
+    function reduceRuleCollateral(uint256 openRuleIdx, uint256[] calldata collaterals)
         external
         onlyDeployedFund
         onlyFundManager

@@ -44,9 +44,11 @@ interface IFund is ISubscription {
 
     function closeFund() external;
 
-    function takeAction(Action calldata action, ActionRuntimeParams calldata runtimeParams)
-        external
-        returns (ActionResponse memory outputs);
+    function takeAction(
+        Action calldata action,
+        ActionRuntimeParams calldata runtimeParams,
+        uint256[] calldata fees
+    ) external returns (ActionResponse memory outputs);
 
     function createRule(Trigger[] calldata triggers, Action[] calldata actions) external returns (bytes32 ruleHash);
 
@@ -60,11 +62,12 @@ interface IFund is ISubscription {
 
     function addRuleCollateral(
         uint256 openRuleIdx,
-        Token[] memory collateralTokens,
-        uint256[] memory collaterals
+        Token[] calldata collateralTokens,
+        uint256[] calldata collaterals,
+        uint256[] calldata fees
     ) external;
 
-    function reduceRuleCollateral(uint256 openRuleIdx, uint256[] memory collaterals) external;
+    function reduceRuleCollateral(uint256 openRuleIdx, uint256[] calldata collaterals) external;
 
     function cancelRule(uint256 openRuleIdx) external;
 
