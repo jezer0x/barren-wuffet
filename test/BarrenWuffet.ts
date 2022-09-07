@@ -372,7 +372,7 @@ describe("BarrenWuffet", () => {
 
     it.skip("If raised between minCollateralTotal and maxCollateralTotal, can't deploy until deadline", async () => {});
 
-    it.skip("If can't reach minCollateral, no ManagementFee for trader", async () => {});
+    it.skip("should give subscriberFeePercentage to platformFeeWallet", async () => {});
   });
 
   describe.skip("Fund Actions on a non-existent fund", async () => {
@@ -643,6 +643,8 @@ describe("BarrenWuffet", () => {
         // ideally we use IAction to create a mock action, and then check if perform is called on the mock action.
       });
     });
+
+    it.skip("should give managerFeePercentage to platformFeeWallet when taking actions or adding collateral", async () => {});
   });
 
   describe.skip("Fund status: Closable", () => {
@@ -684,6 +686,8 @@ describe("BarrenWuffet", () => {
     it("should not allow access to ManagementFee from a fund that the manager doesnt own", async () => {});
 
     it("should not allow multiple withdrawals of the ManagementFee", async () => {});
+
+    it.skip("If can't reach minCollateral, no ManagementFee for trader", async () => {});
   });
 
   describe.skip("User Stories", () => {

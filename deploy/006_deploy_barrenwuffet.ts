@@ -16,7 +16,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await deploy("BarrenWuffet", {
     from: deployer,
     args: [
-      { platformFeeWallet: deployer, subscriberFeePercentage: 0, managerFeePercentage: 0 },
+      { platformFeeWallet: deployer, subscriberFeePercentage: 0, managerFeePercentage: 0 }, // subscriberFeePercentage should be 0.69 and managerFeePercentage should be 0.42
       trigWlHash,
       actWlHash,
       whitelistService.address,
