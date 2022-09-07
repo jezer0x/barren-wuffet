@@ -5,7 +5,14 @@ import { BigNumber, Bytes } from "ethers";
 import { deployments, ethers, network } from "hardhat";
 import { RuleStructOutput } from "../typechain-types/contracts/rules/RoboCop";
 import { SubscriptionConstraintsStruct, TradeStructOutput } from "../typechain-types/contracts/trades/DegenStreet";
-import { BAD_RULE_HASH, DEFAULT_REWARD, ERC20_DECIMALS, ETH_PRICE_IN_TST1, TST1_PRICE_IN_ETH, GT } from "./Constants";
+import {
+  BAD_RULE_HASH,
+  DEFAULT_INCENTIVE,
+  ERC20_DECIMALS,
+  ETH_PRICE_IN_TST1,
+  TST1_PRICE_IN_ETH,
+  GT,
+} from "./Constants";
 import { makePassingTrigger, makeSwapAction, setupDegenStreet, setupSwapTrades } from "./Fixtures";
 import { getHashFromEvent } from "./helper";
 
@@ -97,7 +104,7 @@ describe.skip("DegenStreet", () => {
       await expect(
         await degenStreet
           .connect(traderWallet)
-          .createTrade([passingTrigger], [executableAction], properContraints, { value: DEFAULT_REWARD })
+          .createTrade([passingTrigger], [executableAction], properContraints, { value: DEFAULT_INCENTIVE })
       ).to.emit(degenStreet, "Created");
     });
 
@@ -112,10 +119,10 @@ describe.skip("DegenStreet", () => {
       await network.provider.send("evm_setAutomine", [false]);
       const tx1 = await await degenStreet
         .connect(traderWallet)
-        .createTrade([passingTrigger], [executableAction], properContraints, { value: DEFAULT_REWARD });
+        .createTrade([passingTrigger], [executableAction], properContraints, { value: DEFAULT_INCENTIVE });
       const tx2 = await degenStreet
         .connect(traderWallet)
-        .createTrade([passingTrigger], [executableAction], properContraints, { value: DEFAULT_REWARD });
+        .createTrade([passingTrigger], [executableAction], properContraints, { value: DEFAULT_INCENTIVE });
       await network.provider.send("evm_mine", []);
       await network.provider.send("evm_setAutomine", [true]);
 
@@ -145,13 +152,13 @@ describe.skip("DegenStreet", () => {
       await expect(
         await degenStreet
           .connect(traderWallet)
-          .createTrade([passingTrigger], [executableAction], properContraints, { value: DEFAULT_REWARD })
+          .createTrade([passingTrigger], [executableAction], properContraints, { value: DEFAULT_INCENTIVE })
       ).to.emit(degenStreet, "Created");
 
       await expect(
         await degenStreet
           .connect(traderWallet)
-          .createTrade([passingTrigger], [executableAction], properContraints, { value: DEFAULT_REWARD })
+          .createTrade([passingTrigger], [executableAction], properContraints, { value: DEFAULT_INCENTIVE })
       ).to.emit(degenStreet, "Created");
     });
 
@@ -181,7 +188,7 @@ describe.skip("DegenStreet", () => {
         .withArgs(tradeTST1forETHHash);
       const postBalance = await ethers.provider.getBalance(traderWallet.address);
       const gasUsed = (await ethers.provider.getBlock("latest")).gasUsed;
-      expect(postBalance.sub(prevBalance).add(gasPrice.mul(gasUsed))).to.equal(DEFAULT_REWARD);
+      expect(postBalance.sub(prevBalance).add(gasPrice.mul(gasUsed))).to.equal(DEFAULT_INCENTIVE);
     });
     it("Should revert if trying to cancel non-existing trade", async function () {
       const { tradeTST1forETHHash, degenStreet, traderWallet } = await loadFixture(deployValidTradeFixture);

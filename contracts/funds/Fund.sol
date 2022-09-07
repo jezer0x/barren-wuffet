@@ -4,6 +4,7 @@ pragma solidity ^0.8.9;
 import "../utils/subscriptions/ISubscription.sol";
 import "../utils/Constants.sol";
 import "../utils/Utils.sol";
+import "../utils/FeeParams.sol";
 import "../actions/IAction.sol";
 import "../rules/IRoboCop.sol";
 import "./IFund.sol";
@@ -33,8 +34,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
 
     // vars the fund needs to know
     IRoboCop public roboCop; // roboCop dedicated to this fund
-    address payable platformFeeWallet; // fees for using Fund goes here
-    uint256 platformFeePercentage; // fee percentage for using the platform
+    FeeParams feeParams;
     WhitelistService public wlService;
     bytes32 actionWhitelistHash;
 
@@ -57,8 +57,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         string memory _name,
         address _manager,
         SubscriptionConstraints memory _constraints,
-        address _platformFeeWallet,
-        uint256 _platformFeePercentage,
+        FeeParams calldata _feeParams,
         address _wlServiceAddr,
         bytes32 _triggerWhitelistHash,
         bytes32 _actionWhitelistHash,
@@ -69,8 +68,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         name = _name;
         constraints = _constraints;
         manager = _manager;
-        platformFeeWallet = payable(_platformFeeWallet);
-        platformFeePercentage = _platformFeePercentage;
+        feeParams = _feeParams;
 
         if (_declaredTokenAddrs.length == 0) {
             degenMode = true;
@@ -129,18 +127,25 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
 
     function closeFund() external nonReentrant {
         if (getStatus() == FundStatus.CLOSABLE) {
-            _closeFund();
+            // anyone can call if closable
+            if (totalCollateral < constraints.minCollateralTotal) {
+                // never reached minCollateral, no managementFee
+                constraints.managementFeePercentage = 0;
+            }
         } else {
             require(manager == msg.sender, "Only the fund manager can close a fund prematurely");
             // closed prematurely (so that people can withdraw their capital)
-            _closeFund();
-            // TODO: block rewards since closed before lockin
+            // no managementFee since did not see through lockin
+            constraints.managementFeePercentage = 0;
         }
+
+        _closeFund();
     }
 
     function _closeFund() internal {
         closed = true;
 
+        // TODO: this is potentially broken after the position stuff
         for (uint256 i = 0; i < openRules.length; i++) {
             bytes32 ruleHash = openRules[i];
             Rule memory rule = roboCop.getRule(ruleHash);
@@ -162,21 +167,35 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         emit Closed(address(this));
     }
 
-    function takeAction(Action calldata action, ActionRuntimeParams calldata runtimeParams)
-        public
-        nonReentrant
-        onlyDeployedFund
-        onlyFundManager
-        returns (ActionResponse memory resp)
-    {
+    function _validateAndTakeFees(
+        Token[] calldata tokens,
+        uint256[] calldata collaterals,
+        uint256[] calldata fees
+    ) internal {
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (tokens[i].t == TokenType.ERC20 || tokens[i].t == TokenType.NATIVE) {
+                require(fees[i] >= ((collaterals[i] * feeParams.managerFeePercentage) / 100_00));
+                Utils._send(tokens[i], feeParams.platformFeeWallet, fees[i]);
+            }
+        }
+    }
+
+    function takeAction(
+        Action calldata action,
+        ActionRuntimeParams calldata runtimeParams,
+        uint256[] calldata fees
+    ) public nonReentrant onlyDeployedFund onlyFundManager returns (ActionResponse memory resp) {
         require(wlService.isWhitelisted(actionWhitelistHash, action.callee), "Unauthorized Action");
         require(_onlyDeclaredTokens(action.outputTokens), "Unauthorized Token");
         IAction(action.callee).validate(action);
+        _validateAndTakeFees(action.inputTokens, runtimeParams.collaterals, fees);
+
         Utils._closePosition(action, pendingPositions, actionPositionsMap);
 
         uint256 ethCollateral = 0;
         for (uint256 i = 0; i < action.inputTokens.length; i++) {
             Token memory token = action.inputTokens[i];
+            // TODO: take managerFeePercentage from collaterals[i] here; what about NFT?
             uint256 amount = runtimeParams.collaterals[i];
             _decreaseAssetBalance(token, amount);
             // only 1 of these tokens should be ETH, so we can just overwrite
@@ -207,20 +226,20 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         openRules.push(ruleHash);
     }
 
-    function increaseRuleReward(uint256 openRuleIdx, uint256 amount)
+    function increaseRuleIncentive(uint256 openRuleIdx, uint256 amount)
         external
         onlyDeployedFund
         onlyFundManager
         nonReentrant
     {
         _decreaseAssetBalance(Token({t: TokenType.NATIVE, addr: Constants.ETH}), amount);
-        roboCop.increaseReward{value: amount}(openRules[openRuleIdx]);
+        roboCop.increaseIncentive{value: amount}(openRules[openRuleIdx]);
     }
 
-    function withdrawRuleReward(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager nonReentrant {
+    function withdrawRuleIncentive(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager nonReentrant {
         _decreaseAssetBalance(
             Token({t: TokenType.NATIVE, addr: Constants.ETH}),
-            roboCop.withdrawReward(openRules[openRuleIdx])
+            roboCop.withdrawIncentive(openRules[openRuleIdx])
         );
     }
 
@@ -234,9 +253,11 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
 
     function addRuleCollateral(
         uint256 openRuleIdx,
-        Token[] memory collateralTokens,
-        uint256[] memory collaterals
+        Token[] calldata collateralTokens,
+        uint256[] calldata collaterals,
+        uint256[] calldata fees
     ) external onlyDeployedFund onlyFundManager nonReentrant {
+        _validateAndTakeFees(collateralTokens, collaterals, fees);
         uint256 ethCollateral = 0;
 
         for (uint256 i = 0; i < collateralTokens.length; i++) {
@@ -249,7 +270,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         roboCop.addCollateral{value: ethCollateral}(openRules[openRuleIdx], collaterals);
     }
 
-    function reduceRuleCollateral(uint256 openRuleIdx, uint256[] memory collaterals)
+    function reduceRuleCollateral(uint256 openRuleIdx, uint256[] calldata collaterals)
         external
         onlyDeployedFund
         onlyFundManager
@@ -367,8 +388,8 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         newSub.subscriber = msg.sender;
         newSub.status = SubscriptionStatus.ACTIVE;
 
-        uint256 platformFee = (collateralAmount * platformFeePercentage) / 100_00;
-        Utils._send(collateralToken, platformFeeWallet, platformFee);
+        uint256 platformFee = (collateralAmount * feeParams.subscriberFeePercentage) / 100_00;
+        Utils._send(collateralToken, feeParams.platformFeeWallet, platformFee);
         uint256 remainingColalteralAmount = collateralAmount - platformFee;
         newSub.collateralAmount = remainingColalteralAmount;
         _increaseAssetBalance(collateralToken, remainingColalteralAmount);
@@ -379,26 +400,30 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     }
 
     function _getShares(uint256 subscriptionIdx, Token memory token) private view returns (uint256) {
-        if (token.t == TokenType.ERC721) {
-            revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
-        } else if (token.t == TokenType.ERC20 || token.t == TokenType.NATIVE) {
+        if (token.t == TokenType.ERC20 || token.t == TokenType.NATIVE) {
             return (subscriptions[subscriptionIdx].collateralAmount * fundCoins[token.addr]) / totalCollateral;
+        } else {
+            revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
         }
     }
 
     function getStatus() public view returns (FundStatus) {
         if (closed) {
             return FundStatus.CLOSED;
-        } else if (!closed && block.timestamp >= constraints.lockin) {
-            return FundStatus.CLOSABLE;
-        } else if (totalCollateral == constraints.maxCollateralTotal || block.timestamp >= constraints.deadline) {
-            // Question: If it hits maxCollateralTotal, do we want to immediately go to DEPLOYED state?
-            // Question: If it DOESN't hit minColalteralTotal do we go to DEPLOYED state after deadline is reached?
-            return FundStatus.DEPLOYED;
-        } else if (totalCollateral < constraints.maxCollateralTotal && block.timestamp < constraints.deadline) {
-            return FundStatus.RAISING;
         } else {
-            revert(Constants.UNREACHABLE_STATE);
+            if (block.timestamp < constraints.deadline) {
+                return FundStatus.RAISING;
+            } else {
+                if (block.timestamp >= constraints.lockin) {
+                    return FundStatus.CLOSABLE;
+                } else {
+                    if (totalCollateral < constraints.minCollateralTotal) {
+                        return FundStatus.CLOSABLE;
+                    } else {
+                        return FundStatus.DEPLOYED;
+                    }
+                }
+            }
         }
     }
 
@@ -432,16 +457,13 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
             balances[0] = subscription.collateralAmount;
             return (tokens, balances);
         } else if (status == FundStatus.CLOSED) {
-            // TODO:
-            // Fund manager can collect rewards by opening and closing and not doing anything with the funds.
             Token[] memory tokens = new Token[](assets.length);
             uint256[] memory balances = new uint256[](assets.length);
 
             // TODO: potentially won't need the loop anymore if closing == swap back to 1 asset
             for (uint256 i = 0; i < assets.length; i++) {
                 tokens[i] = assets[i];
-                balances[i] = _getShares(subscriptionIdx, assets[i]);
-                // TODO: keep managementFeePercentage here for Manager.
+                balances[i] = _getShares(subscriptionIdx, assets[i]) - _getManagementFeeShare(tokens[i]);
                 emit Withdraw(msg.sender, subscriptionIdx, tokens[i].addr, balances[i]);
                 Utils._send(tokens[i], subscription.subscriber, balances[i]);
             }
@@ -453,11 +475,26 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         }
     }
 
-    function withdrawReward() public onlyFundManager nonReentrant {
+    function _getManagementFeeShare(Token memory token) internal view returns (uint256) {
+        return (fundCoins[token.addr] * constraints.managementFeePercentage) / 100_00;
+    }
+
+    function withdrawManagementFee() public onlyFundManager nonReentrant returns (Token[] memory, uint256[] memory) {
         require(getStatus() == FundStatus.CLOSED, "Fund not closed");
-        // TODO: get rewards from each asset in the
-        // profit share? (if yes, input asset == output asset? How to ensure?)
-        // % of input instead? (don't have to tackle the problems above yet)
+
+        Token[] memory tokens = new Token[](assets.length);
+        uint256[] memory balances = new uint256[](assets.length);
+
+        if (constraints.managementFeePercentage == 0) {
+            revert("No management fee for you!");
+        } else {
+            for (uint256 i = 0; i < assets.length; i++) {
+                tokens[i] = assets[i];
+                balances[i] = _getManagementFeeShare(tokens[i]);
+                Utils._send(tokens[i], manager, balances[i]);
+            }
+            return (tokens, balances);
+        }
     }
 
     receive() external payable {}

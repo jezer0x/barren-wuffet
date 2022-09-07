@@ -4,6 +4,7 @@ pragma solidity ^0.8.9;
 import "../utils/subscriptions/ISubscription.sol";
 import "../utils/Constants.sol";
 import "../utils/Utils.sol";
+import "../utils/FeeParams.sol";
 import "../actions/IAction.sol";
 import "../rules/IRoboCop.sol";
 
@@ -19,7 +20,7 @@ enum FundStatus {
     RAISING, // deposits possible, withdraws possible (inputToken), manager can't move funds
     DEPLOYED, // deposits not possible, withdraws not possible, manager can move funds
     CLOSABLE, // deposits not possible, withdraws not possible, manager can't move funds
-    CLOSED // deposits not possible, withdraws possible (outputTokens), manager can take out rewards but not move funds
+    CLOSED // deposits not possible, withdraws possible (outputTokens), manager can take out managementFee but not move funds
 }
 
 interface IFund is ISubscription {
@@ -29,8 +30,7 @@ interface IFund is ISubscription {
         string memory _name,
         address _manager,
         SubscriptionConstraints memory _constraints,
-        address _platformFeeWallet,
-        uint256 _platformFeePercentage,
+        FeeParams calldata _feeParams,
         address _wlServiceAddr,
         bytes32 _triggerWhitelistHash,
         bytes32 _actionWhitelistHash,
@@ -44,15 +44,17 @@ interface IFund is ISubscription {
 
     function closeFund() external;
 
-    function takeAction(Action calldata action, ActionRuntimeParams calldata runtimeParams)
-        external
-        returns (ActionResponse memory outputs);
+    function takeAction(
+        Action calldata action,
+        ActionRuntimeParams calldata runtimeParams,
+        uint256[] calldata fees
+    ) external returns (ActionResponse memory outputs);
 
     function createRule(Trigger[] calldata triggers, Action[] calldata actions) external returns (bytes32 ruleHash);
 
-    function increaseRuleReward(uint256 openRuleIdx, uint256 amount) external;
+    function increaseRuleIncentive(uint256 openRuleIdx, uint256 amount) external;
 
-    function withdrawRuleReward(uint256 openRuleIdx) external;
+    function withdrawRuleIncentive(uint256 openRuleIdx) external;
 
     function activateRule(uint256 openRuleIdx) external;
 
@@ -60,11 +62,12 @@ interface IFund is ISubscription {
 
     function addRuleCollateral(
         uint256 openRuleIdx,
-        Token[] memory collateralTokens,
-        uint256[] memory collaterals
+        Token[] calldata collateralTokens,
+        uint256[] calldata collaterals,
+        uint256[] calldata fees
     ) external;
 
-    function reduceRuleCollateral(uint256 openRuleIdx, uint256[] memory collaterals) external;
+    function reduceRuleCollateral(uint256 openRuleIdx, uint256[] calldata collaterals) external;
 
     function cancelRule(uint256 openRuleIdx) external;
 
@@ -72,5 +75,5 @@ interface IFund is ISubscription {
 
     function getStatus() external view returns (FundStatus);
 
-    function withdrawReward() external;
+    function withdrawManagementFee() external returns (Token[] memory, uint256[] memory);
 }

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.9;
 
 import "./IFund.sol";
+import "../utils/FeeParams.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
@@ -10,10 +11,7 @@ contract BarrenWuffet is Ownable, Pausable {
     // event used by frontend to pick up newly created funds
     event Created(address indexed manager, address fundAddr);
 
-    // wallet that will receive fees
-    // may be different from owner of this contract
-    address public platformFeeWallet;
-    uint256 platformFeePercentage; // 1% = 100
+    FeeParams public feeParams;
 
     // whitelist service passed onto Fund
     bytes32 public triggerWhitelistHash;
@@ -25,16 +23,14 @@ contract BarrenWuffet is Ownable, Pausable {
     address public fundImplAddr;
 
     constructor(
-        address _platformFeeWallet,
-        uint256 _platformFeePercentage,
+        FeeParams memory _feeParams,
         bytes32 _triggerWhitelistHash,
         bytes32 _actionWhitelistHash,
         address _wlServiceAddr,
         address _roboCopImplAddr,
         address _fundImplAddr
     ) {
-        platformFeeWallet = _platformFeeWallet;
-        setPlatformFeePercentage(_platformFeePercentage);
+        setFeeParams(_feeParams);
         triggerWhitelistHash = _triggerWhitelistHash;
         actionWhitelistHash = _actionWhitelistHash;
         wlServiceAddr = _wlServiceAddr;
@@ -42,13 +38,10 @@ contract BarrenWuffet is Ownable, Pausable {
         fundImplAddr = _fundImplAddr;
     }
 
-    function setPlatformFeeWallet(address _platformFeeWallet) public onlyOwner {
-        platformFeeWallet = _platformFeeWallet;
-    }
-
-    function setPlatformFeePercentage(uint256 _platformFeePercentage) public onlyOwner {
-        require(_platformFeePercentage < 100_00);
-        platformFeePercentage = _platformFeePercentage;
+    function setFeeParams(FeeParams memory _feeParams) public onlyOwner {
+        require(_feeParams.subscriberFeePercentage < 100_00);
+        require(_feeParams.managerFeePercentage < 100_00);
+        feeParams = _feeParams;
     }
 
     function setTriggerWhitelistHash(bytes32 _triggerWhitelistHash) public onlyOwner {
@@ -89,8 +82,7 @@ contract BarrenWuffet is Ownable, Pausable {
             name,
             msg.sender,
             constraints,
-            platformFeeWallet,
-            platformFeePercentage,
+            feeParams,
             wlServiceAddr,
             triggerWhitelistHash,
             actionWhitelistHash,
