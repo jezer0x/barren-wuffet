@@ -34,7 +34,13 @@ contract SwapUniSingleAction is IAction, DelegatePerform {
 
     function validate(Action calldata action) external pure returns (bool) {
         require(action.inputTokens.length == 1);
+        require(action.inputTokens[0].t == TokenType.ERC20 || action.inputTokens[0].t == TokenType.NATIVE);
+
         require(action.outputTokens.length == 1);
+        require(action.outputTokens[0].t == TokenType.ERC20 || action.outputTokens[0].t == TokenType.NATIVE);
+
+        require(!equals(action.inputTokens[0], action.outputTokens[0]));
+
         return true;
     }
 
@@ -49,8 +55,8 @@ contract SwapUniSingleAction is IAction, DelegatePerform {
                 (address asset1, address asset2, uint256 res) = decodePriceTriggerReturn(triggerReturn.runtimeData);
                 if (asset1 == action.inputTokens[0].addr && asset2 == action.outputTokens[0].addr) {
                     return res;
-                }
-            }
+                } // fallthrough
+            } // fallthrough
         }
 
         return 0;
@@ -61,23 +67,30 @@ contract SwapUniSingleAction is IAction, DelegatePerform {
         delegateOnly
         returns (ActionResponse memory)
     {
-        ISwapRouter.ExactInputSingleParams memory params;
-        uint256[] memory outputs = new uint256[](1);
-
-        Token memory outputToken = action.outputTokens[0];
-        Token memory inputToken = action.inputTokens[0];
-        uint256 ethCollateral = 0;
+        Token memory inputToken;
+        Token memory outputToken;
+        uint256 ethCollateral;
 
         if (equals(action.inputTokens[0], Token({t: TokenType.NATIVE, addr: Constants.ETH}))) {
+            // if input is ETH, we need to set it to WETH and pass take not of what to send as msg.value
             inputToken = Token({t: TokenType.ERC20, addr: WETH9Addr});
+            outputToken = action.outputTokens[0];
             ethCollateral = runtimeParams.collaterals[0];
         } else if (equals(action.outputTokens[0], Token({t: TokenType.NATIVE, addr: Constants.ETH}))) {
-            // won't have both input and output as ETH ever
-            IERC20(inputToken.addr).safeApprove(address(swapRouter), runtimeParams.collaterals[0]);
+            // if output is ETH, we need to set it to WETH, and approve the input token amount for swapRouter
+            inputToken = action.inputTokens[0];
             outputToken = Token({t: TokenType.ERC20, addr: WETH9Addr});
+            IERC20(inputToken.addr).safeApprove(address(swapRouter), runtimeParams.collaterals[0]);
+            ethCollateral = 0;
+        } else {
+            // if neither are ETH, we only approve the input token amount for swapRouter
+            inputToken = action.inputTokens[0];
+            outputToken = action.outputTokens[0];
+            IERC20(inputToken.addr).safeApprove(address(swapRouter), runtimeParams.collaterals[0]);
+            ethCollateral = 0;
         }
 
-        params = ISwapRouter.ExactInputSingleParams({
+        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
             tokenIn: inputToken.addr,
             tokenOut: outputToken.addr,
             fee: 3000, // TODO: pass from action.data?
@@ -87,10 +100,13 @@ contract SwapUniSingleAction is IAction, DelegatePerform {
             amountOutMinimum: (_parseRuntimeParams(action, runtimeParams) * runtimeParams.collaterals[0]) / 10**8, // assumption: triggerReturn in the form of tokenIn/tokenOut.
             sqrtPriceLimitX96: 0
         });
+
+        uint256[] memory outputs = new uint256[](1);
         outputs[0] = swapRouter.exactInputSingle{value: ethCollateral}(params);
 
-        if (equals(action.inputTokens[0], Token({t: TokenType.NATIVE, addr: Constants.ETH}))) {
-            IERC20(inputToken.addr).safeApprove(address(swapRouter), 0);
+        // If the ORIGINAL inputToken was not ETH, need to take back approval
+        if (action.inputTokens[0].t == TokenType.ERC20) {
+            IERC20(action.inputTokens[0].addr).safeApprove(address(swapRouter), 0);
         }
 
         Position memory none;

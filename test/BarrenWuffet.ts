@@ -12,6 +12,7 @@ import {
   ETH_TOKEN,
   FUND_STATUS,
   PRICE_TRIGGER_DECIMALS,
+  PRICE_TRIGGER_TYPE,
   TOKEN_TYPE,
   TST1_PRICE_IN_ETH,
 } from "./Constants";
@@ -694,7 +695,17 @@ describe("BarrenWuffet", () => {
 
         const ex = expect(
           jerkshireFund.marlieChunger.takeAction(swapETHToTST1Action, {
-            triggerReturnArr: [],
+            // we need to set the expected price so our test swap router
+            // knows the exchange rate.
+            triggerReturnArr: [
+              {
+                triggerType: PRICE_TRIGGER_TYPE,
+                runtimeData: ethers.utils.defaultAbiCoder.encode(
+                  ["address", "address", "uint256"],
+                  [ETH_ADDRESS, testToken1.address, ETH_PRICE_IN_TST1]
+                ),
+              },
+            ],
             collaterals: [etherToSwap],
           })
         );
