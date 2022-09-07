@@ -104,8 +104,9 @@ contract SwapUniSingleAction is IAction, DelegatePerform {
         uint256[] memory outputs = new uint256[](1);
         outputs[0] = swapRouter.exactInputSingle{value: ethCollateral}(params);
 
-        if (equals(action.inputTokens[0], Token({t: TokenType.NATIVE, addr: Constants.ETH}))) {
-            IERC20(inputToken.addr).safeApprove(address(swapRouter), 0);
+        // If the ORIGINAL inputToken was not ETH, need to take back approval
+        if (action.inputTokens[0].t == TokenType.ERC20) {
+            IERC20(action.inputTokens[0].addr).safeApprove(address(swapRouter), 0);
         }
 
         Position memory none;
