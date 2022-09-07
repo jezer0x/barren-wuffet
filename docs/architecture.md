@@ -63,7 +63,9 @@ Furthermore, some actions can be "closed" in multiple ways. To capture this work
 
 Fund and RoboCop maintain separate lists of Positions because positions are typially context dependent [ie. the Fund contract cant close a position that RoboCop created].
 
-The action defined in a position can also subsequenty return a `Position` when called, essentially encoding a state machine as a sequence of actions.
+We dont prevent multiple positions from returning the same action. If 2 actions both return `[Action A]` as the position, they are both considered as being the same positon. The fund will only track 1 position in this case, which will be closed by performing `Action A`. However, if `Action 1` returns `[Action X, Action Y]`. And `Action 2` returns `[Action X, Action Z]`, these are stored as 2 different positions. Performing `Action X` will close both positions, while performing `Action Y` or `Action Z` will only close one of the positions.
+
+An action defined in a position can also subsequenty return a `Position` when called, essentially encoding a state machine as a sequence of actions.
 
 To save on storage, `Fund` and `RoboCop` do not store the details of the position itself. They only store a todo list of hashes of pending positions (so we know for example, whether the fund can be closed). To close the position, the corresponding action and all of its details needs to be provided by the user (directly via `takeAction` in a Fund; By adding a rule to a RoboCop).
 
