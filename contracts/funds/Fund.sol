@@ -463,8 +463,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
             // TODO: potentially won't need the loop anymore if closing == swap back to 1 asset
             for (uint256 i = 0; i < assets.length; i++) {
                 tokens[i] = assets[i];
-                balances[i] = _getShares(subscriptionIdx, assets[i]);
-                // TODO: keep managementFeePercentage here for Manager.
+                balances[i] = _getShares(subscriptionIdx, assets[i]) - _getManagementFeeShare(tokens[i]);
                 emit Withdraw(msg.sender, subscriptionIdx, tokens[i].addr, balances[i]);
                 Utils._send(tokens[i], subscription.subscriber, balances[i]);
             }
@@ -476,11 +475,26 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         }
     }
 
-    function withdrawManagementFee() public onlyFundManager nonReentrant {
+    function _getManagementFeeShare(Token memory token) internal view returns (uint256) {
+        return (fundCoins[token.addr] * constraints.managementFeePercentage) / 100_00;
+    }
+
+    function withdrawManagementFee() public onlyFundManager nonReentrant returns (Token[] memory, uint256[] memory) {
         require(getStatus() == FundStatus.CLOSED, "Fund not closed");
-        // TODO: get managementFee from each asset in the
-        // profit share? (if yes, input asset == output asset? How to ensure?)
-        // % of input instead? (don't have to tackle the problems above yet)
+
+        Token[] memory tokens = new Token[](assets.length);
+        uint256[] memory balances = new uint256[](assets.length);
+
+        if (constraints.managementFeePercentage == 0) {
+            revert("No management fee for you!");
+        } else {
+            for (uint256 i = 0; i < assets.length; i++) {
+                tokens[i] = assets[i];
+                balances[i] = _getManagementFeeShare(tokens[i]);
+                Utils._send(tokens[i], manager, balances[i]);
+            }
+            return (tokens, balances);
+        }
     }
 
     receive() external payable {}

@@ -75,5 +75,5 @@ interface IFund is ISubscription {
 
     function getStatus() external view returns (FundStatus);
 
-    function withdrawManagementFee() external;
+    function withdrawManagementFee() external returns (Token[] memory, uint256[] memory);
 }
