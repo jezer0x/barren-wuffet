@@ -1,12 +1,28 @@
 import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
-import { expect } from "chai";
+import { expect, use as chai_use, should as chai_should } from "chai";
 import { ethers, deployments, getNamedAccounts } from "hardhat";
 import { BigNumber, constants, Contract, FixedNumber, utils } from "ethers";
 import { makeFailingTrigger, makePassingTrigger, setupBarrenWuffet } from "./Fixtures";
-import { BAD_FUND_HASH, BAD_TRADE_HASH, ETH_ADDRESS, ETH_TOKEN, FUND_STATUS, TOKEN_TYPE } from "./Constants";
+import {
+  BAD_FUND_HASH,
+  BAD_TRADE_HASH,
+  ETH_ADDRESS,
+  ETH_PRICE_IN_TST1,
+  ETH_TOKEN,
+  FUND_STATUS,
+  PRICE_TRIGGER_DECIMALS,
+  TOKEN_TYPE,
+  TST1_PRICE_IN_ETH,
+} from "./Constants";
 import { depositMaxCollateral, getHashFromEvent, getAddressFromEvent, expectEthersObjDeepEqual, erc20 } from "./helper";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+// const { deployMockContract } = waffle;
+import { FakeContract, smock } from "@defi-wonderland/smock";
+import { SwapUniSingleAction } from "../typechain-types/contracts/actions/uniswap/SwapUniSingleAction";
+
+chai_should(); // if you like should syntax
+chai_use(smock.matchers);
 
 const ERC20_DECIMALS = BigNumber.from(10).pow(18);
 
@@ -636,11 +652,55 @@ describe("BarrenWuffet", () => {
       it.skip("should revert if an unknown rule is accessed", async () => {});
     });
 
-    describe.skip("Take Action", () => {
-      it("Should not allow anyone other than the fund manager to take action", async () => {});
+    describe("Take Action", () => {
+      it("Should not allow anyone other than the fund manager to take action", async () => {
+        const { jerkshireFund, swapETHToTST1Action } = await deployedFundsFixture();
+        const etherToSwap = utils.parseEther("0.3");
+        await expect(
+          jerkshireFund.fairyLink.takeAction(swapETHToTST1Action, {
+            triggerReturnArr: [],
+            collaterals: [etherToSwap],
+          })
+        ).to.be.revertedWithoutReason();
+      });
 
       it("should call 'perform' on the action when fund manager calls takeAction", async () => {
         // ideally we use IAction to create a mock action, and then check if perform is called on the mock action.
+        const { jerkshireFund, swapETHToTST1Action, testToken1 } = await deployedFundsFixture();
+        const etherToSwap = utils.parseEther("0.3");
+
+        const mockSwapUniSingleAction: FakeContract<SwapUniSingleAction> = await smock.fake("SwapUniSingleAction");
+        const mockSwapETHToTST1Action = {
+          ...swapETHToTST1Action,
+          callee: mockSwapUniSingleAction.address,
+        };
+
+        const ex = expect(
+          jerkshireFund.marlieChunger.takeAction(mockSwapETHToTST1Action, {
+            triggerReturnArr: [],
+            collaterals: [etherToSwap],
+          })
+        );
+        await ex;
+        mockSwapUniSingleAction.perform.atCall(0).should.be.calledOnce;
+      });
+
+      it("should swap ether for tokens via takeAction if swap contract is called", async () => {
+        // ideally we use IAction to create a mock action, and then check if perform is called on the mock action.
+        const { jerkshireFund, swapETHToTST1Action, testToken1 } = await deployedFundsFixture();
+        const { marlieChunger } = await getNamedAccounts();
+        const etherToSwap = utils.parseEther("0.3");
+        const tokenToReceive = etherToSwap.mul(ETH_PRICE_IN_TST1).div(PRICE_TRIGGER_DECIMALS);
+
+        const ex = expect(
+          jerkshireFund.marlieChunger.takeAction(swapETHToTST1Action, {
+            triggerReturnArr: [],
+            collaterals: [etherToSwap],
+          })
+        );
+
+        await ex.to.changeEtherBalances([jerkshireFund.x, marlieChunger], [etherToSwap.mul(-1), 0]);
+        await ex.to.changeTokenBalances(testToken1, [jerkshireFund.x, marlieChunger], [tokenToReceive, 0]);
       });
     });
 
