@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { BigNumber, Contract, ContractReceipt, ContractTransaction } from "ethers";
 import { ETH_TOKEN, TOKEN_TYPE } from "./Constants";
+import { ethers, getNamedAccounts } from "hardhat";
 
 export async function getAddressFromEvent(
   fnPromise: Promise<ContractTransaction>,
@@ -100,4 +101,11 @@ export function expectEthersObjDeepEqual(_expectedResult: Array<any> & object, _
     }
     expect(actualObj).to.be.deep.equal(v);
   });
+}
+
+export async function whitelistAction(actionAddr: string) {
+  const { deployer } = await getNamedAccounts();
+  const whitelistService = await ethers.getContract("WhitelistService");
+  const actWlHash = await whitelistService.getWhitelistHash(deployer, "actions");
+  await whitelistService.addToWhitelist(actWlHash, actionAddr);
 }

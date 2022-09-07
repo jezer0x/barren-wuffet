@@ -1,22 +1,26 @@
-import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect, use as chai_use, should as chai_should } from "chai";
 import { ethers, deployments, getNamedAccounts } from "hardhat";
-import { BigNumber, constants, Contract, FixedNumber, utils } from "ethers";
+import { BigNumber, utils } from "ethers";
 import { makeFailingTrigger, makePassingTrigger, setupBarrenWuffet } from "./Fixtures";
 import {
   BAD_FUND_HASH,
-  BAD_TRADE_HASH,
   ETH_ADDRESS,
   ETH_PRICE_IN_TST1,
   ETH_TOKEN,
   FUND_STATUS,
   PRICE_TRIGGER_DECIMALS,
   PRICE_TRIGGER_TYPE,
-  TOKEN_TYPE,
-  TST1_PRICE_IN_ETH,
 } from "./Constants";
-import { depositMaxCollateral, getHashFromEvent, getAddressFromEvent, expectEthersObjDeepEqual, erc20 } from "./helper";
+import {
+  depositMaxCollateral,
+  getHashFromEvent,
+  getAddressFromEvent,
+  expectEthersObjDeepEqual,
+  erc20,
+  whitelistAction,
+} from "./helper";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 // const { deployMockContract } = waffle;
 import { FakeContract, smock } from "@defi-wonderland/smock";
@@ -665,25 +669,61 @@ describe("BarrenWuffet", () => {
         ).to.be.revertedWithoutReason();
       });
 
-      it("should call 'perform' on the action when fund manager calls takeAction", async () => {
+      it("yy should call 'perform' on the action when fund manager calls takeAction", async () => {
         // ideally we use IAction to create a mock action, and then check if perform is called on the mock action.
         const { jerkshireFund, swapETHToTST1Action, testToken1 } = await deployedFundsFixture();
+
         const etherToSwap = utils.parseEther("0.3");
 
         const mockSwapUniSingleAction: FakeContract<SwapUniSingleAction> = await smock.fake("SwapUniSingleAction");
+
         const mockSwapETHToTST1Action = {
           ...swapETHToTST1Action,
           callee: mockSwapUniSingleAction.address,
         };
 
-        const ex = expect(
-          jerkshireFund.marlieChunger.takeAction(mockSwapETHToTST1Action, {
-            triggerReturnArr: [],
-            collaterals: [etherToSwap],
-          })
+        await whitelistAction(mockSwapETHToTST1Action.callee);
+
+        const runTimeParams = {
+          triggerReturnArr: [
+            {
+              triggerType: PRICE_TRIGGER_TYPE,
+              runtimeData: ethers.utils.defaultAbiCoder.encode(
+                ["address", "address", "uint256"],
+                [ETH_ADDRESS, testToken1.address, ETH_PRICE_IN_TST1]
+              ),
+            },
+          ],
+          collaterals: [etherToSwap],
+        };
+
+        // @ts-ignore
+        mockSwapUniSingleAction.perform.returns(([action, params]) => {
+          // hack to check if it's called with the right params
+          // i am not able to figure out how to use calledWith at the end to check for these complex objects
+
+          // @ts-ignore
+          expectEthersObjDeepEqual(mockSwapETHToTST1Action, action);
+          // @ts-ignore
+          expectEthersObjDeepEqual(runTimeParams, params);
+          return {
+            tokenOutputs: [etherToSwap],
+            // i dont know how to specify an empty position so we ll return an empty one
+            position: {
+              id: BAD_FUND_HASH,
+              actionConstraints: [],
+              nextActions: [],
+            },
+          };
+        });
+
+        const ex = expect(jerkshireFund.marlieChunger.takeAction(mockSwapETHToTST1Action, runTimeParams, [0]));
+
+        await ex.to.not.be.reverted;
+
+        expect(mockSwapUniSingleAction.perform).to.have.been.calledOnce.delegatedFrom(
+          jerkshireFund.marlieChunger.address
         );
-        await ex;
-        mockSwapUniSingleAction.perform.atCall(0).should.be.calledOnce;
       });
 
       it("should swap ether for tokens via takeAction if swap contract is called", async () => {
@@ -694,22 +734,25 @@ describe("BarrenWuffet", () => {
         const tokenToReceive = etherToSwap.mul(ETH_PRICE_IN_TST1).div(PRICE_TRIGGER_DECIMALS);
 
         const ex = expect(
-          jerkshireFund.marlieChunger.takeAction(swapETHToTST1Action, {
-            // we need to set the expected price so our test swap router
-            // knows the exchange rate.
-            triggerReturnArr: [
-              {
-                triggerType: PRICE_TRIGGER_TYPE,
-                runtimeData: ethers.utils.defaultAbiCoder.encode(
-                  ["address", "address", "uint256"],
-                  [ETH_ADDRESS, testToken1.address, ETH_PRICE_IN_TST1]
-                ),
-              },
-            ],
-            collaterals: [etherToSwap],
-          })
+          jerkshireFund.marlieChunger.takeAction(
+            swapETHToTST1Action,
+            {
+              // we need to set the expected price so our test swap router
+              // knows the exchange rate.
+              triggerReturnArr: [
+                {
+                  triggerType: PRICE_TRIGGER_TYPE,
+                  runtimeData: ethers.utils.defaultAbiCoder.encode(
+                    ["address", "address", "uint256"],
+                    [ETH_ADDRESS, testToken1.address, ETH_PRICE_IN_TST1]
+                  ),
+                },
+              ],
+              collaterals: [etherToSwap],
+            },
+            [0]
+          )
         );
-
         await ex.to.changeEtherBalances([jerkshireFund.x, marlieChunger], [etherToSwap.mul(-1), 0]);
         await ex.to.changeTokenBalances(testToken1, [jerkshireFund.x, marlieChunger], [tokenToReceive, 0]);
       });
