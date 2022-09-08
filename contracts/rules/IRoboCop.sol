@@ -43,4 +43,6 @@ interface IRoboCop {
     function checkRule(bytes32 ruleHash) external view returns (bool valid);
 
     function hasPendingPosition() external view returns (bool);
+
+    function actionClosesPendingPosition(Action calldata action) external view returns (bool);
 }

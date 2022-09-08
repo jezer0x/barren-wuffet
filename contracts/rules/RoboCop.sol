@@ -295,6 +295,10 @@ contract RoboCop is IRoboCop, ReentrancyGuard, IERC721Receiver, Initializable {
         return pendingPositions.length() > 0;
     }
 
+    function actionClosesPendingPosition(Action calldata action) public view returns (bool) {
+        return actionPositionsMap[keccak256(abi.encode(action))].length > 0;
+    }
+
     receive() external payable {}
 
     function onERC721Received(

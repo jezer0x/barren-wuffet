@@ -87,7 +87,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         roboCop.initialize(_wlServiceAddr, _triggerWhitelistHash, _actionWhitelistHash);
     }
 
-    function _onlyDeclaredTokens(Token[] calldata tokens) internal view returns (bool) {
+    function _onlyDeclaredTokens(Token[] memory tokens) internal view returns (bool) {
         if (degenMode) return true;
         else {
             for (uint256 i = 0; i < tokens.length; i++) {
@@ -126,7 +126,8 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     }
 
     function closeFund() external nonReentrant {
-        require(pendingPositions.length() == 0 && !roboCop.hasPendingPosition(), "Positions still pending!");
+        require(!hasPendingPosition(), "Positions still pending!");
+
         if (getStatus() == FundStatus.CLOSABLE) {
             // anyone can call if closable
             if (totalCollateral < constraints.minCollateralTotal) {
@@ -185,7 +186,25 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         Action calldata action,
         ActionRuntimeParams calldata runtimeParams,
         uint256[] calldata fees
-    ) public nonReentrant onlyDeployedFund onlyFundManager returns (ActionResponse memory resp) {
+    ) public nonReentrant onlyDeployedFund onlyFundManager returns (ActionResponse memory) {
+        return _takeAction(action, runtimeParams, fees);
+    }
+
+    function takeActionToClosePosition(
+        Action calldata action,
+        ActionRuntimeParams calldata runtimeParams,
+        uint256[] calldata fees
+    ) public nonReentrant onlyDeployedFund returns (ActionResponse memory resp) {
+        require(actionPositionsMap[keccak256(abi.encode(action))].length > 0);
+        resp = _takeAction(action, runtimeParams, fees);
+        require(resp.position.nextActions.length == 0);
+    }
+
+    function _takeAction(
+        Action calldata action,
+        ActionRuntimeParams calldata runtimeParams,
+        uint256[] calldata fees
+    ) internal returns (ActionResponse memory resp) {
         require(wlService.isWhitelisted(actionWhitelistHash, action.callee), "Unauthorized Action");
         require(_onlyDeclaredTokens(action.outputTokens), "Unauthorized Token");
         IAction(action.callee).validate(action);
@@ -217,8 +236,27 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         nonReentrant
         onlyDeployedFund
         onlyFundManager
-        returns (bytes32 ruleHash)
+        returns (bytes32)
     {
+        return _createRule(triggers, actions);
+    }
+
+    function createRuleToClosePosition(Action calldata action)
+        external
+        nonReentrant
+        onlyDeployedFund
+        returns (bytes32)
+    {
+        require(block.timestamp >= constraints.lockin); // fund expired
+        require(roboCop.actionClosesPendingPosition(action)); // but positions are still open that can be closed by this
+
+        Trigger[] memory noTriggers; // should be immediately executable
+        Action[] memory actions = new Action[](1);
+        actions[0] = action;
+        return _createRule(noTriggers, actions);
+    }
+
+    function _createRule(Trigger[] memory triggers, Action[] memory actions) internal returns (bytes32 ruleHash) {
         for (uint256 i = 0; i < actions.length; i++) {
             require(_onlyDeclaredTokens(actions[i].outputTokens), "Unauthorized Token");
         }
@@ -412,16 +450,25 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         if (closed) {
             return FundStatus.CLOSED;
         } else {
+            // not closed yet
             if (block.timestamp < constraints.deadline) {
                 return FundStatus.RAISING;
             } else {
-                if (block.timestamp >= constraints.lockin) {
+                // reached raising deadline
+                if (totalCollateral < constraints.minCollateralTotal) {
                     return FundStatus.CLOSABLE;
                 } else {
-                    if (totalCollateral < constraints.minCollateralTotal) {
-                        return FundStatus.CLOSABLE;
-                    } else {
+                    // raised enough to deploy
+                    if (block.timestamp < constraints.lockin) {
                         return FundStatus.DEPLOYED;
+                    } else {
+                        // lockin exceeded
+                        if (!hasPendingPosition()) {
+                            return FundStatus.CLOSABLE;
+                        } else {
+                            // positions still open
+                            return FundStatus.DEPLOYED;
+                        }
                     }
                 }
             }
@@ -486,16 +533,17 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         Token[] memory tokens = new Token[](assets.length);
         uint256[] memory balances = new uint256[](assets.length);
 
-        if (constraints.managementFeePercentage == 0) {
-            revert("No management fee for you!");
-        } else {
-            for (uint256 i = 0; i < assets.length; i++) {
-                tokens[i] = assets[i];
-                balances[i] = _getManagementFeeShare(tokens[i]);
-                Utils._send(tokens[i], manager, balances[i]);
-            }
-            return (tokens, balances);
+        for (uint256 i = 0; i < assets.length; i++) {
+            tokens[i] = assets[i];
+            balances[i] = _getManagementFeeShare(tokens[i]);
+            Utils._send(tokens[i], manager, balances[i]);
         }
+
+        return (tokens, balances);
+    }
+
+    function hasPendingPosition() public view returns (bool) {
+        return pendingPositions.length() == 0 && !roboCop.hasPendingPosition();
     }
 
     receive() external payable {}
