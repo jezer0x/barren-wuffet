@@ -100,8 +100,11 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     }
 
     modifier onlyActiveSubscriber(uint256 subscriptionIdx) {
-        require(subscriptions[subscriptionIdx].subscriber == msg.sender, "You're not the subscriber!");
-        require(subscriptions[subscriptionIdx].status == SubscriptionStatus.ACTIVE, "This subscription is not active!");
+        require(
+            subscriptions[subscriptionIdx].subscriber == msg.sender &&
+                subscriptions[subscriptionIdx].status == SubscriptionStatus.ACTIVE,
+            "Not Active Subscriber"
+        );
         _;
     }
 
@@ -122,11 +125,11 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     }
 
     function getOutputTokens() external pure returns (Token[] memory) {
-        revert("Undefined: Funds may have multiple output tokens, determined only after it's closed.");
+        revert("Undefined");
     }
 
     function closeFund() external nonReentrant {
-        require(!hasPendingPosition(), "Positions still pending!");
+        require(!hasPendingPosition(), "pending positions");
 
         if (getStatus() == FundStatus.CLOSABLE) {
             // anyone can call if closable
@@ -135,7 +138,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
                 constraints.managementFeePercentage = 0;
             }
         } else {
-            require(manager == msg.sender, "Only the fund manager can close a fund prematurely");
+            require(manager == msg.sender, "onlyFundManager");
             // closed prematurely (so that people can withdraw their capital)
             // no managementFee since did not see through lockin
             constraints.managementFeePercentage = 0;
@@ -410,17 +413,14 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         // For now we'll only allow subscribing with ETH
         require(equals(collateralToken, Token({t: TokenType.NATIVE, addr: Constants.ETH})));
         require(collateralAmount == msg.value);
-        require(constraints.minCollateralPerSub <= collateralAmount, "Insufficient Collateral for Subscription");
-        require(constraints.maxCollateralPerSub >= collateralAmount, "Max Collateral for Subscription exceeded");
-        require(
-            constraints.maxCollateralTotal >= (totalCollateral + collateralAmount),
-            "Max Collateral for Fund exceeded"
-        );
+        require(constraints.minCollateralPerSub <= collateralAmount, "< minCollateralPerSub");
+        require(constraints.maxCollateralPerSub >= collateralAmount, "> maxCollateralPerSub");
+        require(constraints.maxCollateralTotal >= (totalCollateral + collateralAmount), "> maxColalteralTotal");
         require(block.timestamp < constraints.deadline);
     }
 
     function deposit(Token memory collateralToken, uint256 collateralAmount) external payable returns (uint256) {
-        require(getStatus() == FundStatus.RAISING, "Fund is not raising");
+        require(getStatus() == FundStatus.RAISING, "Not Raising");
         _validateCollateral(collateralToken, collateralAmount);
 
         Subscription storage newSub = subscriptions.push();
@@ -528,7 +528,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     }
 
     function withdrawManagementFee() public onlyFundManager nonReentrant returns (Token[] memory, uint256[] memory) {
-        require(getStatus() == FundStatus.CLOSED, "Fund not closed");
+        require(getStatus() == FundStatus.CLOSED, "Not Closed");
 
         Token[] memory tokens = new Token[](assets.length);
         uint256[] memory balances = new uint256[](assets.length);
