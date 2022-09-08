@@ -29,7 +29,7 @@ async function makeSubConstraints(): Promise<SubscriptionConstraintsStruct> {
     maxCollateralTotal: MAX_COLLATERAL_TOTAL,
     deadline: (await time.latest()) + 86400,
     lockin: (await time.latest()) + 86400 * 10,
-    managementFeePercentage: 100,
+    subscriberToManagerFeePercentage: 100,
   };
 }
 

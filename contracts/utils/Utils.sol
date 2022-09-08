@@ -2,7 +2,7 @@
 pragma solidity ^0.8.9;
 import "./Constants.sol";
 import "../actions/ActionTypes.sol";
-import "./subscriptions/SubscriptionTypes.sol";
+import "./subscriptions/Subscriptions.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -41,23 +41,6 @@ library Utils {
         } else if (token.t != TokenType.NATIVE) {
             revert("Wrong token type!");
         }
-    }
-
-    function _validateSubscriptionConstraintsBasic(SubscriptionConstraints memory constraints) internal view {
-        require(
-            constraints.minCollateralPerSub <= constraints.maxCollateralPerSub,
-            "minCollateralPerSub > maxCollateralPerSub"
-        );
-        require(
-            constraints.minCollateralTotal <= constraints.maxCollateralTotal,
-            "minTotalCollaterl > maxTotalCollateral"
-        );
-        require(constraints.minCollateralTotal >= constraints.minCollateralPerSub, "mininmums don't make sense");
-        require(constraints.maxCollateralTotal >= constraints.maxCollateralPerSub, "maximums don't make sense");
-        require(constraints.deadline >= block.timestamp, "deadline is in the past");
-        require(constraints.lockin >= block.timestamp, "lockin is in the past");
-        require(constraints.lockin > constraints.deadline, "lockin <= deadline");
-        require(constraints.managementFeePercentage <= 100 * 100, "managementFee > 100%");
     }
 
     function _delegatePerformAction(Action memory action, ActionRuntimeParams memory runtimeParams)

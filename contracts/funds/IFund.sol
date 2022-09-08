@@ -29,7 +29,7 @@ interface IFund is ISubscription {
     function initialize(
         string memory _name,
         address _manager,
-        SubscriptionConstraints memory _constraints,
+        Subscriptions.Constraints memory _constraints,
         FeeParams calldata _feeParams,
         address _wlServiceAddr,
         bytes32 _triggerWhitelistHash,

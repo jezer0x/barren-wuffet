@@ -79,7 +79,7 @@ async function makeSubConstraints() {
     maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
     deadline: latestTime + 86400,
     lockin: latestTime + 86400 * 10,
-    managementFeePercentage: 100,
+    subscriberToManagerFeePercentage: 100,
   };
 }
 

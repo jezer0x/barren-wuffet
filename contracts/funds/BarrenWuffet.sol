@@ -30,7 +30,7 @@ contract BarrenWuffet is Ownable, Pausable {
         address _roboCopImplAddr,
         address _fundImplAddr
     ) {
-        setFeeParams(_feeParams);
+        setSubscriptionFeeParams(_feeParams);
         triggerWhitelistHash = _triggerWhitelistHash;
         actionWhitelistHash = _actionWhitelistHash;
         wlServiceAddr = _wlServiceAddr;
@@ -38,9 +38,9 @@ contract BarrenWuffet is Ownable, Pausable {
         fundImplAddr = _fundImplAddr;
     }
 
-    function setFeeParams(FeeParams memory _feeParams) public onlyOwner {
-        require(_feeParams.subscriberFeePercentage < 100_00);
-        require(_feeParams.managerFeePercentage < 100_00);
+    function setSubscriptionFeeParams(FeeParams memory _feeParams) public onlyOwner {
+        require(_feeParams.subscriberToPlatformFeePercentage < 100_00);
+        require(_feeParams.managerToPlatformFeePercentage < 100_00);
         feeParams = _feeParams;
     }
 
@@ -74,7 +74,7 @@ contract BarrenWuffet is Ownable, Pausable {
 
     function createFund(
         string calldata name,
-        SubscriptionConstraints calldata constraints,
+        Subscriptions.Constraints calldata constraints,
         address[] calldata declaredTokens
     ) external whenNotPaused returns (address) {
         IFund fund = IFund(Clones.clone(fundImplAddr));

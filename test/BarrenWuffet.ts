@@ -40,7 +40,7 @@ async function makeSubConstraints() {
     maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
     deadline: latestTime + 86400,
     lockin: latestTime + 86400 * 10,
-    managementFeePercentage: 100,
+    subscriberToManagerFeePercentage: 100,
   };
 }
 
@@ -155,7 +155,7 @@ describe("BarrenWuffet", () => {
       maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
       deadline: latestTime + 86400,
       lockin: latestTime + 86400 * 10,
-      managementFeePercentage: 0,
+      subscriberToManagerFeePercentage: 0,
     };
 
     const jerkshireAddr = await getAddressFromEvent(
@@ -182,7 +182,7 @@ describe("BarrenWuffet", () => {
       maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
       deadline: latestTime + 86400,
       lockin: latestTime + 86400 * 10,
-      managementFeePercentage: 10,
+      subscriberToManagerFeePercentage: 10,
     };
     const crackBlockAddr = await getAddressFromEvent(
       barrenWuffetFairy.createFund("CrackBlock", crackBlockConstraints, []),
@@ -393,7 +393,7 @@ describe("BarrenWuffet", () => {
 
     it.skip("If raised between minCollateralTotal and maxCollateralTotal, can't deploy until deadline", async () => {});
 
-    it.skip("should give subscriberFeePercentage to platformFeeWallet", async () => {});
+    it.skip("should give subscriberToPlatformFeePercentage to platformFeeWallet", async () => {});
   });
 
   describe.skip("Fund Actions on a non-existent fund", async () => {
@@ -758,7 +758,7 @@ describe("BarrenWuffet", () => {
       });
     });
 
-    it.skip("should give managerFeePercentage to platformFeeWallet when taking actions or adding collateral", async () => {});
+    it.skip("should give managerToPlatformFeePercentage to platformFeeWallet when taking actions or adding collateral", async () => {});
   });
 
   describe.skip("Fund status: Closable", () => {
