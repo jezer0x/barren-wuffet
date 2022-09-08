@@ -126,6 +126,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     }
 
     function closeFund() external nonReentrant {
+        require(pendingPositions.length() == 0 && !roboCop.hasPendingPosition(), "Positions still pending!");
         if (getStatus() == FundStatus.CLOSABLE) {
             // anyone can call if closable
             if (totalCollateral < constraints.minCollateralTotal) {

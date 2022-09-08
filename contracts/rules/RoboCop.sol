@@ -291,6 +291,10 @@ contract RoboCop is IRoboCop, ReentrancyGuard, IERC721Receiver, Initializable {
         payable(msg.sender).transfer(rule.incentive); // slither-disable-next-line arbitrary-send // for the taking. // As long as the execution reaches this point, the incentive is there // We dont need to check sender here.
     }
 
+    function hasPendingPosition() public view returns (bool) {
+        return pendingPositions.length() > 0;
+    }
+
     receive() external payable {}
 
     function onERC721Received(
