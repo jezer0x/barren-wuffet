@@ -264,7 +264,7 @@ contract RoboCop is IRoboCop, ReentrancyGuard, IERC721Receiver, Initializable {
 
         ActionResponse memory response = Utils._delegatePerformAction(action, runtimeParams);
 
-        Utils._createPosition(response.position.nextActions, pendingPositions, actionPositionsMap);
+        Utils._createPosition(action, response.position.nextActions, pendingPositions, actionPositionsMap);
 
         return response.tokenOutputs;
     }

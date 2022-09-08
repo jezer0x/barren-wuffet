@@ -13,6 +13,9 @@ library Utils {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
+    event PositionCreated(bytes32 positionHash, Action precursorAction, Action[] nextActions);
+    event PositionsClosed(Action closingAction, bytes32[] positionHashesClosed);
+
     function _send(
         Token memory token,
         address receiver,
@@ -86,7 +89,7 @@ library Utils {
     }
 
     function _createPosition(
-        // a position in created when a response is generated, so the type is memory.
+        Action memory precursorAction,
         Action[] memory nextActions,
         EnumerableSet.Bytes32Set storage _pendingPositions,
         mapping(bytes32 => bytes32[]) storage _actionPositionsMap
@@ -100,15 +103,16 @@ library Utils {
         }
 
         positionHash = _getPositionHash(actionHashes);
+        _pendingPositions.add(positionHash);
 
         for (uint32 i = 0; i < actionHashes.length; i++) {
             _actionPositionsMap[actionHashes[i]].push(positionHash);
-            _pendingPositions.add(positionHash);
         }
+
+        emit PositionCreated(positionHash, precursorAction, nextActions);
     }
 
     function _closePosition(
-        // a position in closed by an external call, so the type is calldata
         Action memory action,
         EnumerableSet.Bytes32Set storage _pendingPositions,
         mapping(bytes32 => bytes32[]) storage _actionPositionsMap
@@ -120,6 +124,7 @@ library Utils {
             for (uint32 i = 0; i < positionHashes.length; i++) {
                 _pendingPositions.remove(positionHashes[i]);
             }
+            emit PositionsClosed(action, positionHashes);
             delete _actionPositionsMap[actionHash];
             return true;
         } else {

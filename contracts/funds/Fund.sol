@@ -237,7 +237,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
             assets.increaseAsset(action.outputTokens[i], resp.tokenOutputs[i]);
         }
 
-        Utils._createPosition(resp.position.nextActions, pendingPositions, actionPositionsMap);
+        Utils._createPosition(action, resp.position.nextActions, pendingPositions, actionPositionsMap);
     }
 
     function createRule(Trigger[] calldata triggers, Action[] calldata actions)
