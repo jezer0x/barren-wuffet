@@ -126,7 +126,7 @@ library Utils {
 
     function _closePosition(
         // a position in closed by an external call, so the type is calldata
-        Action calldata action,
+        Action memory action,
         EnumerableSet.Bytes32Set storage _pendingPositions,
         mapping(bytes32 => bytes32[]) storage _actionPositionsMap
     ) internal returns (bool) {

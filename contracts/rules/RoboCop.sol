@@ -171,7 +171,6 @@ contract RoboCop is IRoboCop, ReentrancyGuard, IERC721Receiver, Initializable {
         }
         for (uint256 i = 0; i < actions.length; i++) {
             require(IAction(actions[i].callee).validate(actions[i]), "Invalid Action");
-            Utils._closePosition(actions[i], pendingPositions, actionPositionsMap);
 
             if (i != actions.length - 1) {
                 Token[] memory inputTokens = actions[i + 1].inputTokens;
@@ -260,6 +259,8 @@ contract RoboCop is IRoboCop, ReentrancyGuard, IERC721Receiver, Initializable {
             // ignore return value
             approveToken(action.inputTokens[j], action.callee, runtimeParams.collaterals[j]);
         }
+
+        Utils._closePosition(action, pendingPositions, actionPositionsMap);
 
         ActionResponse memory response = Utils._delegatePerformAction(action, runtimeParams);
 
