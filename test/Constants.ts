@@ -41,3 +41,5 @@ export const ETH_TOKEN = {
   t: TOKEN_TYPE.NATIVE,
   addr: ETH_ADDRESS,
 };
+
+export const DEFAULT_SUB_TO_MAN_FEE_PCT = 100;

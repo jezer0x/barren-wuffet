@@ -15,7 +15,8 @@ interface IRoboCop {
     function initialize(
         address wlServiceAddr,
         bytes32 trigWlHash,
-        bytes32 actionWlHash
+        bytes32 actionWlHash,
+        address owner
     ) external;
 
     function getRule(bytes32 ruleHash) external view returns (Rule memory);
@@ -41,4 +42,8 @@ interface IRoboCop {
     function deactivateRule(bytes32 ruleHash) external;
 
     function checkRule(bytes32 ruleHash) external view returns (bool valid);
+
+    function hasPendingPosition() external view returns (bool);
+
+    function actionClosesPendingPosition(Action calldata action) external view returns (bool);
 }

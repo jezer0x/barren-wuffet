@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { BigNumber, Contract, ContractReceipt, ContractTransaction } from "ethers";
 import { ETH_TOKEN, TOKEN_TYPE } from "./Constants";
 import { ethers, getNamedAccounts } from "hardhat";
+import { exit } from "process";
 
 export async function getAddressFromEvent(
   fnPromise: Promise<ContractTransaction>,
@@ -10,6 +11,7 @@ export async function getAddressFromEvent(
   position: Number = 0
 ) {
   const receipt: ContractReceipt = await tx(fnPromise);
+
   // Address is definitely part of the event object. Not sure why typescript wont recognize it.
   // Need the check to disambiguate same-name events from multiple objects
   //@ts-ignore

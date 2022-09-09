@@ -16,8 +16,9 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract RoboCop is IRoboCop, ReentrancyGuard, IERC721Receiver, Initializable {
+contract RoboCop is IRoboCop, Ownable, ReentrancyGuard, IERC721Receiver, Initializable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
     // Storage Start
@@ -30,13 +31,8 @@ contract RoboCop is IRoboCop, ReentrancyGuard, IERC721Receiver, Initializable {
     WhitelistService wlService;
     // Storage End
 
-    modifier onlyRuleOwner(bytes32 ruleHash) {
-        require(rules[ruleHash].owner == msg.sender, "onlyRuleOwner");
-        _;
-    }
-
     modifier ruleExists(bytes32 ruleHash) {
-        require(rules[ruleHash].owner != address(0), "Rule not found");
+        require(rules[ruleHash].status != RuleStatus.NULL, "Rule not found");
         _;
     }
 
@@ -58,11 +54,13 @@ contract RoboCop is IRoboCop, ReentrancyGuard, IERC721Receiver, Initializable {
     function initialize(
         address wlServiceAddr,
         bytes32 trigWlHash,
-        bytes32 actionWlHash
+        bytes32 actionWlHash,
+        address _newOwner
     ) external nonReentrant initializer {
         wlService = WhitelistService(wlServiceAddr);
         triggerWhitelistHash = trigWlHash;
         actionWhitelistHash = actionWlHash;
+        _transferOwnership(_newOwner);
     }
 
     function getRule(bytes32 ruleHash) public view ruleExists(ruleHash) returns (Rule memory) {
@@ -78,22 +76,17 @@ contract RoboCop is IRoboCop, ReentrancyGuard, IERC721Receiver, Initializable {
         return rule.actions[rule.actions.length - 1].outputTokens;
     }
 
-    function redeemBalance(bytes32 ruleHash) external nonReentrant onlyRuleOwner(ruleHash) {
+    function redeemBalance(bytes32 ruleHash) external nonReentrant onlyOwner {
         Rule storage rule = rules[ruleHash];
         _setRuleStatus(ruleHash, RuleStatus.REDEEMED);
         Token[] memory tokens = getOutputTokens(ruleHash);
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            Utils._send(tokens[i], rule.owner, rule.outputs[i]);
+            Utils._send(tokens[i], owner(), rule.outputs[i]);
         }
     }
 
-    function addCollateral(bytes32 ruleHash, uint256[] memory amounts)
-        external
-        payable
-        onlyRuleOwner(ruleHash)
-        nonReentrant
-    {
+    function addCollateral(bytes32 ruleHash, uint256[] memory amounts) external payable onlyOwner nonReentrant {
         Rule storage rule = rules[ruleHash];
         require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE, "Can't add collateral");
 
@@ -115,11 +108,7 @@ contract RoboCop is IRoboCop, ReentrancyGuard, IERC721Receiver, Initializable {
         emit CollateralAdded(ruleHash, amounts);
     }
 
-    function reduceCollateral(bytes32 ruleHash, uint256[] memory amounts)
-        external
-        onlyRuleOwner(ruleHash)
-        nonReentrant
-    {
+    function reduceCollateral(bytes32 ruleHash, uint256[] memory amounts) external onlyOwner nonReentrant {
         Rule storage rule = rules[ruleHash];
         require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE, "Can't reduce collateral");
 
@@ -158,20 +147,20 @@ contract RoboCop is IRoboCop, ReentrancyGuard, IERC721Receiver, Initializable {
         external
         payable
         nonReentrant
+        onlyOwner
         onlyWhitelist(triggers, actions)
         returns (bytes32)
     {
         bytes32 ruleHash = _getRuleHash(triggers, actions);
         Rule storage rule = rules[ruleHash];
-        require(rule.owner == address(0), "Duplicate Rule");
-        require(triggers.length > 0 && actions.length > 0);
+        require(rule.status == RuleStatus.NULL, "Duplicate Rule");
+        require(actions.length > 0); // has to do something, else is a waste!
         for (uint256 i = 0; i < triggers.length; i++) {
             require(ITrigger(triggers[i].callee).validate(triggers[i]), "Invalid Trigger");
             rule.triggers.push(triggers[i]);
         }
         for (uint256 i = 0; i < actions.length; i++) {
             require(IAction(actions[i].callee).validate(actions[i]), "Invalid Action");
-            Utils._closePosition(actions[i], pendingPositions, actionPositionsMap);
 
             if (i != actions.length - 1) {
                 Token[] memory inputTokens = actions[i + 1].inputTokens;
@@ -182,7 +171,6 @@ contract RoboCop is IRoboCop, ReentrancyGuard, IERC721Receiver, Initializable {
             }
             rule.actions.push(actions[i]);
         }
-        rule.owner = msg.sender;
         rule.status = RuleStatus.INACTIVE;
 
         for (uint256 i = 0; i < actions[0].inputTokens.length; i++) {
@@ -224,11 +212,11 @@ contract RoboCop is IRoboCop, ReentrancyGuard, IERC721Receiver, Initializable {
         rule.status = newStatus;
     }
 
-    function activateRule(bytes32 ruleHash) external onlyRuleOwner(ruleHash) {
+    function activateRule(bytes32 ruleHash) external onlyOwner {
         _setRuleStatus(ruleHash, RuleStatus.ACTIVE);
     }
 
-    function deactivateRule(bytes32 ruleHash) external onlyRuleOwner(ruleHash) {
+    function deactivateRule(bytes32 ruleHash) external onlyOwner {
         _setRuleStatus(ruleHash, RuleStatus.INACTIVE);
     }
 
@@ -261,9 +249,11 @@ contract RoboCop is IRoboCop, ReentrancyGuard, IERC721Receiver, Initializable {
             approveToken(action.inputTokens[j], action.callee, runtimeParams.collaterals[j]);
         }
 
+        Utils._closePosition(action, pendingPositions, actionPositionsMap);
+
         ActionResponse memory response = Utils._delegatePerformAction(action, runtimeParams);
 
-        Utils._createPosition(response.position.nextActions, pendingPositions, actionPositionsMap);
+        Utils._createPosition(action, response.position.nextActions, pendingPositions, actionPositionsMap);
 
         return response.tokenOutputs;
     }
@@ -288,6 +278,14 @@ contract RoboCop is IRoboCop, ReentrancyGuard, IERC721Receiver, Initializable {
 
         rule.outputs = outputs;
         payable(msg.sender).transfer(rule.incentive); // slither-disable-next-line arbitrary-send // for the taking. // As long as the execution reaches this point, the incentive is there // We dont need to check sender here.
+    }
+
+    function hasPendingPosition() public view returns (bool) {
+        return pendingPositions.length() > 0;
+    }
+
+    function actionClosesPendingPosition(Action calldata action) public view returns (bool) {
+        return actionPositionsMap[keccak256(abi.encode(action))].length > 0;
     }
 
     receive() external payable {}

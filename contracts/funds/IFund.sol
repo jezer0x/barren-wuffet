@@ -29,7 +29,7 @@ interface IFund is ISubscription {
     function initialize(
         string memory _name,
         address _manager,
-        SubscriptionConstraints memory _constraints,
+        Subscriptions.Constraints memory _constraints,
         FeeParams calldata _feeParams,
         address _wlServiceAddr,
         bytes32 _triggerWhitelistHash,
@@ -76,4 +76,6 @@ interface IFund is ISubscription {
     function getStatus() external view returns (FundStatus);
 
     function withdrawManagementFee() external returns (Token[] memory, uint256[] memory);
+
+    function hasPendingPosition() external view returns (bool);
 }

@@ -40,7 +40,7 @@ contract RoboCopFactory is Ownable {
 
     function createRoboCop() external {
         IRoboCop roboCop = IRoboCop(Clones.clone(roboCopImplAddr));
-        roboCop.initialize(wlServiceAddr, triggerWhitelistHash, actionWhitelistHash);
+        roboCop.initialize(wlServiceAddr, triggerWhitelistHash, actionWhitelistHash, msg.sender);
         emit Created(address(roboCop));
     }
 }

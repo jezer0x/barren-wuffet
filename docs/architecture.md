@@ -12,7 +12,7 @@ A `Fund` is a proxy pointing to a singleton `FundImplementation` deployed on cha
 
 Subscribers to the fund can deposit their ETH before `subscriptionConstraints.deadline`, given they pass the other capital constraints set by the manager at the time of creation.
 
-Subscribers can withdraw their collateral before the fund is deployed, or take out their share of the assets remaining in the fund (minus management fees specified as `managementFeePercentage`) after `subscriptionConstraints.lockin`. Note that this only applies to ERC20 tokens and ETH, as NFTs are not divisible. See the section on `Position` to understand how we deal with NFTs.
+Subscribers can withdraw their collateral before the fund is deployed, or take out their share of the assets remaining in the fund (minus management fees specified as `subscriberToManagerFeePercentage`) after `subscriptionConstraints.lockin`. Note that this only applies to ERC20 tokens and ETH, as NFTs are not divisible. See the section on `Position` to understand how we deal with NFTs.
 
 Fund Manager can take Actions (Whitelisted only), or setup IFTTT-style rules using its own RocoCop (ERC1167 proxy again).
 
@@ -71,6 +71,6 @@ To save on storage, `Fund` and `RoboCop` do not store the details of the positio
 
 ## Fees
 
-Barren Wuffet takes subscriberFeePercentage of every deposit from subscribers (denominated in ETH).
-Barren Wuffet takes managerFeePercentage from `takeAction::action.inputTokens`/`createRule::actions[0].inputTokens`, but ignores ERC721 tokens.
-Manager takes managementFeePercentage from the output of the fund (given all positions are closed and fund was not closed prematurely).
+Barren Wuffet takes subscriberToPlatformFeePercentage of every deposit from subscribers (denominated in ETH).
+Barren Wuffet takes managerToPlatformFeePercentage from `takeAction::action.inputTokens`/`createRule::actions[0].inputTokens`, but ignores ERC721 tokens.
+Manager takes subscriberToManagerFeePercentage from the output of the fund (given all positions are closed and fund was not closed prematurely).

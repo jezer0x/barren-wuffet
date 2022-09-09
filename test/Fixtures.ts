@@ -15,6 +15,8 @@ import {
   ETH_PRICE_IN_TST1,
   ETH_ADDRESS,
   PRICE_TRIGGER_TYPE,
+  DEFAULT_SUB_TO_MAN_FEE_PCT,
+  ETH_TOKEN,
   LT,
   TOKEN_TYPE,
 } from "./Constants";
@@ -79,7 +81,7 @@ async function makeSubConstraints() {
     maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
     deadline: latestTime + 86400,
     lockin: latestTime + 86400 * 10,
-    managementFeePercentage: 100,
+    allowedDepositToken: ETH_TOKEN,
   };
 }
 
@@ -137,7 +139,7 @@ export async function setupEthToTst1PriceTrigger() {
 }
 
 export async function setupSwapUniSingleAction(testToken: Contract, WETH: Contract) {
-  const [ownerWallet, ruleMakerWallet, ruleSubscriberWallet, botWallet, ethFundWallet] = await ethers.getSigners();
+  const [ownerWallet, ruleMakerWallet, botWallet, ethFundWallet] = await ethers.getSigners();
 
   const testSwapRouter = await ethers.getContract("TestSwapRouter");
 
@@ -174,9 +176,8 @@ export async function setupRoboCop(hre: HardhatRuntimeEnvironment) {
   const swapUniSingleAction = await setupSwapUniSingleAction(testToken1, WETH);
   const { whitelistService, trigWlHash, actWlHash } = await getWhitelistService();
 
-  const { ruleMaker, ruleSubscriber, bot, deployer } = await hre.getNamedAccounts();
+  const { ruleMaker, bot, deployer } = await hre.getNamedAccounts();
   const ruleMakerWallet = await ethers.getSigner(ruleMaker);
-  const ruleSubscriberWallet = await ethers.getSigner(ruleSubscriber);
   const botWallet = await ethers.getSigner(bot);
   const deployerWallet = await ethers.getSigner(deployer);
 
@@ -188,6 +189,9 @@ export async function setupRoboCop(hre: HardhatRuntimeEnvironment) {
   );
 
   const roboCop = await ethers.getContractAt("RoboCop", roboCopAddr);
+
+  // Only Owner can do most things, since RoboCop is no longer a singleton
+  await roboCop.transferOwnership(ruleMakerWallet.address);
 
   return {
     roboCop,
@@ -203,7 +207,6 @@ export async function setupRoboCop(hre: HardhatRuntimeEnvironment) {
     trigWlHash,
     actWlHash,
     ruleMakerWallet,
-    ruleSubscriberWallet,
     botWallet,
   };
 }
@@ -296,15 +299,16 @@ export async function setupBarrenWuffet({ getNamedAccounts, ethers }: HardhatRun
   } = await setupSwapActions(priceTrigger, swapUniSingleAction, testToken1);
 
   const marlieChungerFundAddr = await getAddressFromEvent(
-    barrenWuffetMarlie.createFund("marlieChungerFund", await makeSubConstraints(), []),
+    barrenWuffetMarlie.createFund("marlieChungerFund", await makeSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []),
     "Created",
     barrenWuffetMarlie.address
   );
+
   const marlieChungerFund: Fund = await ethers.getContractAt("Fund", marlieChungerFundAddr);
 
   const barrenWuffetFairy = await ethers.getContract("BarrenWuffet", fairyLink);
   const fairyLinkFundAddr = await getAddressFromEvent(
-    barrenWuffetFairy.createFund("fairyLinkFund", await makeSubConstraints(), []),
+    barrenWuffetFairy.createFund("fairyLinkFund", await makeSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []),
     "Created",
     barrenWuffetFairy.address
   );

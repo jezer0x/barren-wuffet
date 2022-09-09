@@ -2,7 +2,7 @@
 pragma solidity ^0.8.9;
 import "./Constants.sol";
 import "../actions/ActionTypes.sol";
-import "./subscriptions/SubscriptionTypes.sol";
+import "./subscriptions/Subscriptions.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -12,6 +12,9 @@ import "./Token.sol";
 library Utils {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
+
+    event PositionCreated(bytes32 positionHash, Action precursorAction, Action[] nextActions);
+    event PositionsClosed(Action closingAction, bytes32[] positionHashesClosed);
 
     function _send(
         Token memory token,
@@ -41,23 +44,6 @@ library Utils {
         } else if (token.t != TokenType.NATIVE) {
             revert("Wrong token type!");
         }
-    }
-
-    function _validateSubscriptionConstraintsBasic(SubscriptionConstraints memory constraints) internal view {
-        require(
-            constraints.minCollateralPerSub <= constraints.maxCollateralPerSub,
-            "minCollateralPerSub > maxCollateralPerSub"
-        );
-        require(
-            constraints.minCollateralTotal <= constraints.maxCollateralTotal,
-            "minTotalCollaterl > maxTotalCollateral"
-        );
-        require(constraints.minCollateralTotal >= constraints.minCollateralPerSub, "mininmums don't make sense");
-        require(constraints.maxCollateralTotal >= constraints.maxCollateralPerSub, "maximums don't make sense");
-        require(constraints.deadline >= block.timestamp, "deadline is in the past");
-        require(constraints.lockin >= block.timestamp, "lockin is in the past");
-        require(constraints.lockin > constraints.deadline, "lockin <= deadline");
-        require(constraints.managementFeePercentage <= 100 * 100, "managementFee > 100%");
     }
 
     function _delegatePerformAction(Action memory action, ActionRuntimeParams memory runtimeParams)
@@ -103,7 +89,7 @@ library Utils {
     }
 
     function _createPosition(
-        // a position in created when a response is generated, so the type is memory.
+        Action memory precursorAction,
         Action[] memory nextActions,
         EnumerableSet.Bytes32Set storage _pendingPositions,
         mapping(bytes32 => bytes32[]) storage _actionPositionsMap
@@ -117,16 +103,17 @@ library Utils {
         }
 
         positionHash = _getPositionHash(actionHashes);
+        _pendingPositions.add(positionHash);
 
         for (uint32 i = 0; i < actionHashes.length; i++) {
             _actionPositionsMap[actionHashes[i]].push(positionHash);
-            _pendingPositions.add(positionHash);
         }
+
+        emit PositionCreated(positionHash, precursorAction, nextActions);
     }
 
     function _closePosition(
-        // a position in closed by an external call, so the type is calldata
-        Action calldata action,
+        Action memory action,
         EnumerableSet.Bytes32Set storage _pendingPositions,
         mapping(bytes32 => bytes32[]) storage _actionPositionsMap
     ) internal returns (bool) {
@@ -137,6 +124,7 @@ library Utils {
             for (uint32 i = 0; i < positionHashes.length; i++) {
                 _pendingPositions.remove(positionHashes[i]);
             }
+            emit PositionsClosed(action, positionHashes);
             delete _actionPositionsMap[actionHash];
             return true;
         } else {

@@ -3,6 +3,7 @@ pragma solidity ^0.8.9;
 
 struct FeeParams {
     address platformFeeWallet;
-    uint256 subscriberFeePercentage; // 1% = 100
-    uint256 managerFeePercentage; // 1% = 100
+    uint256 subscriberToPlatformFeePercentage; // 1% = 100
+    uint256 managerToPlatformFeePercentage; // 1% = 100
+    uint256 subscriberToManagerFeePercentage; // 1% = 100
 }
