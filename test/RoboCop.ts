@@ -964,4 +964,6 @@ describe("RoboCop", () => {
       expectEthersObjDeepEqual(expectedRule, actualRule);
     });
   });
+
+  describe.skip("onlyOwner tests", () => {});
 });
