@@ -90,7 +90,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         actionWhitelistHash = _actionWhitelistHash;
 
         roboCop = IRoboCop(Clones.clone(roboCopImplementationAddr));
-        roboCop.initialize(_wlServiceAddr, _triggerWhitelistHash, _actionWhitelistHash);
+        roboCop.initialize(_wlServiceAddr, _triggerWhitelistHash, _actionWhitelistHash, address(this));
     }
 
     function _onlyDeclaredTokens(Token[] memory tokens) internal view returns (bool) {
@@ -269,7 +269,6 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         for (uint256 i = 0; i < actions.length; i++) {
             require(_onlyDeclaredTokens(actions[i].outputTokens), "Unauthorized Token");
         }
-        // Note: Rule is created through BarrenWuffet so that BarrenWuffet is rule.owner
         ruleHash = roboCop.createRule(triggers, actions);
         openRules.push(ruleHash);
     }

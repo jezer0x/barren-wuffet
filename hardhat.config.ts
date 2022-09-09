@@ -24,8 +24,7 @@ const config: HardhatUserConfig = {
     bot: 3,
     fundSubscriber: 4,
     fundSubscriber2: 5,
-    ruleSubscriber: 6,
-    ruleMaker: 7,
+    ruleMaker: 6,
   },
   paths: {
     sources: "contracts",

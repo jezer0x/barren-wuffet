@@ -137,7 +137,7 @@ export async function setupEthToTst1PriceTrigger() {
 }
 
 export async function setupSwapUniSingleAction(testToken: Contract, WETH: Contract) {
-  const [ownerWallet, ruleMakerWallet, ruleSubscriberWallet, botWallet, ethFundWallet] = await ethers.getSigners();
+  const [ownerWallet, ruleMakerWallet, botWallet, ethFundWallet] = await ethers.getSigners();
 
   const testSwapRouter = await ethers.getContract("TestSwapRouter");
 
@@ -174,9 +174,8 @@ export async function setupRoboCop(hre: HardhatRuntimeEnvironment) {
   const swapUniSingleAction = await setupSwapUniSingleAction(testToken1, WETH);
   const { whitelistService, trigWlHash, actWlHash } = await getWhitelistService();
 
-  const { ruleMaker, ruleSubscriber, bot, deployer } = await hre.getNamedAccounts();
+  const { ruleMaker, bot, deployer } = await hre.getNamedAccounts();
   const ruleMakerWallet = await ethers.getSigner(ruleMaker);
-  const ruleSubscriberWallet = await ethers.getSigner(ruleSubscriber);
   const botWallet = await ethers.getSigner(bot);
   const deployerWallet = await ethers.getSigner(deployer);
 
@@ -188,6 +187,9 @@ export async function setupRoboCop(hre: HardhatRuntimeEnvironment) {
   );
 
   const roboCop = await ethers.getContractAt("RoboCop", roboCopAddr);
+
+  // Only Owner can do most things, since RoboCop is no longer a singleton
+  await roboCop.transferOwnership(ruleMakerWallet.address);
 
   return {
     roboCop,
@@ -203,7 +205,6 @@ export async function setupRoboCop(hre: HardhatRuntimeEnvironment) {
     trigWlHash,
     actWlHash,
     ruleMakerWallet,
-    ruleSubscriberWallet,
     botWallet,
   };
 }

@@ -5,6 +5,7 @@ import "../actions/ActionTypes.sol";
 import "../triggers/TriggerTypes.sol";
 
 enum RuleStatus {
+    NULL,
     ACTIVE, // Action can be executed when trigger is met, can add/withdraw collateral, can add/reduce incentive
     INACTIVE, // Action can not be executed even if trigger is met, can add/withdraw collateral, can add/reduce incentive
     EXECUTED, // Action has been executed, can withdraw output, can't add/reduce incentive
@@ -12,7 +13,6 @@ enum RuleStatus {
 }
 
 struct Rule {
-    address owner;
     Trigger[] triggers;
     Action[] actions;
     uint256[] collaterals; // idx if ERC721, amount if erc20 or native
