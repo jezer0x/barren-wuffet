@@ -264,13 +264,13 @@ describe.skip("DegenStreet", () => {
         degenStreet
           .connect(tradeSubscriberWallet)
           .deposit(tradeTST1forETHHash, testToken1.address, MAX_COLLATERAL_PER_SUB.add(1))
-      ).to.be.revertedWith("Max Collateral for Subscription exceeded");
+      ).to.be.revertedWith("> maxCollateralPerSub");
 
       await expect(
         degenStreet
           .connect(tradeSubscriberWallet)
           .deposit(tradeTST1forETHHash, testToken1.address, MIN_COLLATERAL_PER_SUB.sub(1))
-      ).to.be.revertedWith("Insufficient Collateral for Subscription");
+      ).to.be.revertedWith("< minCollateralPerSub");
     });
 
     it("Should succeed in depositing ERC20 properly", async function () {

@@ -137,9 +137,7 @@ describe("BarrenWuffet", () => {
 
       //@ts-ignore
       const jerkshireFund = await ethers.getContractAt("Fund", fundAddr, marlieChunger);
-      await expect(jerkshireFund.getOutputTokens()).to.be.revertedWith(
-        "Undefined: Funds may have multiple output tokens, determined only after it's closed."
-      );
+      await expect(jerkshireFund.getOutputTokens()).to.be.revertedWith("Undefined");
     });
   });
 
@@ -258,7 +256,7 @@ describe("BarrenWuffet", () => {
       const { jerkshireFund, jerkshireConstraints } = await raisingFundsFixture();
       const depositAmt = jerkshireConstraints.minCollateralPerSub.sub(utils.parseEther("0.0001"));
       await expect(jerkshireFund.subscriber.deposit(ETH_TOKEN, depositAmt, { value: depositAmt })).to.be.revertedWith(
-        "Insufficient Collateral for Subscription"
+        "< minCollateralPerSub"
       );
     });
 
@@ -266,7 +264,7 @@ describe("BarrenWuffet", () => {
       const { jerkshireFund, jerkshireConstraints } = await raisingFundsFixture();
       const depositAmt = jerkshireConstraints.maxCollateralPerSub.add(utils.parseEther("0.0001"));
       await expect(jerkshireFund.subscriber.deposit(ETH_TOKEN, depositAmt, { value: depositAmt })).to.be.revertedWith(
-        "Max Collateral for Subscription exceeded"
+        "> maxCollateralPerSub"
       );
     });
 
@@ -295,7 +293,7 @@ describe("BarrenWuffet", () => {
         [utils.parseEther("100"), true, 2],
         [utils.parseEther("100"), true, 3],
         [utils.parseEther("89"), true, 4],
-        [utils.parseEther("12"), false, "Max Collateral for Fund exceeded"],
+        [utils.parseEther("12"), false, "> maxColalteralTotal"],
         [utils.parseEther("11"), true, 5],
       ];
       const { fundSubscriber } = await getNamedAccounts();
@@ -328,16 +326,14 @@ describe("BarrenWuffet", () => {
     it("should not allow withdrawing if there have not been any deposits from this user", async () => {
       const { jerkshireFund } = await raisingFundsFixture();
       await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
-      await expect(jerkshireFund.subscriber2.withdraw(0)).to.be.rejectedWith("You're not the subscriber!");
+      await expect(jerkshireFund.subscriber2.withdraw(0)).to.be.rejectedWith("Not Active Subscriber");
     });
 
     it("should allow only the fund manager to close a Raising fund, and the subscriber to withdraw funds", async () => {
       const { barrenWuffet, jerkshireFund, crackBlockFund } = await raisingFundsFixture();
       // add some funds so we can confirm that even a fund with funds can be closed
       await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
-      await expect(jerkshireFund.fairyLink.closeFund()).to.be.revertedWith(
-        "Only the fund manager can close a fund prematurely"
-      );
+      await expect(jerkshireFund.fairyLink.closeFund()).to.be.revertedWith("pending positions");
       const { fundSubscriber, marlieChunger } = await getNamedAccounts();
       await expect(jerkshireFund.marlieChunger.closeFund())
         .to.changeEtherBalances([marlieChunger, barrenWuffet], [0, 0])
@@ -349,9 +345,7 @@ describe("BarrenWuffet", () => {
         .withArgs(fundSubscriber, 0, ETH_ADDRESS, validDeposit);
 
       // this is a clean fund
-      await expect(crackBlockFund.marlieChunger.closeFund()).to.be.revertedWith(
-        "Only the fund manager can close a fund prematurely"
-      );
+      await expect(crackBlockFund.marlieChunger.closeFund()).to.be.revertedWith("pending positions");
       await expect(crackBlockFund.fairyLink.closeFund()).to.emit(crackBlockFund.fairyLink, "Closed");
     });
 
@@ -368,7 +362,7 @@ describe("BarrenWuffet", () => {
     it("should revert if ManagementFee withdrawal is attempted on a raising fund", async () => {
       const { jerkshireFund } = await raisingFundsFixture();
       await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
-      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("Fund not closed");
+      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("Not Closed");
     });
 
     it.skip("should return fund status as DEPLOYED once the fund is created, deadline has been hit (min collateral has to be met)", async () => {
@@ -469,7 +463,7 @@ describe("BarrenWuffet", () => {
       );
 
       await expect(jerkshireFund.subscriber.deposit(ETH_TOKEN, depositAmt, { value: depositAmt })).to.be.revertedWith(
-        "Fund is not raising"
+        "Not Raising"
       );
     });
 
@@ -482,7 +476,7 @@ describe("BarrenWuffet", () => {
     it("should revert if ManagementFee withdrawal is attempted on a deployed fund", async () => {
       const { jerkshireFund } = await deployedFundsFixture();
 
-      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("Fund not closed");
+      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("Not Closed");
     });
 
     describe("Manage rules", () => {
@@ -585,7 +579,7 @@ describe("BarrenWuffet", () => {
 
         const addAmt = [utils.parseEther("1")];
 
-        await expect(jerkshireFund.marlieChunger.addRuleCollateral(ruleIndex, [ETH_TOKEN], addAmt))
+        await expect(jerkshireFund.marlieChunger.addRuleCollateral(ruleIndex, [ETH_TOKEN], addAmt, [0]))
           .to.changeEtherBalances([jerkshireFund.x, rcInstance, marlieChunger], [addAmt[0].mul(-1), addAmt[0], 0])
           .emit(rcInstance, "CollateralAdded")
           .withArgs(ruleHash, addAmt);
@@ -606,7 +600,7 @@ describe("BarrenWuffet", () => {
           const { ruleIndex, ruleHash, rcInstance } = await createTwoRules(fixtureVars);
 
           const collateral = [utils.parseEther("0.6")];
-          await jerkshireFund.marlieChunger.addRuleCollateral(ruleIndex, [ETH_TOKEN], collateral);
+          await jerkshireFund.marlieChunger.addRuleCollateral(ruleIndex, [ETH_TOKEN], collateral, [0]);
 
           if (isActive) {
             await jerkshireFund.marlieChunger.activateRule(ruleIndex);
@@ -646,7 +640,7 @@ describe("BarrenWuffet", () => {
         const ruleFns = [
           () => jerkshireFund.fairyLink.activateRule(0),
           () => jerkshireFund.fairyLink.deactivateRule(0),
-          () => jerkshireFund.fairyLink.addRuleCollateral(0, [ETH_TOKEN], [utils.parseEther("1")]),
+          () => jerkshireFund.fairyLink.addRuleCollateral(0, [ETH_TOKEN], [utils.parseEther("1")], [0]),
           () => jerkshireFund.fairyLink.reduceRuleCollateral(0, [utils.parseEther("0.6")]),
           () => jerkshireFund.fairyLink.cancelRule(0),
         ];
@@ -663,11 +657,16 @@ describe("BarrenWuffet", () => {
       it("Should not allow anyone other than the fund manager to take action", async () => {
         const { jerkshireFund, swapETHToTST1Action } = await deployedFundsFixture();
         const etherToSwap = utils.parseEther("0.3");
+        // TODO param.fees missing
         await expect(
-          jerkshireFund.fairyLink.takeAction(swapETHToTST1Action, {
-            triggerReturnArr: [],
-            collaterals: [etherToSwap],
-          })
+          jerkshireFund.fairyLink.takeAction(
+            swapETHToTST1Action,
+            {
+              triggerReturnArr: [],
+              collaterals: [etherToSwap],
+            },
+            [0]
+          )
         ).to.be.revertedWithoutReason();
       });
 

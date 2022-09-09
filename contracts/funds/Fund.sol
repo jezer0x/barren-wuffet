@@ -374,6 +374,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
 
     function deposit(Token memory collateralToken, uint256 amountSent) external payable returns (uint256) {
         require(getStatus() == FundStatus.RAISING, "Not Raising");
+        return subStuff.deposit(assets, collateralToken, amountSent);
     }
 
     function getStatus() public view returns (FundStatus) {
