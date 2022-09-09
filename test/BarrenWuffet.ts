@@ -333,7 +333,7 @@ describe("BarrenWuffet", () => {
       const { barrenWuffet, jerkshireFund, crackBlockFund } = await raisingFundsFixture();
       // add some funds so we can confirm that even a fund with funds can be closed
       await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
-      await expect(jerkshireFund.fairyLink.closeFund()).to.be.revertedWith("pending positions");
+      await expect(jerkshireFund.fairyLink.closeFund()).to.be.revertedWith("onlyFundManager");
       const { fundSubscriber, marlieChunger } = await getNamedAccounts();
       await expect(jerkshireFund.marlieChunger.closeFund())
         .to.changeEtherBalances([marlieChunger, barrenWuffet], [0, 0])
@@ -345,7 +345,7 @@ describe("BarrenWuffet", () => {
         .withArgs(fundSubscriber, 0, ETH_ADDRESS, validDeposit);
 
       // this is a clean fund
-      await expect(crackBlockFund.marlieChunger.closeFund()).to.be.revertedWith("pending positions");
+      await expect(crackBlockFund.marlieChunger.closeFund()).to.be.revertedWith("onlyFundManager");
       await expect(crackBlockFund.fairyLink.closeFund()).to.emit(crackBlockFund.fairyLink, "Closed");
     });
 
@@ -357,7 +357,7 @@ describe("BarrenWuffet", () => {
           [makePassingTrigger(priceTrigger.address, testToken1)],
           [swapETHToTST1Action]
         )
-      ).be.revertedWithoutReason();
+      ).be.revertedWith("Not Deployed");
     });
     it("should revert if ManagementFee withdrawal is attempted on a raising fund", async () => {
       const { jerkshireFund } = await raisingFundsFixture();
@@ -506,7 +506,7 @@ describe("BarrenWuffet", () => {
       });
 
       //@ts-ignore
-      async function createTwoRules(_fixtureVars) {
+      async function createOneRule(_fixtureVars) {
         const { crackBlockFund, priceTrigger, jerkshireFund, testToken1, swapETHToTST1Action } = _fixtureVars;
 
         const roboCopAddr1 = await jerkshireFund.marlieChunger.roboCop();
@@ -523,21 +523,6 @@ describe("BarrenWuffet", () => {
           "ruleHash"
         );
 
-        const roboCopAddr2 = await jerkshireFund.marlieChunger.roboCop();
-        const roboCopInst2 = await ethers.getContractAt("RoboCop", roboCopAddr2);
-        // create the same rule in a different fund to confirm that we dont mix things up.
-        const ruleHash2 = await getHashFromEvent(
-          crackBlockFund.fairyLink.createRule(
-            [makePassingTrigger(priceTrigger.address, testToken1)],
-            [swapETHToTST1Action]
-          ),
-          "Created",
-          roboCopInst2,
-          "ruleHash"
-        );
-
-        expect(ruleHash).to.not.equal(ruleHash2);
-
         return {
           ruleIndex: 0,
           ruleHash: ruleHash,
@@ -548,7 +533,8 @@ describe("BarrenWuffet", () => {
         const fixtureVars = await deployedFundsFixture();
         const { barrenWuffet, jerkshireFund } = fixtureVars;
 
-        const { ruleIndex, ruleHash, rcInstance } = await createTwoRules(fixtureVars);
+        const { ruleIndex, ruleHash, rcInstance } = await createOneRule(fixtureVars);
+
         await expect(jerkshireFund.marlieChunger.activateRule(ruleIndex))
           .to.changeEtherBalances([jerkshireFund.x, rcInstance], [0, 0])
           .emit(rcInstance, "Activated")
@@ -575,7 +561,7 @@ describe("BarrenWuffet", () => {
         const { jerkshireFund } = fixtureVars;
         const { marlieChunger } = await getNamedAccounts();
 
-        const { ruleIndex, ruleHash, rcInstance } = await createTwoRules(fixtureVars);
+        const { ruleIndex, ruleHash, rcInstance } = await createOneRule(fixtureVars);
 
         const addAmt = [utils.parseEther("1")];
 
@@ -597,7 +583,7 @@ describe("BarrenWuffet", () => {
           const { marlieChunger } = await getNamedAccounts();
           const { jerkshireFund } = fixtureVars;
 
-          const { ruleIndex, ruleHash, rcInstance } = await createTwoRules(fixtureVars);
+          const { ruleIndex, ruleHash, rcInstance } = await createOneRule(fixtureVars);
 
           const collateral = [utils.parseEther("0.6")];
           await jerkshireFund.marlieChunger.addRuleCollateral(ruleIndex, [ETH_TOKEN], collateral, [0]);

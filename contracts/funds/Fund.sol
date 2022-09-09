@@ -120,7 +120,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     }
 
     modifier onlyDeployedFund() {
-        require(getStatus() == FundStatus.DEPLOYED);
+        require(getStatus() == FundStatus.DEPLOYED, "Not Deployed");
         _;
     }
 
@@ -442,7 +442,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     }
 
     function hasPendingPosition() public view returns (bool) {
-        return pendingPositions.length() == 0 && !roboCop.hasPendingPosition();
+        return pendingPositions.length() > 0 || roboCop.hasPendingPosition();
     }
 
     receive() external payable {}
