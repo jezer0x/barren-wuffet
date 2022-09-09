@@ -12,6 +12,7 @@ import {
   FUND_STATUS,
   PRICE_TRIGGER_DECIMALS,
   PRICE_TRIGGER_TYPE,
+  DEFAULT_SUB_TO_MAN_FEE_PCT,
 } from "./Constants";
 import {
   depositMaxCollateral,
@@ -40,7 +41,7 @@ async function makeSubConstraints() {
     maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
     deadline: latestTime + 86400,
     lockin: latestTime + 86400 * 10,
-    subscriberToManagerFeePercentage: 100,
+    allowedDepositToken: ETH_TOKEN,
   };
 }
 
@@ -54,7 +55,7 @@ describe("BarrenWuffet", () => {
     it("should allow anyone to create a fund and emit Created event with the fund hash", async () => {
       const { barrenWuffetMarlie } = await deployBarrenWuffetFixture();
       const validConstraints = await makeSubConstraints();
-      await expect(barrenWuffetMarlie.createFund("Fund1", validConstraints, []))
+      await expect(barrenWuffetMarlie.createFund("Fund1", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []))
         .to.emit(barrenWuffetMarlie, "Created")
         .withArgs(anyValue, anyValue);
     });
@@ -73,8 +74,8 @@ describe("BarrenWuffet", () => {
     it("should allow if the same user creates 2 funds with the same name", async () => {
       const { barrenWuffetMarlie } = await deployBarrenWuffetFixture();
       const validConstraints = await makeSubConstraints();
-      await barrenWuffetMarlie.createFund("Fund1", validConstraints, []);
-      await expect(barrenWuffetMarlie.createFund("Fund1", validConstraints, []))
+      await barrenWuffetMarlie.createFund("Fund1", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []);
+      await expect(barrenWuffetMarlie.createFund("Fund1", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []))
         .to.emit(barrenWuffetMarlie, "Created")
         .withArgs(anyValue, anyValue);
     });
@@ -82,8 +83,8 @@ describe("BarrenWuffet", () => {
     it("should allow the same user to create 2 funds with different names", async () => {
       const { barrenWuffetMarlie } = await deployBarrenWuffetFixture();
       const validConstraints = await makeSubConstraints();
-      await barrenWuffetMarlie.createFund("Jerkshire", validConstraints, []);
-      await expect(barrenWuffetMarlie.createFund("Clerkshire", validConstraints, []))
+      await barrenWuffetMarlie.createFund("Jerkshire", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []);
+      await expect(barrenWuffetMarlie.createFund("Clerkshire", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []))
         .to.emit(barrenWuffetMarlie, "Created")
         .withArgs(anyValue, anyValue);
     });
@@ -91,8 +92,8 @@ describe("BarrenWuffet", () => {
     it("should allow 2 different users to create funds with the same name", async () => {
       const { barrenWuffet, barrenWuffetMarlie, barrenWuffetFairy } = await deployBarrenWuffetFixture();
       const validConstraints = await makeSubConstraints();
-      await barrenWuffetMarlie.createFund("Jerkshire", validConstraints, []);
-      await expect(barrenWuffetFairy.createFund("Jerkshire", validConstraints, []))
+      await barrenWuffetMarlie.createFund("Jerkshire", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []);
+      await expect(barrenWuffetFairy.createFund("Jerkshire", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []))
         .to.emit(barrenWuffet, "Created")
         .withArgs(anyValue, anyValue);
     });
@@ -106,7 +107,7 @@ describe("BarrenWuffet", () => {
       const { marlieChunger } = await getNamedAccounts();
       const validConstraints = await makeSubConstraints();
       let fundAddr;
-      await expect(barrenWuffetMarlie.createFund("Jerkshire", validConstraints, []))
+      await expect(barrenWuffetMarlie.createFund("Jerkshire", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []))
         .to.emit(barrenWuffet, "Created")
         .withArgs(anyValue, (addr: string) => {
           fundAddr = addr;
@@ -127,7 +128,7 @@ describe("BarrenWuffet", () => {
       const validConstraints = await makeSubConstraints();
       const { marlieChunger } = await getNamedAccounts();
       let fundAddr;
-      await expect(barrenWuffetMarlie.createFund("Jerkshire", validConstraints, []))
+      await expect(barrenWuffetMarlie.createFund("Jerkshire", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []))
         .to.emit(barrenWuffet, "Created")
         .withArgs(anyValue, (addr: string) => {
           fundAddr = addr;
@@ -155,11 +156,11 @@ describe("BarrenWuffet", () => {
       maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
       deadline: latestTime + 86400,
       lockin: latestTime + 86400 * 10,
-      subscriberToManagerFeePercentage: 0,
+      allowedDepositToken: ETH_TOKEN,
     };
 
     const jerkshireAddr = await getAddressFromEvent(
-      barrenWuffetMarlie.createFund("Jerkshire Castaway", jerkshireConstraints, []),
+      barrenWuffetMarlie.createFund("Jerkshire Castaway", jerkshireConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []),
       "Created",
       barrenWuffet.address,
       1
@@ -182,10 +183,11 @@ describe("BarrenWuffet", () => {
       maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
       deadline: latestTime + 86400,
       lockin: latestTime + 86400 * 10,
-      subscriberToManagerFeePercentage: 10,
+      allowedDepositToken: ETH_TOKEN,
     };
+
     const crackBlockAddr = await getAddressFromEvent(
-      barrenWuffetFairy.createFund("CrackBlock", crackBlockConstraints, []),
+      barrenWuffetFairy.createFund("CrackBlock", crackBlockConstraints, 10, []),
       "Created",
       barrenWuffetFairy.address,
       1
