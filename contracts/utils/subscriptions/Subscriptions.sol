@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
-import "../Token.sol";
+import "../assets/TokenLib.sol";
 import "../Utils.sol";
-import "../AssetTracker.sol";
+import "../assets/AssetTracker.sol";
 
 library Subscriptions {
     using AssetTracker for AssetTracker.Assets;
+    using TokenLib for Token;
 
     event Deposit(address subscriber, uint256 subIdx, address token, uint256 balance);
     event Withdraw(address subscriber, uint256 subIdx, address token, uint256 balance);
@@ -50,7 +51,7 @@ library Subscriptions {
         uint256 remainingColalteralAmount = collateralAmount - platformFee;
         validateCollateral(subStuff, collateralToken, remainingColalteralAmount);
 
-        Utils._send(collateralToken, subStuff.platformFeeWallet, platformFee);
+        collateralToken.send(subStuff.platformFeeWallet, platformFee);
 
         Subscriptions.Subscription storage newSub = subStuff.subscriptions.push();
         newSub.subscriber = msg.sender;
@@ -104,9 +105,9 @@ library Subscriptions {
         Token memory collateralToken,
         uint256 collateralAmount
     ) public view returns (bool) {
-        require(equals(collateralToken, subStuff.constraints.allowedDepositToken));
+        require(collateralToken.equals(subStuff.constraints.allowedDepositToken));
 
-        if ((equals(collateralToken, Token({t: TokenType.NATIVE, addr: Constants.ETH})))) {
+        if ((collateralToken.equals(Token({t: TokenType.NATIVE, addr: Constants.ETH})))) {
             require(collateralAmount == msg.value);
         }
 
@@ -133,7 +134,7 @@ library Subscriptions {
         subscription.status = Subscriptions.Status.WITHDRAWN;
 
         emit Withdraw(msg.sender, subscriptionIdx, Constants.ETH, subscription.collateralAmount);
-        Utils._send(subStuff.constraints.allowedDepositToken, subscription.subscriber, subscription.collateralAmount);
+        subStuff.constraints.allowedDepositToken.send(subscription.subscriber, subscription.collateralAmount);
 
         Token[] memory tokens = new Token[](1);
         tokens[0] = subStuff.constraints.allowedDepositToken;
@@ -160,7 +161,7 @@ library Subscriptions {
                 getShares(subStuff, assets, subscriptionIdx, assets.tokens[i]) -
                 getManagementFeeShare(subStuff, assets, tokens[i]);
             emit Withdraw(msg.sender, subscriptionIdx, tokens[i].addr, balances[i]);
-            Utils._send(tokens[i], subscription.subscriber, balances[i]);
+            tokens[i].send(subscription.subscriber, balances[i]);
         }
         return (tokens, balances);
     }

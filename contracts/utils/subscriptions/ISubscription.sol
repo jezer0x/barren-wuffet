@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
-import "../Token.sol";
+import "../assets/TokenLib.sol";
 
 interface ISubscription {
     event Deposit(address subscriber, uint256 subIdx, address token, uint256 balance);
