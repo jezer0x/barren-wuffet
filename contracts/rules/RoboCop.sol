@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../utils/Utils.sol";
 import "../utils/Constants.sol";
-import "../utils/Token.sol";
+import "../utils/assets/TokenLib.sol";
 import "../actions/IAction.sol";
 import "../triggers/ITrigger.sol";
 import "./RuleTypes.sol";
@@ -20,6 +20,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract RoboCop is IRoboCop, Ownable, ReentrancyGuard, IERC721Receiver, Initializable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
+    using TokenLib for Token;
+
     // Storage Start
     mapping(bytes32 => Rule) rules;
     mapping(bytes32 => bytes32[]) public actionPositionsMap;
@@ -60,7 +62,7 @@ contract RoboCop is IRoboCop, Ownable, ReentrancyGuard, IERC721Receiver, Initial
         Token[] memory tokens = getOutputTokens(ruleHash);
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            Utils._send(tokens[i], owner(), rule.outputs[i]);
+            tokens[i].send(owner(), rule.outputs[i]);
         }
     }
 
@@ -77,7 +79,7 @@ contract RoboCop is IRoboCop, Ownable, ReentrancyGuard, IERC721Receiver, Initial
             if (tokens[i].t == TokenType.NATIVE) {
                 require(amount == msg.value, "ETH: amount != msg.value");
             } else {
-                Utils._receive(tokens[i], msg.sender, amount);
+                tokens[i].take(msg.sender, amount);
             }
 
             rule.collaterals[i] += amount;
@@ -97,7 +99,7 @@ contract RoboCop is IRoboCop, Ownable, ReentrancyGuard, IERC721Receiver, Initial
             amount = amounts[i];
             require(rule.collaterals[i] >= amount, "Not enough collateral.");
             rule.collaterals[i] -= amount;
-            Utils._send(tokens[i], msg.sender, amount);
+            tokens[i].send(msg.sender, amount);
         }
         emit CollateralReduced(ruleHash, amounts);
     }
@@ -143,7 +145,7 @@ contract RoboCop is IRoboCop, Ownable, ReentrancyGuard, IERC721Receiver, Initial
                 Token[] memory inputTokens = actions[i + 1].inputTokens;
                 Token[] memory outputTokens = actions[i].outputTokens;
                 for (uint256 j = 0; j < outputTokens.length; j++) {
-                    require(equals(outputTokens[j], inputTokens[j]), "Invalid inputTokens->outputTokens");
+                    require(outputTokens[j].equals(inputTokens[j]), "Invalid inputTokens->outputTokens");
                 }
             }
             rule.actions.push(actions[i]);
@@ -223,7 +225,7 @@ contract RoboCop is IRoboCop, Ownable, ReentrancyGuard, IERC721Receiver, Initial
     {
         for (uint256 j = 0; j < action.inputTokens.length; j++) {
             // ignore return value
-            approveToken(action.inputTokens[j], action.callee, runtimeParams.collaterals[j]);
+            action.inputTokens[j].approve(action.callee, runtimeParams.collaterals[j]);
         }
 
         Utils._closePosition(action, pendingPositions, actionPositionsMap);

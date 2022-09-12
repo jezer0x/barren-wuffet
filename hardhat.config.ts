@@ -28,6 +28,7 @@ const config: HardhatUserConfig = {
   },
   paths: {
     sources: "contracts",
+    deploy: "deploy/scripts",
   },
   gasReporter: {
     enabled: false,

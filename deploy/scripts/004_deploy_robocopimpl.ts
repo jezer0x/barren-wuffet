@@ -1,21 +1,23 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
-import { ethers } from "hardhat";
+import { getLibraries } from "../utils";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
 
   const { deployer } = await getNamedAccounts();
-  const roboCopImplementation = await ethers.getContract("RoboCop");
 
-  await deploy("RoboCopFactory", {
+  const { TokenLibAddr } = await getLibraries();
+
+  await deploy("RoboCop", {
     from: deployer,
-    args: [roboCopImplementation.address],
+    args: [],
     log: true,
+    libraries: { TokenLib: TokenLibAddr },
   });
 };
 
 export default func;
-func.tags = ["RoboCopFactory"];
-func.dependencies = ["RoboCopImplementation", "TestStubs"];
+func.tags = ["RoboCopImplementation"];
+func.dependencies = ["TestStubs", "Triggers", "Actions"];
