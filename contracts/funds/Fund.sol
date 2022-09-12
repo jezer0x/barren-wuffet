@@ -17,13 +17,14 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../utils/whitelists/WhitelistService.sol";
-import "../utils/AssetTracker.sol";
+import "../utils/assets/AssetTracker.sol";
 
 contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using AssetTracker for AssetTracker.Assets;
     using Subscriptions for Subscriptions.SubStuff;
+    using TokenLib for Token;
 
     // unique identifier for fund
     string name;
@@ -37,6 +38,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     IRoboCop public roboCop; // roboCop dedicated to this fund
     FeeParams feeParams;
     WhitelistService public wlService;
+    bytes32 triggerWhitelistHash;
     bytes32 actionWhitelistHash;
 
     // fund state that is modified over time
@@ -67,7 +69,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         manager = _manager;
 
         // For now we'll only allow subscribing with ETH
-        require(equals(_constraints.allowedDepositToken, Token({t: TokenType.NATIVE, addr: Constants.ETH})));
+        require(_constraints.allowedDepositToken.equals(Token({t: TokenType.NATIVE, addr: Constants.ETH})));
         subStuff.setConstraints(_constraints);
         subStuff.setSubscriptionFeeParams(
             _feeParams.subscriberToManagerFeePercentage,
@@ -87,10 +89,11 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
 
         // same action whitelist as RoboCop
         wlService = WhitelistService(_wlServiceAddr);
+        triggerWhitelistHash = _triggerWhitelistHash;
         actionWhitelistHash = _actionWhitelistHash;
 
         roboCop = IRoboCop(Clones.clone(roboCopImplementationAddr));
-        roboCop.initialize(_wlServiceAddr, _triggerWhitelistHash, _actionWhitelistHash, address(this));
+        roboCop.initialize(address(this));
     }
 
     function _onlyDeclaredTokens(Token[] memory tokens) internal view returns (bool) {
@@ -186,7 +189,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         for (uint256 i = 0; i < tokens.length; i++) {
             if (tokens[i].t == TokenType.ERC20 || tokens[i].t == TokenType.NATIVE) {
                 require(fees[i] >= ((collaterals[i] * feeParams.managerToPlatformFeePercentage) / 100_00));
-                Utils._send(tokens[i], feeParams.platformFeeWallet, fees[i]);
+                tokens[i].send(feeParams.platformFeeWallet, fees[i]);
             }
         }
     }
@@ -228,7 +231,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
             uint256 amount = runtimeParams.collaterals[i];
             assets.decreaseAsset(token, amount);
             // only 1 of these tokens should be ETH, so we can just overwrite
-            ethCollateral = approveToken(token, action.callee, amount);
+            ethCollateral = token.approve(action.callee, amount);
         }
 
         resp = Utils._delegatePerformAction(action, runtimeParams);
@@ -266,6 +269,12 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     }
 
     function _createRule(Trigger[] memory triggers, Action[] memory actions) internal returns (bytes32 ruleHash) {
+        for (uint256 i = 0; i < triggers.length; i++) {
+            require(wlService.isWhitelisted(triggerWhitelistHash, triggers[i].callee), "Unauthorized Trigger");
+        }
+        for (uint256 i = 0; i < actions.length; i++) {
+            require(wlService.isWhitelisted(actionWhitelistHash, actions[i].callee), "Unauthorized Action");
+        }
         for (uint256 i = 0; i < actions.length; i++) {
             require(_onlyDeclaredTokens(actions[i].outputTokens), "Unauthorized Token");
         }
@@ -311,7 +320,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
             Token memory token = collateralTokens[i];
             uint256 amount = collaterals[i];
             assets.decreaseAsset(token, amount);
-            ethCollateral = approveToken(token, address(roboCop), amount);
+            ethCollateral = token.approve(address(roboCop), amount);
         }
 
         roboCop.addCollateral{value: ethCollateral}(openRules[openRuleIdx], collaterals);
@@ -435,7 +444,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         for (uint256 i = 0; i < assets.tokens.length; i++) {
             tokens[i] = assets.tokens[i];
             balances[i] = subStuff.getManagementFeeShare(assets, tokens[i]);
-            Utils._send(tokens[i], manager, balances[i]);
+            tokens[i].send(manager, balances[i]);
         }
 
         return (tokens, balances);

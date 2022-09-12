@@ -1,7 +1,9 @@
 pragma solidity ^0.8.9;
-import "./Token.sol";
+import "./TokenLib.sol";
 
 library AssetTracker {
+    using TokenLib for Token;
+
     struct Assets {
         Token[] tokens; // tracking all the assets this fund has atm
         mapping(address => uint256) coinBalances; // tracking balances of ERC20 and ETH
@@ -50,7 +52,7 @@ library AssetTracker {
 
     function removeFromAssets(Assets storage assets, Token memory token) public {
         for (uint256 i = 0; i < assets.tokens.length; i++) {
-            if (equals(assets.tokens[i], token)) {
+            if (assets.tokens[i].equals(token)) {
                 assets.tokens[i] = assets.tokens[assets.tokens.length - 1];
                 assets.tokens.pop();
                 break;

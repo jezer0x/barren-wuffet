@@ -12,35 +12,19 @@ import "@openzeppelin/contracts/proxy/Clones.sol";
  * */
 contract RoboCopFactory is Ownable {
     event Created(address indexed roboCopAddr);
-    bytes32 triggerWhitelistHash;
-    bytes32 actionWhitelistHash;
-    address wlServiceAddr;
     address roboCopImplAddr;
 
-    constructor(
-        address _roboCopImplAddr,
-        address _wlServiceAddr,
-        bytes32 _triggerWhitelistHash,
-        bytes32 _actionWhitelistHash
-    ) {
-        configure(_roboCopImplAddr, _wlServiceAddr, _triggerWhitelistHash, _actionWhitelistHash);
+    constructor(address _roboCopImplAddr) {
+        configure(_roboCopImplAddr);
     }
 
-    function configure(
-        address _roboCopImplAddr,
-        address _wlServiceAddr,
-        bytes32 _triggerWhitelistHash,
-        bytes32 _actionWhitelistHash
-    ) public onlyOwner {
-        triggerWhitelistHash = _triggerWhitelistHash;
-        actionWhitelistHash = _actionWhitelistHash;
-        wlServiceAddr = _wlServiceAddr;
+    function configure(address _roboCopImplAddr) public onlyOwner {
         roboCopImplAddr = _roboCopImplAddr;
     }
 
     function createRoboCop() external {
         IRoboCop roboCop = IRoboCop(Clones.clone(roboCopImplAddr));
-        roboCop.initialize(wlServiceAddr, triggerWhitelistHash, actionWhitelistHash, msg.sender);
+        roboCop.initialize(msg.sender);
         emit Created(address(roboCop));
     }
 }

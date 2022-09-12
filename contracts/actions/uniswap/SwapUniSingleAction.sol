@@ -4,6 +4,7 @@ pragma solidity ^0.8.9;
 import "../IAction.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "../../utils/Constants.sol";
+import "../../utils/assets/TokenLib.sol";
 import "../DelegatePerform.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -23,6 +24,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 */
 contract SwapUniSingleAction is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
+    using TokenLib for Token;
 
     ISwapRouter immutable swapRouter;
     address immutable WETH9Addr;
@@ -39,7 +41,7 @@ contract SwapUniSingleAction is IAction, DelegatePerform {
         require(action.outputTokens.length == 1);
         require(action.outputTokens[0].t == TokenType.ERC20 || action.outputTokens[0].t == TokenType.NATIVE);
 
-        require(!equals(action.inputTokens[0], action.outputTokens[0]));
+        require(!action.inputTokens[0].equals(action.outputTokens[0]));
 
         return true;
     }
@@ -71,12 +73,12 @@ contract SwapUniSingleAction is IAction, DelegatePerform {
         Token memory outputToken;
         uint256 ethCollateral;
 
-        if (equals(action.inputTokens[0], Token({t: TokenType.NATIVE, addr: Constants.ETH}))) {
+        if (action.inputTokens[0].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH}))) {
             // if input is ETH, we need to set it to WETH and pass take not of what to send as msg.value
             inputToken = Token({t: TokenType.ERC20, addr: WETH9Addr});
             outputToken = action.outputTokens[0];
             ethCollateral = runtimeParams.collaterals[0];
-        } else if (equals(action.outputTokens[0], Token({t: TokenType.NATIVE, addr: Constants.ETH}))) {
+        } else if (action.outputTokens[0].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH}))) {
             // if output is ETH, we need to set it to WETH, and approve the input token amount for swapRouter
             inputToken = action.inputTokens[0];
             outputToken = Token({t: TokenType.ERC20, addr: WETH9Addr});

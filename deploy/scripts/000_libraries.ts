@@ -7,27 +7,24 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const { deployer } = await getNamedAccounts();
 
-  const AssetTrackerLib = await deploy("AssetTracker", { from: deployer, args: [], log: true });
-
-  const SubLib = await deploy("Subscriptions", {
+  const TokenLib = await deploy("TokenLib", { from: deployer, args: [], log: true });
+  const AssetTrackerLib = await deploy("AssetTracker", {
     from: deployer,
     args: [],
     log: true,
-    libraries: {
-      AssetTracker: AssetTrackerLib.address,
-    },
+    libraries: { TokenLib: TokenLib.address },
   });
 
-  await deploy("Fund", {
+  await deploy("Subscriptions", {
     from: deployer,
     args: [],
     log: true,
     libraries: {
-      Subscriptions: SubLib.address,
       AssetTracker: AssetTrackerLib.address,
+      TokenLib: TokenLib.address,
     },
   });
 };
 
 export default func;
-func.tags = ["FundImplementation"];
+func.tags = ["Libraries"];
