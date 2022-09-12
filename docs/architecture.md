@@ -1,6 +1,6 @@
 # Architecure
 
-![arch_diagram](./BW.drawio.png)
+![arch_diagram](./BW.drawio.svg)
 
 ## Barren Wuffet
 
