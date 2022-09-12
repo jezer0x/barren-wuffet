@@ -86,18 +86,12 @@ async function makeSubConstraints() {
 }
 
 export async function createRule(
-  _whitelistService: Contract,
-  trigWlHash: Bytes,
-  actWlHash: Bytes,
   _roboCop: Contract,
   triggers: TriggerStruct[],
   actions: ActionStruct[],
   wallet: SignerWithAddress,
   activate: boolean = false
 ): Promise<string> {
-  triggers.map((t) => _whitelistService.addToWhitelist(trigWlHash, t.callee));
-  actions.map((a) => _whitelistService.addToWhitelist(actWlHash, a.callee));
-
   const p = _roboCop.connect(wallet).createRule(triggers, actions, { value: DEFAULT_INCENTIVE });
   // send 1 eth as incentive.
   const ruleHash = getHashFromEvent(
@@ -174,8 +168,6 @@ export async function setupRoboCop(hre: HardhatRuntimeEnvironment) {
   const { testToken1, testToken2, WETH } = await setupTestTokens();
   const { testOracleEth, testOracleTst1, priceTrigger } = await setupEthToTst1PriceTrigger();
   const swapUniSingleAction = await setupSwapUniSingleAction(testToken1, WETH);
-  const { whitelistService, trigWlHash, actWlHash } = await getWhitelistService();
-
   const { ruleMaker, bot, deployer } = await hre.getNamedAccounts();
   const ruleMakerWallet = await ethers.getSigner(ruleMaker);
   const botWallet = await ethers.getSigner(bot);
@@ -203,9 +195,6 @@ export async function setupRoboCop(hre: HardhatRuntimeEnvironment) {
     testToken2,
     WETH,
     deployerWallet,
-    whitelistService,
-    trigWlHash,
-    actWlHash,
     ruleMakerWallet,
     botWallet,
   };

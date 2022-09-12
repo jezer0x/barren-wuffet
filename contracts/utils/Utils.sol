@@ -16,36 +16,6 @@ library Utils {
     event PositionCreated(bytes32 positionHash, Action precursorAction, Action[] nextActions);
     event PositionsClosed(Action closingAction, bytes32[] positionHashesClosed);
 
-    function _send(
-        Token memory token,
-        address receiver,
-        uint256 balance
-    ) internal {
-        if (token.t == TokenType.ERC20) {
-            IERC20(token.addr).safeTransfer(receiver, balance);
-        } else if (token.t == TokenType.NATIVE) {
-            payable(receiver).transfer(balance);
-        } else if (token.t == TokenType.ERC721) {
-            IERC721(token.addr).safeTransferFrom(address(this), receiver, balance);
-        } else {
-            revert("Wrong token type!");
-        }
-    }
-
-    function _receive(
-        Token memory token,
-        address sender,
-        uint256 amount
-    ) internal {
-        if (token.t == TokenType.ERC20) {
-            IERC20(token.addr).safeTransferFrom(sender, address(this), amount);
-        } else if (token.t == TokenType.ERC721) {
-            IERC721(token.addr).safeTransferFrom(sender, address(this), amount);
-        } else if (token.t != TokenType.NATIVE) {
-            revert("Wrong token type!");
-        }
-    }
-
     function _delegatePerformAction(Action memory action, ActionRuntimeParams memory runtimeParams)
         internal
         returns (ActionResponse memory)

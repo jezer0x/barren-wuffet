@@ -37,6 +37,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     IRoboCop public roboCop; // roboCop dedicated to this fund
     FeeParams feeParams;
     WhitelistService public wlService;
+    bytes32 triggerWhitelistHash;
     bytes32 actionWhitelistHash;
 
     // fund state that is modified over time
@@ -87,10 +88,11 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
 
         // same action whitelist as RoboCop
         wlService = WhitelistService(_wlServiceAddr);
+        triggerWhitelistHash = _triggerWhitelistHash;
         actionWhitelistHash = _actionWhitelistHash;
 
         roboCop = IRoboCop(Clones.clone(roboCopImplementationAddr));
-        roboCop.initialize(_wlServiceAddr, _triggerWhitelistHash, _actionWhitelistHash, address(this));
+        roboCop.initialize(address(this));
     }
 
     function _onlyDeclaredTokens(Token[] memory tokens) internal view returns (bool) {
@@ -266,6 +268,12 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     }
 
     function _createRule(Trigger[] memory triggers, Action[] memory actions) internal returns (bytes32 ruleHash) {
+        for (uint256 i = 0; i < triggers.length; i++) {
+            require(wlService.isWhitelisted(triggerWhitelistHash, triggers[i].callee), "Unauthorized Trigger");
+        }
+        for (uint256 i = 0; i < actions.length; i++) {
+            require(wlService.isWhitelisted(actionWhitelistHash, actions[i].callee), "Unauthorized Action");
+        }
         for (uint256 i = 0; i < actions.length; i++) {
             require(_onlyDeclaredTokens(actions[i].outputTokens), "Unauthorized Token");
         }

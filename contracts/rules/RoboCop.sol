@@ -11,7 +11,6 @@ import "../actions/IAction.sol";
 import "../triggers/ITrigger.sol";
 import "./RuleTypes.sol";
 import "./IRoboCop.sol";
-import "../utils/whitelists/WhitelistService.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -26,23 +25,10 @@ contract RoboCop is IRoboCop, Ownable, ReentrancyGuard, IERC721Receiver, Initial
     mapping(bytes32 => bytes32[]) public actionPositionsMap;
     EnumerableSet.Bytes32Set private pendingPositions;
     mapping(bytes32 => mapping(address => uint256)) public ruleIncentiveProviders;
-    bytes32 triggerWhitelistHash;
-    bytes32 actionWhitelistHash;
-    WhitelistService wlService;
     // Storage End
 
     modifier ruleExists(bytes32 ruleHash) {
         require(rules[ruleHash].status != RuleStatus.NULL, "Rule not found");
-        _;
-    }
-
-    modifier onlyWhitelist(Trigger[] calldata triggers, Action[] calldata actions) {
-        for (uint256 i = 0; i < triggers.length; i++) {
-            require(wlService.isWhitelisted(triggerWhitelistHash, triggers[i].callee), "Unauthorized Trigger");
-        }
-        for (uint256 i = 0; i < actions.length; i++) {
-            require(wlService.isWhitelisted(actionWhitelistHash, actions[i].callee), "Unauthorized Action");
-        }
         _;
     }
 
@@ -51,15 +37,7 @@ contract RoboCop is IRoboCop, Ownable, ReentrancyGuard, IERC721Receiver, Initial
         _disableInitializers();
     }
 
-    function initialize(
-        address wlServiceAddr,
-        bytes32 trigWlHash,
-        bytes32 actionWlHash,
-        address _newOwner
-    ) external nonReentrant initializer {
-        wlService = WhitelistService(wlServiceAddr);
-        triggerWhitelistHash = trigWlHash;
-        actionWhitelistHash = actionWlHash;
+    function initialize(address _newOwner) external nonReentrant initializer {
         _transferOwnership(_newOwner);
     }
 
@@ -148,7 +126,6 @@ contract RoboCop is IRoboCop, Ownable, ReentrancyGuard, IERC721Receiver, Initial
         payable
         nonReentrant
         onlyOwner
-        onlyWhitelist(triggers, actions)
         returns (bytes32)
     {
         bytes32 ruleHash = _getRuleHash(triggers, actions);

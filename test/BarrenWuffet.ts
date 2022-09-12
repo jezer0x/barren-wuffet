@@ -452,6 +452,10 @@ describe("BarrenWuffet", () => {
       return Object.values(depositObj[fund]).reduce((sum, current: BigNumber) => sum.add(current), BigNumber.from(0));
     }
 
+    it.skip("Should revert if trigger has not been whitelisted", async () => {});
+
+    it.skip("Should revert if action has not been whitelisted", async () => {});
+
     it("should revert if deposit is attempted on a deployed fund", async () => {
       const { jerkshireFund, jerkshireConstraints, deposits } = await deployedFundsFixture();
 
