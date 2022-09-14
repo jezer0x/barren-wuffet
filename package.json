@@ -31,11 +31,22 @@
   "dependencies": {
     "@chainlink/contracts": "^0.4.2",
     "@graphprotocol/graph-cli": "^0.33.1",
+    "@graphprotocol/graph-ts": "^0.27.0",
     "@graphprotocol/hardhat-graph": "^0.1.0-alpha.0",
     "@openzeppelin/contracts": "^4.7.1",
     "@openzeppelin/contracts-upgradeable": "^4.7.3",
     "@uniswap/v3-core": "ssh://github.com:Uniswap/v3-core#0.8",
     "@uniswap/v3-periphery": "ssh://github.com:Uniswap/v3-periphery#0.8",
     "istanbul-badges-readme": "^1.8.2"
+  },
+  "scripts": {
+    "graph-test": "graph test",
+    "graph-build": "cd ./subgraph && graph codegen",
+    "graph-codegen": "cd ./subgraph && graph build",
+    "graph-local": "docker-compose up",
+    "graph-local-clean": "docker-compose down -v && docker-compose rm -v && rm -rf data/ipfs data/postgres",
+    "create-local": "graph create --node http://127.0.0.1:8020 olympus-mons",
+    "deploy-local": "cd ./subgraph && graph deploy --ipfs http://127.0.0.1:5001 --node http://127.0.0.1:8020 olympus-mons",
+    "hardhat-local": "hardhat node --hostname 0.0.0.0"
   }
 }

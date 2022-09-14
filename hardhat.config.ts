@@ -1,4 +1,3 @@
-import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 
 import "@typechain/hardhat";
@@ -7,8 +6,9 @@ import "hardhat-deploy";
 import "solidity-coverage";
 import "hardhat-contract-sizer";
 import "hardhat-gas-reporter";
+import "@graphprotocol/hardhat-graph";
 
-const config: HardhatUserConfig = {
+const config = {
   solidity: {
     compilers: [
       {

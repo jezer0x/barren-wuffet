@@ -13,3 +13,9 @@ barren-wuffet-subgraph/
 cache
 artifacts
 
+# Subgraph
+./subgraph/generated
+./subgraph/build
+
+# Matchstick
+./subgraph/tests/.*

@@ -56,25 +56,23 @@ You can see further instructons for Surya at https://github.com/ConsenSys/surya.
 
 ### The Graph
 
+This section mostly follows: https://github.com/graphprotocol/hardhat-graph
+
 - yarn add @graphprotocol/graph-cli
-- from the root folder, `yarn graph init`. Follow defaults unless otherwise specified.
-  -- the folder should be called barren-wuffet-subgraph
-  -- contract name should be Barren Wuffet
-  -- Put in "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c" as the contract address.
-  -- When asked for the ABI, point to artifacts/contracts/fund/BarrenWuffet.sol/BarrenWuffet.json
-- from another terminal in the root folder, run `yarn hardhat node --hostname 0.0.0.0 --no-deploy`
-- change `mainnet` in `networks.json` to `localhost`
-- `cd barren-wuffet-subgraph` && `yarn build --network localhost`
+- yarn add @graphprotocol/graph-ts
+- yarn add @graphprotocol/hardhat-graph
+
+- yarn hardhat graph init --contract-name BarrenWuffet --address 0x3Aa5ebB10DC797CAC828524e59A333d0A371443c.
+- from another terminal in the root folder, run `yarn hardhat node --hostname 0.0.0.0`
+- change `hardhat` in `./subgraph/subgraph.yaml` to `localhost`
 - from root, `docker-compose up --force-recreate`
-- cd `barren-wuffet-subgraph`.
-- `yarn create-local BarrenWuffet`
-- `yarn deploy-local BarrenWuffet`
+- `yarn create-local`
+- `yarn deploy-local`
 - Run `yarn hardhat run deploy/testGraph.ts`
-- go to http://localhost:8000/subgraphs/name/BarrenWuffet and query with { exampleEntities }. You should see some data on the right hand side!
+- go to http://localhost:8000/subgraphs/name/barren-wuffet and query with { exampleEntities }. You should see some data on the right hand side!
 
 CLEANUP:
 
 - Close the hardhat node
-- Ctrl+C on the terminal running docker-compose
-- Delete the `data` folder created for IPFS and postgres (might have to use `sudo`).
+- `yarn graph-local-clean`
 - You also need to `--force-recreate` the next time you're doing `docker-compose up`
