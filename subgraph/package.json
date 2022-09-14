@@ -1,13 +1,13 @@
 {
-  "name": "olympus-mons",
+  "name": "barren-wuffet",
   "license": "UNLICENSED",
   "scripts": {
     "codegen": "graph codegen",
     "build": "graph build",
-    "deploy": "graph deploy --node https://api.studio.thegraph.com/deploy/ olympus-mons",
-    "create-local": "graph create --node http://localhost:8020/ olympus-mons",
-    "remove-local": "graph remove --node http://localhost:8020/ olympus-mons",
-    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 olympus-mons",
+    "deploy": "graph deploy --node https://api.studio.thegraph.com/deploy/ barren-wuffet",
+    "create-local": "graph create --node http://localhost:8020/ barren-wuffet",
+    "remove-local": "graph remove --node http://localhost:8020/ barren-wuffet",
+    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 barren-wuffet",
     "test": "graph test"
   },
   "dependencies": {

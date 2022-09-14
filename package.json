@@ -45,8 +45,8 @@
     "graph-codegen": "cd ./subgraph && graph build",
     "graph-local": "docker-compose up",
     "graph-local-clean": "docker-compose down -v && docker-compose rm -v && rm -rf data/ipfs data/postgres",
-    "create-local": "graph create --node http://127.0.0.1:8020 olympus-mons",
-    "deploy-local": "cd ./subgraph && graph deploy --ipfs http://127.0.0.1:5001 --node http://127.0.0.1:8020 olympus-mons",
+    "create-local": "graph create --node http://127.0.0.1:8020 barren-wuffet",
+    "deploy-local": "cd ./subgraph && graph deploy --ipfs http://127.0.0.1:5001 --node http://127.0.0.1:8020 barren-wuffet",
     "hardhat-local": "hardhat node --hostname 0.0.0.0"
   }
 }
