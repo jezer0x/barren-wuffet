@@ -11,44 +11,35 @@ import {
   BigDecimal
 } from "@graphprotocol/graph-ts";
 
-export class ExampleEntity extends Entity {
-  constructor(id: string) {
+export class Fund extends Entity {
+  constructor(id: Bytes) {
     super();
-    this.set("id", Value.fromString(id));
+    this.set("id", Value.fromBytes(id));
   }
 
   save(): void {
     let id = this.get("id");
-    assert(id != null, "Cannot save ExampleEntity entity without an ID");
+    assert(id != null, "Cannot save Fund entity without an ID");
     if (id) {
       assert(
-        id.kind == ValueKind.STRING,
-        `Entities of type ExampleEntity must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`
+        id.kind == ValueKind.BYTES,
+        `Entities of type Fund must have an ID of type Bytes but the id '${id.displayData()}' is of type ${id.displayKind()}`
       );
-      store.set("ExampleEntity", id.toString(), this);
+      store.set("Fund", id.toBytes().toHexString(), this);
     }
   }
 
-  static load(id: string): ExampleEntity | null {
-    return changetype<ExampleEntity | null>(store.get("ExampleEntity", id));
+  static load(id: Bytes): Fund | null {
+    return changetype<Fund | null>(store.get("Fund", id.toHexString()));
   }
 
-  get id(): string {
+  get id(): Bytes {
     let value = this.get("id");
-    return value!.toString();
+    return value!.toBytes();
   }
 
-  set id(value: string) {
-    this.set("id", Value.fromString(value));
-  }
-
-  get count(): BigInt {
-    let value = this.get("count");
-    return value!.toBigInt();
-  }
-
-  set count(value: BigInt) {
-    this.set("count", Value.fromBigInt(value));
+  set id(value: Bytes) {
+    this.set("id", Value.fromBytes(value));
   }
 
   get manager(): Bytes {
@@ -60,12 +51,20 @@ export class ExampleEntity extends Entity {
     this.set("manager", Value.fromBytes(value));
   }
 
-  get fundAddr(): Bytes {
-    let value = this.get("fundAddr");
-    return value!.toBytes();
+  get timestamp(): BigInt | null {
+    let value = this.get("timestamp");
+    if (!value || value.kind == ValueKind.NULL) {
+      return null;
+    } else {
+      return value.toBigInt();
+    }
   }
 
-  set fundAddr(value: Bytes) {
-    this.set("fundAddr", Value.fromBytes(value));
+  set timestamp(value: BigInt | null) {
+    if (!value) {
+      this.unset("timestamp");
+    } else {
+      this.set("timestamp", Value.fromBigInt(<BigInt>value));
+    }
   }
 }

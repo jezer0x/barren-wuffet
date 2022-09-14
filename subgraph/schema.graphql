@@ -1,6 +1,5 @@
-type ExampleEntity @entity {
-  id: ID!
-  count: BigInt!
-  manager: Bytes! # address
-  fundAddr: Bytes! # address
+type Fund @entity {
+  id: Bytes! #address of the cloned Fund
+  manager: Bytes! # address of the msg.sender who created the fund
+  timestamp: BigInt # block.timestamp for when the fund was created
 }

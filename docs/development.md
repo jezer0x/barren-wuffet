@@ -76,3 +76,10 @@ CLEANUP:
 - Close the hardhat node
 - `yarn graph-local-clean`
 - You also need to `--force-recreate` the next time you're doing `docker-compose up`
+
+MODIFYING:
+
+- We'll mainly work with `./subgraph/sceham.graphql` and `./subgraph/src/*.ts` files.
+- When you update the schema, run `yarn graph-build` to codegen the stuff inside `generate/`.
+- After this you can modify the stuff under `src/` to translate the event data to the graphql schema we defined.
+- When adding new data sources, we'll be touching the `subgraph.yml` files.
