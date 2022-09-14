@@ -464,6 +464,11 @@
     "@ethersproject/properties" "^5.6.0"
     "@ethersproject/strings" "^5.6.1"
 
+"@graphprotocol/hardhat-graph@^0.1.0-alpha.0":
+  version "0.1.0-alpha.0"
+  resolved "https://registry.yarnpkg.com/@graphprotocol/hardhat-graph/-/hardhat-graph-0.1.0-alpha.0.tgz#dce46fc3976ffdecf62a43f32a707fed31751ae2"
+  integrity sha512-m+IwMbFbt3pqCYxR/uHWJXzhfP/Iq3rjStcJaFxJ2Xgk2VDnoiLRon7KQORcDScqyEj8Qu9ooKGFLrkikInwNQ==
+
 "@jridgewell/resolve-uri@^3.0.3":
   version "3.1.0"
   resolved "https://registry.npmjs.org/@jridgewell/resolve-uri/-/resolve-uri-3.1.0.tgz"

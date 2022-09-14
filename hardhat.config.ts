@@ -17,6 +17,11 @@ const config: HardhatUserConfig = {
       },
     ],
   },
+  networks: {
+    localhost: {
+      url: "http://0.0.0.0:8545",
+    },
+  },
   namedAccounts: {
     deployer: 0,
     marlieChunger: 1,
