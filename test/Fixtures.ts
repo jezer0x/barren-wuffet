@@ -73,7 +73,7 @@ export function makeSwapAction(
 }
 
 async function makeSubConstraints() {
-  const latestTime = await time.latest();
+  const latestTime = 0;
   return {
     minCollateralPerSub: BigNumber.from(10).mul(ERC20_DECIMALS),
     maxCollateralPerSub: BigNumber.from(100).mul(ERC20_DECIMALS),

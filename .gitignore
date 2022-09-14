@@ -7,7 +7,7 @@ typechain
 typechain-types
 deployments/
 data/ 
-BarrenWuffetAPITest/
+barren-wuffet-subgraph/
 
 #Hardhat files
 cache

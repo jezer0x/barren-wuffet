@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@chainlink/contracts": "^0.4.2",
+    "@graphprotocol/graph-cli": "^0.33.1",
     "@graphprotocol/hardhat-graph": "^0.1.0-alpha.0",
     "@openzeppelin/contracts": "^4.7.1",
     "@openzeppelin/contracts-upgradeable": "^4.7.3",
