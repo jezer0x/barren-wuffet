@@ -67,4 +67,13 @@ export class Fund extends Entity {
       this.set("timestamp", Value.fromBigInt(<BigInt>value));
     }
   }
+
+  get closed(): boolean {
+    let value = this.get("closed");
+    return value!.toBoolean();
+  }
+
+  set closed(value: boolean) {
+    this.set("closed", Value.fromBoolean(value));
+  }
 }

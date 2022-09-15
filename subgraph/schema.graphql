@@ -2,4 +2,5 @@ type Fund @entity {
   id: Bytes! #address of the cloned Fund
   manager: Bytes! # address of the msg.sender who created the fund
   timestamp: BigInt # block.timestamp for when the fund was created
+  closed: Boolean # indicates whether the fund is closed
 }

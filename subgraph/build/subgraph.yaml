@@ -13,10 +13,7 @@ dataSources:
       apiVersion: 0.0.6
       language: wasm/assemblyscript
       entities:
-        - Created
-        - OwnershipTransferred
-        - Paused
-        - Unpaused
+        - Fund
       abis:
         - name: BarrenWuffet
           file: BarrenWuffet/abis/BarrenWuffet.json
@@ -30,3 +27,28 @@ dataSources:
         - event: Unpaused(address)
           handler: handleUnpaused
       file: BarrenWuffet/BarrenWuffet.wasm
+templates:
+  - name: Fund
+    kind: ethereum
+    network: localhost
+    source:
+      abi: Fund
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.6
+      language: wasm/assemblyscript
+      file: templates/Fund/Fund.wasm
+      entities:
+        - Fund
+      abis:
+        - name: Fund
+          file: Fund/abis/Fund.json
+      eventHandlers:
+        - event: Closed(indexed address)
+          handler: handleClosed
+        - event: Deposit(address,uint256,address,uint256)
+          handler: handleDeposit
+        - event: Initialized(uint8)
+          handler: handleInitialized
+        - event: Withdraw(address,uint256,address,uint256)
+          handler: handleWithdraw
