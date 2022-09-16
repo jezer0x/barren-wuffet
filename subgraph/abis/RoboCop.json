@@ -1,0 +1,589 @@
+[
+  { "inputs": [], "stateMutability": "nonpayable", "type": "constructor" },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "ruleHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "Activated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "ruleHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256[]",
+        "name": "amounts",
+        "type": "uint256[]"
+      }
+    ],
+    "name": "CollateralAdded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "ruleHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256[]",
+        "name": "amounts",
+        "type": "uint256[]"
+      }
+    ],
+    "name": "CollateralReduced",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "ruleHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "Created",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "ruleHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "Deactivated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "ruleHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "executor",
+        "type": "address"
+      }
+    ],
+    "name": "Executed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "version",
+        "type": "uint8"
+      }
+    ],
+    "name": "Initialized",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previousOwner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnershipTransferred",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "positionHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes",
+        "name": "precursorAction",
+        "type": "bytes"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes",
+        "name": "nextActions",
+        "type": "bytes"
+      }
+    ],
+    "name": "PositionCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "bytes",
+        "name": "closingAction",
+        "type": "bytes"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32[]",
+        "name": "positionHashesClosed",
+        "type": "bytes32[]"
+      }
+    ],
+    "name": "PositionsClosed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "ruleHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "Redeemed",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          { "internalType": "address", "name": "callee", "type": "address" },
+          { "internalType": "bytes", "name": "data", "type": "bytes" },
+          {
+            "components": [
+              {
+                "internalType": "enum TokenType",
+                "name": "t",
+                "type": "uint8"
+              },
+              { "internalType": "address", "name": "addr", "type": "address" }
+            ],
+            "internalType": "struct Token[]",
+            "name": "inputTokens",
+            "type": "tuple[]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "enum TokenType",
+                "name": "t",
+                "type": "uint8"
+              },
+              { "internalType": "address", "name": "addr", "type": "address" }
+            ],
+            "internalType": "struct Token[]",
+            "name": "outputTokens",
+            "type": "tuple[]"
+          }
+        ],
+        "internalType": "struct Action",
+        "name": "action",
+        "type": "tuple"
+      }
+    ],
+    "name": "actionClosesPendingPosition",
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "bytes32", "name": "", "type": "bytes32" },
+      { "internalType": "uint256", "name": "", "type": "uint256" }
+    ],
+    "name": "actionPositionsMap",
+    "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "bytes32", "name": "ruleHash", "type": "bytes32" }
+    ],
+    "name": "activateRule",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "bytes32", "name": "ruleHash", "type": "bytes32" },
+      { "internalType": "uint256[]", "name": "amounts", "type": "uint256[]" }
+    ],
+    "name": "addCollateral",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "bytes32", "name": "ruleHash", "type": "bytes32" }
+    ],
+    "name": "checkRule",
+    "outputs": [{ "internalType": "bool", "name": "valid", "type": "bool" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          { "internalType": "address", "name": "callee", "type": "address" },
+          {
+            "internalType": "enum TriggerType",
+            "name": "triggerType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes",
+            "name": "createTimeParams",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct Trigger[]",
+        "name": "triggers",
+        "type": "tuple[]"
+      },
+      {
+        "components": [
+          { "internalType": "address", "name": "callee", "type": "address" },
+          { "internalType": "bytes", "name": "data", "type": "bytes" },
+          {
+            "components": [
+              {
+                "internalType": "enum TokenType",
+                "name": "t",
+                "type": "uint8"
+              },
+              { "internalType": "address", "name": "addr", "type": "address" }
+            ],
+            "internalType": "struct Token[]",
+            "name": "inputTokens",
+            "type": "tuple[]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "enum TokenType",
+                "name": "t",
+                "type": "uint8"
+              },
+              { "internalType": "address", "name": "addr", "type": "address" }
+            ],
+            "internalType": "struct Token[]",
+            "name": "outputTokens",
+            "type": "tuple[]"
+          }
+        ],
+        "internalType": "struct Action[]",
+        "name": "actions",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "createRule",
+    "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "bytes32", "name": "ruleHash", "type": "bytes32" }
+    ],
+    "name": "deactivateRule",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "bytes32", "name": "ruleHash", "type": "bytes32" }
+    ],
+    "name": "executeRule",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "bytes32", "name": "ruleHash", "type": "bytes32" }
+    ],
+    "name": "getInputTokens",
+    "outputs": [
+      {
+        "components": [
+          { "internalType": "enum TokenType", "name": "t", "type": "uint8" },
+          { "internalType": "address", "name": "addr", "type": "address" }
+        ],
+        "internalType": "struct Token[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "bytes32", "name": "ruleHash", "type": "bytes32" }
+    ],
+    "name": "getOutputTokens",
+    "outputs": [
+      {
+        "components": [
+          { "internalType": "enum TokenType", "name": "t", "type": "uint8" },
+          { "internalType": "address", "name": "addr", "type": "address" }
+        ],
+        "internalType": "struct Token[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "bytes32", "name": "ruleHash", "type": "bytes32" }
+    ],
+    "name": "getRule",
+    "outputs": [
+      {
+        "components": [
+          {
+            "components": [
+              {
+                "internalType": "address",
+                "name": "callee",
+                "type": "address"
+              },
+              {
+                "internalType": "enum TriggerType",
+                "name": "triggerType",
+                "type": "uint8"
+              },
+              {
+                "internalType": "bytes",
+                "name": "createTimeParams",
+                "type": "bytes"
+              }
+            ],
+            "internalType": "struct Trigger[]",
+            "name": "triggers",
+            "type": "tuple[]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "address",
+                "name": "callee",
+                "type": "address"
+              },
+              { "internalType": "bytes", "name": "data", "type": "bytes" },
+              {
+                "components": [
+                  {
+                    "internalType": "enum TokenType",
+                    "name": "t",
+                    "type": "uint8"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "addr",
+                    "type": "address"
+                  }
+                ],
+                "internalType": "struct Token[]",
+                "name": "inputTokens",
+                "type": "tuple[]"
+              },
+              {
+                "components": [
+                  {
+                    "internalType": "enum TokenType",
+                    "name": "t",
+                    "type": "uint8"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "addr",
+                    "type": "address"
+                  }
+                ],
+                "internalType": "struct Token[]",
+                "name": "outputTokens",
+                "type": "tuple[]"
+              }
+            ],
+            "internalType": "struct Action[]",
+            "name": "actions",
+            "type": "tuple[]"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "collaterals",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "enum RuleStatus",
+            "name": "status",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "outputs",
+            "type": "uint256[]"
+          },
+          { "internalType": "uint256", "name": "incentive", "type": "uint256" }
+        ],
+        "internalType": "struct Rule",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "hasPendingPosition",
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "bytes32", "name": "ruleHash", "type": "bytes32" }
+    ],
+    "name": "increaseIncentive",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "_newOwner", "type": "address" }
+    ],
+    "name": "initialize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "", "type": "address" },
+      { "internalType": "address", "name": "", "type": "address" },
+      { "internalType": "uint256", "name": "", "type": "uint256" },
+      { "internalType": "bytes", "name": "", "type": "bytes" }
+    ],
+    "name": "onERC721Received",
+    "outputs": [{ "internalType": "bytes4", "name": "", "type": "bytes4" }],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "bytes32", "name": "ruleHash", "type": "bytes32" }
+    ],
+    "name": "redeemBalance",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "bytes32", "name": "ruleHash", "type": "bytes32" },
+      { "internalType": "uint256[]", "name": "amounts", "type": "uint256[]" }
+    ],
+    "name": "reduceCollateral",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "renounceOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "bytes32", "name": "", "type": "bytes32" },
+      { "internalType": "address", "name": "", "type": "address" }
+    ],
+    "name": "ruleIncentiveProviders",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "newOwner", "type": "address" }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "bytes32", "name": "ruleHash", "type": "bytes32" }
+    ],
+    "name": "withdrawIncentive",
+    "outputs": [
+      { "internalType": "uint256", "name": "balance", "type": "uint256" }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  { "stateMutability": "payable", "type": "receive" }
+]
