@@ -18,7 +18,16 @@ export function handleClosed(event: ClosedEvent): void {
   entity.save();
 }
 
-export function handleDeposit(event: DepositEvent): void {}
+export function handleDeposit(event: DepositEvent): void {
+  let entity = Fund.load(event.address);
+
+  if (!entity) {
+    throw Error;
+  }
+
+  entity.subscribers.push(event.params.subscriber);
+  entity.save();
+}
 
 export function handleExecuted(event: ExecutedEvent): void {
   let entity = Fund.load(event.address);
