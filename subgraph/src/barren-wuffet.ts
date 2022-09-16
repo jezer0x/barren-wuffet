@@ -1,5 +1,4 @@
-import { BigInt } from "@graphprotocol/graph-ts";
-import { BarrenWuffet, Created, OwnershipTransferred, Paused, Unpaused } from "../generated/BarrenWuffet/BarrenWuffet";
+import { Created, OwnershipTransferred, Paused, Unpaused } from "../generated/BarrenWuffet/BarrenWuffet";
 import { Fund as FundEntity } from "../generated/schema";
 import { Fund as FundTemplate } from "../generated/templates";
 

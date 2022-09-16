@@ -10,7 +10,6 @@ import {
 } from "../generated/templates/Fund/Fund";
 import { Fund, Position } from "../generated/schema";
 import { RoboCop } from "../generated/templates";
-import { ethereum } from "@graphprotocol/graph-ts";
 
 export function handleClosed(event: ClosedEvent): void {
   let entity = Fund.load(event.address);
