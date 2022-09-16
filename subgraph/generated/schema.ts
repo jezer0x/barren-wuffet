@@ -51,8 +51,17 @@ export class Fund extends Entity {
     this.set("manager", Value.fromBytes(value));
   }
 
-  get timestamp(): BigInt | null {
-    let value = this.get("timestamp");
+  get creation_timestamp(): BigInt {
+    let value = this.get("creation_timestamp");
+    return value!.toBigInt();
+  }
+
+  set creation_timestamp(value: BigInt) {
+    this.set("creation_timestamp", Value.fromBigInt(value));
+  }
+
+  get closed_timestamp(): BigInt | null {
+    let value = this.get("closed_timestamp");
     if (!value || value.kind == ValueKind.NULL) {
       return null;
     } else {
@@ -60,20 +69,97 @@ export class Fund extends Entity {
     }
   }
 
-  set timestamp(value: BigInt | null) {
+  set closed_timestamp(value: BigInt | null) {
     if (!value) {
-      this.unset("timestamp");
+      this.unset("closed_timestamp");
     } else {
-      this.set("timestamp", Value.fromBigInt(<BigInt>value));
+      this.set("closed_timestamp", Value.fromBigInt(<BigInt>value));
     }
   }
 
-  get closed(): boolean {
-    let value = this.get("closed");
-    return value!.toBoolean();
+  get subscribers(): Array<Bytes> {
+    let value = this.get("subscribers");
+    return value!.toBytesArray();
   }
 
-  set closed(value: boolean) {
-    this.set("closed", Value.fromBoolean(value));
+  set subscribers(value: Array<Bytes>) {
+    this.set("subscribers", Value.fromBytesArray(value));
+  }
+
+  get actions(): Array<Bytes> {
+    let value = this.get("actions");
+    return value!.toBytesArray();
+  }
+
+  set actions(value: Array<Bytes>) {
+    this.set("actions", Value.fromBytesArray(value));
+  }
+
+  get rules(): Array<Bytes> {
+    let value = this.get("rules");
+    return value!.toBytesArray();
+  }
+
+  set rules(value: Array<Bytes>) {
+    this.set("rules", Value.fromBytesArray(value));
+  }
+
+  get fund_pending_positions(): Array<Bytes> {
+    let value = this.get("fund_pending_positions");
+    return value!.toBytesArray();
+  }
+
+  set fund_pending_positions(value: Array<Bytes>) {
+    this.set("fund_pending_positions", Value.fromBytesArray(value));
+  }
+
+  get robocop_pending_positions(): Array<Bytes> {
+    let value = this.get("robocop_pending_positions");
+    return value!.toBytesArray();
+  }
+
+  set robocop_pending_positions(value: Array<Bytes>) {
+    this.set("robocop_pending_positions", Value.fromBytesArray(value));
+  }
+}
+
+export class Position extends Entity {
+  constructor(id: Bytes) {
+    super();
+    this.set("id", Value.fromBytes(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(id != null, "Cannot save Position entity without an ID");
+    if (id) {
+      assert(
+        id.kind == ValueKind.BYTES,
+        `Entities of type Position must have an ID of type Bytes but the id '${id.displayData()}' is of type ${id.displayKind()}`
+      );
+      store.set("Position", id.toBytes().toHexString(), this);
+    }
+  }
+
+  static load(id: Bytes): Position | null {
+    return changetype<Position | null>(store.get("Position", id.toHexString()));
+  }
+
+  get id(): Bytes {
+    let value = this.get("id");
+    return value!.toBytes();
+  }
+
+  set id(value: Bytes) {
+    this.set("id", Value.fromBytes(value));
+  }
+
+  get next_actions(): Array<Bytes> {
+    let value = this.get("next_actions");
+    return value!.toBytesArray();
+  }
+
+  set next_actions(value: Array<Bytes>) {
+    this.set("next_actions", Value.fromBytesArray(value));
   }
 }

@@ -13,7 +13,7 @@ export function handleClosed(event: ClosedEvent): void {
     throw Error;
   }
 
-  entity.closed = true;
+  entity.closed_timestamp = event.block.timestamp;
   entity.save();
 }
 
