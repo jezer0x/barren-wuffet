@@ -94,6 +94,54 @@ export class Initialized__Params {
   }
 }
 
+export class PositionCreated extends ethereum.Event {
+  get params(): PositionCreated__Params {
+    return new PositionCreated__Params(this);
+  }
+}
+
+export class PositionCreated__Params {
+  _event: PositionCreated;
+
+  constructor(event: PositionCreated) {
+    this._event = event;
+  }
+
+  get positionHash(): Bytes {
+    return this._event.parameters[0].value.toBytes();
+  }
+
+  get precursorAction(): Bytes {
+    return this._event.parameters[1].value.toBytes();
+  }
+
+  get nextActions(): Bytes {
+    return this._event.parameters[2].value.toBytes();
+  }
+}
+
+export class PositionsClosed extends ethereum.Event {
+  get params(): PositionsClosed__Params {
+    return new PositionsClosed__Params(this);
+  }
+}
+
+export class PositionsClosed__Params {
+  _event: PositionsClosed;
+
+  constructor(event: PositionsClosed) {
+    this._event = event;
+  }
+
+  get closingAction(): Bytes {
+    return this._event.parameters[0].value.toBytes();
+  }
+
+  get positionHashesClosed(): Array<Bytes> {
+    return this._event.parameters[1].value.toBytesArray();
+  }
+}
+
 export class Withdraw extends ethereum.Event {
   get params(): Withdraw__Params {
     return new Withdraw__Params(this);
@@ -560,7 +608,7 @@ export class Fund__takeActionToClosePositionInputRuntimeParamsTriggerReturnArrSt
   }
 }
 
-export class Fund__withdrawResultValue0Struct extends ethereum.Tuple {
+export class Fund__withdrawResultTokensStruct extends ethereum.Tuple {
   get t(): i32 {
     return this[0].toI32();
   }
@@ -571,11 +619,11 @@ export class Fund__withdrawResultValue0Struct extends ethereum.Tuple {
 }
 
 export class Fund__withdrawResult {
-  value0: Array<Fund__withdrawResultValue0Struct>;
+  value0: Array<Fund__withdrawResultTokensStruct>;
   value1: Array<BigInt>;
 
   constructor(
-    value0: Array<Fund__withdrawResultValue0Struct>,
+    value0: Array<Fund__withdrawResultTokensStruct>,
     value1: Array<BigInt>
   ) {
     this.value0 = value0;
@@ -589,11 +637,11 @@ export class Fund__withdrawResult {
     return map;
   }
 
-  getValue0(): Array<Fund__withdrawResultValue0Struct> {
+  getTokens(): Array<Fund__withdrawResultTokensStruct> {
     return this.value0;
   }
 
-  getValue1(): Array<BigInt> {
+  getBalances(): Array<BigInt> {
     return this.value1;
   }
 }
@@ -994,7 +1042,7 @@ export class Fund extends ethereum.SmartContract {
     );
 
     return new Fund__withdrawResult(
-      result[0].toTupleArray<Fund__withdrawResultValue0Struct>(),
+      result[0].toTupleArray<Fund__withdrawResultTokensStruct>(),
       result[1].toBigIntArray()
     );
   }
@@ -1013,7 +1061,7 @@ export class Fund extends ethereum.SmartContract {
     let value = result.value;
     return ethereum.CallResult.fromValue(
       new Fund__withdrawResult(
-        value[0].toTupleArray<Fund__withdrawResultValue0Struct>(),
+        value[0].toTupleArray<Fund__withdrawResultTokensStruct>(),
         value[1].toBigIntArray()
       )
     );
@@ -1475,7 +1523,7 @@ export class DepositCall__Outputs {
     this._call = call;
   }
 
-  get value0(): BigInt {
+  get idx(): BigInt {
     return this._call.outputValues[0].value.toBigInt();
   }
 }
@@ -2147,18 +2195,18 @@ export class WithdrawCall__Outputs {
     this._call = call;
   }
 
-  get value0(): Array<WithdrawCallValue0Struct> {
+  get tokens(): Array<WithdrawCallTokensStruct> {
     return this._call.outputValues[0].value.toTupleArray<
-      WithdrawCallValue0Struct
+      WithdrawCallTokensStruct
     >();
   }
 
-  get value1(): Array<BigInt> {
+  get balances(): Array<BigInt> {
     return this._call.outputValues[1].value.toBigIntArray();
   }
 }
 
-export class WithdrawCallValue0Struct extends ethereum.Tuple {
+export class WithdrawCallTokensStruct extends ethereum.Tuple {
   get t(): i32 {
     return this[0].toI32();
   }

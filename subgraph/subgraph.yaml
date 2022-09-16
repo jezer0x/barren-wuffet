@@ -27,3 +27,34 @@ dataSources:
         - event: Unpaused(address)
           handler: handleUnpaused
       file: ./src/barren-wuffet.ts
+templates:
+  - kind: ethereum
+    name: Fund
+    network: localhost
+    source:
+      abi: Fund
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.6
+      language: wasm/assemblyscript
+      entities:
+        - Fund
+      abis:
+        - name: Fund
+          file: ./abis/Fund.json
+      eventHandlers:
+        - event: Closed(indexed address)
+          handler: handleClosed
+        - event: Deposit(address,uint256,address,uint256)
+          handler: handleDeposit
+        - event: Executed(bytes)
+          handler: handleExecuted
+        - event: Initialized(uint8)
+          handler: handleInitialized
+        - event: PositionCreated(bytes32,bytes,bytes)
+          handler: handlePositionCreated
+        - event: PositionsClosed(bytes,bytes32[])
+          handler: handlePositionsClosed
+        - event: Withdraw(address,uint256,address,uint256)
+          handler: handleWithdraw
+      file: ./src/fund.ts

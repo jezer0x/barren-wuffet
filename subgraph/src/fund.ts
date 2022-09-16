@@ -3,6 +3,8 @@ import {
   Deposit as DepositEvent,
   Executed as ExecutedEvent,
   Initialized as InitializedEvent,
+  PositionCreated as PositionCreatedEvent,
+  PositionsClosed as PositionsClosedEvent,
   Withdraw as WithdrawEvent,
 } from "../generated/templates/Fund/Fund";
 import { Fund } from "../generated/schema";
@@ -41,5 +43,9 @@ export function handleExecuted(event: ExecutedEvent): void {
 }
 
 export function handleInitialized(event: InitializedEvent): void {}
+
+export function handlePositionCreated(event: PositionCreatedEvent): void {}
+
+export function handlePositionsClosed(event: PositionsClosedEvent): void {}
 
 export function handleWithdraw(event: WithdrawEvent): void {}

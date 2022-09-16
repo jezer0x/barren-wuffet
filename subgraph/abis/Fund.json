@@ -80,76 +80,16 @@
         "type": "bytes32"
       },
       {
-        "components": [
-          { "internalType": "address", "name": "callee", "type": "address" },
-          { "internalType": "bytes", "name": "data", "type": "bytes" },
-          {
-            "components": [
-              {
-                "internalType": "enum TokenType",
-                "name": "t",
-                "type": "uint8"
-              },
-              { "internalType": "address", "name": "addr", "type": "address" }
-            ],
-            "internalType": "struct Token[]",
-            "name": "inputTokens",
-            "type": "tuple[]"
-          },
-          {
-            "components": [
-              {
-                "internalType": "enum TokenType",
-                "name": "t",
-                "type": "uint8"
-              },
-              { "internalType": "address", "name": "addr", "type": "address" }
-            ],
-            "internalType": "struct Token[]",
-            "name": "outputTokens",
-            "type": "tuple[]"
-          }
-        ],
         "indexed": false,
-        "internalType": "struct Action",
+        "internalType": "bytes",
         "name": "precursorAction",
-        "type": "tuple"
+        "type": "bytes"
       },
       {
-        "components": [
-          { "internalType": "address", "name": "callee", "type": "address" },
-          { "internalType": "bytes", "name": "data", "type": "bytes" },
-          {
-            "components": [
-              {
-                "internalType": "enum TokenType",
-                "name": "t",
-                "type": "uint8"
-              },
-              { "internalType": "address", "name": "addr", "type": "address" }
-            ],
-            "internalType": "struct Token[]",
-            "name": "inputTokens",
-            "type": "tuple[]"
-          },
-          {
-            "components": [
-              {
-                "internalType": "enum TokenType",
-                "name": "t",
-                "type": "uint8"
-              },
-              { "internalType": "address", "name": "addr", "type": "address" }
-            ],
-            "internalType": "struct Token[]",
-            "name": "outputTokens",
-            "type": "tuple[]"
-          }
-        ],
         "indexed": false,
-        "internalType": "struct Action[]",
+        "internalType": "bytes",
         "name": "nextActions",
-        "type": "tuple[]"
+        "type": "bytes"
       }
     ],
     "name": "PositionCreated",
@@ -159,40 +99,10 @@
     "anonymous": false,
     "inputs": [
       {
-        "components": [
-          { "internalType": "address", "name": "callee", "type": "address" },
-          { "internalType": "bytes", "name": "data", "type": "bytes" },
-          {
-            "components": [
-              {
-                "internalType": "enum TokenType",
-                "name": "t",
-                "type": "uint8"
-              },
-              { "internalType": "address", "name": "addr", "type": "address" }
-            ],
-            "internalType": "struct Token[]",
-            "name": "inputTokens",
-            "type": "tuple[]"
-          },
-          {
-            "components": [
-              {
-                "internalType": "enum TokenType",
-                "name": "t",
-                "type": "uint8"
-              },
-              { "internalType": "address", "name": "addr", "type": "address" }
-            ],
-            "internalType": "struct Token[]",
-            "name": "outputTokens",
-            "type": "tuple[]"
-          }
-        ],
         "indexed": false,
-        "internalType": "struct Action",
+        "internalType": "bytes",
         "name": "closingAction",
-        "type": "tuple"
+        "type": "bytes"
       },
       {
         "indexed": false,

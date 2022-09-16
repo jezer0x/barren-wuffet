@@ -5,6 +5,8 @@ import {
   Deposit,
   Executed,
   Initialized,
+  PositionCreated,
+  PositionsClosed,
   Withdraw
 } from "../generated/Fund/Fund"
 
@@ -52,13 +54,13 @@ export function createDepositEvent(
   return depositEvent
 }
 
-export function createExecutedEvent(param0: Bytes): Executed {
+export function createExecutedEvent(action: Bytes): Executed {
   let executedEvent = changetype<Executed>(newMockEvent())
 
   executedEvent.parameters = new Array()
 
   executedEvent.parameters.push(
-    new ethereum.EventParam("param0", ethereum.Value.fromBytes(param0))
+    new ethereum.EventParam("action", ethereum.Value.fromBytes(action))
   )
 
   return executedEvent
@@ -77,6 +79,61 @@ export function createInitializedEvent(version: i32): Initialized {
   )
 
   return initializedEvent
+}
+
+export function createPositionCreatedEvent(
+  positionHash: Bytes,
+  precursorAction: Bytes,
+  nextActions: Bytes
+): PositionCreated {
+  let positionCreatedEvent = changetype<PositionCreated>(newMockEvent())
+
+  positionCreatedEvent.parameters = new Array()
+
+  positionCreatedEvent.parameters.push(
+    new ethereum.EventParam(
+      "positionHash",
+      ethereum.Value.fromFixedBytes(positionHash)
+    )
+  )
+  positionCreatedEvent.parameters.push(
+    new ethereum.EventParam(
+      "precursorAction",
+      ethereum.Value.fromBytes(precursorAction)
+    )
+  )
+  positionCreatedEvent.parameters.push(
+    new ethereum.EventParam(
+      "nextActions",
+      ethereum.Value.fromBytes(nextActions)
+    )
+  )
+
+  return positionCreatedEvent
+}
+
+export function createPositionsClosedEvent(
+  closingAction: Bytes,
+  positionHashesClosed: Array<Bytes>
+): PositionsClosed {
+  let positionsClosedEvent = changetype<PositionsClosed>(newMockEvent())
+
+  positionsClosedEvent.parameters = new Array()
+
+  positionsClosedEvent.parameters.push(
+    new ethereum.EventParam(
+      "closingAction",
+      ethereum.Value.fromBytes(closingAction)
+    )
+  )
+  positionsClosedEvent.parameters.push(
+    new ethereum.EventParam(
+      "positionHashesClosed",
+      ethereum.Value.fromFixedBytesArray(positionHashesClosed)
+    )
+  )
+
+  return positionsClosedEvent
 }
 
 export function createWithdrawEvent(
