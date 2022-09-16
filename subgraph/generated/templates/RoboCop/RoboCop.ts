@@ -191,8 +191,8 @@ export class PositionCreated__Params {
     return this._event.parameters[1].value.toBytes();
   }
 
-  get nextActions(): Bytes {
-    return this._event.parameters[2].value.toBytes();
+  get nextActions(): Array<Bytes> {
+    return this._event.parameters[2].value.toBytesArray();
   }
 }
 

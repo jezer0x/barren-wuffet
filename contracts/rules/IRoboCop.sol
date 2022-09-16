@@ -11,7 +11,7 @@ interface IRoboCop {
     event Redeemed(bytes32 indexed ruleHash);
     event CollateralAdded(bytes32 indexed ruleHash, uint256[] amounts);
     event CollateralReduced(bytes32 indexed ruleHash, uint256[] amounts);
-    event PositionCreated(bytes32 positionHash, bytes precursorAction, bytes nextActions);
+    event PositionCreated(bytes32 positionHash, bytes precursorAction, bytes[] nextActions);
     event PositionsClosed(bytes closingAction, bytes32[] positionHashesClosed);
 
     function initialize(address owner) external;

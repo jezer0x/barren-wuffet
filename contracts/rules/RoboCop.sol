@@ -245,7 +245,11 @@ contract RoboCop is IRoboCop, Ownable, ReentrancyGuard, IERC721Receiver, Initial
             actionPositionsMap
         );
         if (positionCreated) {
-            emit PositionCreated(positionHash, abi.encode(action), abi.encode(response.position.nextActions));
+            bytes[] memory abiEncodedNextActions = new bytes[](response.position.nextActions.length);
+            for (uint256 i = 0; i < response.position.nextActions.length; i++) {
+                abiEncodedNextActions[i] = abi.encode(response.position.nextActions[i]);
+            }
+            emit PositionCreated(positionHash, abi.encode(action), abiEncodedNextActions);
         }
 
         return response.tokenOutputs;

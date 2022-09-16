@@ -51,7 +51,7 @@ templates:
           handler: handleExecuted
         - event: Initialized(uint8)
           handler: handleInitialized
-        - event: PositionCreated(bytes32,bytes,bytes)
+        - event: PositionCreated(bytes32,bytes,bytes[])
           handler: handlePositionCreated
         - event: PositionsClosed(bytes,bytes32[])
           handler: handlePositionsClosed
@@ -89,7 +89,7 @@ templates:
           handler: handleInitialized
         - event: OwnershipTransferred(indexed address,indexed address)
           handler: handleOwnershipTransferred
-        - event: PositionCreated(bytes32,bytes,bytes)
+        - event: PositionCreated(bytes32,bytes,bytes[])
           handler: handlePositionCreated
         - event: PositionsClosed(bytes,bytes32[])
           handler: handlePositionsClosed

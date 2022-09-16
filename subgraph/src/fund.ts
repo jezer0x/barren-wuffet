@@ -8,8 +8,9 @@ import {
   Withdraw as WithdrawEvent,
   Fund as FundContract,
 } from "../generated/templates/Fund/Fund";
-import { Fund } from "../generated/schema";
+import { Fund, Position } from "../generated/schema";
 import { RoboCop } from "../generated/templates";
+import { ethereum } from "@graphprotocol/graph-ts";
 
 export function handleClosed(event: ClosedEvent): void {
   let entity = Fund.load(event.address);
@@ -50,7 +51,21 @@ export function handleInitialized(event: InitializedEvent): void {
   RoboCop.create(roboCopAddr);
 }
 
-export function handlePositionCreated(event: PositionCreatedEvent): void {}
+export function handlePositionCreated(event: PositionCreatedEvent): void {
+  let fund = Fund.load(event.address);
+
+  if (!fund) {
+    throw Error;
+  }
+
+  let position = new Position(event.params.positionHash);
+  position.next_actions = event.params.nextActions;
+
+  fund.fund_pending_positions.push(position.id);
+
+  position.save();
+  fund.save();
+}
 
 export function handlePositionsClosed(event: PositionsClosedEvent): void {}
 

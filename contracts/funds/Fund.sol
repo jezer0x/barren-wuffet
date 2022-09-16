@@ -254,7 +254,11 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
             actionPositionsMap
         );
         if (positionCreated) {
-            emit PositionCreated(positionHash, abi.encode(action), abi.encode(resp.position.nextActions));
+            bytes[] memory abiEncodedNextActions = new bytes[](resp.position.nextActions.length);
+            for (uint256 i = 0; i < resp.position.nextActions.length; i++) {
+                abiEncodedNextActions[i] = abi.encode(resp.position.nextActions[i]);
+            }
+            emit PositionCreated(positionHash, abi.encode(action), abiEncodedNextActions);
         }
 
         emit Executed(abi.encode(action));
