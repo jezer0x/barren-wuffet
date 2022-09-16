@@ -47,6 +47,14 @@
   {
     "anonymous": false,
     "inputs": [
+      { "indexed": false, "internalType": "bytes", "name": "action", "type": "bytes" }
+    ],
+    "name": "Executed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
       {
         "indexed": false,
         "internalType": "uint8",

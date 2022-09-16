@@ -1,6 +1,12 @@
 import { newMockEvent } from "matchstick-as"
-import { ethereum, Address, BigInt } from "@graphprotocol/graph-ts"
-import { Closed, Deposit, Initialized, Withdraw } from "../generated/Fund/Fund"
+import { ethereum, Address, BigInt, Bytes } from "@graphprotocol/graph-ts"
+import {
+  Closed,
+  Deposit,
+  Executed,
+  Initialized,
+  Withdraw
+} from "../generated/Fund/Fund"
 
 export function createClosedEvent(fundAddr: Address): Closed {
   let closedEvent = changetype<Closed>(newMockEvent())
@@ -44,6 +50,18 @@ export function createDepositEvent(
   )
 
   return depositEvent
+}
+
+export function createExecutedEvent(param0: Bytes): Executed {
+  let executedEvent = changetype<Executed>(newMockEvent())
+
+  executedEvent.parameters = new Array()
+
+  executedEvent.parameters.push(
+    new ethereum.EventParam("param0", ethereum.Value.fromBytes(param0))
+  )
+
+  return executedEvent
 }
 
 export function createInitializedEvent(version: i32): Initialized {

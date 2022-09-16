@@ -58,6 +58,24 @@ export class Deposit__Params {
   }
 }
 
+export class Executed extends ethereum.Event {
+  get params(): Executed__Params {
+    return new Executed__Params(this);
+  }
+}
+
+export class Executed__Params {
+  _event: Executed;
+
+  constructor(event: Executed) {
+    this._event = event;
+  }
+
+  get action(): Bytes {
+    return this._event.parameters[0].value.toBytes();
+  }
+}
+
 export class Initialized extends ethereum.Event {
   get params(): Initialized__Params {
     return new Initialized__Params(this);

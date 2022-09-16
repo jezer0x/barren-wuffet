@@ -48,6 +48,8 @@ templates:
           handler: handleClosed
         - event: Deposit(address,uint256,address,uint256)
           handler: handleDeposit
+        - event: Executed(bytes)
+          handler: handleExecuted
         - event: Initialized(uint8)
           handler: handleInitialized
         - event: Withdraw(address,uint256,address,uint256)

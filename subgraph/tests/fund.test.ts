@@ -6,7 +6,7 @@ import {
   beforeAll,
   afterAll
 } from "matchstick-as/assembly/index"
-import { Address, BigInt } from "@graphprotocol/graph-ts"
+import { Address, BigInt, Bytes } from "@graphprotocol/graph-ts"
 import { Closed } from "../generated/schema"
 import { Closed as ClosedEvent } from "../generated/Fund/Fund"
 import { handleClosed } from "../src/fund"

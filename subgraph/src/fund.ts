@@ -1,6 +1,7 @@
 import {
   Closed as ClosedEvent,
   Deposit as DepositEvent,
+  Executed as ExecutedEvent,
   Initialized as InitializedEvent,
   Withdraw as WithdrawEvent,
 } from "../generated/templates/Fund/Fund";
@@ -18,6 +19,17 @@ export function handleClosed(event: ClosedEvent): void {
 }
 
 export function handleDeposit(event: DepositEvent): void {}
+
+export function handleExecuted(event: ExecutedEvent): void {
+  let entity = Fund.load(event.address);
+
+  if (!entity) {
+    throw Error;
+  }
+
+  entity.actions.push(event.params.action);
+  entity.save();
+}
 
 export function handleInitialized(event: InitializedEvent): void {}
 
