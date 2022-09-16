@@ -222,7 +222,12 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         IAction(action.callee).validate(action);
         _validateAndTakeFees(action.inputTokens, runtimeParams.collaterals, fees);
 
-        Utils._closePosition(action, pendingPositions, actionPositionsMap);
+        bool positionsClosed;
+        bytes32[] memory deletedPositionHashes;
+        (positionsClosed, deletedPositionHashes) = Utils._closePosition(action, pendingPositions, actionPositionsMap);
+        if (positionsClosed) {
+            emit PositionsClosed(action, deletedPositionHashes);
+        }
 
         uint256 ethCollateral = 0;
         for (uint256 i = 0; i < action.inputTokens.length; i++) {
@@ -240,7 +245,18 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
             assets.increaseAsset(action.outputTokens[i], resp.tokenOutputs[i]);
         }
 
-        Utils._createPosition(action, resp.position.nextActions, pendingPositions, actionPositionsMap);
+        bool positionCreated;
+        bytes32 positionHash;
+        (positionCreated, positionHash) = Utils._createPosition(
+            action,
+            resp.position.nextActions,
+            pendingPositions,
+            actionPositionsMap
+        );
+        if (positionCreated) {
+            emit PositionCreated(positionHash, action, resp.position.nextActions);
+        }
+
         emit Executed(abi.encode(action));
     }
 
@@ -382,9 +398,10 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         openRules.pop();
     }
 
-    function deposit(Token memory collateralToken, uint256 amountSent) external payable returns (uint256) {
+    function deposit(Token memory collateralToken, uint256 amountSent) external payable returns (uint256 idx) {
         require(getStatus() == FundStatus.RAISING, "Not Raising");
-        return subStuff.deposit(assets, collateralToken, amountSent);
+        idx = subStuff.deposit(assets, collateralToken, amountSent);
+        emit Deposit(msg.sender, idx, collateralToken.addr, subStuff.subscriptions[idx].collateralAmount);
     }
 
     function getStatus() public view returns (FundStatus) {
@@ -420,15 +437,24 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         external
         nonReentrant
         onlyActiveSubscriber(subscriptionIdx)
-        returns (Token[] memory, uint256[] memory)
+        returns (Token[] memory tokens, uint256[] memory balances)
     {
         FundStatus status = getStatus();
         if (status == FundStatus.CLOSABLE) {
             revert("Call closeFund before withdrawing!");
         } else if (status == FundStatus.RAISING) {
-            return subStuff.withdrawCollateral(subscriptionIdx, assets);
+            emit Withdraw(
+                msg.sender,
+                subscriptionIdx,
+                Constants.ETH,
+                subStuff.subscriptions[subscriptionIdx].collateralAmount
+            );
+            (tokens, balances) = subStuff.withdrawCollateral(subscriptionIdx, assets);
         } else if (status == FundStatus.CLOSED) {
-            return subStuff.withdrawAssets(subscriptionIdx, assets);
+            (tokens, balances) = subStuff.withdrawAssets(subscriptionIdx, assets);
+            for (uint256 i = 0; i < tokens.length; i++) {
+                emit Withdraw(msg.sender, subscriptionIdx, tokens[i].addr, balances[i]);
+            }
         } else if (status == FundStatus.DEPLOYED) {
             revert("Can't get money back from deployed fund!");
         } else {

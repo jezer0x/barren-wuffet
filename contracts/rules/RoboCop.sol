@@ -227,12 +227,26 @@ contract RoboCop is IRoboCop, Ownable, ReentrancyGuard, IERC721Receiver, Initial
             // ignore return value
             action.inputTokens[j].approve(action.callee, runtimeParams.collaterals[j]);
         }
-
-        Utils._closePosition(action, pendingPositions, actionPositionsMap);
+        bool positionsClosed;
+        bytes32[] memory deletedPositionHashes;
+        (positionsClosed, deletedPositionHashes) = Utils._closePosition(action, pendingPositions, actionPositionsMap);
+        if (positionsClosed) {
+            emit PositionsClosed(action, deletedPositionHashes);
+        }
 
         ActionResponse memory response = Utils._delegatePerformAction(action, runtimeParams);
 
-        Utils._createPosition(action, response.position.nextActions, pendingPositions, actionPositionsMap);
+        bool positionCreated;
+        bytes32 positionHash;
+        (positionCreated, positionHash) = Utils._createPosition(
+            action,
+            response.position.nextActions,
+            pendingPositions,
+            actionPositionsMap
+        );
+        if (positionCreated) {
+            emit PositionCreated(positionHash, action, response.position.nextActions);
+        }
 
         return response.tokenOutputs;
     }

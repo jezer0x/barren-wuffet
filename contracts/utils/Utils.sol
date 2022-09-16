@@ -13,9 +13,6 @@ library Utils {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
-    event PositionCreated(bytes32 positionHash, Action precursorAction, Action[] nextActions);
-    event PositionsClosed(Action closingAction, bytes32[] positionHashesClosed);
-
     function _delegatePerformAction(Action memory action, ActionRuntimeParams memory runtimeParams)
         internal
         returns (ActionResponse memory)
@@ -63,42 +60,42 @@ library Utils {
         Action[] memory nextActions,
         EnumerableSet.Bytes32Set storage _pendingPositions,
         mapping(bytes32 => bytes32[]) storage _actionPositionsMap
-    ) internal returns (bytes32 positionHash) {
+    ) internal returns (bool, bytes32 positionHash) {
         if (nextActions.length == 0) {
-            return positionHash;
-        }
-        bytes32[] memory actionHashes = new bytes32[](nextActions.length);
-        for (uint32 i = 0; i < nextActions.length; i++) {
-            actionHashes[i] = keccak256(abi.encode(nextActions[i]));
-        }
+            return (false, positionHash);
+        } else {
+            bytes32[] memory actionHashes = new bytes32[](nextActions.length);
+            for (uint32 i = 0; i < nextActions.length; i++) {
+                actionHashes[i] = keccak256(abi.encode(nextActions[i]));
+            }
 
-        positionHash = _getPositionHash(actionHashes);
-        _pendingPositions.add(positionHash);
+            positionHash = _getPositionHash(actionHashes);
+            _pendingPositions.add(positionHash);
 
-        for (uint32 i = 0; i < actionHashes.length; i++) {
-            _actionPositionsMap[actionHashes[i]].push(positionHash);
+            for (uint32 i = 0; i < actionHashes.length; i++) {
+                _actionPositionsMap[actionHashes[i]].push(positionHash);
+            }
+
+            return (true, positionHash);
         }
-
-        emit PositionCreated(positionHash, precursorAction, nextActions);
     }
 
     function _closePosition(
         Action memory action,
         EnumerableSet.Bytes32Set storage _pendingPositions,
         mapping(bytes32 => bytes32[]) storage _actionPositionsMap
-    ) internal returns (bool) {
+    ) internal returns (bool, bytes32[] memory deletedPositionHashes) {
         bytes32 actionHash = keccak256(abi.encode(action));
-        bytes32[] storage positionHashes = _actionPositionsMap[actionHash];
-        if (positionHashes.length > 0) {
+        bytes32[] memory deletedPositionHashes = _actionPositionsMap[actionHash];
+        if (deletedPositionHashes.length > 0) {
             // this action is part of a position, so before using it, we need to discard the position
-            for (uint32 i = 0; i < positionHashes.length; i++) {
-                _pendingPositions.remove(positionHashes[i]);
+            for (uint32 i = 0; i < deletedPositionHashes.length; i++) {
+                _pendingPositions.remove(deletedPositionHashes[i]);
             }
-            emit PositionsClosed(action, positionHashes);
             delete _actionPositionsMap[actionHash];
-            return true;
+            return (true, deletedPositionHashes);
         } else {
-            return false;
+            return (false, deletedPositionHashes);
         }
     }
 }
