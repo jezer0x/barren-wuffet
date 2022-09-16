@@ -226,7 +226,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         bytes32[] memory deletedPositionHashes;
         (positionsClosed, deletedPositionHashes) = Utils._closePosition(action, pendingPositions, actionPositionsMap);
         if (positionsClosed) {
-            emit PositionsClosed(action, deletedPositionHashes);
+            emit PositionsClosed(abi.encode(action), deletedPositionHashes);
         }
 
         uint256 ethCollateral = 0;
@@ -254,7 +254,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
             actionPositionsMap
         );
         if (positionCreated) {
-            emit PositionCreated(positionHash, action, resp.position.nextActions);
+            emit PositionCreated(positionHash, abi.encode(action), abi.encode(resp.position.nextActions));
         }
 
         emit Executed(abi.encode(action));

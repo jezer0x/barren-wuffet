@@ -231,7 +231,7 @@ contract RoboCop is IRoboCop, Ownable, ReentrancyGuard, IERC721Receiver, Initial
         bytes32[] memory deletedPositionHashes;
         (positionsClosed, deletedPositionHashes) = Utils._closePosition(action, pendingPositions, actionPositionsMap);
         if (positionsClosed) {
-            emit PositionsClosed(action, deletedPositionHashes);
+            emit PositionsClosed(abi.encode(action), deletedPositionHashes);
         }
 
         ActionResponse memory response = Utils._delegatePerformAction(action, runtimeParams);
@@ -245,7 +245,7 @@ contract RoboCop is IRoboCop, Ownable, ReentrancyGuard, IERC721Receiver, Initial
             actionPositionsMap
         );
         if (positionCreated) {
-            emit PositionCreated(positionHash, action, response.position.nextActions);
+            emit PositionCreated(positionHash, abi.encode(action), abi.encode(response.position.nextActions));
         }
 
         return response.tokenOutputs;

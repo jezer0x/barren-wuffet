@@ -47,7 +47,12 @@
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": false, "internalType": "bytes", "name": "action", "type": "bytes" }
+      {
+        "indexed": false,
+        "internalType": "bytes",
+        "name": "action",
+        "type": "bytes"
+      }
     ],
     "name": "Executed",
     "type": "event"
@@ -63,6 +68,140 @@
       }
     ],
     "name": "Initialized",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "positionHash",
+        "type": "bytes32"
+      },
+      {
+        "components": [
+          { "internalType": "address", "name": "callee", "type": "address" },
+          { "internalType": "bytes", "name": "data", "type": "bytes" },
+          {
+            "components": [
+              {
+                "internalType": "enum TokenType",
+                "name": "t",
+                "type": "uint8"
+              },
+              { "internalType": "address", "name": "addr", "type": "address" }
+            ],
+            "internalType": "struct Token[]",
+            "name": "inputTokens",
+            "type": "tuple[]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "enum TokenType",
+                "name": "t",
+                "type": "uint8"
+              },
+              { "internalType": "address", "name": "addr", "type": "address" }
+            ],
+            "internalType": "struct Token[]",
+            "name": "outputTokens",
+            "type": "tuple[]"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct Action",
+        "name": "precursorAction",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          { "internalType": "address", "name": "callee", "type": "address" },
+          { "internalType": "bytes", "name": "data", "type": "bytes" },
+          {
+            "components": [
+              {
+                "internalType": "enum TokenType",
+                "name": "t",
+                "type": "uint8"
+              },
+              { "internalType": "address", "name": "addr", "type": "address" }
+            ],
+            "internalType": "struct Token[]",
+            "name": "inputTokens",
+            "type": "tuple[]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "enum TokenType",
+                "name": "t",
+                "type": "uint8"
+              },
+              { "internalType": "address", "name": "addr", "type": "address" }
+            ],
+            "internalType": "struct Token[]",
+            "name": "outputTokens",
+            "type": "tuple[]"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct Action[]",
+        "name": "nextActions",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "PositionCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "components": [
+          { "internalType": "address", "name": "callee", "type": "address" },
+          { "internalType": "bytes", "name": "data", "type": "bytes" },
+          {
+            "components": [
+              {
+                "internalType": "enum TokenType",
+                "name": "t",
+                "type": "uint8"
+              },
+              { "internalType": "address", "name": "addr", "type": "address" }
+            ],
+            "internalType": "struct Token[]",
+            "name": "inputTokens",
+            "type": "tuple[]"
+          },
+          {
+            "components": [
+              {
+                "internalType": "enum TokenType",
+                "name": "t",
+                "type": "uint8"
+              },
+              { "internalType": "address", "name": "addr", "type": "address" }
+            ],
+            "internalType": "struct Token[]",
+            "name": "outputTokens",
+            "type": "tuple[]"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct Action",
+        "name": "closingAction",
+        "type": "tuple"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32[]",
+        "name": "positionHashesClosed",
+        "type": "bytes32[]"
+      }
+    ],
+    "name": "PositionsClosed",
     "type": "event"
   },
   {
@@ -289,7 +428,9 @@
       { "internalType": "uint256", "name": "amountSent", "type": "uint256" }
     ],
     "name": "deposit",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "outputs": [
+      { "internalType": "uint256", "name": "idx", "type": "uint256" }
+    ],
     "stateMutability": "payable",
     "type": "function"
   },
@@ -833,10 +974,10 @@
           { "internalType": "address", "name": "addr", "type": "address" }
         ],
         "internalType": "struct Token[]",
-        "name": "",
+        "name": "tokens",
         "type": "tuple[]"
       },
-      { "internalType": "uint256[]", "name": "", "type": "uint256[]" }
+      { "internalType": "uint256[]", "name": "balances", "type": "uint256[]" }
     ],
     "stateMutability": "nonpayable",
     "type": "function"
