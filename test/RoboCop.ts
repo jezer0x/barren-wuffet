@@ -297,10 +297,10 @@ describe("RoboCop", () => {
       const { ruleMakerWallet, roboCop } = await deployValidRuleFixture();
       // these error because the non existent hash doesnt belong to the subscriber
       await expect(roboCop.connect(ruleMakerWallet).addCollateral(BAD_RULE_HASH, [1000])).to.be.revertedWith(
-        "Ownable: caller is not the owner"
+        "Can't add collateral"
       );
       await expect(roboCop.connect(ruleMakerWallet).reduceCollateral(BAD_RULE_HASH, [1000])).to.be.revertedWith(
-        "Ownable: caller is not the owner"
+        "Can't reduce collateral"
       );
     });
 
@@ -787,13 +787,12 @@ describe("RoboCop", () => {
       // The return value is a nested object contain both array and object representations
       // We need a nested compar
       const expectedRule: Partial<RuleStructOutput> = {
-        owner: ruleMakerWallet.address,
-        collaterals: [collateralAmount],
         // @ts-ignore
         triggers: [ethTst1PassingTrigger],
         // @ts-ignore
         actions: [ethSwapAction],
-        status: 2,
+        collaterals: [collateralAmount],
+        status: 3,
         outputs: [collateralAmount.mul(ETH_PRICE_IN_TST1).div(PRICE_TRIGGER_DECIMALS)],
         incentive: DEFAULT_INCENTIVE,
       };
