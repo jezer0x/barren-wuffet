@@ -295,7 +295,6 @@ describe("RoboCop", () => {
   describe("Add / Reduce Collateral", function () {
     it("should revert if add / reduce collateral is called on a non-existent ruleHash", async () => {
       const { ruleMakerWallet, roboCop } = await deployValidRuleFixture();
-      // these error because the non existent hash doesnt belong to the subscriber
       await expect(roboCop.connect(ruleMakerWallet).addCollateral(BAD_RULE_HASH, [1000])).to.be.revertedWith(
         "Can't add collateral"
       );
