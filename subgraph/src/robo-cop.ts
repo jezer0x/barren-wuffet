@@ -74,14 +74,15 @@ export function handlePositionCreated(event: PositionCreatedEvent): void {
 }
 
 export function handlePositionsClosed(event: PositionsClosedEvent): void {
-  event.params.positionHashesClosed.forEach(function(positionHash) {
-    let position = Position.load(positionHash);
+  var i: i32;
+  for (i = 0; i < event.params.positionHashesClosed.length; i++) {
+    let position = Position.load(event.params.positionHashesClosed[i]);
     if (!position) {
       throw Error;
     }
-    //position.closed_timestamp = event.block.timestamp;
+    position.closed_timestamp = event.block.timestamp;
     position.save();
-  });
+  }
 }
 
 export function handleRedeemed(event: RedeemedEvent): void {
