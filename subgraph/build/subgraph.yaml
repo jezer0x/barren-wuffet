@@ -28,8 +28,8 @@ dataSources:
           handler: handleUnpaused
       file: BarrenWuffet/BarrenWuffet.wasm
 templates:
-  - name: Fund
-    kind: ethereum
+  - kind: ethereum
+    name: Fund
     network: localhost
     source:
       abi: Fund
@@ -37,7 +37,6 @@ templates:
       kind: ethereum/events
       apiVersion: 0.0.6
       language: wasm/assemblyscript
-      file: templates/Fund/Fund.wasm
       entities:
         - Fund
       abis:
@@ -48,7 +47,52 @@ templates:
           handler: handleClosed
         - event: Deposit(address,uint256,address,uint256)
           handler: handleDeposit
+        - event: Executed(bytes)
+          handler: handleExecuted
         - event: Initialized(uint8)
           handler: handleInitialized
+        - event: PositionCreated(bytes32,bytes,bytes[])
+          handler: handlePositionCreated
+        - event: PositionsClosed(bytes,bytes32[])
+          handler: handlePositionsClosed
         - event: Withdraw(address,uint256,address,uint256)
           handler: handleWithdraw
+      file: templates/Fund/Fund.wasm
+  - kind: ethereum
+    name: RoboCop
+    network: localhost
+    source:
+      abi: RoboCop
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.6
+      language: wasm/assemblyscript
+      entities:
+        - Fund
+      abis:
+        - name: RoboCop
+          file: RoboCop/abis/RoboCop.json
+      eventHandlers:
+        - event: Activated(indexed bytes32)
+          handler: handleActivated
+        - event: CollateralAdded(indexed bytes32,uint256[])
+          handler: handleCollateralAdded
+        - event: CollateralReduced(indexed bytes32,uint256[])
+          handler: handleCollateralReduced
+        - event: Created(indexed bytes32)
+          handler: handleCreated
+        - event: Deactivated(indexed bytes32)
+          handler: handleDeactivated
+        - event: Executed(indexed bytes32,address)
+          handler: handleExecuted
+        - event: Initialized(uint8)
+          handler: handleInitialized
+        - event: OwnershipTransferred(indexed address,indexed address)
+          handler: handleOwnershipTransferred
+        - event: PositionCreated(bytes32,bytes,bytes[])
+          handler: handlePositionCreated
+        - event: PositionsClosed(bytes,bytes32[])
+          handler: handlePositionsClosed
+        - event: Redeemed(indexed bytes32)
+          handler: handleRedeemed
+      file: templates/RoboCop/RoboCop.wasm

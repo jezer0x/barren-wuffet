@@ -8,9 +8,8 @@ import {
   Withdraw as WithdrawEvent,
   Fund as FundContract
 } from "../generated/templates/Fund/Fund";
-import { Fund, Position } from "../generated/schema";
+import { Action, Fund, Position, Subscription } from "../generated/schema";
 import { RoboCop } from "../generated/templates";
-import { Bytes } from "@graphprotocol/graph-ts";
 
 export function handleClosed(event: ClosedEvent): void {
   let entity = Fund.load(event.address);
@@ -24,24 +23,26 @@ export function handleClosed(event: ClosedEvent): void {
 }
 
 export function handleDeposit(event: DepositEvent): void {
-  let entity = Fund.load(event.address);
+  let entity = Subscription.load(getIDFromSubscriptionEvent(event));
 
   if (!entity) {
-    throw Error;
+    entity = new Subscription(getIDFromSubscriptionEvent(event));
   }
 
-  entity.subscribers.push(event.params.subscriber);
+  entity.address = event.params.subscriber;
+  entity.idx = event.params.subIdx;
+  entity.deposit_timestamp = event.block.timestamp;
+  entity.fund = event.address;
+
   entity.save();
 }
 
 export function handleExecuted(event: ExecutedEvent): void {
-  let entity = Fund.load(event.address);
+  let entity = new Action(event.transaction.hash.toHex() + "-" + event.logIndex.toString());
+  entity.action = event.params.action;
+  entity.timestamp = event.block.timestamp;
+  entity.fund = event.address;
 
-  if (!entity) {
-    throw Error;
-  }
-
-  entity.actions.push(event.params.action);
   entity.save();
 }
 
@@ -60,36 +61,32 @@ export function handlePositionCreated(event: PositionCreatedEvent): void {
 
   let position = new Position(event.params.positionHash);
   position.next_actions = event.params.nextActions;
-
-  fund.fund_pending_positions.push(position.id);
+  position.source = "Fund";
+  position.fund = event.address;
+  position.creation_timestamp = event.block.timestamp;
 
   position.save();
-  fund.save();
 }
 
 export function handlePositionsClosed(event: PositionsClosedEvent): void {
-  let fund = Fund.load(event.address);
-
-  if (!fund) {
-    throw Error;
-  }
-
   event.params.positionHashesClosed.forEach(function(positionHash) {
-    removeFromPendingPositions(fund.fund_pending_positions, positionHash);
+    let position = Position.load(positionHash);
+    if (!position) {
+      throw Error;
+    }
+    position.closed_timestamp = event.block.timestamp;
+    position.save();
   });
-
-  fund.save();
 }
 
-export function handleWithdraw(event: WithdrawEvent): void {}
-
-function removeFromPendingPositions(arr: Bytes[], hash: Bytes) {
-  var i: number;
-  for (i = 0; i < arr.length; i++) {
-    if (arr[i] == hash) {
-      arr[i] = arr[arr.length - 1];
-      arr.pop();
-      break;
-    }
+export function handleWithdraw(event: WithdrawEvent): void {
+  let entity = Subscription.load(getIDFromSubscriptionEvent(event));
+  if (!entity) {
+    throw Error;
   }
+  entity.withdraw_timestamp = event.block.timestamp;
+}
+
+function getIDFromSubscriptionEvent(event: WithdrawEvent | DepositEvent): string {
+  return event.address + "-" + event.params.subIdx;
 }

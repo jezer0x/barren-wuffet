@@ -200,7 +200,7 @@ contract RoboCop is IRoboCop, Ownable, ReentrancyGuard, IERC721Receiver, Initial
     }
 
     function _getRuleHash(Trigger[] calldata triggers, Action[] calldata actions) private view returns (bytes32) {
-        return keccak256(abi.encode(triggers, actions, msg.sender, block.timestamp));
+        return keccak256(abi.encode(triggers, actions, msg.sender, block.timestamp, address(this)));
     }
 
     function _checkTriggers(Trigger[] storage triggers) internal view returns (bool, TriggerReturn[] memory) {

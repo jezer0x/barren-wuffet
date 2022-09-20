@@ -3,14 +3,49 @@ type Fund @entity {
   manager: Bytes! # address of the msg.sender who created the fund
   creation_timestamp: BigInt! # block.timestamp for when the fund was created
   closed_timestamp: BigInt # indicates when the fund was closed, null means not closed yet
-  subscribers: [Bytes!]!
-  actions: [Bytes!]! # to keep history of actions taken via takeActions
-  rules: [Bytes!]! # to keep track of all the ruleHashes created via roboCop
-  fund_pending_positions: [Position!]!
-  robocop_pending_positions: [Position!]!
+  subscriptions: [Subscription!]! @derivedFrom(field: "fund")
+  actions: [Action!]! @derivedFrom(field: "fund") # to keep history of actions taken via takeActions
+  rules: [Rule!]! @derivedFrom(field: "fund") # to keep track of all the ruleHashes created via roboCop
+  positions: [Position!]! @derivedFrom(field: "fund")
 }
 
 type Position @entity {
   id: Bytes! # positionHash stored in the contracts
   next_actions: [Bytes!]! # array of possible actions that can be done
+  fund: Fund!
+  source: PositionSource
+  creation_timestamp: BigInt!
+  closed_timestamp: BigInt
+}
+
+enum PositionSource {
+  Fund
+  RoboCop
+}
+
+type Action @entity {
+  id: ID!
+  action: Bytes!
+  timestamp: BigInt!
+  fund: Fund!
+}
+
+type Subscription @entity {
+  id: ID!
+  address: Bytes!
+  idx: BigInt!
+  fund: Fund!
+  deposit_timestamp: BigInt!
+  withdraw_timestamp: BigInt
+}
+
+type Rule @entity {
+  id: Bytes! # ruleHash
+  creation_timestamp: BigInt!
+  activation_timestamp: [BigInt!]!
+  pause_timestamp: [BigInt!]
+  execution_timestamp: BigInt
+  redemption_timestamp: BigInt
+  # what about all the other kinds of events? collateralAdd/reduce, incentiveAdd/reduce?
+  fund: Fund!
 }
