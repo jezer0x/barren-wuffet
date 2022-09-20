@@ -19,7 +19,6 @@ export function handleCreated(event: Created): void {
   // Entity fields can be set based on event parameters
   entity.manager = event.params.manager;
   entity.creation_timestamp = event.block.timestamp;
-  entity.rules = [];
 
   // Entities can be written to the store with `.save()`
   entity.save();

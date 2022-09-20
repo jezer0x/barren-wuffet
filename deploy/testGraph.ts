@@ -15,7 +15,7 @@ import {
   DEFAULT_SUB_TO_MAN_FEE_PCT,
   ETH_TOKEN,
   LT,
-  TOKEN_TYPE,
+  TOKEN_TYPE
 } from "../test/Constants";
 
 async function makeSubConstraints() {
@@ -27,7 +27,7 @@ async function makeSubConstraints() {
     maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
     deadline: latestTime + 86400,
     lockin: latestTime + 86400 * 10,
-    allowedDepositToken: ETH_TOKEN,
+    allowedDepositToken: ETH_TOKEN
   };
 }
 
@@ -36,7 +36,7 @@ async function main() {
   await BW.createFund("marlieChungerFund", await makeSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []);
 }
 
-main().catch((error) => {
+main().catch(error => {
   console.error(error);
   process.exitCode = 1;
 });

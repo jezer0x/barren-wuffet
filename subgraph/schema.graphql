@@ -3,7 +3,7 @@ type Fund @entity {
   manager: Bytes! # address of the msg.sender who created the fund
   creation_timestamp: BigInt! # block.timestamp for when the fund was created
   closed_timestamp: BigInt # indicates when the fund was closed, null means not closed yet
-  subscriptions: [Subscription!]! @derivedFrom(field: "fund")
+  subscriptions: [Sub!]! @derivedFrom(field: "fund")
   actions: [Action!]! @derivedFrom(field: "fund") # to keep history of actions taken via takeActions
   rules: [Rule!]! @derivedFrom(field: "fund") # to keep track of all the ruleHashes created via roboCop
   positions: [Position!]! @derivedFrom(field: "fund")
@@ -30,7 +30,7 @@ type Action @entity {
   fund: Fund!
 }
 
-type Subscription @entity {
+type Sub @entity {
   id: ID!
   address: Bytes!
   idx: BigInt!
@@ -42,8 +42,8 @@ type Subscription @entity {
 type Rule @entity {
   id: Bytes! # ruleHash
   creation_timestamp: BigInt!
-  activation_timestamp: [BigInt!]!
-  pause_timestamp: [BigInt!]
+  activation_timestamps: [BigInt!]!
+  deactivation_timestamps: [BigInt!]!
   execution_timestamp: BigInt
   redemption_timestamp: BigInt
   # what about all the other kinds of events? collateralAdd/reduce, incentiveAdd/reduce?

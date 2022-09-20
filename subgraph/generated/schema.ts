@@ -266,7 +266,7 @@ export class Action extends Entity {
   }
 }
 
-export class Subscription extends Entity {
+export class Sub extends Entity {
   constructor(id: string) {
     super();
     this.set("id", Value.fromString(id));
@@ -274,18 +274,18 @@ export class Subscription extends Entity {
 
   save(): void {
     let id = this.get("id");
-    assert(id != null, "Cannot save Subscription entity without an ID");
+    assert(id != null, "Cannot save Sub entity without an ID");
     if (id) {
       assert(
         id.kind == ValueKind.STRING,
-        `Entities of type Subscription must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`
+        `Entities of type Sub must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`
       );
-      store.set("Subscription", id.toString(), this);
+      store.set("Sub", id.toString(), this);
     }
   }
 
-  static load(id: string): Subscription | null {
-    return changetype<Subscription | null>(store.get("Subscription", id));
+  static load(id: string): Sub | null {
+    return changetype<Sub | null>(store.get("Sub", id));
   }
 
   get id(): string {
@@ -391,30 +391,22 @@ export class Rule extends Entity {
     this.set("creation_timestamp", Value.fromBigInt(value));
   }
 
-  get activation_timestamp(): Array<BigInt> {
-    let value = this.get("activation_timestamp");
+  get activation_timestamps(): Array<BigInt> {
+    let value = this.get("activation_timestamps");
     return value!.toBigIntArray();
   }
 
-  set activation_timestamp(value: Array<BigInt>) {
-    this.set("activation_timestamp", Value.fromBigIntArray(value));
+  set activation_timestamps(value: Array<BigInt>) {
+    this.set("activation_timestamps", Value.fromBigIntArray(value));
   }
 
-  get pause_timestamp(): Array<BigInt> | null {
-    let value = this.get("pause_timestamp");
-    if (!value || value.kind == ValueKind.NULL) {
-      return null;
-    } else {
-      return value.toBigIntArray();
-    }
+  get deactivation_timestamps(): Array<BigInt> {
+    let value = this.get("deactivation_timestamps");
+    return value!.toBigIntArray();
   }
 
-  set pause_timestamp(value: Array<BigInt> | null) {
-    if (!value) {
-      this.unset("pause_timestamp");
-    } else {
-      this.set("pause_timestamp", Value.fromBigIntArray(<Array<BigInt>>value));
-    }
+  set deactivation_timestamps(value: Array<BigInt>) {
+    this.set("deactivation_timestamps", Value.fromBigIntArray(value));
   }
 
   get execution_timestamp(): BigInt | null {

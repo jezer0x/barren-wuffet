@@ -42,11 +42,11 @@ library Utils {
         }
     }
 
-    function _getPositionHash(bytes32[] memory actionHashes) internal pure returns (bytes32) {
-        return keccak256(abi.encode(actionHashes));
+    function _getPositionHash(bytes32[] memory actionHashes) internal view returns (bytes32) {
+        return keccak256(abi.encode(actionHashes, address(this)));
     }
 
-    function _getPositionHash(Action[] calldata actions) internal pure returns (bytes32) {
+    function _getPositionHash(Action[] calldata actions) internal view returns (bytes32) {
         bytes32[] memory actionHashes = new bytes32[](actions.length);
         for (uint32 i = 0; i < actions.length; i++) {
             actionHashes[i] = keccak256(abi.encode(actions[i]));

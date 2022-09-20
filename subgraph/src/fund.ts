@@ -8,7 +8,7 @@ import {
   Withdraw as WithdrawEvent,
   Fund as FundContract
 } from "../generated/templates/Fund/Fund";
-import { Action, Fund, Position, Subscription } from "../generated/schema";
+import { Action, Fund, Position, Sub } from "../generated/schema";
 import { RoboCop } from "../generated/templates";
 
 export function handleClosed(event: ClosedEvent): void {
@@ -23,10 +23,10 @@ export function handleClosed(event: ClosedEvent): void {
 }
 
 export function handleDeposit(event: DepositEvent): void {
-  let entity = Subscription.load(getIDFromSubscriptionEvent(event));
+  let entity = Sub.load(event.address.toHexString() + "-" + event.params.subIdx.toString());
 
   if (!entity) {
-    entity = new Subscription(getIDFromSubscriptionEvent(event));
+    entity = new Sub(event.address.toHexString() + "-" + event.params.subIdx.toString());
   }
 
   entity.address = event.params.subscriber;
@@ -74,19 +74,16 @@ export function handlePositionsClosed(event: PositionsClosedEvent): void {
     if (!position) {
       throw Error;
     }
-    position.closed_timestamp = event.block.timestamp;
+
+    //position.closed_timestamp = event.block.timestamp;
     position.save();
   });
 }
 
 export function handleWithdraw(event: WithdrawEvent): void {
-  let entity = Subscription.load(getIDFromSubscriptionEvent(event));
+  let entity = Sub.load(event.address.toHexString() + "-" + event.params.subIdx.toString());
   if (!entity) {
     throw Error;
   }
   entity.withdraw_timestamp = event.block.timestamp;
-}
-
-function getIDFromSubscriptionEvent(event: WithdrawEvent | DepositEvent): string {
-  return event.address + "-" + event.params.subIdx;
 }
