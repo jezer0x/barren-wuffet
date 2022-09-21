@@ -11,7 +11,7 @@ import "./IFund.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -19,7 +19,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../utils/whitelists/WhitelistService.sol";
 import "../utils/assets/AssetTracker.sol";
 
-contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
+contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using AssetTracker for AssetTracker.Assets;
@@ -65,6 +65,8 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         address roboCopImplementationAddr,
         address[] calldata _declaredTokenAddrs
     ) external nonReentrant initializer {
+        __ReentrancyGuard_init();
+
         name = _name;
         manager = _manager;
 
