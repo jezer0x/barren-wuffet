@@ -2,7 +2,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 import { ethers } from "hardhat";
 
-const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
 
@@ -12,10 +12,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await deploy("RoboCopFactory", {
     from: deployer,
     args: [roboCopImplementation.address],
-    log: true,
+    log: true
   });
 };
 
 export default func;
 func.tags = ["RoboCopFactory"];
-func.dependencies = ["RoboCopImplementation", "TestStubs", "Libraries"];
+func.dependencies = ["RoboCopImplementation", "Libraries"];

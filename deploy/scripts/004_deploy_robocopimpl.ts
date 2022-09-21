@@ -2,7 +2,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 import { getLibraries } from "../utils";
 
-const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
 
@@ -14,10 +14,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     from: deployer,
     args: [],
     log: true,
-    libraries: { TokenLib: TokenLibAddr },
+    libraries: { TokenLib: TokenLibAddr }
   });
 };
 
 export default func;
 func.tags = ["RoboCopImplementation"];
-func.dependencies = ["TestStubs", "Triggers", "Actions"];
+func.dependencies = ["Triggers", "Actions"];

@@ -13,9 +13,9 @@ const config: HardhatUserConfig = {
     compilers: [
       {
         version: "0.8.9",
-        settings: { optimizer: { enabled: true, runs: 200 } },
-      },
-    ],
+        settings: { optimizer: { enabled: true, runs: 200 } }
+      }
+    ]
   },
   namedAccounts: {
     deployer: 0,
@@ -24,15 +24,15 @@ const config: HardhatUserConfig = {
     bot: 3,
     fundSubscriber: 4,
     fundSubscriber2: 5,
-    ruleMaker: 6,
+    ruleMaker: 6
   },
   paths: {
     sources: "contracts",
-    deploy: "deploy/scripts",
+    deploy: "deploy/scripts"
   },
   gasReporter: {
-    enabled: false,
-  },
+    enabled: false
+  }
 };
 
 export default config;

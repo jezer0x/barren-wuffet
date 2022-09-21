@@ -1,7 +1,7 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 import { ethers } from "hardhat";
-const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
 
@@ -20,15 +20,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         platformFeeWallet: deployer,
         subscriberToPlatformFeePercentage: 0,
         managerToPlatformFeePercentage: 0,
-        subscriberToManagerFeePercentage: 0, // will be overwritten anyways
+        subscriberToManagerFeePercentage: 0 // will be overwritten anyways
       }, // subscriberToPlatformFeePercentage should be 0.69 and managerToPlatformFeePercentage should be 0.42
       trigWlHash,
       actWlHash,
       whitelistService.address,
       roboCopImplementation.address,
-      fundImplementation.address,
+      fundImplementation.address
     ],
-    log: true,
+    log: true
   });
 };
 
