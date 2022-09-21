@@ -17,7 +17,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   }
 
   await deployPriceTrigger(deploy, deployer, whitelistService, trigWlHash);
-  // TODO: Deploy Timestamp Trigger
+  await deployTimestampTrigger(deploy, deployer, whitelistService, trigWlHash);
 };
 
 async function deployPriceTrigger(deploy: any, deployer: string, whitelistService: Contract, trigWlHash: any) {
@@ -29,6 +29,18 @@ async function deployPriceTrigger(deploy: any, deployer: string, whitelistServic
 
   if (!(await whitelistService.isWhitelisted(trigWlHash, priceTrigger.address))) {
     await whitelistService.addToWhitelist(trigWlHash, priceTrigger.address);
+  }
+}
+
+async function deployTimestampTrigger(deploy: any, deployer: string, whitelistService: Contract, trigWlHash: any) {
+  const tsTrigger = await deploy("TimestampTrigger", {
+    from: deployer,
+    args: [],
+    log: true
+  });
+
+  if (!(await whitelistService.isWhitelisted(trigWlHash, tsTrigger.address))) {
+    await whitelistService.addToWhitelist(trigWlHash, tsTrigger.address);
   }
 }
 
