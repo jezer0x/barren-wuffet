@@ -32,6 +32,7 @@
     "@chainlink/contracts": "^0.4.2",
     "@openzeppelin/contracts": "^4.7.1",
     "@openzeppelin/contracts-upgradeable": "^4.7.3",
+    "@openzeppelin/hardhat-upgrades": "^1.20.0",
     "@uniswap/v3-core": "ssh://github.com:Uniswap/v3-core#0.8",
     "@uniswap/v3-periphery": "ssh://github.com:Uniswap/v3-periphery#0.8",
     "istanbul-badges-readme": "^1.8.2"

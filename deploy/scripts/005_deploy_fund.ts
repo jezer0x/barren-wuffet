@@ -8,16 +8,26 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
   const { deployer } = await getNamedAccounts();
 
-  const { TokenLibAddr } = await getLibraries();
+  const { SubLibAddr, AssetTrackerLibAddr, TokenLibAddr } = await getLibraries();
 
-  await deploy("RoboCop", {
+  const fundImpl = await deploy("Fund", {
     from: deployer,
     args: [],
     log: true,
-    libraries: { TokenLib: TokenLibAddr }
+    libraries: {
+      Subscriptions: SubLibAddr,
+      AssetTracker: AssetTrackerLibAddr,
+      TokenLib: TokenLibAddr
+    }
+  });
+
+  await deploy("FundBeacon", {
+    contract: "UpgradeableBeacon",
+    from: deployer,
+    args: [fundImpl.address],
+    log: true
   });
 };
 
 export default func;
-func.tags = ["RoboCopImplementation"];
-func.dependencies = ["Triggers", "Actions"];
+func.tags = ["Fund"];

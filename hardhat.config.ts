@@ -7,6 +7,7 @@ import "hardhat-deploy";
 import "solidity-coverage";
 import "hardhat-contract-sizer";
 import "hardhat-gas-reporter";
+import "@openzeppelin/hardhat-upgrades";
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -32,6 +33,13 @@ const config: HardhatUserConfig = {
   },
   gasReporter: {
     enabled: false
+  },
+  external: {
+    contracts: [
+      {
+        artifacts: "node_modules/@openzeppelin/contracts/build/contracts"
+      }
+    ]
   }
 };
 

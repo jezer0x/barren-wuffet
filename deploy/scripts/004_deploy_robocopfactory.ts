@@ -18,4 +18,4 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
 export default func;
 func.tags = ["RoboCopFactory"];
-func.dependencies = ["RoboCopImplementation", "Libraries"];
+func.dependencies = ["RoboCop", "Libraries"];

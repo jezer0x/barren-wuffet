@@ -8,8 +8,8 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const { deployer } = await getNamedAccounts();
 
   const whitelistService = await ethers.getContract("WhitelistService");
-  const roboCopImplementation = await ethers.getContract("RoboCop");
-  const fundImplementation = await ethers.getContract("Fund");
+  const roboCopBeacon = await ethers.getContract("RoboCopBeacon");
+  const fundBeacon = await ethers.getContract("FundBeacon");
   const trigWlHash = await whitelistService.getWhitelistHash(deployer, "triggers");
   const actWlHash = await whitelistService.getWhitelistHash(deployer, "actions");
 
@@ -25,8 +25,8 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
       trigWlHash,
       actWlHash,
       whitelistService.address,
-      roboCopImplementation.address,
-      fundImplementation.address
+      roboCopBeacon.address,
+      fundBeacon.address
     ],
     log: true
   });
@@ -34,4 +34,4 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
 export default func;
 func.tags = ["BarrenWuffet"];
-func.dependencies = ["RoboCopImplementation", "FundImplementation", "WhitelistService"];
+func.dependencies = ["RoboCop", "Fund", "WhitelistService"];

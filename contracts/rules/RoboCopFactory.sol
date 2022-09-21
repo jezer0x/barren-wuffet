@@ -12,18 +12,18 @@ import "@openzeppelin/contracts/proxy/Clones.sol";
  * */
 contract RoboCopFactory is Ownable {
     event Created(address indexed roboCopAddr);
-    address roboCopImplAddr;
+    address roboCopBeaconAddr;
 
-    constructor(address _roboCopImplAddr) {
-        configure(_roboCopImplAddr);
+    constructor(address _roboCopBeaconAddr) {
+        configure(_roboCopBeaconAddr);
     }
 
-    function configure(address _roboCopImplAddr) public onlyOwner {
-        roboCopImplAddr = _roboCopImplAddr;
+    function configure(address _roboCopBeaconAddr) public onlyOwner {
+        roboCopBeaconAddr = _roboCopBeaconAddr;
     }
 
     function createRoboCop() external {
-        IRoboCop roboCop = IRoboCop(Clones.clone(roboCopImplAddr));
+        IRoboCop roboCop = IRoboCop(Clones.clone(roboCopBeaconAddr));
         roboCop.initialize(msg.sender);
         emit Created(address(roboCop));
     }

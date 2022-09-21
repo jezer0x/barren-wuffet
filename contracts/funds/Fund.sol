@@ -10,7 +10,7 @@ import "../rules/IRoboCop.sol";
 import "./IFund.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/proxy/Clones.sol";
+import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
@@ -62,7 +62,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         address _wlServiceAddr,
         bytes32 _triggerWhitelistHash,
         bytes32 _actionWhitelistHash,
-        address roboCopImplementationAddr,
+        address roboCopBeaconAddr,
         address[] calldata _declaredTokenAddrs
     ) external nonReentrant initializer {
         __ReentrancyGuard_init();
@@ -94,7 +94,8 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         triggerWhitelistHash = _triggerWhitelistHash;
         actionWhitelistHash = _actionWhitelistHash;
 
-        roboCop = IRoboCop(Clones.clone(roboCopImplementationAddr));
+        bytes memory nodata;
+        roboCop = IRoboCop(address(new BeaconProxy(roboCopBeaconAddr, nodata)));
         roboCop.initialize(address(this));
     }
 
