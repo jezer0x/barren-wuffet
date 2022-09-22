@@ -196,36 +196,40 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
     }
 
     function takeAction(
+        Trigger calldata trigger,
         Action calldata action,
-        ActionRuntimeParams calldata runtimeParams,
+        uint256[] calldata collaterals,
         uint256[] calldata fees
     ) public nonReentrant onlyDeployedFund onlyFundManager {
-        return _takeAction(action, runtimeParams, fees);
+        return _takeAction(trigger, action, collaterals, fees);
     }
 
     function takeActionToClosePosition(
+        Trigger calldata trigger,
         Action calldata action,
-        ActionRuntimeParams calldata runtimeParams,
+        uint256[] calldata collaterals,
         uint256[] calldata fees
     ) public nonReentrant onlyDeployedFund {
         require(block.timestamp >= subStuff.constraints.lockin); // fund expired
         require(roboCop.actionClosesPendingPosition(action)); // but positions are still open that can be closed by this
-        _takeAction(action, runtimeParams, fees);
+        _takeAction(trigger, action, collaterals, fees);
         // TODO: how to make sure new action does not spawn another position?
     }
 
     function _takeAction(
+        Trigger calldata trigger,
         Action calldata action,
-        ActionRuntimeParams calldata runtimeParams,
+        uint256[] calldata collaterals,
         uint256[] calldata fees
     ) internal {
-        Trigger[] memory noTriggers; // should be immediately executable
+        Trigger[] memory triggers = new Trigger[](1);
+        triggers[0] = trigger;
         Action[] memory actions = new Action[](1);
         actions[0] = action;
-        bytes32 ruleHash = _createRule(noTriggers, actions);
-        _addRuleCollateral(ruleHash, action.inputTokens, runtimeParams.collaterals, fees);
+        bytes32 ruleHash = _createRule(triggers, actions);
+        _addRuleCollateral(ruleHash, action.inputTokens, collaterals, fees);
         roboCop.activateRule(ruleHash);
-        roboCop.executeRule(ruleHash);
+        roboCop.executeRule(ruleHash); // should be immediately executable
         _redeemRuleOutput(ruleHash);
     }
 
@@ -348,6 +352,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         Rule memory rule = roboCop.getRule(ruleHash);
         Token[] memory outputTokens = roboCop.getOutputTokens(ruleHash);
         uint256[] memory outputs = rule.outputs;
+
         roboCop.redeemBalance(ruleHash);
 
         for (uint256 i = 0; i < outputTokens.length; i++) {

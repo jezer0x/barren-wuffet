@@ -45,8 +45,9 @@ interface IFund is ISubscription {
     function closeFund() external;
 
     function takeAction(
+        Trigger calldata trigger,
         Action calldata action,
-        ActionRuntimeParams calldata runtimeParams,
+        uint256[] calldata collaterals,
         uint256[] calldata fees
     ) external;
 

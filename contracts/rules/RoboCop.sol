@@ -225,6 +225,7 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
     {
         for (uint256 j = 0; j < action.inputTokens.length; j++) {
             // ignore return value
+
             action.inputTokens[j].approve(action.callee, runtimeParams.collaterals[j]);
         }
 
