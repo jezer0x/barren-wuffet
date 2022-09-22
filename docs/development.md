@@ -53,3 +53,33 @@ To create a graphviz summary of all the function calls do, `surya graph contract
 `surya describe contracts/**/*.sol` will summarize the contracts and point out fn modifiers / payments. It's useful to get an overview.
 
 You can see further instructons for Surya at https://github.com/ConsenSys/surya.
+
+### The Graph
+
+This section mostly follows: https://github.com/graphprotocol/hardhat-graph
+
+- yarn add @graphprotocol/graph-cli
+- yarn add @graphprotocol/graph-ts
+- yarn add @graphprotocol/hardhat-graph
+
+- yarn hardhat graph init --contract-name BarrenWuffet --address 0x3Aa5ebB10DC797CAC828524e59A333d0A371443c.
+- from another terminal in the root folder, run `yarn hardhat node --hostname 0.0.0.0`
+- change `hardhat` in `./subgraph/subgraph.yaml` to `localhost`
+- from root, `docker-compose up --force-recreate`
+- `yarn create-local`
+- `yarn deploy-local`
+- Run `yarn hardhat run deploy/testGraph.ts`
+- go to http://localhost:8000/subgraphs/name/barren-wuffet and query with { exampleEntities }. You should see some data on the right hand side!
+
+CLEANUP:
+
+- Close the hardhat node
+- `yarn graph-local-clean`
+- You also need to `--force-recreate` the next time you're doing `docker-compose up`
+
+MODIFYING:
+
+- We'll mainly work with `./subgraph/schema.graphql` and `./subgraph/src/*.ts` files.
+- When you update the schema, run `yarn graph-build` to codegen the stuff inside `generate/`.
+- After this you can modify the stuff under `src/` to translate the event data to the graphql schema we defined.
+- When adding new data sources, we'll be touching the `subgraph.yml` files.

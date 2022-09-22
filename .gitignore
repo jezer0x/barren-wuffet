@@ -11,3 +11,12 @@ deployments/
 cache
 artifacts
 
+# graph-node 
+data/ 
+
+# Subgraph
+./subgraph/generated
+./subgraph/build
+
+# Matchstick
+./subgraph/tests/.*
