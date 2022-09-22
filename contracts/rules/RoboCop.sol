@@ -200,7 +200,7 @@ contract RoboCop is IRoboCop, Ownable, ReentrancyGuard, IERC721Receiver, Initial
     }
 
     function _getRuleHash(Trigger[] calldata triggers, Action[] calldata actions) private view returns (bytes32) {
-        return keccak256(abi.encode(triggers, actions, msg.sender, block.timestamp));
+        return keccak256(abi.encode(triggers, actions, msg.sender, block.timestamp, address(this)));
     }
 
     function _checkTriggers(Trigger[] storage triggers) internal view returns (bool, TriggerReturn[] memory) {
@@ -227,12 +227,30 @@ contract RoboCop is IRoboCop, Ownable, ReentrancyGuard, IERC721Receiver, Initial
             // ignore return value
             action.inputTokens[j].approve(action.callee, runtimeParams.collaterals[j]);
         }
-
-        Utils._closePosition(action, pendingPositions, actionPositionsMap);
+        bool positionsClosed;
+        bytes32[] memory deletedPositionHashes;
+        (positionsClosed, deletedPositionHashes) = Utils._closePosition(action, pendingPositions, actionPositionsMap);
+        if (positionsClosed) {
+            emit PositionsClosed(abi.encode(action), deletedPositionHashes);
+        }
 
         ActionResponse memory response = Utils._delegatePerformAction(action, runtimeParams);
 
-        Utils._createPosition(action, response.position.nextActions, pendingPositions, actionPositionsMap);
+        bool positionCreated;
+        bytes32 positionHash;
+        (positionCreated, positionHash) = Utils._createPosition(
+            action,
+            response.position.nextActions,
+            pendingPositions,
+            actionPositionsMap
+        );
+        if (positionCreated) {
+            bytes[] memory abiEncodedNextActions = new bytes[](response.position.nextActions.length);
+            for (uint256 i = 0; i < response.position.nextActions.length; i++) {
+                abiEncodedNextActions[i] = abi.encode(response.position.nextActions[i]);
+            }
+            emit PositionCreated(positionHash, abi.encode(action), abiEncodedNextActions);
+        }
 
         return response.tokenOutputs;
     }
