@@ -1,6 +1,6 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
-import { getLibraries } from "../utils";
+import { ethers } from "hardhat";
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
@@ -8,19 +8,16 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
   const { deployer } = await getNamedAccounts();
 
-  const { SubLibAddr, AssetTrackerLibAddr, TokenLibAddr } = await getLibraries();
+  const robocopImpl = await ethers.getContract("RoboCop");
 
-  const fundImpl = await deploy("Fund", {
+  await deploy("RoboCopBeacon", {
+    contract: "UpgradeableBeacon",
     from: deployer,
-    args: [],
-    log: true,
-    libraries: {
-      Subscriptions: SubLibAddr,
-      AssetTracker: AssetTrackerLibAddr,
-      TokenLib: TokenLibAddr
-    }
+    args: [robocopImpl.address],
+    log: true
   });
 };
 
 export default func;
-func.tags = ["Fund"];
+func.tags = ["RoboCopBeacon"];
+func.dependencies = ["RoboCop"];

@@ -16,13 +16,6 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     log: true,
     libraries: { TokenLib: TokenLibAddr }
   });
-
-  await deploy("RoboCopBeacon", {
-    contract: "UpgradeableBeacon",
-    from: deployer,
-    args: [robocopImpl.address],
-    log: true
-  });
 };
 
 export default func;
