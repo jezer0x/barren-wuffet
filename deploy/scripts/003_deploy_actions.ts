@@ -5,6 +5,7 @@ import { getLibraries } from "../utils";
 import { Contract } from "ethers";
 import dotenv from "dotenv";
 dotenv.config({ path: ".test.env" });
+import { getChainId } from "hardhat";
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
@@ -14,6 +15,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
   const whitelistService = await ethers.getContract("WhitelistService");
   const actWlHash = await whitelistService.getWhitelistHash(deployer, "actions");
+  console.log("actWlHash", actWlHash);
   try {
     await whitelistService.createWhitelist("actions");
   } catch {
@@ -33,9 +35,17 @@ async function deploySwapUniSingleAction(
   actWlHash: any,
   TokenLibAddr: string
 ) {
+  let uniswapAddr;
+  let weth9Addr;
+
   // TODO: utils to change the following to vars, depending on chainID
-  const uniswapAddr = (await ethers.getContract("TestSwapRouter")).address;
-  const weth9Addr = (await ethers.getContract("WETH")).address;
+  if ((await getChainId()) == "31337") {
+    uniswapAddr = (await ethers.getContract("TestSwapRouter")).address;
+    weth9Addr = (await ethers.getContract("WETH")).address;
+  } else {
+    uniswapAddr = ethers.constants.AddressZero;
+    weth9Addr = ethers.constants.AddressZero;
+  }
 
   const swapUniSingleAction = await deploy("SwapUniSingleAction", {
     from: deployer,

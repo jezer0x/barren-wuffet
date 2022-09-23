@@ -12,6 +12,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
   const whitelistService = await ethers.getContract("WhitelistService");
   let trigWlHash = await whitelistService.getWhitelistHash(deployer, "triggers");
+  console.log("trigWlHash", trigWlHash);
   try {
     await whitelistService.createWhitelist("triggers");
   } catch {
@@ -32,8 +33,11 @@ async function deployPriceTrigger(deploy: any, deployer: string, whitelistServic
   });
 
   const priceTrigger = await ethers.getContract("PriceTrigger");
-  await priceTrigger.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
+  if ((await priceTrigger.owner()) == deployer) {
+    await priceTrigger.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
+  }
 
+  // TODO: following will fail if trigWLHash ownership was given to someone else
   if (!(await whitelistService.isWhitelisted(trigWlHash, priceTrigger.address))) {
     await whitelistService.addToWhitelist(trigWlHash, priceTrigger.address);
   }

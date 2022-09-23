@@ -8,6 +8,8 @@ import "hardhat-contract-sizer";
 import "hardhat-gas-reporter";
 import "@graphprotocol/hardhat-graph";
 import "@openzeppelin/hardhat-upgrades";
+import dotenv from "dotenv";
+dotenv.config();
 
 const config = {
   solidity: {
@@ -21,6 +23,16 @@ const config = {
   networks: {
     localhost: {
       url: "http://0.0.0.0:8545"
+    },
+    goerli: {
+      url: `https://eth-goerli.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY_GOERLI}`,
+      accounts: [process.env.DEPLOYER_PRIV_KEY],
+      verify: {
+        etherscan: {
+          apiUrl: "https://api-goerli.etherscan.io/",
+          apiKey: process.env.ETHERSCAN_API_KEY
+        }
+      }
     }
   },
   namedAccounts: {
