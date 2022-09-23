@@ -1,11 +1,10 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
-import { ethers } from "hardhat";
-import { getLibraries } from "../utils";
+import { ethers, getChainId } from "hardhat";
+import { addToWhitelist, getLibraries } from "../utils";
 import { Contract } from "ethers";
 import dotenv from "dotenv";
 dotenv.config({ path: ".test.env" });
-import { getChainId } from "hardhat";
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
@@ -25,7 +24,9 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   await deploySwapUniSingleAction(deploy, deployer, whitelistService, actWlHash, TokenLibAddr);
   // TODO: deploy all the other actions
 
-  await whitelistService.transferWhitelistOwnership(actWlHash, process.env.PLATFORM_MULTI_SIG_ADDR);
+  if ((await whitelistService.getWhitelistOwner(actWlHash)) == deployer) {
+    await whitelistService.transferWhitelistOwnership(actWlHash, process.env.PLATFORM_MULTI_SIG_ADDR);
+  } // else was already transferred
 };
 
 async function deploySwapUniSingleAction(
@@ -54,9 +55,7 @@ async function deploySwapUniSingleAction(
     libraries: { TokenLib: TokenLibAddr }
   });
 
-  if (!(await whitelistService.isWhitelisted(actWlHash, swapUniSingleAction.address))) {
-    await whitelistService.addToWhitelist(actWlHash, swapUniSingleAction.address);
-  }
+  await addToWhitelist(deployer, whitelistService, actWlHash, swapUniSingleAction.address);
 }
 
 export default func;

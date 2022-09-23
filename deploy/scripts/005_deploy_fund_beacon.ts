@@ -12,15 +12,17 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
   const fundImpl = await ethers.getContract("Fund");
 
-  await deploy("FundBeacon", {
+  const fbDeployResult = await deploy("FundBeacon", {
     contract: "UpgradeableBeacon",
     from: deployer,
     args: [fundImpl.address],
     log: true
   });
 
-  const fundBeacon = await ethers.getContract("FundBeacon");
-  await fundBeacon.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
+  if (fbDeployResult.newlyDeployed) {
+    const fundBeacon = await ethers.getContract("FundBeacon");
+    await fundBeacon.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
+  }
 };
 
 export default func;

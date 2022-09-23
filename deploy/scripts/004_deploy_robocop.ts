@@ -10,7 +10,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
   const { TokenLibAddr } = await getLibraries();
 
-  const robocopImpl = await deploy("RoboCop", {
+  await deploy("RoboCop", {
     from: deployer,
     args: [],
     log: true,

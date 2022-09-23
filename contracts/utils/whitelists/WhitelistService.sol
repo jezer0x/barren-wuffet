@@ -16,8 +16,8 @@ contract WhitelistService {
 
     mapping(bytes32 => Whitelist) whitelists;
 
-    function getWhitelistHash(address owner, string calldata name) public pure returns (bytes32) {
-        return keccak256(abi.encode(owner, name));
+    function getWhitelistHash(address creator, string calldata name) public pure returns (bytes32) {
+        return keccak256(abi.encode(creator, name));
     }
 
     function createWhitelist(string calldata name) public returns (bytes32) {
@@ -52,5 +52,9 @@ contract WhitelistService {
 
     function transferWhitelistOwnership(bytes32 wlHash, address newOwner) public onlyWhitelistOwner(wlHash) {
         whitelists[wlHash].owner = newOwner;
+    }
+
+    function getWhitelistOwner(bytes32 wlHash) public view returns (address) {
+        return whitelists[wlHash].owner;
     }
 }

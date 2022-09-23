@@ -16,7 +16,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const trigWlHash = await whitelistService.getWhitelistHash(deployer, "triggers");
   const actWlHash = await whitelistService.getWhitelistHash(deployer, "actions");
 
-  await deploy("BarrenWuffet", {
+  const bwDeployResult = await deploy("BarrenWuffet", {
     from: deployer,
     args: [
       {
@@ -34,8 +34,10 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     log: true
   });
 
-  const bw = await ethers.getContract("BarrenWuffet");
-  await bw.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
+  if (bwDeployResult.newlyDeployed) {
+    const bw = await ethers.getContract("BarrenWuffet");
+    await bw.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
+  }
 };
 
 export default func;

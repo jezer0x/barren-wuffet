@@ -12,15 +12,17 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
   const robocopImpl = await ethers.getContract("RoboCop");
 
-  await deploy("RoboCopBeacon", {
+  const rcbDeployResult = await deploy("RoboCopBeacon", {
     contract: "UpgradeableBeacon",
     from: deployer,
     args: [robocopImpl.address],
     log: true
   });
 
-  const roboCopBeacon = await ethers.getContract("RoboCopBeacon");
-  await roboCopBeacon.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
+  if (rcbDeployResult.newlyDeployed) {
+    const roboCopBeacon = await ethers.getContract("RoboCopBeacon");
+    await roboCopBeacon.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
+  }
 };
 
 export default func;

@@ -2,6 +2,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 import { ethers } from "hardhat";
 import { Contract } from "ethers";
+import { addToWhitelist } from "../utils";
 import dotenv from "dotenv";
 dotenv.config({ path: ".test.env" });
 
@@ -22,7 +23,9 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   await deployPriceTrigger(deploy, deployer, whitelistService, trigWlHash);
   await deployTimestampTrigger(deploy, deployer, whitelistService, trigWlHash);
 
-  await whitelistService.transferWhitelistOwnership(trigWlHash, process.env.PLATFORM_MULTI_SIG_ADDR);
+  if ((await whitelistService.getWhitelistOwner(trigWlHash)) == deployer) {
+    await whitelistService.transferWhitelistOwnership(trigWlHash, process.env.PLATFORM_MULTI_SIG_ADDR);
+  } // else this was already handed over?
 };
 
 async function deployPriceTrigger(deploy: any, deployer: string, whitelistService: Contract, trigWlHash: any) {
@@ -37,10 +40,7 @@ async function deployPriceTrigger(deploy: any, deployer: string, whitelistServic
     await priceTrigger.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
   }
 
-  // TODO: following will fail if trigWLHash ownership was given to someone else
-  if (!(await whitelistService.isWhitelisted(trigWlHash, priceTrigger.address))) {
-    await whitelistService.addToWhitelist(trigWlHash, priceTrigger.address);
-  }
+  await addToWhitelist(deployer, whitelistService, trigWlHash, priceTrigger.address);
 }
 
 async function deployTimestampTrigger(deploy: any, deployer: string, whitelistService: Contract, trigWlHash: any) {
@@ -50,9 +50,7 @@ async function deployTimestampTrigger(deploy: any, deployer: string, whitelistSe
     log: true
   });
 
-  if (!(await whitelistService.isWhitelisted(trigWlHash, tsTrigger.address))) {
-    await whitelistService.addToWhitelist(trigWlHash, tsTrigger.address);
-  }
+  await addToWhitelist(deployer, whitelistService, trigWlHash, tsTrigger.address);
 }
 
 export default func;

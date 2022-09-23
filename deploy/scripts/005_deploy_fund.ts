@@ -10,7 +10,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
   const { SubLibAddr, AssetTrackerLibAddr, TokenLibAddr } = await getLibraries();
 
-  const fundImpl = await deploy("Fund", {
+  await deploy("Fund", {
     from: deployer,
     args: [],
     log: true,
