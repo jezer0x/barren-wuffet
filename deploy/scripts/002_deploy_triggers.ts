@@ -1,16 +1,16 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
-import { ethers } from "hardhat";
+import { ethers, getChainId } from "hardhat";
 import { Contract } from "ethers";
 import { addToWhitelist } from "../utils";
 import dotenv from "dotenv";
-dotenv.config({ path: ".test.env" });
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
+  dotenv.config({ path: (await getChainId()) == "31337" ? ".test.env" : ".env" });
+
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
   const { deployer } = await getNamedAccounts();
-
   const whitelistService = await ethers.getContract("WhitelistService");
   let trigWlHash = await whitelistService.getWhitelistHash(deployer, "triggers");
   console.log("trigWlHash", trigWlHash);
