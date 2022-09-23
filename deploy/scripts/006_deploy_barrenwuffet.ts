@@ -1,6 +1,9 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 import { ethers } from "hardhat";
+import dotenv from "dotenv";
+dotenv.config({ path: ".test.env" });
+
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
@@ -17,7 +20,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     from: deployer,
     args: [
       {
-        platformFeeWallet: deployer,
+        platformFeeWallet: process.env.PLATFORM_MULTI_SIG_ADDR,
         subscriberToPlatformFeePercentage: 0,
         managerToPlatformFeePercentage: 0,
         subscriberToManagerFeePercentage: 0 // will be overwritten anyways
@@ -30,6 +33,9 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     ],
     log: true
   });
+
+  const bw = await ethers.getContract("BarrenWuffet");
+  await bw.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
 };
 
 export default func;

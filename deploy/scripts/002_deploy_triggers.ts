@@ -2,6 +2,8 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 import { ethers } from "hardhat";
 import { Contract } from "ethers";
+import dotenv from "dotenv";
+dotenv.config({ path: ".test.env" });
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
@@ -18,14 +20,19 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
   await deployPriceTrigger(deploy, deployer, whitelistService, trigWlHash);
   await deployTimestampTrigger(deploy, deployer, whitelistService, trigWlHash);
+
+  await whitelistService.transferWhitelistOwnership(trigWlHash, process.env.PLATFORM_MULTI_SIG_ADDR);
 };
 
 async function deployPriceTrigger(deploy: any, deployer: string, whitelistService: Contract, trigWlHash: any) {
-  const priceTrigger = await deploy("PriceTrigger", {
+  await deploy("PriceTrigger", {
     from: deployer,
     args: [],
     log: true
   });
+
+  const priceTrigger = await ethers.getContract("PriceTrigger");
+  await priceTrigger.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
 
   if (!(await whitelistService.isWhitelisted(trigWlHash, priceTrigger.address))) {
     await whitelistService.addToWhitelist(trigWlHash, priceTrigger.address);

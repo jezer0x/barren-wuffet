@@ -38,6 +38,7 @@
     "@openzeppelin/hardhat-upgrades": "^1.20.0",
     "@uniswap/v3-core": "ssh://github.com:Uniswap/v3-core#0.8",
     "@uniswap/v3-periphery": "ssh://github.com:Uniswap/v3-periphery#0.8",
+    "dotenv": "^16.0.2",
     "istanbul-badges-readme": "^1.8.2"
   },
   "scripts": {

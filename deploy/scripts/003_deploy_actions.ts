@@ -3,6 +3,8 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { ethers } from "hardhat";
 import { getLibraries } from "../utils";
 import { Contract } from "ethers";
+import dotenv from "dotenv";
+dotenv.config({ path: ".test.env" });
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
@@ -20,6 +22,8 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
   await deploySwapUniSingleAction(deploy, deployer, whitelistService, actWlHash, TokenLibAddr);
   // TODO: deploy all the other actions
+
+  await whitelistService.transferWhitelistOwnership(actWlHash, process.env.PLATFORM_MULTI_SIG_ADDR);
 };
 
 async function deploySwapUniSingleAction(
