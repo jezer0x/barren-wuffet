@@ -49,4 +49,8 @@ contract WhitelistService {
     function enableWhitelist(bytes32 wlHash) public onlyWhitelistOwner(wlHash) {
         whitelists[wlHash].disabled = false;
     }
+
+    function transferWhitelistOwnership(bytes32 wlHash, address newOwner) public onlyWhitelistOwner(wlHash) {
+        whitelists[wlHash].owner = newOwner;
+    }
 }
