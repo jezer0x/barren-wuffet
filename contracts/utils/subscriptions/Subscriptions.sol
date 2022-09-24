@@ -8,9 +8,6 @@ library Subscriptions {
     using AssetTracker for AssetTracker.Assets;
     using TokenLib for Token;
 
-    event Deposit(address subscriber, uint256 subIdx, address token, uint256 balance);
-    event Withdraw(address subscriber, uint256 subIdx, address token, uint256 balance);
-
     enum Status {
         ACTIVE,
         WITHDRAWN
@@ -61,7 +58,6 @@ library Subscriptions {
         subStuff.totalCollateral += remainingColalteralAmount;
         assets.increaseAsset(collateralToken, remainingColalteralAmount);
 
-        emit Deposit(msg.sender, subStuff.subscriptions.length - 1, collateralToken.addr, collateralAmount);
         return subStuff.subscriptions.length - 1;
     }
 
@@ -133,7 +129,6 @@ library Subscriptions {
         assets.decreaseAsset(subStuff.constraints.allowedDepositToken, subscription.collateralAmount);
         subscription.status = Subscriptions.Status.WITHDRAWN;
 
-        emit Withdraw(msg.sender, subscriptionIdx, Constants.ETH, subscription.collateralAmount);
         subStuff.constraints.allowedDepositToken.send(subscription.subscriber, subscription.collateralAmount);
 
         Token[] memory tokens = new Token[](1);
@@ -160,7 +155,6 @@ library Subscriptions {
             balances[i] =
                 getShares(subStuff, assets, subscriptionIdx, assets.tokens[i]) -
                 getManagementFeeShare(subStuff, assets, tokens[i]);
-            emit Withdraw(msg.sender, subscriptionIdx, tokens[i].addr, balances[i]);
             tokens[i].send(subscription.subscriber, balances[i]);
         }
         return (tokens, balances);
