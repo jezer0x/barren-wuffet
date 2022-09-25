@@ -28,6 +28,7 @@ import {
 } from "./Constants";
 import { RuleStructOutput } from "../typechain-types/contracts/rules/RoboCop";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { assert } from "console";
 
 describe("RoboCop", () => {
   const deployRoboCopFixture = deployments.createFixture(async (hre, options) => {
@@ -121,7 +122,7 @@ describe("RoboCop", () => {
       );
     });
 
-    it.skip("If trigger, action, user, block are the same, ruleHash should be the same -> making the second creation fail", async () => {
+    it("If trigger, action, user, block are the same, ruleHash should be the same -> making the second creation fail", async () => {
       const { roboCop, swapUniSingleAction, priceTrigger, ruleMakerWallet, testToken1 } = await deployRoboCopFixture();
 
       const passingTrigger = makePassingTrigger(priceTrigger.address, testToken1);
@@ -132,10 +133,14 @@ describe("RoboCop", () => {
       await network.provider.send("evm_setAutomine", [false]);
       const tx1 = await roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction]);
       const tx2 = await roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction]);
-      // different user, so this 3rd rule should work
-      const tx3 = await roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction]);
+
       await network.provider.send("evm_mine", []);
       await network.provider.send("evm_setAutomine", [true]);
+      // different user, so this 3rd rule should work
+      await expect(roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction])).to.emit(
+        roboCop,
+        "Created"
+      );
 
       try {
         await tx1.wait();
@@ -144,19 +149,23 @@ describe("RoboCop", () => {
       }
 
       try {
-        await tx2.wait();
-        // cant figure how to confirm whether the error is a duplicate rule error.
-        // this will suffice for now.
-        expect.fail();
+        const trace = await network.provider.send("debug_traceTransaction", [
+          tx2.hash,
+          {
+            disableMemory: true,
+            disableStack: true,
+            disableStorage: true,
+          },
+        ]);
+        // Don't really know how to expect this
+        assert(trace.failed == true);
+        // checks if error is duplicated rule, its in raw form as I don't know how to abi decode 
+        // 0x4475706c69636174652052756c65 is Duplicate Rule in hex
+        assert(trace.returnValue == "08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e4475706c69636174652052756c65000000000000000000000000000000000000");
+        
       } catch (err) {
         /* pass */
-      }
-
-      try {
-        await tx3.wait();
-      } catch (err) {
-        // this acts as a control to ensure the error wasnt due to the evm_mine stuff
-        expect.fail();
+        console.log(err);
       }
     });
 
