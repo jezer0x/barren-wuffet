@@ -136,7 +136,7 @@ describe("RoboCop", () => {
 
       await network.provider.send("evm_mine", []);
       await network.provider.send("evm_setAutomine", [true]);
-      // different user, so this 3rd rule should work
+      // different block time, so this 3rd rule should work
       await expect(roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction])).to.emit(
         roboCop,
         "Created"
