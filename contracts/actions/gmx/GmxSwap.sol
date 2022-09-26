@@ -24,6 +24,7 @@ contract GmxSwap is IAction, DelegatePerform {
     // returns (ActionResponse[]) if successful, else should revert
     function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
         external
+        delegateOnly
         returns (ActionResponse memory)
     {
         uint256 _amountIn = runtimeParams.collaterals[0];
@@ -38,11 +39,11 @@ contract GmxSwap is IAction, DelegatePerform {
         } else if (action.outputTokens[0].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH}))) {
             _path[0] = action.inputTokens[0].addr;
             _path[1] = router.weth();
-            IERC20(_path[0]).safeApprove(address(router), runtimeParams.collaterals[0]);
+            IERC20(_path[0]).safeApprove(address(router), _amountIn);
         } else {
             _path[0] = action.inputTokens[0].addr;
             _path[1] = action.outputTokens[0].addr;
-            IERC20(_path[0]).safeApprove(address(router), runtimeParams.collaterals[0]);
+            IERC20(_path[0]).safeApprove(address(router), _amountIn);
         }
 
         (amountOut, fee) = reader.getAmountOut(router.vault(), _path[0], _path[1], _amountIn);
@@ -69,7 +70,6 @@ contract GmxSwap is IAction, DelegatePerform {
     }
 
     // reverts if action fails to validate, otherwise returns true
-    // copy of validate() from SwapUniSingleAction
     function validate(Action calldata action) external view returns (bool) {
         return SimpleSwapUtils._validate(action);
     }
