@@ -8,6 +8,7 @@ import "../../utils/assets/TokenLib.sol";
 import "../DelegatePerform.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "../SimpleSwapUtils.sol";
 
 /*
     Reference: 
@@ -34,34 +35,8 @@ contract SwapUniSingleAction is IAction, DelegatePerform {
         WETH9Addr = wethAddress;
     }
 
-    function validate(Action calldata action) external pure returns (bool) {
-        require(action.inputTokens.length == 1);
-        require(action.inputTokens[0].t == TokenType.ERC20 || action.inputTokens[0].t == TokenType.NATIVE);
-
-        require(action.outputTokens.length == 1);
-        require(action.outputTokens[0].t == TokenType.ERC20 || action.outputTokens[0].t == TokenType.NATIVE);
-
-        require(!action.inputTokens[0].equals(action.outputTokens[0]));
-
-        return true;
-    }
-
-    function _parseRuntimeParams(Action calldata action, ActionRuntimeParams calldata runtimeParams)
-        internal
-        pure
-        returns (uint256)
-    {
-        for (uint256 i = 0; i < runtimeParams.triggerReturnArr.length; i++) {
-            TriggerReturn memory triggerReturn = runtimeParams.triggerReturnArr[i];
-            if (triggerReturn.triggerType == TriggerType.Price) {
-                (address asset1, address asset2, uint256 res) = decodePriceTriggerReturn(triggerReturn.runtimeData);
-                if (asset1 == action.inputTokens[0].addr && asset2 == action.outputTokens[0].addr) {
-                    return res;
-                } // fallthrough
-            } // fallthrough
-        }
-
-        return 0;
+    function validate(Action calldata action) external view returns (bool) {
+        return SimpleSwapUtils._validate(action);
     }
 
     function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
@@ -99,7 +74,8 @@ contract SwapUniSingleAction is IAction, DelegatePerform {
             recipient: address(this),
             deadline: block.timestamp, // need to do an immediate swap
             amountIn: runtimeParams.collaterals[0],
-            amountOutMinimum: (_parseRuntimeParams(action, runtimeParams) * runtimeParams.collaterals[0]) / 10**8, // assumption: triggerReturn in the form of tokenIn/tokenOut.
+            amountOutMinimum: (SimpleSwapUtils._parseRuntimeParams(action, runtimeParams) *
+                runtimeParams.collaterals[0]) / 10**8, // assumption: triggerReturn in the form of tokenIn/tokenOut.
             sqrtPriceLimitX96: 0
         });
 
