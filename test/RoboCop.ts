@@ -148,25 +148,22 @@ describe("RoboCop", () => {
         expect.fail();
       }
 
-      try {
-        const trace = await network.provider.send("debug_traceTransaction", [
-          tx2.hash,
-          {
-            disableMemory: true,
-            disableStack: true,
-            disableStorage: true,
-          },
-        ]);
-        // Don't really know how to expect this
-        assert(trace.failed == true);
-        // checks if error is duplicated rule, its in raw form as I don't know how to abi decode 
-        // 0x4475706c69636174652052756c65 is Duplicate Rule in hex
-        assert(trace.returnValue == "08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e4475706c69636174652052756c65000000000000000000000000000000000000");
-        
-      } catch (err) {
-        /* pass */
-        console.log(err);
-      }
+      const trace = await network.provider.send("debug_traceTransaction", [
+        tx2.hash,
+        {
+          disableMemory: true,
+          disableStack: true,
+          disableStorage: true,
+        },
+      ]);
+
+      expect(trace.failed).to.be.equal(true);
+
+      // checks if error is duplicated rule, its in raw form as I don't know how to abi decode
+      // 0x4475706c69636174652052756c65 is Duplicate Rule in hex
+      expect(trace.returnValue).to.be.equal(
+        "08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e4475706c69636174652052756c65000000000000000000000000000000000000"
+      );
     });
 
     it("Should fail to create rule by nonOwner", async () => {
