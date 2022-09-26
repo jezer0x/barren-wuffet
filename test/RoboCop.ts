@@ -148,14 +148,7 @@ describe("RoboCop", () => {
         expect.fail();
       }
 
-      const trace = await network.provider.send("debug_traceTransaction", [
-        tx2.hash,
-        {
-          disableMemory: true,
-          disableStack: true,
-          disableStorage: true,
-        },
-      ]);
+      const trace = await network.provider.send("debug_traceTransaction", [tx2.hash]);
 
       expect(trace.failed).to.be.equal(true);
 
