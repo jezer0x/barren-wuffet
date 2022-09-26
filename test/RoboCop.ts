@@ -24,7 +24,7 @@ import {
   LT,
   GT,
   ETH_ADDRESS,
-  PRICE_TRIGGER_TYPE,
+  PRICE_TRIGGER_TYPE
 } from "./Constants";
 import { RuleStructOutput } from "../typechain-types/contracts/rules/RoboCop";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
@@ -161,8 +161,14 @@ describe("RoboCop", () => {
     });
 
     it("Should fail to create rule by nonOwner", async () => {
-      const { roboCop, swapUniSingleAction, priceTrigger, botWallet, testToken1, ruleMakerWallet } =
-        await deployRoboCopFixture();
+      const {
+        roboCop,
+        swapUniSingleAction,
+        priceTrigger,
+        botWallet,
+        testToken1,
+        ruleMakerWallet
+      } = await deployRoboCopFixture();
 
       const ruleMakerWallet2 = botWallet;
 
@@ -177,8 +183,14 @@ describe("RoboCop", () => {
 
   describe("Check Rule", () => {
     it("should return false if the checkTrigger on the rule denoted by ruleHash returns false", async () => {
-      const { roboCop, swapUniSingleAction, priceTrigger, ruleMakerWallet, botWallet, testToken1 } =
-        await deployRoboCopFixture();
+      const {
+        roboCop,
+        swapUniSingleAction,
+        priceTrigger,
+        ruleMakerWallet,
+        botWallet,
+        testToken1
+      } = await deployRoboCopFixture();
 
       const failingTrigger = makeFailingTrigger(priceTrigger.address, testToken1);
       const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address], [ETH_ADDRESS]);
@@ -194,8 +206,14 @@ describe("RoboCop", () => {
     });
 
     it("should return true if the checkTrigger on the callee denoted by ruleHash returns true", async () => {
-      const { roboCop, swapUniSingleAction, priceTrigger, ruleMakerWallet, botWallet, testToken1 } =
-        await deployRoboCopFixture();
+      const {
+        roboCop,
+        swapUniSingleAction,
+        priceTrigger,
+        ruleMakerWallet,
+        botWallet,
+        testToken1
+      } = await deployRoboCopFixture();
 
       const passingTrigger = makePassingTrigger(priceTrigger.address, testToken1);
       const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address], [ETH_ADDRESS]);
@@ -205,8 +223,14 @@ describe("RoboCop", () => {
     });
 
     it("should return false if one of multiple triggers is invalid", async () => {
-      const { roboCop, swapUniSingleAction, priceTrigger, ruleMakerWallet, botWallet, testToken1 } =
-        await deployRoboCopFixture();
+      const {
+        roboCop,
+        swapUniSingleAction,
+        priceTrigger,
+        ruleMakerWallet,
+        botWallet,
+        testToken1
+      } = await deployRoboCopFixture();
 
       const passingTrigger = makePassingTrigger(priceTrigger.address, testToken1);
       const failingTrigger = makeFailingTrigger(priceTrigger.address, testToken1);
@@ -224,8 +248,14 @@ describe("RoboCop", () => {
       // It appears that this rule has to be placed before the deployValidRuleFixture.
       // since it calls the deployRoboCopFixture
       // It causes all tests after it to fail, if it is located after tests that use deployValidRuleFixture
-      const { roboCop, swapUniSingleAction, ruleMakerWallet, botWallet, priceTrigger, testToken1 } =
-        await deployRoboCopFixture();
+      const {
+        roboCop,
+        swapUniSingleAction,
+        ruleMakerWallet,
+        botWallet,
+        priceTrigger,
+        testToken1
+      } = await deployRoboCopFixture();
 
       const passingTrigger = makeFailingTrigger(priceTrigger.address, testToken1);
       const tokenSwapAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address], [ETH_ADDRESS]);
@@ -255,7 +285,7 @@ describe("RoboCop", () => {
         [ETH_ADDRESS, testToken1.address, GT, ETH_PRICE_IN_TST1.sub(1)]
       ),
       triggerType: PRICE_TRIGGER_TYPE,
-      callee: priceTrigger.address,
+      callee: priceTrigger.address
     };
 
     const tst1EthPassingTrigger = {
@@ -264,7 +294,7 @@ describe("RoboCop", () => {
         [testToken1.address, ETH_ADDRESS, LT, ETH_PRICE_IN_TST1.add(1)]
       ),
       triggerType: PRICE_TRIGGER_TYPE,
-      callee: priceTrigger.address,
+      callee: priceTrigger.address
     };
 
     // to get ETH from uniswap, you need to set the output token as WETH.
@@ -288,11 +318,11 @@ describe("RoboCop", () => {
       ethTst1PassingTrigger,
       tst1EthPassingTrigger,
       tokenSwapAction,
-      ethSwapAction,
+      ethSwapAction
     };
   }
 
-  describe("Add / Reduce Collateral", function () {
+  describe("Add / Reduce Collateral", function() {
     it("should revert if add / reduce collateral is called on a non-existent ruleHash", async () => {
       const { ruleMakerWallet, roboCop } = await deployValidRuleFixture();
       await expect(roboCop.connect(ruleMakerWallet).addCollateral(BAD_RULE_HASH, [1000])).to.be.revertedWith(
@@ -328,8 +358,14 @@ describe("RoboCop", () => {
     });
 
     it("should not allow anyone other than rule owner to add / reduce collateral to a rule", async () => {
-      const { ruleHashEth, ruleHashToken, roboCop, testToken1, ruleMakerWallet, botWallet } =
-        await deployValidRuleFixture();
+      const {
+        ruleHashEth,
+        ruleHashToken,
+        roboCop,
+        testToken1,
+        ruleMakerWallet,
+        botWallet
+      } = await deployValidRuleFixture();
       const collateralAmount = utils.parseEther("1");
       await expect(
         roboCop.connect(botWallet).addCollateral(ruleHashEth, [collateralAmount], { value: collateralAmount })
@@ -361,7 +397,7 @@ describe("RoboCop", () => {
       );
     });
 
-    [1, 0].forEach((isNative) => {
+    [1, 0].forEach(isNative => {
       const assetType = isNative ? "native" : "erc20";
       it("should not allow removing collateral if no collateral has been added: " + assetType, async () => {
         const { ruleHashEth, ruleHashToken, roboCop, ruleMakerWallet } = await deployValidRuleFixture();
@@ -535,7 +571,14 @@ describe("RoboCop", () => {
       await ex.to.changeEtherBalances(
         // this should reflect the incentive.
         [botWallet, ruleMakerWallet, roboCop],
-        [DEFAULT_INCENTIVE, 0, collateral.mul(TST1_PRICE_IN_ETH).div(PRICE_TRIGGER_DECIMALS).sub(DEFAULT_INCENTIVE)]
+        [
+          DEFAULT_INCENTIVE,
+          0,
+          collateral
+            .mul(TST1_PRICE_IN_ETH)
+            .div(PRICE_TRIGGER_DECIMALS)
+            .sub(DEFAULT_INCENTIVE)
+        ]
       );
 
       // TODO need to implement caller getting paid.
@@ -633,7 +676,10 @@ describe("RoboCop", () => {
       await expect(roboCop.connect(botWallet).executeRule(ruleHashToken)).to.not.be.rejected;
 
       const ex = expect(roboCop.connect(ruleMakerWallet).redeemBalance(ruleHashToken));
-      await ex.to.changeTokenBalance(testToken1, roboCop, 0).emit(roboCop, "Redeemed").withArgs(ruleHashToken);
+      await ex.to
+        .changeTokenBalance(testToken1, roboCop, 0)
+        .emit(roboCop, "Redeemed")
+        .withArgs(ruleHashToken);
       await ex.to.changeEtherBalance(roboCop.address, 0);
     });
 
@@ -772,8 +818,14 @@ describe("RoboCop", () => {
     });
 
     it("getRule returns the rule with all details and collateral amount", async () => {
-      const { ruleHashEth, ruleMakerWallet, botWallet, roboCop, ethTst1PassingTrigger, ethSwapAction } =
-        await deployValidRuleFixture();
+      const {
+        ruleHashEth,
+        ruleMakerWallet,
+        botWallet,
+        roboCop,
+        ethTst1PassingTrigger,
+        ethSwapAction
+      } = await deployValidRuleFixture();
 
       const collateralAmount = BigNumber.from(3).mul(ERC20_DECIMALS);
 
@@ -793,7 +845,7 @@ describe("RoboCop", () => {
         collaterals: [collateralAmount],
         status: 3,
         outputs: [collateralAmount.mul(ETH_PRICE_IN_TST1).div(PRICE_TRIGGER_DECIMALS)],
-        incentive: DEFAULT_INCENTIVE,
+        incentive: DEFAULT_INCENTIVE
       };
 
       const actualRule = await roboCop.getRule(ruleHashEth);

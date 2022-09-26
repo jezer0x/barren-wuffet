@@ -66,26 +66,32 @@ contract RoboCop is IRoboCop, Ownable, ReentrancyGuard, IERC721Receiver, Initial
         }
     }
 
-    function addCollateral(bytes32 ruleHash, uint256[] memory amounts) external payable onlyOwner nonReentrant {
+    function addCollateral(bytes32 ruleHash, uint256[] memory collaterals) external payable onlyOwner nonReentrant {
         Rule storage rule = rules[ruleHash];
         require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE, "Can't add collateral");
 
         Token[] memory tokens = getInputTokens(ruleHash);
-        uint256 amount;
+        uint256 collateral;
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            amount = amounts[i];
-            require(amount > 0, "amount <= 0");
-            if (tokens[i].t == TokenType.NATIVE) {
-                require(amount == msg.value, "ETH: amount != msg.value");
+            collateral = collaterals[i];
+
+            if (tokens[i].t == TokenType.NATIVE || tokens[i].t == TokenType.ERC20) {
+                require(collateral > 0, "amount <= 0");
+                rule.collaterals[i] += collateral;
             } else {
-                tokens[i].take(msg.sender, amount);
+                // NFT
+                rule.collaterals[i] = collateral; //TODO: already part of token.id; why store again?
             }
 
-            rule.collaterals[i] += amount;
+            if (tokens[i].t == TokenType.NATIVE) {
+                require(collateral == msg.value, "ETH: amount != msg.value");
+            } else {
+                tokens[i].take(msg.sender, collateral);
+            }
         }
 
-        emit CollateralAdded(ruleHash, amounts);
+        emit CollateralAdded(ruleHash, collaterals);
     }
 
     function reduceCollateral(bytes32 ruleHash, uint256[] memory amounts) external onlyOwner nonReentrant {
@@ -244,6 +250,7 @@ contract RoboCop is IRoboCop, Ownable, ReentrancyGuard, IERC721Receiver, Initial
             pendingPositions,
             actionPositionsMap
         );
+
         if (positionCreated) {
             bytes[] memory abiEncodedNextActions = new bytes[](response.position.nextActions.length);
             for (uint256 i = 0; i < response.position.nextActions.length; i++) {

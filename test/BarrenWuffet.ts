@@ -12,7 +12,7 @@ import {
   FUND_STATUS,
   PRICE_TRIGGER_DECIMALS,
   PRICE_TRIGGER_TYPE,
-  DEFAULT_SUB_TO_MAN_FEE_PCT,
+  DEFAULT_SUB_TO_MAN_FEE_PCT
 } from "./Constants";
 import {
   depositMaxCollateral,
@@ -20,7 +20,7 @@ import {
   getAddressFromEvent,
   expectEthersObjDeepEqual,
   erc20,
-  whitelistAction,
+  whitelistAction
 } from "./helper";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 // const { deployMockContract } = waffle;
@@ -41,12 +41,12 @@ async function makeSubConstraints() {
     maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
     deadline: latestTime + 86400,
     lockin: latestTime + 86400 * 10,
-    allowedDepositToken: ETH_TOKEN,
+    allowedDepositToken: ETH_TOKEN
   };
 }
 
 describe("BarrenWuffet", () => {
-  const deployBarrenWuffetFixture = deployments.createFixture(async (hre) => {
+  const deployBarrenWuffetFixture = deployments.createFixture(async hre => {
     await deployments.fixture(["BarrenWuffet"]);
     return await setupBarrenWuffet(hre);
   });
@@ -142,8 +142,14 @@ describe("BarrenWuffet", () => {
   });
 
   async function setupRaisingFunds(hre: HardhatRuntimeEnvironment) {
-    const { priceTrigger, testToken1, barrenWuffet, barrenWuffetMarlie, barrenWuffetFairy, swapETHToTST1Action } =
-      await setupBarrenWuffet(hre);
+    const {
+      priceTrigger,
+      testToken1,
+      barrenWuffet,
+      barrenWuffetMarlie,
+      barrenWuffetFairy,
+      swapETHToTST1Action
+    } = await setupBarrenWuffet(hre);
 
     const latestTime = await time.latest();
 
@@ -154,7 +160,7 @@ describe("BarrenWuffet", () => {
       maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
       deadline: latestTime + 86400,
       lockin: latestTime + 86400 * 10,
-      allowedDepositToken: ETH_TOKEN,
+      allowedDepositToken: ETH_TOKEN
     };
 
     const jerkshireAddr = await getAddressFromEvent(
@@ -171,7 +177,7 @@ describe("BarrenWuffet", () => {
       subscriber: await ethers.getContractAt("Fund", jerkshireAddr, fundSubscriber),
       subscriber2: await ethers.getContractAt("Fund", jerkshireAddr, fundSubscriber2),
       bot: await ethers.getContractAt("Fund", jerkshireAddr, bot),
-      fairyLink: await ethers.getContractAt("Fund", jerkshireAddr, fairyLink),
+      fairyLink: await ethers.getContractAt("Fund", jerkshireAddr, fairyLink)
     };
 
     const crackBlockConstraints = {
@@ -181,7 +187,7 @@ describe("BarrenWuffet", () => {
       maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
       deadline: latestTime + 86400,
       lockin: latestTime + 86400 * 10,
-      allowedDepositToken: ETH_TOKEN,
+      allowedDepositToken: ETH_TOKEN
     };
 
     const crackBlockAddr = await getAddressFromEvent(
@@ -196,7 +202,7 @@ describe("BarrenWuffet", () => {
       subscriber: await ethers.getContractAt("Fund", crackBlockAddr, fundSubscriber),
       subscriber2: await ethers.getContractAt("Fund", crackBlockAddr, fundSubscriber2),
       bot: await ethers.getContractAt("Fund", crackBlockAddr, bot),
-      marlieChunger: await ethers.getContractAt("Fund", crackBlockAddr, marlieChunger),
+      marlieChunger: await ethers.getContractAt("Fund", crackBlockAddr, marlieChunger)
     };
 
     return {
@@ -207,11 +213,11 @@ describe("BarrenWuffet", () => {
       jerkshireConstraints,
       crackBlockConstraints,
       testToken1,
-      swapETHToTST1Action,
+      swapETHToTST1Action
     };
   }
 
-  const raisingFundsFixture = deployments.createFixture(async (hre) => {
+  const raisingFundsFixture = deployments.createFixture(async hre => {
     await deployments.fixture(["BarrenWuffet"]);
     return await setupRaisingFunds(hre);
   });
@@ -294,7 +300,7 @@ describe("BarrenWuffet", () => {
         [utils.parseEther("100"), true, 3],
         [utils.parseEther("89"), true, 4],
         [utils.parseEther("12"), false, "> maxColalteralTotal"],
-        [utils.parseEther("11"), true, 5],
+        [utils.parseEther("11"), true, 5]
       ];
       const { fundSubscriber } = await getNamedAccounts();
 
@@ -326,14 +332,14 @@ describe("BarrenWuffet", () => {
     it("should not allow withdrawing if there have not been any deposits from this user", async () => {
       const { jerkshireFund } = await raisingFundsFixture();
       await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
-      await expect(jerkshireFund.subscriber2.withdraw(0)).to.be.rejectedWith("Not Active Subscriber");
+      await expect(jerkshireFund.subscriber2.withdraw(0)).to.be.rejectedWith("!AS");
     });
 
     it("should allow only the fund manager to close a Raising fund, and the subscriber to withdraw funds", async () => {
       const { barrenWuffet, jerkshireFund, crackBlockFund } = await raisingFundsFixture();
       // add some funds so we can confirm that even a fund with funds can be closed
       await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
-      await expect(jerkshireFund.fairyLink.closeFund()).to.be.revertedWith("onlyFundManager");
+      await expect(jerkshireFund.fairyLink.closeFund()).to.be.revertedWith("OFM");
       const { fundSubscriber, marlieChunger } = await getNamedAccounts();
       await expect(jerkshireFund.marlieChunger.closeFund())
         .to.changeEtherBalances([marlieChunger, barrenWuffet], [0, 0])
@@ -345,7 +351,7 @@ describe("BarrenWuffet", () => {
         .withArgs(fundSubscriber, 0, ETH_ADDRESS, validDeposit);
 
       // this is a clean fund
-      await expect(crackBlockFund.marlieChunger.closeFund()).to.be.revertedWith("onlyFundManager");
+      await expect(crackBlockFund.marlieChunger.closeFund()).to.be.revertedWith("OFM");
       await expect(crackBlockFund.fairyLink.closeFund()).to.emit(crackBlockFund.fairyLink, "Closed");
     });
 
@@ -357,12 +363,12 @@ describe("BarrenWuffet", () => {
           [makePassingTrigger(priceTrigger.address, testToken1)],
           [swapETHToTST1Action]
         )
-      ).be.revertedWith("Not Deployed");
+      ).be.revertedWith("!D");
     });
     it("should revert if ManagementFee withdrawal is attempted on a raising fund", async () => {
       const { jerkshireFund } = await raisingFundsFixture();
       await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
-      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("Not Closed");
+      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("!C");
     });
 
     it.skip("should return fund status as DEPLOYED once the fund is created, deadline has been hit (min collateral has to be met)", async () => {
@@ -416,16 +422,16 @@ describe("BarrenWuffet", () => {
     const deposits = {
       jerkshire: {
         subscription1: jerkshireConstraints.maxCollateralPerSub,
-        subscription2: jerkshireConstraints.maxCollateralPerSub,
-      },
+        subscription2: jerkshireConstraints.maxCollateralPerSub
+      }
     };
 
     // both subscribers have deposits
     await jerkshireFund.subscriber.deposit(ETH_TOKEN, deposits.jerkshire.subscription1, {
-      value: deposits.jerkshire.subscription1,
+      value: deposits.jerkshire.subscription1
     });
     await jerkshireFund.subscriber2.deposit(ETH_TOKEN, deposits.jerkshire.subscription2, {
-      value: deposits.jerkshire.subscription2,
+      value: deposits.jerkshire.subscription2
     });
 
     // meet deadine also to be sure that the status is deployed
@@ -438,11 +444,11 @@ describe("BarrenWuffet", () => {
 
     return {
       ...vars,
-      deposits,
+      deposits
     };
   }
 
-  const deployedFundsFixture = deployments.createFixture(async (hre) => {
+  const deployedFundsFixture = deployments.createFixture(async hre => {
     await deployments.fixture();
     return await setupDeployedFunds(hre);
   });
@@ -467,20 +473,20 @@ describe("BarrenWuffet", () => {
       );
 
       await expect(jerkshireFund.subscriber.deposit(ETH_TOKEN, depositAmt, { value: depositAmt })).to.be.revertedWith(
-        "Not Raising"
+        "!R"
       );
     });
 
     it("should revert if withdrawal is attempted on a deployed fund", async () => {
       const { jerkshireFund } = await deployedFundsFixture();
 
-      await expect(jerkshireFund.subscriber.withdraw(0)).to.be.revertedWith("Can't get money back from deployed fund!");
+      await expect(jerkshireFund.subscriber.withdraw(0)).to.be.revertedWith("D");
     });
 
     it("should revert if ManagementFee withdrawal is attempted on a deployed fund", async () => {
       const { jerkshireFund } = await deployedFundsFixture();
 
-      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("Not Closed");
+      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("!C");
     });
 
     describe("Manage rules", () => {
@@ -530,7 +536,7 @@ describe("BarrenWuffet", () => {
         return {
           ruleIndex: 0,
           ruleHash: ruleHash,
-          rcInstance: roboCopInst1,
+          rcInstance: roboCopInst1
         };
       }
       it("Should emit RoboCop events when fund manager creates / activates / deactivates / cancels a rule", async () => {
@@ -580,7 +586,7 @@ describe("BarrenWuffet", () => {
           .emit(rcInstance, "CollateralReduced")
           .withArgs(ruleHash, redAmt);
       });
-      [0, 1].forEach((isActive) => {
+      [0, 1].forEach(isActive => {
         const activation = isActive ? "active" : "inactive";
         it(`Should return all collateral added when ${activation} rule is cancelled and make it inactive`, async () => {
           const fixtureVars = await deployedFundsFixture();
@@ -632,7 +638,7 @@ describe("BarrenWuffet", () => {
           () => jerkshireFund.fairyLink.deactivateRule(0),
           () => jerkshireFund.fairyLink.addRuleCollateral(0, [ETH_TOKEN], [utils.parseEther("1")], [0]),
           () => jerkshireFund.fairyLink.reduceRuleCollateral(0, [utils.parseEther("0.6")]),
-          () => jerkshireFund.fairyLink.cancelRule(0),
+          () => jerkshireFund.fairyLink.cancelRule(0)
         ];
 
         for (const fn of ruleFns) {
@@ -653,7 +659,7 @@ describe("BarrenWuffet", () => {
             swapETHToTST1Action,
             {
               triggerReturnArr: [],
-              collaterals: [etherToSwap],
+              collaterals: [etherToSwap]
             },
             [0]
           )
@@ -670,7 +676,7 @@ describe("BarrenWuffet", () => {
 
         const mockSwapETHToTST1Action = {
           ...swapETHToTST1Action,
-          callee: mockSwapUniSingleAction.address,
+          callee: mockSwapUniSingleAction.address
         };
 
         await whitelistAction(mockSwapETHToTST1Action.callee);
@@ -682,10 +688,10 @@ describe("BarrenWuffet", () => {
               runtimeData: ethers.utils.defaultAbiCoder.encode(
                 ["address", "address", "uint256"],
                 [ETH_ADDRESS, testToken1.address, ETH_PRICE_IN_TST1]
-              ),
-            },
+              )
+            }
           ],
-          collaterals: [etherToSwap],
+          collaterals: [etherToSwap]
         };
 
         // @ts-ignore
@@ -703,8 +709,8 @@ describe("BarrenWuffet", () => {
             position: {
               id: BAD_FUND_HASH,
               actionConstraints: [],
-              nextActions: [],
-            },
+              nextActions: []
+            }
           };
         });
 
@@ -736,10 +742,10 @@ describe("BarrenWuffet", () => {
                   runtimeData: ethers.utils.defaultAbiCoder.encode(
                     ["address", "address", "uint256"],
                     [ETH_ADDRESS, testToken1.address, ETH_PRICE_IN_TST1]
-                  ),
-                },
+                  )
+                }
               ],
-              collaterals: [etherToSwap],
+              collaterals: [etherToSwap]
             },
             [0]
           )

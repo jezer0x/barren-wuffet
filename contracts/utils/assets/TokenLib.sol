@@ -10,20 +10,21 @@ library TokenLib {
     using SafeERC20 for IERC20;
 
     function equals(Token memory t1, Token memory t2) public pure returns (bool) {
-        return (t1.t == t2.t && t1.addr == t2.addr);
+        return (t1.t == t2.t && t1.addr == t2.addr && t1.id == t2.id);
     }
 
     function approve(
         Token memory token,
         address to,
-        uint256 amount
+        uint256 collateral
     ) public returns (uint256 ethCollateral) {
         if (token.t == TokenType.ERC20) {
-            SafeERC20.safeIncreaseAllowance(IERC20(token.addr), to, amount);
+            SafeERC20.safeIncreaseAllowance(IERC20(token.addr), to, collateral);
         } else if (token.t == TokenType.NATIVE) {
-            ethCollateral = amount;
+            ethCollateral = collateral;
         } else if (token.t == TokenType.ERC721) {
-            IERC721(token.addr).approve(to, amount);
+            require(token.id == collateral);
+            IERC721(token.addr).approve(to, collateral);
         } else {
             revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
         }
@@ -39,6 +40,7 @@ library TokenLib {
         } else if (token.t == TokenType.NATIVE) {
             payable(receiver).transfer(balance);
         } else if (token.t == TokenType.ERC721) {
+            require(token.id == balance);
             IERC721(token.addr).safeTransferFrom(address(this), receiver, balance);
         } else {
             revert("Wrong token type!");
@@ -48,12 +50,13 @@ library TokenLib {
     function take(
         Token memory token,
         address sender,
-        uint256 amount
+        uint256 collateral
     ) public {
         if (token.t == TokenType.ERC20) {
-            IERC20(token.addr).safeTransferFrom(sender, address(this), amount);
+            IERC20(token.addr).safeTransferFrom(sender, address(this), collateral);
         } else if (token.t == TokenType.ERC721) {
-            IERC721(token.addr).safeTransferFrom(sender, address(this), amount);
+            require(token.id == collateral);
+            IERC721(token.addr).safeTransferFrom(sender, address(this), collateral);
         } else if (token.t != TokenType.NATIVE) {
             revert("Wrong token type!");
         }

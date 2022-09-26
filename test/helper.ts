@@ -57,6 +57,7 @@ export function erc20(addr: string) {
   return {
     t: TOKEN_TYPE.ERC20,
     addr,
+    id: BigNumber.from(0)
   };
 }
 

@@ -103,7 +103,7 @@ library Subscriptions {
     ) public view returns (bool) {
         require(collateralToken.equals(subStuff.constraints.allowedDepositToken));
 
-        if ((collateralToken.equals(Token({t: TokenType.NATIVE, addr: Constants.ETH})))) {
+        if ((collateralToken.equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0})))) {
             require(collateralAmount == msg.value);
         }
 

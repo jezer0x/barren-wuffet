@@ -48,15 +48,15 @@ contract SwapUniSingleAction is IAction, DelegatePerform {
         Token memory outputToken;
         uint256 ethCollateral;
 
-        if (action.inputTokens[0].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH}))) {
+        if (action.inputTokens[0].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
             // if input is ETH, we need to set it to WETH and pass take not of what to send as msg.value
-            inputToken = Token({t: TokenType.ERC20, addr: WETH9Addr});
+            inputToken = Token({t: TokenType.ERC20, addr: WETH9Addr, id: 0});
             outputToken = action.outputTokens[0];
             ethCollateral = runtimeParams.collaterals[0];
-        } else if (action.outputTokens[0].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH}))) {
+        } else if (action.outputTokens[0].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
             // if output is ETH, we need to set it to WETH, and approve the input token amount for swapRouter
             inputToken = action.inputTokens[0];
-            outputToken = Token({t: TokenType.ERC20, addr: WETH9Addr});
+            outputToken = Token({t: TokenType.ERC20, addr: WETH9Addr, id: 0});
             IERC20(inputToken.addr).safeApprove(address(swapRouter), runtimeParams.collaterals[0]);
             ethCollateral = 0;
         } else {

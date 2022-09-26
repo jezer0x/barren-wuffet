@@ -19,6 +19,17 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../utils/whitelists/WhitelistService.sol";
 import "../utils/assets/AssetTracker.sol";
 
+// !AS = Not Active Subscriber
+// D = Not Deployed
+// !D = Not Deployed
+// PP = Pending Positions
+// OFM = Only Fund Manager
+// !AA = Not Authorized Action
+// !ATk = Not Authorized Token
+// !ATr = Not Authorized Trigger
+// !R = Not Raising
+// !C = Not Closed
+
 contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
@@ -69,7 +80,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         manager = _manager;
 
         // For now we'll only allow subscribing with ETH
-        require(_constraints.allowedDepositToken.equals(Token({t: TokenType.NATIVE, addr: Constants.ETH})));
+        require(_constraints.allowedDepositToken.equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0})));
         subStuff.setConstraints(_constraints);
         subStuff.setSubscriptionFeeParams(
             _feeParams.subscriberToManagerFeePercentage,
@@ -112,7 +123,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         require(
             subStuff.subscriptions[subscriptionIdx].subscriber == msg.sender &&
                 subStuff.subscriptions[subscriptionIdx].status == Subscriptions.Status.ACTIVE,
-            "Not Active Subscriber"
+            "!AS"
         );
         _;
     }
@@ -123,13 +134,13 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     }
 
     modifier onlyDeployedFund() {
-        require(getStatus() == FundStatus.DEPLOYED, "Not Deployed");
+        require(getStatus() == FundStatus.DEPLOYED, "!D");
         _;
     }
 
     function getInputTokens() external pure returns (Token[] memory) {
         Token[] memory tokens = new Token[](1);
-        tokens[0] = Token({t: TokenType.NATIVE, addr: Constants.ETH});
+        tokens[0] = Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0});
         return tokens;
     }
 
@@ -138,7 +149,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     }
 
     function closeFund() external nonReentrant {
-        require(!hasPendingPosition(), "pending positions");
+        require(!hasPendingPosition(), "PP");
 
         if (getStatus() == FundStatus.CLOSABLE) {
             // anyone can call if closable
@@ -147,7 +158,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
                 subStuff.subscriberToManagerFeePercentage = 0;
             }
         } else {
-            require(manager == msg.sender, "onlyFundManager");
+            require(manager == msg.sender, "OFM");
             // closed prematurely (so that people can withdraw their capital)
             // no managementFee since did not see through lockin
             subStuff.subscriberToManagerFeePercentage = 0;
@@ -217,8 +228,8 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         ActionRuntimeParams calldata runtimeParams,
         uint256[] calldata fees
     ) internal returns (ActionResponse memory resp) {
-        require(wlService.isWhitelisted(actionWhitelistHash, action.callee), "Unauthorized Action");
-        require(_onlyDeclaredTokens(action.outputTokens), "Unauthorized Token");
+        require(wlService.isWhitelisted(actionWhitelistHash, action.callee), "!AA");
+        require(_onlyDeclaredTokens(action.outputTokens), "!ATk");
         IAction(action.callee).validate(action);
         _validateAndTakeFees(action.inputTokens, runtimeParams.collaterals, fees);
 
@@ -291,13 +302,13 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
 
     function _createRule(Trigger[] memory triggers, Action[] memory actions) internal returns (bytes32 ruleHash) {
         for (uint256 i = 0; i < triggers.length; i++) {
-            require(wlService.isWhitelisted(triggerWhitelistHash, triggers[i].callee), "Unauthorized Trigger");
+            require(wlService.isWhitelisted(triggerWhitelistHash, triggers[i].callee), "!ATr");
         }
         for (uint256 i = 0; i < actions.length; i++) {
-            require(wlService.isWhitelisted(actionWhitelistHash, actions[i].callee), "Unauthorized Action");
+            require(wlService.isWhitelisted(actionWhitelistHash, actions[i].callee), "!AA");
         }
         for (uint256 i = 0; i < actions.length; i++) {
-            require(_onlyDeclaredTokens(actions[i].outputTokens), "Unauthorized Token");
+            require(_onlyDeclaredTokens(actions[i].outputTokens), "!ATk");
         }
         ruleHash = roboCop.createRule(triggers, actions);
         openRules.push(ruleHash);
@@ -309,13 +320,13 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         onlyFundManager
         nonReentrant
     {
-        assets.decreaseAsset(Token({t: TokenType.NATIVE, addr: Constants.ETH}), amount);
+        assets.decreaseAsset(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}), amount);
         roboCop.increaseIncentive{value: amount}(openRules[openRuleIdx]);
     }
 
     function withdrawRuleIncentive(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager nonReentrant {
         assets.decreaseAsset(
-            Token({t: TokenType.NATIVE, addr: Constants.ETH}),
+            Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}),
             roboCop.withdrawIncentive(openRules[openRuleIdx])
         );
     }
@@ -403,7 +414,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     }
 
     function deposit(Token memory collateralToken, uint256 amountSent) external payable returns (uint256 idx) {
-        require(getStatus() == FundStatus.RAISING, "Not Raising");
+        require(getStatus() == FundStatus.RAISING, "!R");
         idx = subStuff.deposit(assets, collateralToken, amountSent);
         emit Deposit(msg.sender, idx, collateralToken.addr, subStuff.subscriptions[idx].collateralAmount);
     }
@@ -445,7 +456,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     {
         FundStatus status = getStatus();
         if (status == FundStatus.CLOSABLE) {
-            revert("Call closeFund before withdrawing!");
+            revert("!C");
         } else if (status == FundStatus.RAISING) {
             emit Withdraw(
                 msg.sender,
@@ -460,14 +471,14 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
                 emit Withdraw(msg.sender, subscriptionIdx, tokens[i].addr, balances[i]);
             }
         } else if (status == FundStatus.DEPLOYED) {
-            revert("Can't get money back from deployed fund!");
+            revert("D");
         } else {
             revert(Constants.UNREACHABLE_STATE);
         }
     }
 
     function withdrawManagementFee() public onlyFundManager nonReentrant returns (Token[] memory, uint256[] memory) {
-        require(getStatus() == FundStatus.CLOSED, "Not Closed");
+        require(getStatus() == FundStatus.CLOSED, "!C");
 
         Token[] memory tokens = new Token[](assets.tokens.length);
         uint256[] memory balances = new uint256[](assets.tokens.length);

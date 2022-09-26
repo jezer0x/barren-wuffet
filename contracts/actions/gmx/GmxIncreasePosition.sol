@@ -44,12 +44,11 @@ contract GmxSwap is IAction, DelegatePerform {
             (address, uint256, bool, uint256)
         );
 
-        if (action.inputTokens[0].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH}))) {
+        if (action.inputTokens[0].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
             _path[0] = positionRouter.weth();
-            createIncreasePositionETH{value: fee + _amountIn}(
+            positionRouter.createIncreasePositionETH{value: fee + _amountIn}(
                 _path,
                 _indexToken,
-                _amountIn,
                 0, // no swapping
                 _sizeDelta,
                 _isLong,
@@ -60,7 +59,7 @@ contract GmxSwap is IAction, DelegatePerform {
         } else {
             _path[0] = action.inputTokens[0].addr;
             IERC20(_path[0]).safeApprove(address(positionRouter.router()), _amountIn);
-            createIncreasePosition{value: fee}(
+            positionRouter.createIncreasePosition{value: fee}(
                 _path,
                 _indexToken,
                 _amountIn,
@@ -83,7 +82,7 @@ contract GmxSwap is IAction, DelegatePerform {
         // note: _path[1] not supported; swap beforehand manually
         // the first is tokenIn, the second is ETH for the fee
         require(action.inputTokens.length == 2);
-        require(action.inputTokens[1].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH})));
+        require(action.inputTokens[1].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0})));
         require(action.inputTokens[0].t == TokenType.ERC20 || action.inputTokens[0].t == TokenType.NATIVE);
 
         // no outputToken

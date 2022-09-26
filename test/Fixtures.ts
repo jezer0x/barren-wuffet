@@ -18,7 +18,7 @@ import {
   DEFAULT_SUB_TO_MAN_FEE_PCT,
   ETH_TOKEN,
   LT,
-  TOKEN_TYPE,
+  TOKEN_TYPE
 } from "./Constants";
 import { getAddressFromEvent, getHashFromEvent, tx } from "./helper";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
@@ -27,7 +27,7 @@ export async function setupTestTokens() {
   return {
     testToken1: await ethers.getContract("TestToken1"),
     testToken2: await ethers.getContract("TestToken2"),
-    WETH: await ethers.getContract("WETH"),
+    WETH: await ethers.getContract("WETH")
   };
 }
 
@@ -38,7 +38,7 @@ export function makePassingTrigger(triggerContract: string, testToken1: Contract
       [testToken1.address, ETH_ADDRESS, GT, TST1_PRICE_IN_ETH.sub(1)]
     ),
     triggerType: PRICE_TRIGGER_TYPE,
-    callee: triggerContract,
+    callee: triggerContract
   };
 }
 
@@ -49,7 +49,7 @@ export function makeFailingTrigger(triggerContract: string, testToken1: Contract
       [testToken1.address, ETH_ADDRESS, GT, TST1_PRICE_IN_ETH.add(1)]
     ),
     triggerType: PRICE_TRIGGER_TYPE,
-    callee: triggerContract,
+    callee: triggerContract
   };
 }
 
@@ -61,14 +61,16 @@ export function makeSwapAction(
   return {
     callee: swapContract,
     data: "0x0000000000000000000000000000000000000000000000000000000000000000",
-    inputTokens: inputTokens.map((addr) => ({
+    inputTokens: inputTokens.map(addr => ({
       t: addr === ETH_ADDRESS ? TOKEN_TYPE.NATIVE : TOKEN_TYPE.ERC20,
       addr: addr,
+      id: BigNumber.from(0)
     })), // eth
-    outputTokens: outputTokens.map((addr) => ({
+    outputTokens: outputTokens.map(addr => ({
       t: addr === ETH_ADDRESS ? TOKEN_TYPE.NATIVE : TOKEN_TYPE.ERC20,
       addr: addr,
-    })),
+      id: BigNumber.from(0)
+    }))
   };
 }
 
@@ -81,7 +83,7 @@ async function makeSubConstraints() {
     maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
     deadline: latestTime + 86400,
     lockin: latestTime + 86400 * 10,
-    allowedDepositToken: ETH_TOKEN,
+    allowedDepositToken: ETH_TOKEN
   };
 }
 
@@ -111,7 +113,7 @@ export async function createRule(
 async function deployTestOracle() {
   return {
     testOracleEth: await ethers.getContract("TestOracleEth"),
-    testOracleTst1: await ethers.getContract("TestOracleTst1"),
+    testOracleTst1: await ethers.getContract("TestOracleTst1")
   };
 }
 
@@ -140,12 +142,14 @@ export async function setupSwapUniSingleAction(testToken: Contract, WETH: Contra
   // this lets us do 500 swaps of 2 eth each
   await testToken.transfer(
     testSwapRouter.address,
-    ETH_PRICE_IN_TST1.mul(1000).mul(ERC20_DECIMALS).div(PRICE_TRIGGER_DECIMALS)
+    ETH_PRICE_IN_TST1.mul(1000)
+      .mul(ERC20_DECIMALS)
+      .div(PRICE_TRIGGER_DECIMALS)
   );
 
   await ethFundWallet.sendTransaction({
     to: testSwapRouter.address,
-    value: ethers.utils.parseEther("100"), // send 100 ether
+    value: ethers.utils.parseEther("100") // send 100 ether
   });
 
   const swapUniSingleAction = await ethers.getContract("SwapUniSingleAction");
@@ -196,7 +200,7 @@ export async function setupRoboCop(hre: HardhatRuntimeEnvironment) {
     WETH,
     deployerWallet,
     ruleMakerWallet,
-    botWallet,
+    botWallet
   };
 }
 
@@ -207,7 +211,7 @@ export async function setupSwapActions(priceTrigger: Contract, swapUniSingleActi
       [ETH_ADDRESS, testToken1.address, GT, ETH_PRICE_IN_TST1.sub(1)]
     ),
     triggerType: PRICE_TRIGGER_TYPE,
-    callee: priceTrigger.address,
+    callee: priceTrigger.address
   };
 
   const passingTST1toETHSwapPriceTrigger = {
@@ -216,7 +220,7 @@ export async function setupSwapActions(priceTrigger: Contract, swapUniSingleActi
       [testToken1.address, ETH_ADDRESS, GT, TST1_PRICE_IN_ETH.sub(1)]
     ),
     triggerType: PRICE_TRIGGER_TYPE,
-    callee: priceTrigger.address,
+    callee: priceTrigger.address
   };
 
   const swapTST1ToETHAction = makeSwapAction(swapUniSingleAction.address, [testToken1.address], [ETH_ADDRESS]);
@@ -226,7 +230,7 @@ export async function setupSwapActions(priceTrigger: Contract, swapUniSingleActi
     passingETHtoTST1SwapPriceTrigger,
     passingTST1toETHSwapPriceTrigger,
     swapETHToTST1Action,
-    swapTST1ToETHAction,
+    swapTST1ToETHAction
   };
 }
 //@ts-ignore
@@ -243,7 +247,7 @@ export async function setupSwapTrades(
     passingETHtoTST1SwapPriceTrigger,
     passingTST1toETHSwapPriceTrigger,
     swapETHToTST1Action,
-    swapTST1ToETHAction,
+    swapTST1ToETHAction
   } = await setupSwapActions(priceTrigger, swapUniSingleAction, testToken1);
 
   const tx = await degenStreet
@@ -260,7 +264,7 @@ export async function setupSwapTrades(
 
   return {
     tradeETHforTST1Hash,
-    tradeTST1forETHHash,
+    tradeTST1forETHHash
   };
 }
 
@@ -284,7 +288,7 @@ export async function setupBarrenWuffet({ getNamedAccounts, ethers }: HardhatRun
     passingETHtoTST1SwapPriceTrigger,
     passingTST1toETHSwapPriceTrigger,
     swapETHToTST1Action,
-    swapTST1ToETHAction,
+    swapTST1ToETHAction
   } = await setupSwapActions(priceTrigger, swapUniSingleAction, testToken1);
 
   const marlieChungerFundAddr = await getAddressFromEvent(
@@ -323,6 +327,6 @@ export async function setupBarrenWuffet({ getNamedAccounts, ethers }: HardhatRun
     passingETHtoTST1SwapPriceTrigger,
     passingTST1toETHSwapPriceTrigger,
     swapETHToTST1Action,
-    swapTST1ToETHAction,
+    swapTST1ToETHAction
   };
 }

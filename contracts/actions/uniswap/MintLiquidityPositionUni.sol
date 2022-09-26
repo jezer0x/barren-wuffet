@@ -35,11 +35,13 @@ contract MintLiquidityPositionUni is IAction, DelegatePerform {
     }
 
     function validate(Action calldata action) external pure returns (bool) {
+        //TODO: need more validation here
         require(action.inputTokens.length == 2);
         require(action.outputTokens.length == 3);
         return true;
     }
 
+    // TODO: make this handle ETH pools too
     function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
         external
         delegateOnly
@@ -96,6 +98,7 @@ contract MintLiquidityPositionUni is IAction, DelegatePerform {
         outputs[1] = refund1;
         outputs[2] = tokenId;
 
+        // TODO: position should be [burn]
         Position memory none;
         return ActionResponse({tokenOutputs: outputs, position: none});
     }

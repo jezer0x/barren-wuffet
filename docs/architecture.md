@@ -65,7 +65,7 @@ We dont prevent multiple positions from returning the same action. If 2 actions 
 
 An action defined in a position can also subsequenty return a `Position` when called, essentially encoding a state machine as a sequence of actions.
 
-To save on storage,`RoboCop` does not store the details of the position itself. They only store a todo list of hashes of pending positions (so we know for example, whether the fund can be closed). To close the position, the corresponding action and all of its details needs to be provided by the user (By adding a rule to a RoboCop).
+To save on storage,`RoboCop` does not store the details of the position itself. They only store a todo list of hashes of PP (so we know for example, whether the fund can be closed). To close the position, the corresponding action and all of its details needs to be provided by the user (By adding a rule to a RoboCop).
 
 ## Fees
 
