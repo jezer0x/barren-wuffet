@@ -5,7 +5,7 @@ import "./IFund.sol";
 import "../utils/FeeParams.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/proxy/Clones.sol";
+import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 
 contract BarrenWuffet is Ownable, Pausable {
     // event used by frontend to pick up newly created funds
@@ -19,23 +19,23 @@ contract BarrenWuffet is Ownable, Pausable {
     address public wlServiceAddr;
 
     // singletons used for light clones later
-    address public roboCopImplAddr;
-    address public fundImplAddr;
+    address public roboCopBeaconAddr;
+    address public fundBeaconAddr;
 
     constructor(
         FeeParams memory _feeParams,
         bytes32 _triggerWhitelistHash,
         bytes32 _actionWhitelistHash,
         address _wlServiceAddr,
-        address _roboCopImplAddr,
-        address _fundImplAddr
+        address _roboCopBeaconAddr,
+        address _fundBeaconAddr
     ) {
         setSubscriptionFeeParams(_feeParams);
         triggerWhitelistHash = _triggerWhitelistHash;
         actionWhitelistHash = _actionWhitelistHash;
         wlServiceAddr = _wlServiceAddr;
-        roboCopImplAddr = _roboCopImplAddr;
-        fundImplAddr = _fundImplAddr;
+        roboCopBeaconAddr = _roboCopBeaconAddr;
+        fundBeaconAddr = _fundBeaconAddr;
     }
 
     function setSubscriptionFeeParams(FeeParams memory _feeParams) public onlyOwner {
@@ -56,14 +56,6 @@ contract BarrenWuffet is Ownable, Pausable {
         wlServiceAddr = _wlServiceAddr;
     }
 
-    function setRoboCopImplementationAddress(address _roboCopImplAddr) public onlyOwner {
-        roboCopImplAddr = _roboCopImplAddr;
-    }
-
-    function setFundImplementationAddress(address _fundImplAddr) public onlyOwner {
-        fundImplAddr = _fundImplAddr;
-    }
-
     function pause() public onlyOwner {
         _pause();
     }
@@ -78,7 +70,8 @@ contract BarrenWuffet is Ownable, Pausable {
         uint256 subscriberToManagerFeePercentage,
         address[] calldata declaredTokens
     ) external whenNotPaused returns (address) {
-        IFund fund = IFund(Clones.clone(fundImplAddr));
+        bytes memory nodata;
+        IFund fund = IFund(address(new BeaconProxy(fundBeaconAddr, nodata)));
 
         // overwrite the default feeParams.managerToPlatformFeePercentage using the one provided
         require(subscriberToManagerFeePercentage <= 100_00);
@@ -92,7 +85,7 @@ contract BarrenWuffet is Ownable, Pausable {
             wlServiceAddr,
             triggerWhitelistHash,
             actionWhitelistHash,
-            roboCopImplAddr,
+            roboCopBeaconAddr,
             declaredTokens
         );
         emit Created(msg.sender, address(fund));

@@ -48,10 +48,11 @@ interface IFund is ISubscription {
     function closeFund() external;
 
     function takeAction(
+        Trigger calldata trigger,
         Action calldata action,
-        ActionRuntimeParams calldata runtimeParams,
+        uint256[] calldata collaterals,
         uint256[] calldata fees
-    ) external returns (ActionResponse memory outputs);
+    ) external;
 
     function createRule(Trigger[] calldata triggers, Action[] calldata actions) external returns (bytes32 ruleHash);
 
@@ -79,6 +80,4 @@ interface IFund is ISubscription {
     function getStatus() external view returns (FundStatus);
 
     function withdrawManagementFee() external returns (Token[] memory, uint256[] memory);
-
-    function hasPendingPosition() external view returns (bool);
 }

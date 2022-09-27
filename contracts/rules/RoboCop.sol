@@ -3,7 +3,7 @@ pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "../utils/Utils.sol";
 import "../utils/Constants.sol";
 import "../utils/assets/TokenLib.sol";
@@ -17,7 +17,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract RoboCop is IRoboCop, Ownable, ReentrancyGuard, IERC721Receiver, Initializable {
+contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using TokenLib for Token;
@@ -231,6 +231,7 @@ contract RoboCop is IRoboCop, Ownable, ReentrancyGuard, IERC721Receiver, Initial
     {
         for (uint256 j = 0; j < action.inputTokens.length; j++) {
             // ignore return value
+
             action.inputTokens[j].approve(action.callee, runtimeParams.collaterals[j]);
         }
         bool positionsClosed;
