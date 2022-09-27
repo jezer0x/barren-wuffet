@@ -42,11 +42,6 @@ contract IncreaseLiquidityUni is IAction, DelegatePerform {
         require(token0 == action.outputTokens[1].addr);
         require(token1 == action.outputTokens[2].addr);
 
-        (uint256 _amount0Desired, uint256 _amount1Desired, uint256 _amount0Min, uint256 _amount1Min) = abi.decode(
-            action.data,
-            (uint256, uint256, uint256, uint256)
-        );
-
         return true;
     }
 
@@ -57,18 +52,13 @@ contract IncreaseLiquidityUni is IAction, DelegatePerform {
     {
         uint256[] memory outputs = new uint256[](2);
 
-        (uint256 _amount0Desired, uint256 _amount1Desired, uint256 _amount0Min, uint256 _amount1Min) = abi.decode(
-            action.data,
-            (uint256, uint256, uint256, uint256)
-        );
-
         INonfungiblePositionManager.IncreaseLiquidityParams memory params = INonfungiblePositionManager
             .IncreaseLiquidityParams({
                 tokenId: action.inputTokens[0].id,
-                amount0Desired: _amount0Desired,
-                amount1Desired: _amount1Desired,
-                amount0Min: _amount0Min,
-                amount1Min: _amount1Min,
+                amount0Desired: runtimeParams.collaterals[0],
+                amount1Desired: runtimeParams.collaterals[0],
+                amount0Min: 0, // TODO
+                amount1Min: 0,
                 deadline: block.timestamp
             });
 

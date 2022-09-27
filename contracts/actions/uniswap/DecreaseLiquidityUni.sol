@@ -78,7 +78,7 @@ contract DecreaseLiquidityUni is IAction, DelegatePerform {
             .DecreaseLiquidityParams({
                 tokenId: action.inputTokens[0].id,
                 liquidity: _liquidity,
-                amount0Min: _amount0Min,
+                amount0Min: _amount0Min, // TODO: should these be taken from triggers or be in action.data?
                 amount1Min: _amount1Min,
                 deadline: block.timestamp
             });

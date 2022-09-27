@@ -28,10 +28,16 @@ contract MintLiquidityPositionUni is IAction, DelegatePerform {
 
     INonfungiblePositionManager immutable nonfungiblePositionManager;
     address immutable WETH9Addr;
+    address immutable burnPositionAddr;
 
-    constructor(address _nonfungiblePositionManager, address wethAddress) {
+    constructor(
+        address _nonfungiblePositionManager,
+        address wethAddress,
+        address _burnPositionAddr
+    ) {
         nonfungiblePositionManager = INonfungiblePositionManager(_nonfungiblePositionManager);
         WETH9Addr = wethAddress;
+        burnPositionAddr = _burnPositionAddr;
     }
 
     function validate(Action calldata action) external pure returns (bool) {
@@ -52,19 +58,17 @@ contract MintLiquidityPositionUni is IAction, DelegatePerform {
         // For this example, we will provide equal amounts of liquidity in both assets.
         // Providing liquidity in both assets means liquidity will be earning fees and is considered in-range.
         uint256 amount0ToMint = runtimeParams.collaterals[0];
-        address token0Addr = action.inputTokens[0].addr;
         uint256 amount1ToMint = runtimeParams.collaterals[1];
-        address token1Addr = action.inputTokens[1].addr;
 
         // Approve the position manager
-        IERC20(token0Addr).safeApprove(address(nonfungiblePositionManager), amount0ToMint);
-        IERC20(token1Addr).safeApprove(address(nonfungiblePositionManager), amount1ToMint);
+        IERC20(action.inputTokens[0].addr).safeApprove(address(nonfungiblePositionManager), amount0ToMint);
+        IERC20(action.inputTokens[1].addr).safeApprove(address(nonfungiblePositionManager), amount1ToMint);
 
         // The values for tickLower and tickUpper may not work for all tick spacings.
         // Setting amount0Min and amount1Min to 0 is unsafe.
         INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams({
-            token0: token0Addr,
-            token1: token1Addr,
+            token0: action.inputTokens[0].addr,
+            token1: action.inputTokens[1].addr,
             fee: 3000, // TODO:
             tickLower: TickMath.MIN_TICK,
             tickUpper: TickMath.MAX_TICK,
@@ -81,8 +85,8 @@ contract MintLiquidityPositionUni is IAction, DelegatePerform {
         );
 
         // Remove allowance and refund in both assets.
-        IERC20(token0Addr).safeApprove(address(nonfungiblePositionManager), 0);
-        IERC20(token1Addr).safeApprove(address(nonfungiblePositionManager), 0);
+        IERC20(action.inputTokens[0].addr).safeApprove(address(nonfungiblePositionManager), 0);
+        IERC20(action.inputTokens[1].addr).safeApprove(address(nonfungiblePositionManager), 0);
 
         uint256 refund0 = 0;
         if (amount0 < amount0ToMint) {
@@ -98,8 +102,17 @@ contract MintLiquidityPositionUni is IAction, DelegatePerform {
         outputs[1] = refund1;
         outputs[2] = tokenId;
 
-        // TODO: position should be [burn]
-        Position memory none;
-        return ActionResponse({tokenOutputs: outputs, position: none});
+        // setting up position
+        Token[] memory inputTokens = new Token[](1);
+        inputTokens[0] = Token({t: TokenType.ERC721, addr: address(nonfungiblePositionManager), id: tokenId});
+        Action[] memory nextActions = new Action[](1);
+        nextActions[0] = Action({
+            callee: burnPositionAddr,
+            data: "",
+            inputTokens: inputTokens,
+            outputTokens: new Token[](0)
+        });
+        Position memory pos = Position({actionConstraints: new ActionConstraints[](0), nextActions: nextActions});
+        return ActionResponse({tokenOutputs: outputs, position: pos});
     }
 }

@@ -21,11 +21,6 @@ struct ActionConstraints {
 }
 
 struct Position {
-    // this uniquely defines a position.
-    // If any other action returns the same positionId, it will override this action
-    // A positionId can be used only once (like an UTXO), unless it is returned again by another action.
-    // DEPRECATED. There is likely no use of this.
-    bytes32 id;
     // metadata that can optionally be used to indicate constraints that bound the actions
     // This can be be used by the smart contract to decide whether this position is acceptable
     // The constraints should match the index order of the nextActions
