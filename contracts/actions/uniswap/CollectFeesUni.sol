@@ -32,9 +32,16 @@ contract CollectFeesUni is IAction, DelegatePerform {
         require(action.inputTokens.length == 1);
         require(action.inputTokens[0].t == TokenType.ERC721);
         require(action.outputTokens.length == 2);
-        require(action.inputTokens[0].t == TokenType.ERC20 || action.inputTokens[0].t == TokenType.NATIVE);
-        require(action.inputTokens[1].t == TokenType.ERC20 || action.inputTokens[1].t == TokenType.NATIVE);
-        //TODO: tokenId is part of runtimeParams.collateral instead of action.data. Will that be a problem for NFTs?
+        require(action.outputTokens[0].t == TokenType.ERC20 || action.outputTokens[0].t == TokenType.NATIVE);
+        require(action.outputTokens[1].t == TokenType.ERC20 || action.outputTokens[1].t == TokenType.NATIVE);
+
+        (, , address token0, address token1, , , , , , , , ) = nonfungiblePositionManager.positions(
+            action.inputTokens[0].id
+        );
+
+        require(token0 == action.outputTokens[0].addr);
+        require(token1 == action.outputTokens[1].addr);
+
         return true;
     }
 
@@ -46,7 +53,7 @@ contract CollectFeesUni is IAction, DelegatePerform {
         uint256[] memory outputs = new uint256[](2);
 
         INonfungiblePositionManager.CollectParams memory params = INonfungiblePositionManager.CollectParams({
-            tokenId: runtimeParams.collaterals[0],
+            tokenId: action.inputTokens[0].id,
             recipient: address(this),
             amount0Max: type(uint128).max,
             amount1Max: type(uint128).max
