@@ -30,7 +30,7 @@ import "../utils/assets/AssetTracker.sol";
 // !R = Not Raising
 // !C = Not Closed
 
-contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
+contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using AssetTracker for AssetTracker.Assets;
@@ -150,7 +150,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     }
 
     function closeFund() external nonReentrant {
-        require(!hasPendingPosition(), "PP");
+        require(!roboCop.hasPendingPosition(), "PP");
 
         if (getStatus() == FundStatus.CLOSABLE) {
             // anyone can call if closable
