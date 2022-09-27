@@ -28,7 +28,7 @@ contract CollectFeesUni is IAction, DelegatePerform {
         WETH9Addr = wethAddress;
     }
 
-    function validate(Action calldata action) external pure returns (bool) {
+    function validate(Action calldata action) external view returns (bool) {
         require(action.inputTokens.length == 1);
         require(action.inputTokens[0].t == TokenType.ERC721);
         require(action.outputTokens.length == 2);

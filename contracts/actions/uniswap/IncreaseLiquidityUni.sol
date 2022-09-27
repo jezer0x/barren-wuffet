@@ -28,7 +28,7 @@ contract IncreaseLiquidityUni is IAction, DelegatePerform {
         WETH9Addr = wethAddress;
     }
 
-    function validate(Action calldata action) external pure returns (bool) {
+    function validate(Action calldata action) external view returns (bool) {
         require(action.inputTokens.length == 1);
         require(action.inputTokens[0].t == TokenType.ERC721);
         require(action.outputTokens.length == 2);
@@ -42,7 +42,10 @@ contract IncreaseLiquidityUni is IAction, DelegatePerform {
         require(token0 == action.outputTokens[1].addr);
         require(token1 == action.outputTokens[2].addr);
 
-        var (, , , ) = abi.decode(action.data, (uint256, uint256, uint256, uint256));
+        (uint256 _amount0Desired, uint256 _amount1Desired, uint256 _amount0Min, uint256 _amount1Min) = abi.decode(
+            action.data,
+            (uint256, uint256, uint256, uint256)
+        );
 
         return true;
     }
@@ -59,14 +62,14 @@ contract IncreaseLiquidityUni is IAction, DelegatePerform {
             (uint256, uint256, uint256, uint256)
         );
 
-        INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
+        INonfungiblePositionManager.IncreaseLiquidityParams memory params = INonfungiblePositionManager
             .IncreaseLiquidityParams({
                 tokenId: action.inputTokens[0].id,
                 amount0Desired: _amount0Desired,
                 amount1Desired: _amount1Desired,
                 amount0Min: _amount0Min,
                 amount1Min: _amount1Min,
-                deadline: block.timestmap
+                deadline: block.timestamp
             });
 
         (, uint256 amount0, uint256 amount1) = nonfungiblePositionManager.increaseLiquidity(params);

@@ -28,7 +28,7 @@ contract DecreaseLiquidityUni is IAction, DelegatePerform {
         WETH9Addr = wethAddress;
     }
 
-    function validate(Action calldata action) external pure returns (bool) {
+    function validate(Action calldata action) external view returns (bool) {
         require(action.inputTokens.length == 1);
         require(action.inputTokens[0].t == TokenType.ERC721);
         require(action.outputTokens.length == 2);
@@ -56,7 +56,7 @@ contract DecreaseLiquidityUni is IAction, DelegatePerform {
             action.data,
             (uint128, uint256, uint256)
         );
-        require(liquidityToWithdraw >= liquidity);
+        require(_liquidity >= liquidity);
         require(tokens0Owed >= _amount0Min);
         require(tokens1Owed >= _amount1Min);
 
@@ -80,7 +80,7 @@ contract DecreaseLiquidityUni is IAction, DelegatePerform {
                 liquidity: _liquidity,
                 amount0Min: _amount0Min,
                 amount1Min: _amount1Min,
-                deadline: block.timestmap
+                deadline: block.timestamp
             });
 
         (uint256 amount0, uint256 amount1) = nonfungiblePositionManager.decreaseLiquidity(params);
