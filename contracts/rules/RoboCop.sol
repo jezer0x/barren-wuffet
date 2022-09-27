@@ -279,6 +279,7 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
             Action storage action = rule.actions[i];
             outputs = _takeAction(action, runtimeParams);
             runtimeParams.collaterals = outputs; // changes because outputTokens of action[i-1] is inputTokens of action[i]
+            _noteIdOfERC721Outputs(outputs, action.outputTokens);
         }
 
         rule.outputs = outputs;
@@ -291,6 +292,17 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
 
     function actionClosesPendingPosition(Action calldata action) public view returns (bool) {
         return actionPositionsMap[keccak256(abi.encode(action))].length > 0;
+    }
+
+    function _noteIdOfERC721Outputs(uint256[] memory outputs, Token[] storage outputTokens) internal {
+        // Even if we do know which NFT contract we're going to get an output from,
+        // we probably don't know the id of the token issued (determined at the point of execution)
+        // so we mutate the rule.outputToken accordingly
+        for (uint256 i = 0; i < outputTokens.length; i++) {
+            if (outputTokens[i].t == TokenType.ERC721) {
+                outputTokens[i].id = outputs[i];
+            }
+        }
     }
 
     receive() external payable {}
