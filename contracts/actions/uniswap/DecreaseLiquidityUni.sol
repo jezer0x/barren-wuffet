@@ -19,6 +19,7 @@ import "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.s
 */
 contract DecreaseLiquidityUni is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
+    using TokenLib for Token;
 
     INonfungiblePositionManager immutable nonfungiblePositionManager;
     address immutable WETH9Addr;

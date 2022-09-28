@@ -21,7 +21,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     // loose test for "that that whitelist was already created"
   }
 
-  await deploySwapUniSingleAction(deploy, deployer, whitelistService, actWlHash, TokenLibAddr);
+  await deployUniswapActions(deploy, deployer, whitelistService, actWlHash, TokenLibAddr);
   // TODO: deploy all the other actions
 
   if ((await whitelistService.getWhitelistOwner(actWlHash)) == deployer) {
@@ -29,33 +29,76 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   } // else was already transferred
 };
 
-async function deploySwapUniSingleAction(
+async function deployUniswapActions(
   deploy: any,
   deployer: string,
   whitelistService: Contract,
   actWlHash: any,
   TokenLibAddr: string
 ) {
-  let uniswapAddr;
+  let uniswapRouterAddr;
+  let nonfungiblePositionManagerAddr;
   let weth9Addr;
 
   // TODO: utils to change the following to vars, depending on chainID
   if ((await getChainId()) == "31337") {
-    uniswapAddr = (await ethers.getContract("TestSwapRouter")).address;
+    uniswapRouterAddr = (await ethers.getContract("TestSwapRouter")).address;
+    nonfungiblePositionManagerAddr = ethers.constants.AddressZero;
     weth9Addr = (await ethers.getContract("WETH")).address;
   } else {
-    uniswapAddr = ethers.constants.AddressZero;
+    uniswapRouterAddr = ethers.constants.AddressZero;
+    nonfungiblePositionManagerAddr = ethers.constants.AddressZero;
     weth9Addr = ethers.constants.AddressZero;
   }
 
   const swapUniSingleAction = await deploy("SwapUniSingleAction", {
     from: deployer,
-    args: [uniswapAddr, weth9Addr],
+    args: [uniswapRouterAddr, weth9Addr],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  const burnLiquidityPositionUniAction = await deploy("BurnLiquidityPositionUni", {
+    from: deployer,
+    args: [nonfungiblePositionManagerAddr, weth9Addr],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  const mintLiquidityPositionUniAction = await deploy("MintLiquidityPositionUni", {
+    from: deployer,
+    args: [nonfungiblePositionManagerAddr, weth9Addr, burnLiquidityPositionUniAction.address],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  const collectFeesUniAction = await deploy("CollectFeesUni", {
+    from: deployer,
+    args: [nonfungiblePositionManagerAddr, weth9Addr],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  const increaseLiquidityUniAction = await deploy("IncreaseLiquidityUni", {
+    from: deployer,
+    args: [nonfungiblePositionManagerAddr, weth9Addr],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  const decreaseLiquidityUniAction = await deploy("DecreaseLiquidityUni", {
+    from: deployer,
+    args: [nonfungiblePositionManagerAddr, weth9Addr],
     log: true,
     libraries: { TokenLib: TokenLibAddr }
   });
 
   await addToWhitelist(deployer, whitelistService, actWlHash, swapUniSingleAction.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, burnLiquidityPositionUniAction.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, mintLiquidityPositionUniAction.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, collectFeesUniAction.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, increaseLiquidityUniAction.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, decreaseLiquidityUniAction.address);
 }
 
 export default func;

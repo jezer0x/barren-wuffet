@@ -1,10 +1,15 @@
+tokens = {
+  WETH: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+  USDC: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"
+};
+
 // https://docs.chain.link/docs/arbitrum-price-feeds/
 // TODO
 
 // https://docs.uniswap.org/protocol/reference/deployments
 uniswap = {
   swap_router: "0xe592427a0aece92de3edee1f18e0157c05861564",
-  non_fungible_position_manager: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+  non_fungible_position_manager: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
 };
 
 // https://docs.dopex.io/contracts/arbitrum
@@ -19,10 +24,10 @@ dopex = {
   EthWeeklyPutsSsovV3: "0xC7552Cd237823DeFa7F3a2E2cB6A3D0B9759F32C",
   GohmWeeklyPutsSsovV3: "0x541fDD2284852Dacc5BA7E31241Ff5bc646b8985",
   GmxWeeklyPutsSsovV3: "0x7e513B848cFAF3Bc9FfB69a35981E5E1279acE59",
-  CrvWeeklyPutsSsovV3: "0x03475494dc89d378C4268e90A62876eFb0278a1a",
+  CrvWeeklyPutsSsovV3: "0x03475494dc89d378C4268e90A62876eFb0278a1a"
 };
 
 // https://curve.readthedocs.io/ref-addresses.html
 curve = {
-  address_provider: "0x0000000022d53366457f9d5e68ec105046fc4383",
+  address_provider: "0x0000000022d53366457f9d5e68ec105046fc4383"
 };

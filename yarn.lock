@@ -4008,10 +4008,10 @@ hardhat-watcher@^2.1.1:
   dependencies:
     chokidar "^3.5.3"
 
-"hardhat@npm:@gzeoneth/hardhat@2.10.1-gzeon-c8fe47dd4":
-  version "2.10.1-gzeon-c8fe47dd4"
-  resolved "https://registry.yarnpkg.com/@gzeoneth/hardhat/-/hardhat-2.10.1-gzeon-c8fe47dd4.tgz#6cd1dfa56dae5bd7d63b849d0cbab333fd5ea42c"
-  integrity sha512-2FsGBqcbQjeVXD8kHVj6o5hxTbkdlsZGF9OtyUAK4a/0d3rw9NIQf5X311uDc1PpxekhbDjXGNnS8mxKzugPlw==
+"hardhat@npm:@gzeoneth/hardhat@2.10.2-gzeon-e972f1dda":
+  version "2.10.2-gzeon-e972f1dda"
+  resolved "https://registry.yarnpkg.com/@gzeoneth/hardhat/-/hardhat-2.10.2-gzeon-e972f1dda.tgz#33d3b7dc9acfb13edd735d0633788cb91ea5dc0f"
+  integrity sha512-QcdLZNyYVzMkVsDEXzS+/9SrZklZTfUIxV/oxtnroe7a70QReB+truuHn6MqkAsAmAhI/OXcoAZkOaSJHrDUMQ==
   dependencies:
     "@ethereumjs/block" "^3.6.2"
     "@ethereumjs/blockchain" "^5.5.2"

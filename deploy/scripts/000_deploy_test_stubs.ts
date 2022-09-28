@@ -8,6 +8,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const { deploy } = deployments;
 
   const { deployer } = await getNamedAccounts();
+  console.log(hre.config.networks.hardhat.forking?.enabled);
 
   // we only need TestStubs when running tests
   if ((await getChainId()) == "31337") {
