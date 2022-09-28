@@ -1,4 +1,4 @@
-tokens = {
+export const tokens = {
   WETH: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
   USDC: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"
 };
@@ -7,13 +7,13 @@ tokens = {
 // TODO
 
 // https://docs.uniswap.org/protocol/reference/deployments
-uniswap = {
+export const uniswap = {
   swap_router: "0xe592427a0aece92de3edee1f18e0157c05861564",
   non_fungible_position_manager: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
 };
 
 // https://docs.dopex.io/contracts/arbitrum
-dopex = {
+export const dopex = {
   DpxMonthlyCallsSsovV3: "0x1ae38835Bf3afbEC178E8a59Ca82aA383dC3DF57",
   RdpxMonthlyCallsSsovV3: "0xAfD90Af84ae892C2DFeEA6D379087A7B4D21eC34",
   EthMonthlyCallsSsovV3: "0x8161033b2776a9556b326D5eB468B2B76B7B4a23",
@@ -28,6 +28,6 @@ dopex = {
 };
 
 // https://curve.readthedocs.io/ref-addresses.html
-curve = {
+export const curve = {
   address_provider: "0x0000000022d53366457f9d5e68ec105046fc4383"
 };
