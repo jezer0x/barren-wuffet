@@ -21,8 +21,8 @@ contract IncreaseLiquidityUni is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
     using TokenLib for Token;
 
-    INonfungiblePositionManager immutable nonfungiblePositionManager;
-    address immutable WETH9Addr;
+    INonfungiblePositionManager public immutable nonfungiblePositionManager;
+    address public immutable WETH9Addr;
 
     constructor(address _nonfungiblePositionManager, address wethAddress) {
         nonfungiblePositionManager = INonfungiblePositionManager(_nonfungiblePositionManager);
@@ -54,6 +54,30 @@ contract IncreaseLiquidityUni is IAction, DelegatePerform {
     {
         uint256[] memory outputs = new uint256[](3);
 
+        uint256 ethCollateral;
+        if (action.inputTokens[1].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
+            ethCollateral = runtimeParams.collaterals[1];
+            IERC20(action.inputTokens[2].addr).safeApprove(
+                address(nonfungiblePositionManager),
+                runtimeParams.collaterals[2]
+            );
+        } else if (action.inputTokens[2].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
+            ethCollateral = runtimeParams.collaterals[1];
+            IERC20(action.inputTokens[1].addr).safeApprove(
+                address(nonfungiblePositionManager),
+                runtimeParams.collaterals[1]
+            );
+        } else {
+            IERC20(action.inputTokens[1].addr).safeApprove(
+                address(nonfungiblePositionManager),
+                runtimeParams.collaterals[1]
+            );
+            IERC20(action.inputTokens[2].addr).safeApprove(
+                address(nonfungiblePositionManager),
+                runtimeParams.collaterals[2]
+            );
+        }
+
         INonfungiblePositionManager.IncreaseLiquidityParams memory params = INonfungiblePositionManager
             .IncreaseLiquidityParams({
                 tokenId: action.inputTokens[0].id,
@@ -64,7 +88,9 @@ contract IncreaseLiquidityUni is IAction, DelegatePerform {
                 deadline: block.timestamp
             });
 
-        (, uint256 amount0, uint256 amount1) = nonfungiblePositionManager.increaseLiquidity(params);
+        (, uint256 amount0, uint256 amount1) = nonfungiblePositionManager.increaseLiquidity{value: ethCollateral}(
+            params
+        );
 
         outputs[0] = action.inputTokens[0].id;
         outputs[1] = amount0;

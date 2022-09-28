@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
+import "hardhat/console.sol";
 
 /*
     Reference: 
@@ -25,10 +26,11 @@ import "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.s
 */
 contract MintLiquidityPositionUni is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
+    using TokenLib for Token;
 
-    INonfungiblePositionManager immutable nonfungiblePositionManager;
-    address immutable WETH9Addr;
-    address immutable burnPositionAddr;
+    INonfungiblePositionManager public immutable nonfungiblePositionManager;
+    address public immutable WETH9Addr;
+    address public immutable burnPositionAddr;
 
     constructor(
         address _nonfungiblePositionManager,
@@ -53,53 +55,62 @@ contract MintLiquidityPositionUni is IAction, DelegatePerform {
         delegateOnly
         returns (ActionResponse memory)
     {
+        console.log("mlpu.perform");
         uint256[] memory outputs = new uint256[](3);
 
         // For this example, we will provide equal amounts of liquidity in both assets.
         // Providing liquidity in both assets means liquidity will be earning fees and is considered in-range.
-        uint256 amount0ToMint = runtimeParams.collaterals[0];
-        uint256 amount1ToMint = runtimeParams.collaterals[1];
+        uint256 ethCollateral;
+        address token0Addr;
+        address token1Addr;
 
         // Approve the position manager
-        IERC20(action.inputTokens[0].addr).safeApprove(address(nonfungiblePositionManager), amount0ToMint);
-        IERC20(action.inputTokens[1].addr).safeApprove(address(nonfungiblePositionManager), amount1ToMint);
+        if (action.inputTokens[0].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
+            token0Addr = WETH9Addr;
+            token1Addr = action.inputTokens[1].addr;
+            ethCollateral = runtimeParams.collaterals[0];
+            IERC20(token1Addr).safeApprove(address(nonfungiblePositionManager), runtimeParams.collaterals[1]);
+        } else if (action.inputTokens[1].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
+            token0Addr = action.inputTokens[0].addr;
+            token1Addr = WETH9Addr;
+            ethCollateral = runtimeParams.collaterals[1];
+            IERC20(token0Addr).safeApprove(address(nonfungiblePositionManager), runtimeParams.collaterals[0]);
+        } else {
+            token0Addr = action.inputTokens[0].addr;
+            token1Addr = action.inputTokens[1].addr;
+            ethCollateral = 0;
+            IERC20(token0Addr).safeApprove(address(nonfungiblePositionManager), runtimeParams.collaterals[0]);
+            IERC20(token1Addr).safeApprove(address(nonfungiblePositionManager), runtimeParams.collaterals[1]);
+        }
 
         // The values for tickLower and tickUpper may not work for all tick spacings.
         // Setting amount0Min and amount1Min to 0 is unsafe.
         INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams({
-            token0: action.inputTokens[0].addr,
-            token1: action.inputTokens[1].addr,
+            token0: token0Addr,
+            token1: token1Addr,
             fee: 3000, // TODO:
             tickLower: TickMath.MIN_TICK,
             tickUpper: TickMath.MAX_TICK,
-            amount0Desired: amount0ToMint,
-            amount1Desired: amount1ToMint,
+            amount0Desired: runtimeParams.collaterals[0],
+            amount1Desired: runtimeParams.collaterals[1],
             amount0Min: 0, // TODO: take these from triggerParams
             amount1Min: 0,
             recipient: address(this),
             deadline: block.timestamp
         });
 
-        (uint256 tokenId, uint256 liquidity, uint256 amount0, uint256 amount1) = nonfungiblePositionManager.mint(
-            params
-        );
+        console.log("calling mint");
+        (uint256 tokenId, uint256 liquidity, uint256 amount0, uint256 amount1) = nonfungiblePositionManager.mint{
+            value: ethCollateral
+        }(params);
+        console.log("minted");
 
         // Remove allowance and refund in both assets.
         IERC20(action.inputTokens[0].addr).safeApprove(address(nonfungiblePositionManager), 0);
         IERC20(action.inputTokens[1].addr).safeApprove(address(nonfungiblePositionManager), 0);
 
-        uint256 refund0 = 0;
-        if (amount0 < amount0ToMint) {
-            refund0 = amount0ToMint - amount0;
-        }
-
-        uint256 refund1 = 0;
-        if (amount1 < amount1ToMint) {
-            refund1 = amount1ToMint - amount1;
-        }
-
-        outputs[0] = refund0;
-        outputs[1] = refund1;
+        outputs[0] = amount0 < runtimeParams.collaterals[0] ? runtimeParams.collaterals[0] - amount0 : 0;
+        outputs[1] = amount1 < runtimeParams.collaterals[1] ? runtimeParams.collaterals[1] - amount1 : 0;
         outputs[2] = tokenId;
 
         // setting up position

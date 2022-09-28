@@ -315,7 +315,10 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
             Token memory token = collateralTokens[i];
             uint256 amount = collaterals[i];
             assets.decreaseAsset(token, amount);
-            ethCollateral = token.approve(address(roboCop), amount);
+            token.approve(address(roboCop), amount);
+            if (token.equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
+                ethCollateral = amount;
+            }
         }
 
         roboCop.addCollateral{value: ethCollateral}(ruleHash, collaterals);

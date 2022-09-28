@@ -1,6 +1,7 @@
 export const tokens = {
   WETH: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
-  USDC: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"
+  USDC: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
+  DAI: "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1"
 };
 
 // https://docs.chain.link/docs/arbitrum-price-feeds/

@@ -27,8 +27,8 @@ contract SwapUniSingleAction is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
     using TokenLib for Token;
 
-    ISwapRouter immutable swapRouter;
-    address immutable WETH9Addr;
+    ISwapRouter public immutable swapRouter;
+    address public immutable WETH9Addr;
 
     constructor(address swapRouterAddress, address wethAddress) {
         swapRouter = ISwapRouter(swapRouterAddress);

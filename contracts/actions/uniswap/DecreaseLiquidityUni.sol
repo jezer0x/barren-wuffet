@@ -21,8 +21,8 @@ contract DecreaseLiquidityUni is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
     using TokenLib for Token;
 
-    INonfungiblePositionManager immutable nonfungiblePositionManager;
-    address immutable WETH9Addr;
+    INonfungiblePositionManager public immutable nonfungiblePositionManager;
+    address public immutable WETH9Addr;
 
     constructor(address _nonfungiblePositionManager, address wethAddress) {
         nonfungiblePositionManager = INonfungiblePositionManager(_nonfungiblePositionManager);
