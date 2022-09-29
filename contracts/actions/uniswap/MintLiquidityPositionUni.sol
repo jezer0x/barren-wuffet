@@ -46,7 +46,8 @@ contract MintLiquidityPositionUni is IAction, DelegatePerform {
         //TODO: need more validation here
         require(action.inputTokens.length == 2);
         require(action.outputTokens.length == 3);
-        // TODO: validate that fee, tl, and tu
+
+        // TODO: tl and tu might need to be taken at the point of perform instead.
         (uint24 fee, int24 tl, int24 tu) = abi.decode(action.data, (uint24, int24, int24));
         return true;
     }

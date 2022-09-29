@@ -19,8 +19,8 @@ import {
   TIMESTAMP_TRIGGER_TYPE
 } from "../Constants";
 import { getAddressFromEvent } from "../helper";
-import { abi as FACTORY_ABI } from "@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json";
-import { abi as POOL_ABI } from "@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json";
+import { abi as FACTORY_ABI } from "@134dd3v/uniswap-v3-core-0.8-support/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json";
+import { abi as POOL_ABI } from "@134dd3v/uniswap-v3-core-0.8-support/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json";
 
 async function makeSubConstraints() {
   const latestTime = await time.latest();
@@ -119,15 +119,27 @@ async function main() {
   const mintLPAction = await ethers.getContract("MintLiquidityPositionUni");
   let LP_NFT = { t: TOKEN_TYPE.ERC721, addr: await mintLPAction.nonfungiblePositionManager(), id: BigNumber.from(0) };
 
-  const poolFactory = new Contract(FACTORY_ABI, "0x1F98431c8aD98523631AE4a59f267346ea31F984");
-  console.log(await poolFactory.getPool(DAI_TOKEN.addr, USDC_TOKEN.addr, 500));
+  const poolFactory = new Contract("0x1F98431c8aD98523631AE4a59f267346ea31F984", FACTORY_ABI, ethers.provider);
+  const pool = new Contract(await poolFactory.getPool(DAI_TOKEN.addr, USDC_TOKEN.addr, 500), POOL_ABI, ethers.provider);
+
+  var S0 = await pool.slot0();
+  var CT = parseInt(S0.tick);
+  var Tsp = parseInt(await pool.tickSpacing());
+  var NHT = Math.floor(CT / Tsp) * Tsp;
+  var NLT = Math.floor(CT / Tsp) * Tsp + Tsp;
+  if (NLT > NHT) {
+    console.log("jhere");
+    var temp = NLT;
+    NLT = NHT;
+    NHT = temp;
+  }
 
   console.log(balance_dai, balance_usdc);
   await McFund.takeAction(
     trueTrigger,
     {
       callee: (await ethers.getContract("MintLiquidityPositionUni")).address,
-      data: "0x0000000000000000000000000000000000000000000000000000000000000000",
+      data: ethers.utils.defaultAbiCoder.encode(["uint24", "int24", "int24"], [500, NLT.toString(), NHT.toString()]),
       inputTokens: [DAI_TOKEN, USDC_TOKEN],
       outputTokens: [DAI_TOKEN, USDC_TOKEN, LP_NFT]
     },
