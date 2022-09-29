@@ -46,7 +46,7 @@ describe.skip("DegenStreet", () => {
     const {
       ownerWallet,
       priceTrigger,
-      uniSwapSingle,
+      uniSwapExactInputSingle,
       testToken1,
       testToken2,
       degenStreet,
@@ -59,7 +59,7 @@ describe.skip("DegenStreet", () => {
 
     const { tradeTST1forETHHash, tradeETHforTST1Hash } = await setupSwapTrades(
       priceTrigger,
-      uniSwapSingle,
+      uniSwapExactInputSingle,
       testToken1,
       await makeSubConstraints(),
       degenStreet,
@@ -94,11 +94,11 @@ describe.skip("DegenStreet", () => {
 
   describe("Opening a Trade", () => {
     it("Should emit the Created event properly", async function() {
-      const { priceTrigger, uniSwapSingle, testToken1, degenStreet, traderWallet } = await loadFixture(
+      const { priceTrigger, uniSwapExactInputSingle, testToken1, degenStreet, traderWallet } = await loadFixture(
         deployDegenStreetFixture
       );
       const passingTrigger = makePassingTrigger(priceTrigger.address);
-      const executableAction = makeSwapAction(uniSwapSingle.address, testToken1.address, ETH_ADDRESS);
+      const executableAction = makeSwapAction(uniSwapExactInputSingle.address, testToken1.address, ETH_ADDRESS);
       const properContraints = await makeSubConstraints();
 
       await expect(
@@ -109,11 +109,11 @@ describe.skip("DegenStreet", () => {
     });
 
     it("Should revert if tries to open duplicate trades in same block", async function() {
-      const { priceTrigger, uniSwapSingle, testToken1, degenStreet, traderWallet } = await loadFixture(
+      const { priceTrigger, uniSwapExactInputSingle, testToken1, degenStreet, traderWallet } = await loadFixture(
         deployDegenStreetFixture
       );
       const passingTrigger = makePassingTrigger(priceTrigger.address);
-      const executableAction = makeSwapAction(uniSwapSingle.address, testToken1.address, ETH_ADDRESS);
+      const executableAction = makeSwapAction(uniSwapExactInputSingle.address, testToken1.address, ETH_ADDRESS);
       const properContraints = await makeSubConstraints();
 
       await network.provider.send("evm_setAutomine", [false]);
@@ -142,11 +142,11 @@ describe.skip("DegenStreet", () => {
     });
 
     it("Should succeed if tries to open duplicate trade in a different block", async function() {
-      const { priceTrigger, uniSwapSingle, testToken1, degenStreet, traderWallet } = await loadFixture(
+      const { priceTrigger, uniSwapExactInputSingle, testToken1, degenStreet, traderWallet } = await loadFixture(
         deployDegenStreetFixture
       );
       const passingTrigger = makePassingTrigger(priceTrigger.address);
-      const executableAction = makeSwapAction(uniSwapSingle.address, testToken1.address, ETH_ADDRESS);
+      const executableAction = makeSwapAction(uniSwapExactInputSingle.address, testToken1.address, ETH_ADDRESS);
       const properContraints = await makeSubConstraints();
 
       await expect(

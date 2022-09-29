@@ -60,7 +60,7 @@ async function deployUniswapActions(
     weth9Addr = liveAddresses.tokens.WETH;
   }
 
-  const uniSwapSingle = await deploy("UniSwapSingle", {
+  const uniSwapExactInputSingle = await deploy("UniSwapExactInputSingle", {
     from: deployer,
     args: [uniswapRouterAddr, weth9Addr],
     log: true,
@@ -102,7 +102,7 @@ async function deployUniswapActions(
     libraries: { TokenLib: TokenLibAddr }
   });
 
-  await addToWhitelist(deployer, whitelistService, actWlHash, uniSwapSingle.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, uniSwapExactInputSingle.address);
   await addToWhitelist(deployer, whitelistService, actWlHash, UniBurnLiquidityPositionAction.address);
   await addToWhitelist(deployer, whitelistService, actWlHash, UniMintLiquidityPositionAction.address);
   await addToWhitelist(deployer, whitelistService, actWlHash, UniCollectFeesAction.address);

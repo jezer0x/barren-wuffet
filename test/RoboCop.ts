@@ -38,16 +38,16 @@ describe("RoboCop", () => {
   describe("Add Rule By Owner", () => {
     it("Should not revert if no trigger is specified", async () => {
       //empty triggerArray just means executable anytime!
-      const { roboCop, uniSwapSingle, ruleMakerWallet, testToken1 } = await deployRoboCopFixture();
-      const executableAction = makeSwapAction(uniSwapSingle.address, [testToken1.address]);
+      const { roboCop, uniSwapExactInputSingle, ruleMakerWallet, testToken1 } = await deployRoboCopFixture();
+      const executableAction = makeSwapAction(uniSwapExactInputSingle.address, [testToken1.address]);
       await expect(roboCop.connect(ruleMakerWallet).createRule([], [executableAction])).to.emit(roboCop, "Created");
     });
 
     it("Should revert if trigger doesnt have a callee with validateTrigger", async () => {
-      const { roboCop, uniSwapSingle, ruleMakerWallet, testToken1 } = await deployRoboCopFixture();
+      const { roboCop, uniSwapExactInputSingle, ruleMakerWallet, testToken1 } = await deployRoboCopFixture();
 
       const badTrigger = await makePassingTrigger(constants.AddressZero, testToken1); // passing trigger with bad address
-      const executableAction = makeSwapAction(uniSwapSingle.address, [testToken1.address]);
+      const executableAction = makeSwapAction(uniSwapExactInputSingle.address, [testToken1.address]);
 
       await expect(
         roboCop.connect(ruleMakerWallet).createRule([badTrigger], [executableAction])
@@ -55,13 +55,13 @@ describe("RoboCop", () => {
     });
 
     it("Should revert if validateTrigger on trigger does not return true", async () => {
-      const { roboCop, uniSwapSingle, ruleMakerWallet, testToken1 } = await deployRoboCopFixture();
+      const { roboCop, uniSwapExactInputSingle, ruleMakerWallet, testToken1 } = await deployRoboCopFixture();
 
       const BadPriceTrigger = await ethers.getContractFactory("BadPriceTrigger");
       const badPriceTrigger = await BadPriceTrigger.deploy();
 
       const badTrigger = makePassingTrigger(badPriceTrigger.address, testToken1);
-      const executableAction = makeSwapAction(uniSwapSingle.address, [testToken1.address]);
+      const executableAction = makeSwapAction(uniSwapExactInputSingle.address, [testToken1.address]);
 
       await expect(roboCop.connect(ruleMakerWallet).createRule([badTrigger], [executableAction])).to.be.revertedWith(
         "Invalid Trigger"
@@ -72,7 +72,13 @@ describe("RoboCop", () => {
     // if the interface is used.
 
     it("Should revert if no action is specified", async () => {
-      const { roboCop, uniSwapSingle, priceTrigger, ruleMakerWallet, testToken1 } = await deployRoboCopFixture();
+      const {
+        roboCop,
+        uniSwapExactInputSingle,
+        priceTrigger,
+        ruleMakerWallet,
+        testToken1
+      } = await deployRoboCopFixture();
       const passingTrigger = makePassingTrigger(priceTrigger.address, testToken1);
       await expect(roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [])).to.be.revertedWithoutReason();
     });
@@ -96,10 +102,16 @@ describe("RoboCop", () => {
     // if the interface is used.
 
     it("Should emit Created event, and consume ETH incentive if Trigger and Action are valid", async () => {
-      const { roboCop, uniSwapSingle, priceTrigger, ruleMakerWallet, testToken1 } = await deployRoboCopFixture();
+      const {
+        roboCop,
+        uniSwapExactInputSingle,
+        priceTrigger,
+        ruleMakerWallet,
+        testToken1
+      } = await deployRoboCopFixture();
 
       const passingTrigger = makePassingTrigger(priceTrigger.address, testToken1); // pass / fail shouldnt matter here
-      const executableAction = makeSwapAction(uniSwapSingle.address, [testToken1.address]);
+      const executableAction = makeSwapAction(uniSwapExactInputSingle.address, [testToken1.address]);
 
       const incentive = utils.parseEther("0.02");
       await expect(
@@ -111,10 +123,16 @@ describe("RoboCop", () => {
     });
 
     it("creates rule without incentive", async () => {
-      const { roboCop, uniSwapSingle, priceTrigger, ruleMakerWallet, testToken1 } = await deployRoboCopFixture();
+      const {
+        roboCop,
+        uniSwapExactInputSingle,
+        priceTrigger,
+        ruleMakerWallet,
+        testToken1
+      } = await deployRoboCopFixture();
 
       const failingTrigger = makePassingTrigger(priceTrigger.address, testToken1); // pass / fail shouldnt matter here
-      const executableAction = makeSwapAction(uniSwapSingle.address, [testToken1.address]);
+      const executableAction = makeSwapAction(uniSwapExactInputSingle.address, [testToken1.address]);
       await expect(roboCop.connect(ruleMakerWallet).createRule([failingTrigger], [executableAction])).to.emit(
         roboCop,
         "Created"
@@ -122,10 +140,16 @@ describe("RoboCop", () => {
     });
 
     it.skip("If trigger, action, user, block are the same, ruleHash should be the same -> making the second creation fail", async () => {
-      const { roboCop, uniSwapSingle, priceTrigger, ruleMakerWallet, testToken1 } = await deployRoboCopFixture();
+      const {
+        roboCop,
+        uniSwapExactInputSingle,
+        priceTrigger,
+        ruleMakerWallet,
+        testToken1
+      } = await deployRoboCopFixture();
 
       const passingTrigger = makePassingTrigger(priceTrigger.address, testToken1);
-      const executableAction = makeSwapAction(uniSwapSingle.address, [testToken1.address]);
+      const executableAction = makeSwapAction(uniSwapExactInputSingle.address, [testToken1.address]);
 
       var rule1Hash: string;
 
@@ -163,7 +187,7 @@ describe("RoboCop", () => {
     it("Should fail to create rule by nonOwner", async () => {
       const {
         roboCop,
-        uniSwapSingle,
+        uniSwapExactInputSingle,
         priceTrigger,
         botWallet,
         testToken1,
@@ -173,7 +197,7 @@ describe("RoboCop", () => {
       const ruleMakerWallet2 = botWallet;
 
       const passingTrigger = makePassingTrigger(priceTrigger.address, testToken1);
-      const executableAction = makeSwapAction(uniSwapSingle.address, [testToken1.address]);
+      const executableAction = makeSwapAction(uniSwapExactInputSingle.address, [testToken1.address]);
 
       await expect(
         roboCop.connect(ruleMakerWallet2).createRule([passingTrigger], [executableAction])
@@ -185,7 +209,7 @@ describe("RoboCop", () => {
     it("should return false if the checkTrigger on the rule denoted by ruleHash returns false", async () => {
       const {
         roboCop,
-        uniSwapSingle,
+        uniSwapExactInputSingle,
         priceTrigger,
         ruleMakerWallet,
         botWallet,
@@ -193,7 +217,7 @@ describe("RoboCop", () => {
       } = await deployRoboCopFixture();
 
       const failingTrigger = makeFailingTrigger(priceTrigger.address, testToken1);
-      const tokenSwapAction = makeSwapAction(uniSwapSingle.address, [testToken1.address], [ETH_ADDRESS]);
+      const tokenSwapAction = makeSwapAction(uniSwapExactInputSingle.address, [testToken1.address], [ETH_ADDRESS]);
       const ruleHash = await createRule(roboCop, [failingTrigger], [tokenSwapAction], ruleMakerWallet);
 
       expect(await roboCop.connect(botWallet).checkRule(ruleHash)).to.equal(false);
@@ -208,7 +232,7 @@ describe("RoboCop", () => {
     it("should return true if the checkTrigger on the callee denoted by ruleHash returns true", async () => {
       const {
         roboCop,
-        uniSwapSingle,
+        uniSwapExactInputSingle,
         priceTrigger,
         ruleMakerWallet,
         botWallet,
@@ -216,7 +240,7 @@ describe("RoboCop", () => {
       } = await deployRoboCopFixture();
 
       const passingTrigger = makePassingTrigger(priceTrigger.address, testToken1);
-      const tokenSwapAction = makeSwapAction(uniSwapSingle.address, [testToken1.address], [ETH_ADDRESS]);
+      const tokenSwapAction = makeSwapAction(uniSwapExactInputSingle.address, [testToken1.address], [ETH_ADDRESS]);
       const ruleHash = await createRule(roboCop, [passingTrigger], [tokenSwapAction], ruleMakerWallet);
 
       expect(await roboCop.connect(botWallet).checkRule(ruleHash)).to.equal(true);
@@ -225,7 +249,7 @@ describe("RoboCop", () => {
     it("should return false if one of multiple triggers is invalid", async () => {
       const {
         roboCop,
-        uniSwapSingle,
+        uniSwapExactInputSingle,
         priceTrigger,
         ruleMakerWallet,
         botWallet,
@@ -234,7 +258,7 @@ describe("RoboCop", () => {
 
       const passingTrigger = makePassingTrigger(priceTrigger.address, testToken1);
       const failingTrigger = makeFailingTrigger(priceTrigger.address, testToken1);
-      const tokenSwapAction = makeSwapAction(uniSwapSingle.address, [testToken1.address], [ETH_ADDRESS]);
+      const tokenSwapAction = makeSwapAction(uniSwapExactInputSingle.address, [testToken1.address], [ETH_ADDRESS]);
       const ruleHash = await createRule(roboCop, [passingTrigger, failingTrigger], [tokenSwapAction], ruleMakerWallet);
 
       expect(await roboCop.connect(botWallet).checkRule(ruleHash)).to.equal(false);
@@ -250,7 +274,7 @@ describe("RoboCop", () => {
       // It causes all tests after it to fail, if it is located after tests that use deployValidRuleFixture
       const {
         roboCop,
-        uniSwapSingle,
+        uniSwapExactInputSingle,
         ruleMakerWallet,
         botWallet,
         priceTrigger,
@@ -258,7 +282,7 @@ describe("RoboCop", () => {
       } = await deployRoboCopFixture();
 
       const passingTrigger = makeFailingTrigger(priceTrigger.address, testToken1);
-      const tokenSwapAction = makeSwapAction(uniSwapSingle.address, [testToken1.address], [ETH_ADDRESS]);
+      const tokenSwapAction = makeSwapAction(uniSwapExactInputSingle.address, [testToken1.address], [ETH_ADDRESS]);
       const ruleHash = await createRule(roboCop, [passingTrigger], [tokenSwapAction], ruleMakerWallet, true);
 
       await expect(roboCop.connect(botWallet).executeRule(ruleHash)).to.be.rejectedWith("Trigger != Satisfied");
@@ -271,7 +295,14 @@ describe("RoboCop", () => {
   });
 
   async function setupValidRuleFixture(hre: HardhatRuntimeEnvironment) {
-    const { roboCop, uniSwapSingle, priceTrigger, deployerWallet, testToken1, testToken2 } = await setupRoboCop(hre);
+    const {
+      roboCop,
+      uniSwapExactInputSingle,
+      priceTrigger,
+      deployerWallet,
+      testToken1,
+      testToken2
+    } = await setupRoboCop(hre);
 
     const { ruleMaker, bot } = await hre.getNamedAccounts();
     const ruleMakerWallet = await ethers.getSigner(ruleMaker);
@@ -296,8 +327,8 @@ describe("RoboCop", () => {
     };
 
     // to get ETH from uniswap, you need to set the output token as WETH.
-    const tokenSwapAction = makeSwapAction(uniSwapSingle.address, [testToken1.address], [ETH_ADDRESS]);
-    const ethSwapAction = makeSwapAction(uniSwapSingle.address, [ETH_ADDRESS], [testToken1.address]);
+    const tokenSwapAction = makeSwapAction(uniSwapExactInputSingle.address, [testToken1.address], [ETH_ADDRESS]);
+    const ethSwapAction = makeSwapAction(uniSwapExactInputSingle.address, [ETH_ADDRESS], [testToken1.address]);
     const ruleHashEth = await createRule(roboCop, [ethTst1PassingTrigger], [ethSwapAction], ruleMakerWallet, true);
     const ruleHashToken = await createRule(roboCop, [tst1EthPassingTrigger], [tokenSwapAction], ruleMakerWallet, true);
 
@@ -311,7 +342,7 @@ describe("RoboCop", () => {
       botWallet,
       testToken1,
       testToken2,
-      uniSwapSingle,
+      uniSwapExactInputSingle,
       priceTrigger,
       ethTst1PassingTrigger,
       tst1EthPassingTrigger,

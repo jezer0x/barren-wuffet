@@ -86,13 +86,13 @@ async function main() {
     callee: (await ethers.getContract("TimestampTrigger")).address
   };
 
-  const swapUniAction = await ethers.getContract("UniSwapSingle");
+  const swapUniAction = await ethers.getContract("UniSwapExactInputSingle");
 
   await McFund.takeAction(
     trueTrigger,
     {
       callee: swapUniAction.address,
-      data: "0x0000000000000000000000000000000000000000000000000000000000000000",
+      data: ethers.utils.defaultAbiCoder.encode(["uint24"], [3000]),
       inputTokens: [ETH_TOKEN], // eth
       outputTokens: [USDC_TOKEN] // swapping for USDC
     },
@@ -107,7 +107,7 @@ async function main() {
     trueTrigger,
     {
       callee: swapUniAction.address,
-      data: "0x0000000000000000000000000000000000000000000000000000000000000000",
+      data: ethers.utils.defaultAbiCoder.encode(["uint24"], [3000]),
       inputTokens: [ETH_TOKEN], // eth
       outputTokens: [DAI_TOKEN] // swapping for USDC
     },

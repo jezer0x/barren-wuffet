@@ -26,7 +26,7 @@ import {
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 // const { deployMockContract } = waffle;
 import { FakeContract, smock } from "@defi-wonderland/smock";
-import { UniSwapSingle } from "../typechain-types/contracts/actions/uniswap/UniSwapSingle";
+import { UniSwapExactInputSingle } from "../typechain-types/contracts/actions/uniswap/UniSwapExactInputSingle";
 
 chai_should(); // if you like should syntax
 chai_use(smock.matchers);
@@ -669,11 +669,13 @@ describe("BarrenWuffet", () => {
 
         const etherToSwap = utils.parseEther("0.3");
 
-        const mockUniSwapSingle: FakeContract<UniSwapSingle> = await smock.fake("UniSwapSingle");
+        const mockUniSwapExactInputSingle: FakeContract<UniSwapExactInputSingle> = await smock.fake(
+          "UniSwapExactInputSingle"
+        );
 
         const mockSwapETHToTST1Action = {
           ...swapETHToTST1Action,
-          callee: mockUniSwapSingle.address
+          callee: mockUniSwapExactInputSingle.address
         };
 
         await whitelistAction(mockSwapETHToTST1Action.callee);
@@ -688,7 +690,7 @@ describe("BarrenWuffet", () => {
         };
 
         // @ts-ignore
-        mockUniSwapSingle.perform.returns(([action, params]) => {
+        mockUniSwapExactInputSingle.perform.returns(([action, params]) => {
           // hack to check if it's called with the right params
           // i am not able to figure out how to use calledWith at the end to check for these complex objects
 
@@ -713,7 +715,9 @@ describe("BarrenWuffet", () => {
 
         await ex.to.not.be.reverted;
 
-        expect(mockUniSwapSingle.perform).to.have.been.calledOnce.delegatedFrom(jerkshireFund.marlieChunger.address);
+        expect(mockUniSwapExactInputSingle.perform).to.have.been.calledOnce.delegatedFrom(
+          jerkshireFund.marlieChunger.address
+        );
       });
 
       it("should swap ether for tokens via takeAction if swap contract is called", async () => {

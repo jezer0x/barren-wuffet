@@ -23,7 +23,7 @@ import "../SimpleSwapUtils.sol";
             ETH/USD -> USD per ETH -> ETH Price in USD -> triggerReturn = [ETH, USD, val] -> Must use when tokenIn = ETH and tokenOut = USD (i.e. buying USD with ETH)
             USD/ETH -> ETH per USD -> USD Price in ETH -> triggerReturn = [USD, ETH, val] -> Must use when tokenIn = USD* and tokenOut = ETH (i.e. buying ETH with USD)
 */
-contract UniSwapSingle is IAction, DelegatePerform {
+contract UniSwapExactInputSingle is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
     using TokenLib for Token;
 
@@ -36,7 +36,9 @@ contract UniSwapSingle is IAction, DelegatePerform {
     }
 
     function validate(Action calldata action) external view returns (bool) {
-        return SimpleSwapUtils._validate(action);
+        SimpleSwapUtils._validate(action);
+        uint24 fee = abi.decode(action.data, (uint24));
+        return true;
     }
 
     function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
@@ -70,7 +72,7 @@ contract UniSwapSingle is IAction, DelegatePerform {
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
             tokenIn: inputToken.addr,
             tokenOut: outputToken.addr,
-            fee: 3000, // TODO: pass from action.data?
+            fee: abi.decode(action.data, (uint24)),
             recipient: address(this),
             deadline: block.timestamp, // need to do an immediate swap
             amountIn: runtimeParams.collaterals[0],
