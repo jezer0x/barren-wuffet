@@ -20,7 +20,7 @@ import "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.s
     Conditions: 
         Must insure all the fees have been collected and liquidity decreased to 0 before burning a position
 */
-contract BurnLiquidityPositionUni is IAction, DelegatePerform {
+contract UniBurnLiquidityPosition is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
 
     INonfungiblePositionManager public immutable nonfungiblePositionManager;

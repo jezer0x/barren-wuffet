@@ -12,12 +12,12 @@ import "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.s
 
 /*
     Reference: 
-        https://docs.uniswap.org/protocol/guides/providing-liquidity/decrease-liquidity
+        https://docs.uniswap.org/protocol/guides/providing-liquidity/increase-liquidity
 
     Tokens: 
-        Will only have 1 input tokens (NFT) and 3 outputs (NFT, amount taken out in token0 and token1)
+        Will only have 3 input tokens (NFT, token0, token1) and 3 outputs (NFT, slippage refund for token0 and token1)
 */
-contract DecreaseLiquidityUni is IAction, DelegatePerform {
+contract UniIncreaseLiquidity is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
     using TokenLib for Token;
 
@@ -37,30 +37,12 @@ contract DecreaseLiquidityUni is IAction, DelegatePerform {
         require(action.outputTokens[1].t == TokenType.ERC20 || action.outputTokens[0].t == TokenType.NATIVE);
         require(action.outputTokens[2].t == TokenType.ERC20 || action.outputTokens[1].t == TokenType.NATIVE);
 
-        (
-            ,
-            ,
-            address token0,
-            address token1,
-            ,
-            ,
-            ,
-            uint128 liquidity,
-            ,
-            ,
-            uint256 tokens0Owed,
-            uint256 tokens1Owed
-        ) = nonfungiblePositionManager.positions(action.inputTokens[0].id);
+        (, , address token0, address token1, , , , , , , , ) = nonfungiblePositionManager.positions(
+            action.inputTokens[0].id
+        );
 
         require(token0 == action.outputTokens[1].addr);
         require(token1 == action.outputTokens[2].addr);
-        (uint128 _liquidity, uint256 _amount0Min, uint256 _amount1Min) = abi.decode(
-            action.data,
-            (uint128, uint256, uint256)
-        );
-        require(_liquidity >= liquidity);
-        require(tokens0Owed >= _amount0Min);
-        require(tokens1Owed >= _amount1Min);
 
         return true;
     }
@@ -72,20 +54,43 @@ contract DecreaseLiquidityUni is IAction, DelegatePerform {
     {
         uint256[] memory outputs = new uint256[](3);
 
-        (uint128 _liquidity, uint256 _amount0Min, uint256 _amount1Min) = abi.decode(
-            action.data,
-            (uint128, uint256, uint256)
-        );
-        INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
-            .DecreaseLiquidityParams({
+        uint256 ethCollateral;
+        if (action.inputTokens[1].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
+            ethCollateral = runtimeParams.collaterals[1];
+            IERC20(action.inputTokens[2].addr).safeApprove(
+                address(nonfungiblePositionManager),
+                runtimeParams.collaterals[2]
+            );
+        } else if (action.inputTokens[2].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
+            ethCollateral = runtimeParams.collaterals[1];
+            IERC20(action.inputTokens[1].addr).safeApprove(
+                address(nonfungiblePositionManager),
+                runtimeParams.collaterals[1]
+            );
+        } else {
+            IERC20(action.inputTokens[1].addr).safeApprove(
+                address(nonfungiblePositionManager),
+                runtimeParams.collaterals[1]
+            );
+            IERC20(action.inputTokens[2].addr).safeApprove(
+                address(nonfungiblePositionManager),
+                runtimeParams.collaterals[2]
+            );
+        }
+
+        INonfungiblePositionManager.IncreaseLiquidityParams memory params = INonfungiblePositionManager
+            .IncreaseLiquidityParams({
                 tokenId: action.inputTokens[0].id,
-                liquidity: _liquidity,
-                amount0Min: _amount0Min, // TODO: should these be taken from triggers or be in action.data?
-                amount1Min: _amount1Min,
+                amount0Desired: runtimeParams.collaterals[0],
+                amount1Desired: runtimeParams.collaterals[0],
+                amount0Min: 0, // TODO
+                amount1Min: 0,
                 deadline: block.timestamp
             });
 
-        (uint256 amount0, uint256 amount1) = nonfungiblePositionManager.decreaseLiquidity(params);
+        (, uint256 amount0, uint256 amount1) = nonfungiblePositionManager.increaseLiquidity{value: ethCollateral}(
+            params
+        );
 
         outputs[0] = action.inputTokens[0].id;
         outputs[1] = amount0;

@@ -23,7 +23,7 @@ import "../SimpleSwapUtils.sol";
             ETH/USD -> USD per ETH -> ETH Price in USD -> triggerReturn = [ETH, USD, val] -> Must use when tokenIn = ETH and tokenOut = USD (i.e. buying USD with ETH)
             USD/ETH -> ETH per USD -> USD Price in ETH -> triggerReturn = [USD, ETH, val] -> Must use when tokenIn = USD* and tokenOut = ETH (i.e. buying ETH with USD)
 */
-contract SwapUniSingleAction is IAction, DelegatePerform {
+contract UniSwapSingle is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
     using TokenLib for Token;
 

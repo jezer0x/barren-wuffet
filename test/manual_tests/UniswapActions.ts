@@ -86,7 +86,7 @@ async function main() {
     callee: (await ethers.getContract("TimestampTrigger")).address
   };
 
-  const swapUniAction = await ethers.getContract("SwapUniSingleAction");
+  const swapUniAction = await ethers.getContract("UniSwapSingle");
 
   await McFund.takeAction(
     trueTrigger,
@@ -116,7 +116,7 @@ async function main() {
   );
 
   let balance_dai = await dai_contract.balanceOf(McFundAddr);
-  const mintLPAction = await ethers.getContract("MintLiquidityPositionUni");
+  const mintLPAction = await ethers.getContract("UniMintLiquidityPosition");
   let LP_NFT = { t: TOKEN_TYPE.ERC721, addr: await mintLPAction.nonfungiblePositionManager(), id: BigNumber.from(0) };
 
   const poolFactory = new Contract("0x1F98431c8aD98523631AE4a59f267346ea31F984", FACTORY_ABI, ethers.provider);
@@ -138,7 +138,7 @@ async function main() {
   await McFund.takeAction(
     trueTrigger,
     {
-      callee: (await ethers.getContract("MintLiquidityPositionUni")).address,
+      callee: (await ethers.getContract("UniMintLiquidityPosition")).address,
       data: ethers.utils.defaultAbiCoder.encode(["uint24", "int24", "int24"], [500, NLT.toString(), NHT.toString()]),
       inputTokens: [DAI_TOKEN, USDC_TOKEN],
       outputTokens: [DAI_TOKEN, USDC_TOKEN, LP_NFT]

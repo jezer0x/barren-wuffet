@@ -17,7 +17,7 @@ import "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.s
     Tokens: 
         Will only have 1 input tokens (NFT) and 3 outputs (NFT, fees in token0 and token1)
 */
-contract CollectFeesUni is IAction, DelegatePerform {
+contract UniCollectFees is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
     using TokenLib for Token;
 

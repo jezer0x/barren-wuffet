@@ -38,7 +38,7 @@ interface ISwapper {
         action.data must be in the form of (address)
 
 */
-contract SwapCurveAction is IAction, DelegatePerform {
+contract CurveSwap is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
 
     IAddressProvider public immutable address_provider;
