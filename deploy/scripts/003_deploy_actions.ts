@@ -30,6 +30,15 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     TokenLibAddr,
     hre.config.networks.hardhat.forking?.enabled
   );
+
+  await deploySushiSwapExactXToY(
+    deploy,
+    deployer,
+    whitelistService,
+    actWlHash,
+    TokenLibAddr,
+    hre.config.networks.hardhat.forking?.enabled
+  );
   // TODO: deploy all the other actions
 
   if ((await whitelistService.getWhitelistOwner(actWlHash)) == deployer) {
@@ -108,6 +117,36 @@ async function deployUniswapActions(
   await addToWhitelist(deployer, whitelistService, actWlHash, UniCollectFeesAction.address);
   await addToWhitelist(deployer, whitelistService, actWlHash, UniIncreaseLiquidityAction.address);
   await addToWhitelist(deployer, whitelistService, actWlHash, UniDecreaseLiquidityAction.address);
+}
+
+async function deploySushiSwapExactXToY(
+  deploy: any,
+  deployer: string,
+  whitelistService: Contract,
+  actWlHash: any,
+  TokenLibAddr: string,
+  forked: undefined | boolean
+) {
+  let router;
+  let weth9Addr;
+
+  // TODO: utils to change the following to vars, depending on chainID
+  if ((await getChainId()) == "31337" && !forked) {
+    router = (await ethers.getContract("TestSwapRouter")).address;
+    weth9Addr = (await ethers.getContract("WETH")).address;
+  } else {
+    router = liveAddresses.sushiswap.swap_router;
+    weth9Addr = liveAddresses.tokens.WETH;
+  }
+
+  const sushiSwapExactXForY = await deploy("SushiSwapExactXForY", {
+    from: deployer,
+    args: [router, weth9Addr],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  await addToWhitelist(deployer, whitelistService, actWlHash, sushiSwapExactXForY.address);
 }
 
 export default func;

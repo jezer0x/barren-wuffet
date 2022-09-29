@@ -13,6 +13,10 @@ export const uniswap = {
   non_fungible_position_manager: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
 };
 
+export const sushiswap = {
+  swap_router: "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506"
+};
+
 // https://docs.dopex.io/contracts/arbitrum
 export const dopex = {
   DpxMonthlyCallsSsovV3: "0x1ae38835Bf3afbEC178E8a59Ca82aA383dC3DF57",
