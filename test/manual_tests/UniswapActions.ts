@@ -19,6 +19,8 @@ import {
   TIMESTAMP_TRIGGER_TYPE
 } from "../Constants";
 import { getAddressFromEvent } from "../helper";
+import { abi as FACTORY_ABI } from "@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json";
+import { abi as POOL_ABI } from "@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json";
 
 async function makeSubConstraints() {
   const latestTime = await time.latest();
@@ -116,6 +118,9 @@ async function main() {
   let balance_dai = await dai_contract.balanceOf(McFundAddr);
   const mintLPAction = await ethers.getContract("MintLiquidityPositionUni");
   let LP_NFT = { t: TOKEN_TYPE.ERC721, addr: await mintLPAction.nonfungiblePositionManager(), id: BigNumber.from(0) };
+
+  const poolFactory = new Contract(FACTORY_ABI, "0x1F98431c8aD98523631AE4a59f267346ea31F984");
+  console.log(await poolFactory.getPool(DAI_TOKEN.addr, USDC_TOKEN.addr, 500));
 
   console.log(balance_dai, balance_usdc);
   await McFund.takeAction(

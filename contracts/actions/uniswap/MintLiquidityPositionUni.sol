@@ -46,6 +46,8 @@ contract MintLiquidityPositionUni is IAction, DelegatePerform {
         //TODO: need more validation here
         require(action.inputTokens.length == 2);
         require(action.outputTokens.length == 3);
+        // TODO: validate that fee, tl, and tu
+        (uint24 fee, int24 tl, int24 tu) = abi.decode(action.data, (uint24, int24, int24));
         return true;
     }
 
@@ -55,7 +57,6 @@ contract MintLiquidityPositionUni is IAction, DelegatePerform {
         delegateOnly
         returns (ActionResponse memory)
     {
-        console.log("mlpu.perform");
         uint256[] memory outputs = new uint256[](3);
 
         // For this example, we will provide equal amounts of liquidity in both assets.
@@ -83,21 +84,26 @@ contract MintLiquidityPositionUni is IAction, DelegatePerform {
             IERC20(token1Addr).safeApprove(address(nonfungiblePositionManager), runtimeParams.collaterals[1]);
         }
 
-        // The values for tickLower and tickUpper may not work for all tick spacings.
-        // Setting amount0Min and amount1Min to 0 is unsafe.
-        INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager.MintParams({
-            token0: token0Addr,
-            token1: token1Addr,
-            fee: 3000, // TODO:
-            tickLower: TickMath.MIN_TICK,
-            tickUpper: TickMath.MAX_TICK,
-            amount0Desired: runtimeParams.collaterals[0],
-            amount1Desired: runtimeParams.collaterals[1],
-            amount0Min: 0, // TODO: take these from triggerParams
-            amount1Min: 0,
-            recipient: address(this),
-            deadline: block.timestamp
-        });
+        INonfungiblePositionManager.MintParams memory params;
+
+        // block scodping because stack too deep
+        {
+            (uint24 fee, int24 tl, int24 tu) = abi.decode(action.data, (uint24, int24, int24));
+
+            params = INonfungiblePositionManager.MintParams({
+                token0: token0Addr,
+                token1: token1Addr,
+                fee: fee,
+                tickLower: tl,
+                tickUpper: tu,
+                amount0Desired: runtimeParams.collaterals[0],
+                amount1Desired: runtimeParams.collaterals[1],
+                amount0Min: 0, // TODO: take these from triggerParams
+                amount1Min: 0,
+                recipient: address(this),
+                deadline: block.timestamp
+            });
+        }
 
         console.log("calling mint");
         (uint256 tokenId, uint256 liquidity, uint256 amount0, uint256 amount1) = nonfungiblePositionManager.mint{
