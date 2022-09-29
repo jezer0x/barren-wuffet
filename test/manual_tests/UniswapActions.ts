@@ -146,6 +146,15 @@ async function main() {
     [balance_dai, balance_usdc],
     [BigNumber.from(0), BigNumber.from(0)] // 0 fees set in deploy
   );
+
+  // TODO: check that fund can't be closed because open position
+  // TODO: find the nft token ip for the lp
+  // TODO: increaseLiquidity
+  // TODO: decreaseLiquidity
+  // TODO: swap some large sums so that range gets fees
+  // TODO: collect fees
+  // TODO: burn position
+  // TODO: check that fund can be closed
 }
 
 main().catch(error => {
