@@ -29,6 +29,7 @@ import {
 import { RuleStructOutput } from "../typechain-types/contracts/rules/RoboCop";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { assert } from "console";
+import { AbiCoder } from "@ethersproject/abi";
 
 describe("RoboCop", () => {
   const deployRoboCopFixture = deployments.createFixture(async (hre, options) => {
@@ -152,10 +153,10 @@ describe("RoboCop", () => {
 
       expect(trace.failed).to.be.equal(true);
 
-      // checks if error is duplicated rule, its in raw form as I don't know how to abi decode
-      // 0x4475706c69636174652052756c65 is Duplicate Rule in hex
+      const functionSelector = utils.id('Error(string)').substring(2, 10);
+      const data = utils.defaultAbiCoder.encode(["string"], ["Duplicate Rule"]).substring(2);
       expect(trace.returnValue).to.be.equal(
-        "08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e4475706c69636174652052756c65000000000000000000000000000000000000"
+        functionSelector + data
       );
     });
 
