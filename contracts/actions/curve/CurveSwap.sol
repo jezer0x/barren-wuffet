@@ -8,6 +8,7 @@ import "./IRegistry.sol";
 import "./IAddressProvider.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "../SimpleSwapUtils.sol";
 
 interface ISwapper {
     function exchange(
@@ -30,9 +31,7 @@ interface ISwapper {
 
     TriggerReturn: 
         Applicable TriggerReturn must be in (asset1, asset2, val) where val.decimals = 8, asset1 = inputToken and asset2 = outputToken
-            Example: 
-            ETH/USD -> USD per ETH -> ETH Price in USD -> triggerReturn = [ETH, USD, val] -> Must use when tokenIn = ETH and tokenOut = USD (i.e. buying USD with ETH)
-            USD/ETH -> ETH per USD -> USD Price in ETH -> triggerReturn = [USD, ETH, val] -> Must use when tokenIn = USD* and tokenOut = ETH (i.e. buying ETH with USD)
+        If not present, trade is in danger of getting frontrun. 
 
     Action: 
         action.data must be in the form of (address)
@@ -50,24 +49,6 @@ contract CurveSwap is IAction, DelegatePerform {
 
     function _getSwapper() internal view returns (address) {
         return address_provider.get_address(2);
-    }
-
-    function _parseRuntimeParams(Action calldata action, ActionRuntimeParams calldata runtimeParams)
-        internal
-        pure
-        returns (uint256)
-    {
-        for (uint256 i = 0; i < runtimeParams.triggerReturnArr.length; i++) {
-            TriggerReturn memory triggerReturn = runtimeParams.triggerReturnArr[i];
-            if (triggerReturn.triggerType == TriggerType.Price) {
-                (address asset1, address asset2, uint256 res) = decodePriceTriggerReturn(triggerReturn.runtimeData);
-                if (asset1 == action.inputTokens[0].addr && asset2 == action.outputTokens[0].addr) {
-                    return res;
-                }
-            }
-        }
-
-        return 0;
     }
 
     function validate(Action calldata action) external view returns (bool) {
@@ -102,7 +83,11 @@ contract CurveSwap is IAction, DelegatePerform {
             action.inputTokens[0].addr,
             action.outputTokens[0].addr,
             runtimeParams.collaterals[0],
-            (_parseRuntimeParams(action, runtimeParams) * runtimeParams.collaterals[0]) / 10**8,
+            (SimpleSwapUtils._getRelevantPriceTriggerData(
+                action.inputTokens[0],
+                action.outputTokens[0],
+                runtimeParams.triggerReturnArr
+            ) * runtimeParams.collaterals[0]) / 10**8,
             address(this)
         );
         IERC20(action.inputTokens[0].addr).safeApprove(address(swapper), 0);

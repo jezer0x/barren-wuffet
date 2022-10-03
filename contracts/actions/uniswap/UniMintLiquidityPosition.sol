@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import "hardhat/console.sol";
+import "../SimpleSwapUtils.sol";
 
 /*
     Reference: 
@@ -19,10 +20,8 @@ import "hardhat/console.sol";
         Will only have 2 input tokens and 3 output (refund of first 2, and an NFT)
 
     TriggerReturn: 
-        Applicable TriggerReturn must be in (asset1, asset2, val) where val.decimals = 8, asset1 = inputToken and asset2 = outputToken
-            Example: 
-            ETH/USD -> USD per ETH -> ETH Price in USD -> triggerReturn = [ETH, USD, val] -> Must use when tokenIn = ETH and tokenOut = USD (i.e. buying USD with ETH)
-            USD/ETH -> ETH per USD -> USD Price in ETH -> triggerReturn = [USD, ETH, val] -> Must use when tokenIn = USD* and tokenOut = ETH (i.e. buying ETH with USD)
+        Applicable TriggerReturn must be in (asset1, asset2, val) where val.decimals = 8, asset1 = inputTokens[0] and asset2 = inputTokens[1]
+        If not present, trade is in danger of getting frontrun.
 */
 contract UniMintLiquidityPosition is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
@@ -87,23 +86,45 @@ contract UniMintLiquidityPosition is IAction, DelegatePerform {
 
         INonfungiblePositionManager.MintParams memory params;
 
-        // block scodping because stack too deep
+        // block scoping because stack too deep
         {
-            (uint24 fee, int24 tl, int24 tu) = abi.decode(action.data, (uint24, int24, int24));
+            uint256 amount0Min;
+            uint256 amount1Min;
 
-            params = INonfungiblePositionManager.MintParams({
-                token0: token0Addr,
-                token1: token1Addr,
-                fee: fee,
-                tickLower: tl,
-                tickUpper: tu,
-                amount0Desired: runtimeParams.collaterals[0],
-                amount1Desired: runtimeParams.collaterals[1],
-                amount0Min: 0, // TODO: take these from triggerParams
-                amount1Min: 0,
-                recipient: address(this),
-                deadline: block.timestamp
-            });
+            {
+                amount0Min =
+                    (SimpleSwapUtils._getRelevantPriceTriggerData(
+                        action.inputTokens[0],
+                        action.inputTokens[1],
+                        runtimeParams.triggerReturnArr
+                    ) * runtimeParams.collaterals[0]) /
+                    10**8;
+
+                amount1Min =
+                    SimpleSwapUtils._getRelevantPriceTriggerData(
+                        action.inputTokens[0],
+                        action.inputTokens[1],
+                        runtimeParams.triggerReturnArr
+                    ) *
+                    runtimeParams.collaterals[1];
+            }
+
+            {
+                (uint24 fee, int24 tl, int24 tu) = abi.decode(action.data, (uint24, int24, int24));
+                params = INonfungiblePositionManager.MintParams({
+                    token0: token0Addr,
+                    token1: token1Addr,
+                    fee: fee,
+                    tickLower: tl,
+                    tickUpper: tu,
+                    amount0Desired: runtimeParams.collaterals[0],
+                    amount1Desired: runtimeParams.collaterals[1],
+                    amount0Min: amount0Min,
+                    amount1Min: amount1Min,
+                    recipient: address(this),
+                    deadline: block.timestamp
+                });
+            }
         }
 
         console.log("calling mint");

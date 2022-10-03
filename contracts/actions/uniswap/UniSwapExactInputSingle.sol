@@ -19,9 +19,6 @@ import "../SimpleSwapUtils.sol";
 
     TriggerReturn: 
         Applicable TriggerReturn must be in (asset1, asset2, val) where val.decimals = 8, asset1 = inputToken and asset2 = outputToken
-            Example: 
-            ETH/USD -> USD per ETH -> ETH Price in USD -> triggerReturn = [ETH, USD, val] -> Must use when tokenIn = ETH and tokenOut = USD (i.e. buying USD with ETH)
-            USD/ETH -> ETH per USD -> USD Price in ETH -> triggerReturn = [USD, ETH, val] -> Must use when tokenIn = USD* and tokenOut = ETH (i.e. buying ETH with USD)
 */
 contract UniSwapExactInputSingle is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
@@ -76,8 +73,11 @@ contract UniSwapExactInputSingle is IAction, DelegatePerform {
             recipient: address(this),
             deadline: block.timestamp, // need to do an immediate swap
             amountIn: runtimeParams.collaterals[0],
-            amountOutMinimum: (SimpleSwapUtils._parseRuntimeParams(action, runtimeParams) *
-                runtimeParams.collaterals[0]) / 10**8, // assumption: triggerReturn in the form of tokenIn/tokenOut.
+            amountOutMinimum: (SimpleSwapUtils._getRelevantPriceTriggerData(
+                action.inputTokens[0],
+                action.outputTokens[0],
+                runtimeParams.triggerReturnArr
+            ) * runtimeParams.collaterals[0]) / 10**8, // assumption: triggerReturn in the form of tokenIn/tokenOut.
             sqrtPriceLimitX96: 0
         });
 

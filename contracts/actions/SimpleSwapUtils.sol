@@ -19,16 +19,16 @@ library SimpleSwapUtils {
         return true;
     }
 
-    function _parseRuntimeParams(Action calldata action, ActionRuntimeParams calldata runtimeParams)
-        internal
-        pure
-        returns (uint256)
-    {
-        for (uint256 i = 0; i < runtimeParams.triggerReturnArr.length; i++) {
-            TriggerReturn memory triggerReturn = runtimeParams.triggerReturnArr[i];
+    function _getRelevantPriceTriggerData(
+        Token calldata tokenA,
+        Token calldata tokenB,
+        TriggerReturn[] calldata triggerReturnArr
+    ) internal pure returns (uint256) {
+        for (uint256 i = 0; i < triggerReturnArr.length; i++) {
+            TriggerReturn memory triggerReturn = triggerReturnArr[i];
             if (triggerReturn.triggerType == TriggerType.Price) {
                 (address asset1, address asset2, uint256 res) = decodePriceTriggerReturn(triggerReturn.runtimeData);
-                if (asset1 == action.inputTokens[0].addr && asset2 == action.outputTokens[0].addr) {
+                if (asset1 == tokenA.addr && asset2 == tokenB.addr) {
                     return res;
                 } // fallthrough
             } // fallthrough
