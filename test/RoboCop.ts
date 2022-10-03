@@ -28,6 +28,8 @@ import {
 } from "./Constants";
 import { RuleStructOutput } from "../typechain-types/contracts/rules/RoboCop";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { assert } from "console";
+import { AbiCoder } from "@ethersproject/abi";
 
 describe("RoboCop", () => {
   const deployRoboCopFixture = deployments.createFixture(async (hre, options) => {
@@ -139,14 +141,8 @@ describe("RoboCop", () => {
       );
     });
 
-    it.skip("If trigger, action, user, block are the same, ruleHash should be the same -> making the second creation fail", async () => {
-      const {
-        roboCop,
-        uniSwapExactInputSingle,
-        priceTrigger,
-        ruleMakerWallet,
-        testToken1
-      } = await deployRoboCopFixture();
+    it("If trigger, action, user, block are the same, ruleHash should be the same -> making the second creation fail", async () => {
+      const { roboCop, uniSwapExactInputSingle, priceTrigger, ruleMakerWallet, testToken1 } = await deployRoboCopFixture();
 
       const passingTrigger = makePassingTrigger(priceTrigger.address, testToken1);
       const executableAction = makeSwapAction(uniSwapExactInputSingle.address, [testToken1.address]);
@@ -156,10 +152,14 @@ describe("RoboCop", () => {
       await network.provider.send("evm_setAutomine", [false]);
       const tx1 = await roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction]);
       const tx2 = await roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction]);
-      // different user, so this 3rd rule should work
-      const tx3 = await roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction]);
+
       await network.provider.send("evm_mine", []);
       await network.provider.send("evm_setAutomine", [true]);
+      // different block time, so this 3rd rule should work
+      await expect(roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction])).to.emit(
+        roboCop,
+        "Created"
+      );
 
       try {
         await tx1.wait();
@@ -167,21 +167,15 @@ describe("RoboCop", () => {
         expect.fail();
       }
 
-      try {
-        await tx2.wait();
-        // cant figure how to confirm whether the error is a duplicate rule error.
-        // this will suffice for now.
-        expect.fail();
-      } catch (err) {
-        /* pass */
-      }
+      const trace = await network.provider.send("debug_traceTransaction", [tx2.hash]);
 
-      try {
-        await tx3.wait();
-      } catch (err) {
-        // this acts as a control to ensure the error wasnt due to the evm_mine stuff
-        expect.fail();
-      }
+      expect(trace.failed).to.be.equal(true);
+
+      const functionSelector = utils.id('Error(string)').substring(2, 10);
+      const data = utils.defaultAbiCoder.encode(["string"], ["Duplicate Rule"]).substring(2);
+      expect(trace.returnValue).to.be.equal(
+        functionSelector + data
+      );
     });
 
     it("Should fail to create rule by nonOwner", async () => {
