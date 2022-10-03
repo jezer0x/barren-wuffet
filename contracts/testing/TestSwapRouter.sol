@@ -3,7 +3,7 @@ pragma solidity ^0.8.9;
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "hardhat/console.sol";
+
 import "../utils/Utils.sol";
 
 contract TestSwapRouter is ISwapRouter {
@@ -36,6 +36,7 @@ contract TestSwapRouter is ISwapRouter {
         } else {
             payable(params.recipient).transfer(params.amountOutMinimum);
         }
+
         return params.amountOutMinimum;
     }
 
