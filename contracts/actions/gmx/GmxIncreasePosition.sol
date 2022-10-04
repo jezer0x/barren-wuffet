@@ -3,27 +3,29 @@ pragma solidity ^0.8.9;
 
 import "../IAction.sol";
 import "../DelegatePerform.sol";
-import "./IRouter.sol";
 import "./IReader.sol";
 import "./IPositionRouter.sol";
 import "../SimpleSwapUtils.sol";
 
-contract GmxSwap is IAction, DelegatePerform {
+contract GmxIncreasePosition is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
     using TokenLib for Token;
 
     IReader immutable reader;
     IPositionRouter immutable positionRouter;
     bytes32 immutable referralCode;
+    address public immutable closePositionAddress;
 
     constructor(
         address readerAddress,
         address positionRouterAddress,
+        address _closePositionAddress,
         bytes32 _referralCode
     ) {
         reader = IReader(readerAddress);
         positionRouter = IPositionRouter(positionRouterAddress);
         referralCode = _referralCode;
+        closePositionAddress = _closePositionAddress;
     }
 
     function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
@@ -73,9 +75,19 @@ contract GmxSwap is IAction, DelegatePerform {
         }
 
         uint256[] memory noOutputs;
-        // TODO: create position
-        Position memory none;
-        return ActionResponse({tokenOutputs: noOutputs, position: none});
+
+        // setting up position
+        Token[] memory inputTokens = new Token[](1);
+        Action[] memory nextActions = new Action[](1);
+        nextActions[0] = Action({
+            callee: closePositionAddress,
+            data: abi.encode(positionRouter.vault(), address(this), _path, _path, [_isLong]),
+            inputTokens: new Token[](0),
+            outputTokens: new Token[](0)
+        });
+        Position memory pos = Position({actionConstraints: new ActionConstraints[](0), nextActions: nextActions});
+
+        return ActionResponse({tokenOutputs: noOutputs, position: pos});
     }
 
     function validate(Action calldata action) external view returns (bool) {

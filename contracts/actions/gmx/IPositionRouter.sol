@@ -25,9 +25,24 @@ interface IPositionRouter {
         bytes32 _referralCode
     ) external payable;
 
+    function createDecreasePosition(
+        address[] memory _path,
+        address _indexToken,
+        uint256 _collateralDelta,
+        uint256 _sizeDelta,
+        bool _isLong,
+        address _receiver,
+        uint256 _acceptablePrice,
+        uint256 _minOut,
+        uint256 _executionFee,
+        bool _withdrawETH
+    ) external payable;
+
     function weth() external returns (address);
 
     function router() external returns (address);
+
+    function vault() external returns (address);
 
     function minExecutionFee() external returns (uint256);
 }
