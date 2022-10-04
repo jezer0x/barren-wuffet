@@ -3,6 +3,7 @@ pragma solidity ^0.8.9;
 
 import "../IAction.sol";
 import "@sushiswap/core/contracts/uniswapv2/interfaces/IUniswapV2Router02.sol";
+import "@sushiswap/core/contracts/uniswapv2/interfaces/IUniswapV2Factory.sol";
 import "../../utils/Constants.sol";
 import "../../utils/assets/TokenLib.sol";
 import "../DelegatePerform.sol";
@@ -40,7 +41,15 @@ contract SushiAddLiquidity is IAction, DelegatePerform {
         require(action.outputTokens[0].equals(action.inputTokens[0]));
         require(action.outputTokens[1].equals(action.inputTokens[1]));
 
-        // TODO: make sure outputToken[2] = UniswapV2Library.pairFor(factory, tokenA, tokenB);
+        address token0Addr = action.inputTokens[0].t == TokenType.NATIVE ? router.WETH() : action.inputTokens[0].addr;
+        address token1Addr = action.inputTokens[1].t == TokenType.NATIVE ? router.WETH() : action.inputTokens[1].addr;
+
+        require(
+            action.outputTokens[2].addr == IUniswapV2Factory(router.factory()).getPair(token0Addr, token1Addr),
+            "Wrong SLP Token"
+        );
+
+        return true;
     }
 
     function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)

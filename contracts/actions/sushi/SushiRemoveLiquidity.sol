@@ -3,6 +3,7 @@ pragma solidity ^0.8.9;
 
 import "../IAction.sol";
 import "@sushiswap/core/contracts/uniswapv2/interfaces/IUniswapV2Router02.sol";
+import "@sushiswap/core/contracts/uniswapv2/interfaces/IUniswapV2Factory.sol";
 import "../../utils/Constants.sol";
 import "../../utils/assets/TokenLib.sol";
 import "../DelegatePerform.sol";
@@ -17,7 +18,7 @@ import "../SimpleSwapUtils.sol";
     Tokens: 
         Will only have 1 input token and 2 output tokens
 */
-contract SushiAddLiquidity is IAction, DelegatePerform {
+contract SushiRemoveLiquidity is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
     using TokenLib for Token;
 
@@ -35,7 +36,15 @@ contract SushiAddLiquidity is IAction, DelegatePerform {
         require(action.outputTokens[0].t == TokenType.ERC20 || action.outputTokens[0].t == TokenType.NATIVE);
         require(action.outputTokens[1].t == TokenType.ERC20 || action.outputTokens[1].t == TokenType.NATIVE);
 
-        // TODO: make sure inputToken[0] = UniswapV2Library.pairFor(factory, outputTokens[0], outputTokens[1]);
+        address token0Addr = action.outputTokens[0].t == TokenType.NATIVE ? router.WETH() : action.outputTokens[0].addr;
+        address token1Addr = action.outputTokens[1].t == TokenType.NATIVE ? router.WETH() : action.outputTokens[1].addr;
+
+        require(
+            action.inputTokens[0].addr == IUniswapV2Factory(router.factory()).getPair(token0Addr, token1Addr),
+            "Wrong SLP Token"
+        );
+
+        return true;
     }
 
     function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)

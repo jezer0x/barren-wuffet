@@ -31,7 +31,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     hre.config.networks.hardhat.forking?.enabled
   );
 
-  await deploySushiSwapExactXToY(
+  await deploySushiActions(
     deploy,
     deployer,
     whitelistService,
@@ -119,7 +119,7 @@ async function deployUniswapActions(
   await addToWhitelist(deployer, whitelistService, actWlHash, UniDecreaseLiquidityAction.address);
 }
 
-async function deploySushiSwapExactXToY(
+async function deploySushiActions(
   deploy: any,
   deployer: string,
   whitelistService: Contract,
@@ -146,7 +146,23 @@ async function deploySushiSwapExactXToY(
     libraries: { TokenLib: TokenLibAddr }
   });
 
+  const sushiAddLiquidity = await deploy("SushiAddLiquidity", {
+    from: deployer,
+    args: [router],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  const sushiRemoveLiquidity = await deploy("SushiRemoveLiquidity", {
+    from: deployer,
+    args: [router],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
   await addToWhitelist(deployer, whitelistService, actWlHash, sushiSwapExactXForY.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, sushiAddLiquidity.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, sushiRemoveLiquidity.address);
 }
 
 export default func;
