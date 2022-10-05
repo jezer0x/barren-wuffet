@@ -120,10 +120,10 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         return true;
     }
 
-    modifier onlyActiveSubscriber(uint256 subscriptionIdx) {
+    modifier onlyActiveSubscriber() {
         require(
-            subStuff.subscriptions[subscriptionIdx].subscriber == msg.sender &&
-                subStuff.subscriptions[subscriptionIdx].status == Subscriptions.Status.ACTIVE,
+            subStuff.subscriptions[msg.sender].collateralAmount > 0 &&
+                subStuff.subscriptions[msg.sender].status == Subscriptions.Status.ACTIVE,
             "!AS"
         );
         _;
@@ -379,10 +379,10 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         openRules.pop();
     }
 
-    function deposit(Token memory collateralToken, uint256 amountSent) external payable returns (uint256 idx) {
+    function deposit(Token memory collateralToken, uint256 amountSent) external payable {
         require(getStatus() == FundStatus.RAISING, "!R");
-        idx = subStuff.deposit(assets, collateralToken, amountSent);
-        emit Deposit(msg.sender, idx, collateralToken.addr, subStuff.subscriptions[idx].collateralAmount);
+        subStuff.deposit(assets, collateralToken, amountSent);
+        emit Deposit(msg.sender, collateralToken.addr, amountSent);
     }
 
     function getStatus() public view returns (FundStatus) {
@@ -414,27 +414,22 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         }
     }
 
-    function withdraw(uint256 subscriptionIdx)
+    function withdraw()
         external
         nonReentrant
-        onlyActiveSubscriber(subscriptionIdx)
+        onlyActiveSubscriber
         returns (Token[] memory tokens, uint256[] memory balances)
     {
         FundStatus status = getStatus();
         if (status == FundStatus.CLOSABLE) {
             revert("!C");
         } else if (status == FundStatus.RAISING) {
-            emit Withdraw(
-                msg.sender,
-                subscriptionIdx,
-                Constants.ETH,
-                subStuff.subscriptions[subscriptionIdx].collateralAmount
-            );
-            (tokens, balances) = subStuff.withdrawCollateral(subscriptionIdx, assets);
+            emit Withdraw(msg.sender, Constants.ETH, subStuff.subscriptions[msg.sender].collateralAmount);
+            (tokens, balances) = subStuff.withdrawCollateral(assets);
         } else if (status == FundStatus.CLOSED) {
-            (tokens, balances) = subStuff.withdrawAssets(subscriptionIdx, assets);
+            (tokens, balances) = subStuff.withdrawAssets(assets);
             for (uint256 i = 0; i < tokens.length; i++) {
-                emit Withdraw(msg.sender, subscriptionIdx, tokens[i].addr, balances[i]);
+                emit Withdraw(msg.sender, tokens[i].addr, balances[i]);
             }
         } else if (status == FundStatus.DEPLOYED) {
             revert("D");

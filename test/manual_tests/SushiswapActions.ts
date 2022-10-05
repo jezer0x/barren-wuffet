@@ -184,7 +184,7 @@ async function main() {
   // Case 5: subscribers get back the SLP token if funds are closed -> no position stuff required
 
   await McFund.closeFund(); // trader closes fund prematurely
-  await McFund.withdraw(0); // trader was subscriber himself
+  await McFund.withdraw(); // trader was subscriber himself
 
   const { deployer } = await getNamedAccounts();
   console.log(

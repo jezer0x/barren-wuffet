@@ -230,7 +230,7 @@ describe("BarrenWuffet", () => {
       const { fundSubscriber } = await getNamedAccounts();
       await expect(jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit }))
         .to.emit(jerkshireFund.x, "Deposit")
-        .withArgs(fundSubscriber, 0, ETH_ADDRESS, validDeposit);
+        .withArgs(fundSubscriber, ETH_ADDRESS, validDeposit);
     });
 
     it("Should allow the fund manager to deposit native token into their own fund", async () => {
@@ -238,7 +238,7 @@ describe("BarrenWuffet", () => {
       const { marlieChunger } = await getNamedAccounts();
       await expect(jerkshireFund.marlieChunger.deposit(ETH_TOKEN, validDeposit, { value: validDeposit }))
         .to.emit(jerkshireFund.x, "Deposit")
-        .withArgs(marlieChunger, 0, ETH_ADDRESS, validDeposit);
+        .withArgs(marlieChunger, ETH_ADDRESS, validDeposit);
     });
 
     it("Should not allow anyone to deposit ERC20 tokens into a raising fund. We only allow native right now", async () => {
@@ -275,7 +275,7 @@ describe("BarrenWuffet", () => {
       );
     });
 
-    it("xx Should allow anyone to deposit more than max subscriber threshold by splitting the deposits into multiple subscriptions", async () => {
+    it("Should not allow anyone to deposit more than max subscriber threshold by splitting the deposits into multiple subscriptions", async () => {
       const { jerkshireFund, jerkshireConstraints } = await raisingFundsFixture();
       // unclear if this is a feature or a bug, but we want to document the usecase
       // check if multiple smaller deposits, that exceed collateral limit in total, get reverted.
@@ -283,12 +283,12 @@ describe("BarrenWuffet", () => {
       const { fundSubscriber } = await getNamedAccounts();
       await expect(jerkshireFund.subscriber.deposit(ETH_TOKEN, depositAmt1, { value: depositAmt1 }))
         .to.emit(jerkshireFund.x, "Deposit")
-        .withArgs(fundSubscriber, 0, ETH_ADDRESS, depositAmt1);
+        .withArgs(fundSubscriber, ETH_ADDRESS, depositAmt1);
 
       const depositAmt2 = jerkshireConstraints.minCollateralPerSub;
-      await expect(jerkshireFund.subscriber.deposit(ETH_TOKEN, depositAmt2, { value: depositAmt2 }))
-        .to.emit(jerkshireFund.x, "Deposit")
-        .withArgs(fundSubscriber, 1, ETH_ADDRESS, depositAmt2);
+      await expect(jerkshireFund.subscriber.deposit(ETH_TOKEN, depositAmt2, { value: depositAmt2 })).to.revertedWith(
+        "> maxCollateralPerSub"
+      );
     });
 
     it("Should revert if deposit is attempted on a fund where collateral limit is reached", async () => {
@@ -312,7 +312,7 @@ describe("BarrenWuffet", () => {
           await expect(tx)
             .to.changeEtherBalance(fundSubscriber, amt.mul(-1))
             .emit(jerkshireFund.x, "Deposit")
-            .withArgs(fundSubscriber, idOrError, ETH_ADDRESS, amt);
+            .withArgs(fundSubscriber, ETH_ADDRESS, amt);
         } else {
           await expect(tx).to.be.revertedWith(idOrError.toString());
         }
@@ -324,16 +324,16 @@ describe("BarrenWuffet", () => {
       await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
       const subscriptionId = 0;
       const { fundSubscriber } = await getNamedAccounts();
-      await expect(jerkshireFund.subscriber.withdraw(subscriptionId))
+      await expect(jerkshireFund.subscriber.withdraw())
         .to.changeEtherBalance(fundSubscriber, validDeposit)
         .emit(jerkshireFund.x, "Withdraw")
-        .withArgs(fundSubscriber, subscriptionId, ETH_ADDRESS, validDeposit);
+        .withArgs(fundSubscriber, ETH_ADDRESS, validDeposit);
     });
 
     it("should not allow withdrawing if there have not been any deposits from this user", async () => {
       const { jerkshireFund } = await raisingFundsFixture();
       await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
-      await expect(jerkshireFund.subscriber2.withdraw(0)).to.be.rejectedWith("!AS");
+      await expect(jerkshireFund.subscriber2.withdraw()).to.be.rejectedWith("!AS");
     });
 
     it("should allow only the fund manager to close a Raising fund, and the subscriber to withdraw funds", async () => {
@@ -346,10 +346,10 @@ describe("BarrenWuffet", () => {
         .to.changeEtherBalances([marlieChunger, barrenWuffet], [0, 0])
         .emit(jerkshireFund.x, "Closed");
 
-      await expect(jerkshireFund.subscriber.withdraw(0))
+      await expect(jerkshireFund.subscriber.withdraw())
         .to.changeEtherBalance(fundSubscriber, validDeposit)
         .emit(jerkshireFund.x, "Withdraw")
-        .withArgs(fundSubscriber, 0, ETH_ADDRESS, validDeposit);
+        .withArgs(fundSubscriber, ETH_ADDRESS, validDeposit);
 
       // this is a clean fund
       await expect(crackBlockFund.marlieChunger.closeFund()).to.be.revertedWith("OFM");
@@ -481,7 +481,7 @@ describe("BarrenWuffet", () => {
     it("should revert if withdrawal is attempted on a deployed fund", async () => {
       const { jerkshireFund } = await deployedFundsFixture();
 
-      await expect(jerkshireFund.subscriber.withdraw(0)).to.be.revertedWith("D");
+      await expect(jerkshireFund.subscriber.withdraw()).to.be.revertedWith("D");
     });
 
     it("should revert if ManagementFee withdrawal is attempted on a deployed fund", async () => {
