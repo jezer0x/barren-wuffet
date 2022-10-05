@@ -76,7 +76,7 @@ async function deployUniswapActions(
     libraries: { TokenLib: TokenLibAddr }
   });
 
-  const UniBurnLiquidityPositionAction = await deploy("UniBurnLiquidityPosition", {
+  const UniSweepAndBurnLiquidityPositionAction = await deploy("UniSweepAndBurnLiquidityPosition", {
     from: deployer,
     args: [nonfungiblePositionManagerAddr, weth9Addr],
     log: true,
@@ -85,7 +85,7 @@ async function deployUniswapActions(
 
   const UniMintLiquidityPositionAction = await deploy("UniMintLiquidityPosition", {
     from: deployer,
-    args: [nonfungiblePositionManagerAddr, weth9Addr, UniBurnLiquidityPositionAction.address],
+    args: [nonfungiblePositionManagerAddr, weth9Addr, UniSweepAndBurnLiquidityPositionAction.address],
     log: true,
     libraries: { TokenLib: TokenLibAddr }
   });
@@ -112,7 +112,7 @@ async function deployUniswapActions(
   });
 
   await addToWhitelist(deployer, whitelistService, actWlHash, uniSwapExactInputSingle.address);
-  await addToWhitelist(deployer, whitelistService, actWlHash, UniBurnLiquidityPositionAction.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, UniSweepAndBurnLiquidityPositionAction.address);
   await addToWhitelist(deployer, whitelistService, actWlHash, UniMintLiquidityPositionAction.address);
   await addToWhitelist(deployer, whitelistService, actWlHash, UniCollectFeesAction.address);
   await addToWhitelist(deployer, whitelistService, actWlHash, UniIncreaseLiquidityAction.address);

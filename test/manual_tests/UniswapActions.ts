@@ -128,14 +128,13 @@ async function main() {
   var NHT = Math.floor(CT / Tsp) * Tsp;
   var NLT = Math.floor(CT / Tsp) * Tsp + Tsp;
   if (NLT > NHT) {
-    console.log("jhere");
     var temp = NLT;
     NLT = NHT;
     NHT = temp;
   }
 
-  console.log(balance_dai, balance_usdc);
-  await McFund.takeAction(
+  console.log(balance_dai.toString(), balance_usdc.toString());
+  const tx = await McFund.takeAction(
     trueTrigger,
     {
       callee: (await ethers.getContract("UniMintLiquidityPosition")).address,
@@ -146,15 +145,48 @@ async function main() {
     [balance_dai, balance_usdc],
     [BigNumber.from(0), BigNumber.from(0)] // 0 fees set in deploy
   );
+  const burnActionAsData = (await tx.wait()).events.find(
+    //@ts-ignore
+    (x: { event: string; address: string }) => x.event === "PositionCreated"
+  ).args.nextActions[0];
 
-  // TODO: check that fund can't be closed because open position
-  // TODO: find the nft token ip for the lp
+  const burnAction = ethers.utils.defaultAbiCoder.decode(
+    ["(address,bytes,(uint8,address,uint256)[],(uint8,address,uint256)[])"], // signature of an Action struct
+    burnActionAsData
+  )[0];
+
+  const nft_id = burnAction[2][0][2];
+
+  // Fund can't be closed because position is open
+  try {
+    await McFund.closeFund();
+  } catch {
+    console.log("Fund can't be closed because position is open");
+  }
+
   // TODO: increaseLiquidity
   // TODO: decreaseLiquidity
   // TODO: swap some large sums so that range gets fees
   // TODO: collect fees
-  // TODO: burn position
-  // TODO: check that fund can be closed
+
+  const { fairyLink } = await getNamedAccounts();
+  const fairyLinkSigner = ethers.provider.getSigner(fairyLink);
+
+  try {
+    await McFund.connect(fairyLinkSigner).takeActionToClosePosition(trueTrigger, burnAction, [nft_id], [0]);
+  } catch (e) {
+    console.log("lockin not passed, this should fail");
+  }
+
+  // A long time has passed; people can now force close the position since lockin period has passed
+  await time.increaseTo((await time.latest()) + 86400 * 10);
+
+  await McFund.connect(fairyLinkSigner).takeActionToClosePosition(trueTrigger, burnAction, [nft_id], [0]);
+
+  // TODO: check that collateral was received
+
+  // Fund can be closed now
+  await McFund.connect(fairyLinkSigner).closeFund();
 }
 
 main().catch(error => {

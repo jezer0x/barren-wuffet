@@ -149,7 +149,7 @@ contract UniMintLiquidityPosition is IAction, DelegatePerform {
             callee: burnPositionAddr,
             data: "",
             inputTokens: inputTokens,
-            outputTokens: new Token[](0)
+            outputTokens: action.inputTokens
         });
         Position memory pos = Position({actionConstraints: new ActionConstraints[](0), nextActions: nextActions});
         return ActionResponse({tokenOutputs: outputs, position: pos});

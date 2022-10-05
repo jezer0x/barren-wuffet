@@ -9,15 +9,17 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
+import "hardhat/console.sol";
 
 /*
     Reference: 
         https://docs.uniswap.org/protocol/guides/providing-liquidity/decrease-liquidity
 
     Tokens: 
-        Will only have 1 input tokens (NFT) and 3 outputs (NFT, amount taken out in token0 and token1)
+        Will only have 1 input tokens (NFT) and 2 outputs (token pair involved in the pool)
+        If all the fees have not been collected and liquidity decreased to 0 before burning a position, the action will return the remaining assets
 */
-contract UniDecreaseLiquidity is IAction, DelegatePerform {
+contract UniSweepAndBurnLiquidityPosition is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
     using TokenLib for Token;
 
@@ -32,49 +34,51 @@ contract UniDecreaseLiquidity is IAction, DelegatePerform {
     function validate(Action calldata action) external view returns (bool) {
         require(action.inputTokens.length == 1);
         require(action.inputTokens[0].t == TokenType.ERC721);
-        require(action.outputTokens.length == 1);
-        require(action.inputTokens[0].equals(action.outputTokens[0]));
+        require(action.outputTokens.length == 2);
 
-        (, , , , , , , uint128 liquidity, , , uint256 tokens0Owed, uint256 tokens1Owed) = nonfungiblePositionManager
-            .positions(action.inputTokens[0].id);
-
-        (uint128 _liquidity, uint256 _amount0Min, uint256 _amount1Min) = abi.decode(
-            action.data,
-            (uint128, uint256, uint256)
+        (, , address token0, address token1, , , , , , , , ) = nonfungiblePositionManager.positions(
+            action.inputTokens[0].id
         );
-        require(_liquidity >= liquidity);
-        require(tokens0Owed >= _amount0Min);
-        require(tokens1Owed >= _amount1Min);
+
+        require(action.outputTokens[0].addr == token0);
+        require(action.outputTokens[1].addr == token1);
 
         return true;
     }
 
-    function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
+    function perform(Action calldata action, ActionRuntimeParams calldata)
         external
         delegateOnly
         returns (ActionResponse memory)
     {
-        uint256[] memory outputs = new uint256[](1);
+        (, , , , , , , uint128 liquidity, , , uint256 tokens0Owed, uint256 tokens1Owed) = nonfungiblePositionManager
+            .positions(action.inputTokens[0].id);
 
-        (uint128 _liquidity, uint256 _amount0Min, uint256 _amount1Min) = abi.decode(
-            action.data,
-            (uint128, uint256, uint256)
-        );
         INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
             .DecreaseLiquidityParams({
                 tokenId: action.inputTokens[0].id,
-                liquidity: _liquidity,
-                amount0Min: _amount0Min, // TODO: should these be taken from triggers or be in action.data?
-                amount1Min: _amount1Min,
+                liquidity: liquidity,
+                amount0Min: tokens0Owed,
+                amount1Min: tokens1Owed,
                 deadline: block.timestamp
             });
 
-        // Amounts are just adjusted on positions.tokenXOwed, not actually sent back.
-        // Need to call collect() to actually get the tokens
         (uint256 amount0, uint256 amount1) = nonfungiblePositionManager.decreaseLiquidity(params);
 
-        outputs[0] = action.inputTokens[0].id;
+        INonfungiblePositionManager.CollectParams memory collectParams = INonfungiblePositionManager.CollectParams({
+            tokenId: action.inputTokens[0].id,
+            recipient: address(this),
+            amount0Max: type(uint128).max,
+            amount1Max: type(uint128).max
+        });
 
+        (amount0, amount1) = nonfungiblePositionManager.collect(collectParams);
+
+        uint256[] memory outputs = new uint256[](2);
+        outputs[0] = amount0;
+        outputs[1] = amount1;
+
+        nonfungiblePositionManager.burn(action.inputTokens[0].id);
         Position memory none;
         return ActionResponse({tokenOutputs: outputs, position: none});
     }
