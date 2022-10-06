@@ -54,6 +54,13 @@ interface IFund is ISubscription {
         uint256[] calldata fees
     ) external;
 
+    function takeActionToClosePosition(
+        Trigger calldata trigger,
+        Action calldata action,
+        uint256[] calldata collaterals,
+        uint256[] calldata fees
+    ) public;
+
     function createRule(Trigger[] calldata triggers, Action[] calldata actions) external returns (bytes32 ruleHash);
 
     function increaseRuleIncentive(uint256 openRuleIdx, uint256 amount) external;
