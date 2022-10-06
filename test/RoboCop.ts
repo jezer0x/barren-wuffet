@@ -142,7 +142,13 @@ describe("RoboCop", () => {
     });
 
     it("If trigger, action, user, block are the same, ruleHash should be the same -> making the second creation fail", async () => {
-      const { roboCop, uniSwapExactInputSingle, priceTrigger, ruleMakerWallet, testToken1 } = await deployRoboCopFixture();
+      const {
+        roboCop,
+        uniSwapExactInputSingle,
+        priceTrigger,
+        ruleMakerWallet,
+        testToken1
+      } = await deployRoboCopFixture();
 
       const passingTrigger = makePassingTrigger(priceTrigger.address, testToken1);
       const executableAction = makeSwapAction(uniSwapExactInputSingle.address, [testToken1.address]);
@@ -171,11 +177,9 @@ describe("RoboCop", () => {
 
       expect(trace.failed).to.be.equal(true);
 
-      const functionSelector = utils.id('Error(string)').substring(2, 10);
+      const functionSelector = utils.id("Error(string)").substring(2, 10);
       const data = utils.defaultAbiCoder.encode(["string"], ["Duplicate Rule"]).substring(2);
-      expect(trace.returnValue).to.be.equal(
-        functionSelector + data
-      );
+      expect(trace.returnValue).to.be.equal(functionSelector + data);
     });
 
     it("Should fail to create rule by nonOwner", async () => {
@@ -349,10 +353,10 @@ describe("RoboCop", () => {
     it("should revert if add / reduce collateral is called on a non-existent ruleHash", async () => {
       const { ruleMakerWallet, roboCop } = await deployValidRuleFixture();
       await expect(roboCop.connect(ruleMakerWallet).addCollateral(BAD_RULE_HASH, [1000])).to.be.revertedWith(
-        "Can't add collateral"
+        "EnumerableMap: nonexistent key"
       );
       await expect(roboCop.connect(ruleMakerWallet).reduceCollateral(BAD_RULE_HASH, [1000])).to.be.revertedWith(
-        "Can't reduce collateral"
+        "EnumerableMap: nonexistent key"
       );
     });
 
@@ -531,7 +535,9 @@ describe("RoboCop", () => {
   describe("Execute Rule", () => {
     it("should revert if anyone tries to execute an unknown rule", async () => {
       const { ruleHashToken, botWallet, roboCop } = await deployValidRuleFixture();
-      await expect(roboCop.connect(botWallet).executeRule(BAD_RULE_HASH)).to.be.rejectedWith("Rule not found");
+      await expect(roboCop.connect(botWallet).executeRule(BAD_RULE_HASH)).to.be.rejectedWith(
+        "EnumerableMap: nonexistent key"
+      );
     });
 
     it.skip("Should revert if anyone tries to execute the rule, and action fails", async () => {
@@ -837,7 +843,7 @@ describe("RoboCop", () => {
   describe("Get Rule", () => {
     it("revert getRule if rule doesnt exist", async () => {
       const { roboCop } = await deployValidRuleFixture();
-      await expect(roboCop.getRule(BAD_RULE_HASH)).to.be.revertedWith("Rule not found");
+      await expect(roboCop.getRule(BAD_RULE_HASH)).to.be.revertedWith("EnumerableMap: nonexistent key");
     });
 
     it("getRule returns the rule with all details and collateral amount", async () => {
@@ -866,7 +872,7 @@ describe("RoboCop", () => {
         // @ts-ignore
         actions: [ethSwapAction],
         collaterals: [collateralAmount],
-        status: 3,
+        status: 2,
         outputs: [collateralAmount.mul(ETH_PRICE_IN_TST1).div(PRICE_TRIGGER_DECIMALS)],
         incentive: DEFAULT_INCENTIVE
       };

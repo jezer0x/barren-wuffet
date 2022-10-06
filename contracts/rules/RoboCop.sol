@@ -7,6 +7,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "../utils/Utils.sol";
 import "../utils/Constants.sol";
 import "../utils/assets/TokenLib.sol";
+import "../utils/CustomEnumerableMap.sol";
 import "../actions/IAction.sol";
 import "../triggers/ITrigger.sol";
 import "./RuleTypes.sol";
@@ -16,24 +17,32 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "hardhat/console.sol";
 
+/* 
+    Token accoutning modifications: 
+        - TokensOnHold = RoboCop has to maintain a list of tokens demarcated for rules that are not yet executed. Custom EnumerableMap(Token=>uint) should work.
+            -- At the end of add/reduceCollateral and executeRule, TokensOnHold will be modified by the inputTokens. 
+        - ERC20/Native works differently from ERC721. 
+            -- ERC20/Native can have a BalanceOf, but ERC721 can't (no way to list all the tokens an address holds)
+            -- i.e. ActionResponse.tokenOutputs still has to be kept, but only used for NFTs. 
+        - we'll change to a redeemAllBalances() thing, where we walk through every executed rule and send back tokens that are not demarcated: 
+            -- For ERC20/NATIVE this is send(getBalanceOf(Token) - TokensOnHold[Token])
+            -- For ERC721 this is send(rule.outputs[TokenIdx])
+            -- This means `rules` has to become a custom Enumerable Map too. 
+*/
 contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
+    using CustomEnumerableMap for CustomEnumerableMap.Bytes32ToBytesMap;
     using TokenLib for Token;
 
     // Storage Start
-    mapping(bytes32 => Rule) rules;
+    CustomEnumerableMap.Bytes32ToBytesMap rules;
     mapping(bytes32 => bytes32[]) public actionPositionsMap;
     EnumerableSet.Bytes32Set private pendingPositions;
     mapping(bytes32 => mapping(address => uint256)) public ruleIncentiveProviders;
-    // Storage End
 
-    modifier ruleExists(bytes32 ruleHash) {
-        require(rules[ruleHash].status != RuleStatus.NULL, "Rule not found");
-        _;
-    }
+    // Storage End
 
     // disable calling initialize() on the implementation contract
     constructor() {
@@ -44,21 +53,25 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
         _transferOwnership(_newOwner);
     }
 
-    function getRule(bytes32 ruleHash) public view ruleExists(ruleHash) returns (Rule memory) {
-        return rules[ruleHash];
+    function getRule(bytes32 ruleHash) public view returns (Rule memory) {
+        return abi.decode(rules.get(ruleHash), (Rule));
     }
 
-    function getInputTokens(bytes32 ruleHash) public view ruleExists(ruleHash) returns (Token[] memory) {
-        return rules[ruleHash].actions[0].inputTokens;
+    function _setRule(bytes32 ruleHash, Rule memory rule) internal {
+        rules.set(ruleHash, abi.encode(rule));
     }
 
-    function getOutputTokens(bytes32 ruleHash) public view ruleExists(ruleHash) returns (Token[] memory) {
-        Rule storage rule = rules[ruleHash];
+    function getInputTokens(bytes32 ruleHash) public view returns (Token[] memory) {
+        return getRule(ruleHash).actions[0].inputTokens;
+    }
+
+    function getOutputTokens(bytes32 ruleHash) public view returns (Token[] memory) {
+        Rule memory rule = getRule(ruleHash);
         return rule.actions[rule.actions.length - 1].outputTokens;
     }
 
     function redeemBalance(bytes32 ruleHash) external nonReentrant onlyOwner {
-        Rule storage rule = rules[ruleHash];
+        Rule memory rule = getRule(ruleHash);
         _setRuleStatus(ruleHash, RuleStatus.REDEEMED);
         Token[] memory tokens = getOutputTokens(ruleHash);
 
@@ -68,7 +81,7 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
     }
 
     function addCollateral(bytes32 ruleHash, uint256[] memory collaterals) external payable onlyOwner nonReentrant {
-        Rule storage rule = rules[ruleHash];
+        Rule memory rule = getRule(ruleHash);
         require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE, "Can't add collateral");
 
         Token[] memory tokens = getInputTokens(ruleHash);
@@ -92,11 +105,12 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
             }
         }
 
+        _setRule(ruleHash, rule);
         emit CollateralAdded(ruleHash, collaterals);
     }
 
     function reduceCollateral(bytes32 ruleHash, uint256[] memory amounts) external onlyOwner nonReentrant {
-        Rule storage rule = rules[ruleHash];
+        Rule memory rule = getRule(ruleHash);
         require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE, "Can't reduce collateral");
 
         Token[] memory tokens = getInputTokens(ruleHash);
@@ -108,22 +122,25 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
             rule.collaterals[i] -= amount;
             tokens[i].send(msg.sender, amount);
         }
+        _setRule(ruleHash, rule);
         emit CollateralReduced(ruleHash, amounts);
     }
 
-    function increaseIncentive(bytes32 ruleHash) public payable ruleExists(ruleHash) {
-        Rule storage rule = rules[ruleHash];
+    function increaseIncentive(bytes32 ruleHash) public payable {
+        Rule memory rule = getRule(ruleHash);
         require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE);
         rule.incentive += msg.value;
+        _setRule(ruleHash, rule);
         ruleIncentiveProviders[ruleHash][msg.sender] += msg.value;
     }
 
-    function withdrawIncentive(bytes32 ruleHash) external ruleExists(ruleHash) returns (uint256 balance) {
-        Rule storage rule = rules[ruleHash];
+    function withdrawIncentive(bytes32 ruleHash) external returns (uint256 balance) {
+        Rule memory rule = getRule(ruleHash);
         require(rule.status != RuleStatus.EXECUTED && rule.status != RuleStatus.REDEEMED, "Incentive paid");
         balance = ruleIncentiveProviders[ruleHash][msg.sender];
         require(balance > 0, "0 contribution");
         rule.incentive -= balance;
+        _setRule(ruleHash, rule);
         ruleIncentiveProviders[ruleHash][msg.sender] = 0;
 
         // slither-disable-next-line arbitrary-send
@@ -138,13 +155,17 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
         returns (bytes32)
     {
         bytes32 ruleHash = _getRuleHash(triggers, actions);
-        Rule storage rule = rules[ruleHash];
-        require(rule.status == RuleStatus.NULL, "Duplicate Rule");
+        require(!rules.contains(ruleHash), "Duplicate Rule");
+        Rule memory newRule;
         require(actions.length > 0); // has to do something, else is a waste!
+
+        newRule.triggers = new Trigger[](triggers.length);
         for (uint256 i = 0; i < triggers.length; i++) {
             require(ITrigger(triggers[i].callee).validate(triggers[i]), "Invalid Trigger");
-            rule.triggers.push(triggers[i]);
+            newRule.triggers[i] = triggers[i];
         }
+
+        newRule.actions = new Action[](actions.length);
         for (uint256 i = 0; i < actions.length; i++) {
             require(IAction(actions[i].callee).validate(actions[i]), "Invalid Action");
 
@@ -155,13 +176,14 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
                     require(outputTokens[j].equals(inputTokens[j]), "Invalid inputTokens->outputTokens");
                 }
             }
-            rule.actions.push(actions[i]);
+            newRule.actions[i] = actions[i];
         }
-        rule.status = RuleStatus.INACTIVE;
 
-        for (uint256 i = 0; i < actions[0].inputTokens.length; i++) {
-            rule.collaterals.push();
-        }
+        newRule.status = RuleStatus.INACTIVE;
+
+        newRule.collaterals = new uint256[](actions[0].inputTokens.length);
+
+        _setRule(ruleHash, newRule);
 
         increaseIncentive(ruleHash);
 
@@ -177,8 +199,9 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
         EXECUTED => {redeemed}
         REDEEMED => {}
     */
-    function _setRuleStatus(bytes32 ruleHash, RuleStatus newStatus) private {
-        Rule storage rule = rules[ruleHash];
+    function _setRuleStatus(bytes32 ruleHash, RuleStatus newStatus) private returns (Rule memory) {
+        Rule memory rule = getRule(ruleHash);
+
         if (newStatus == RuleStatus.ACTIVE) {
             require(rule.status == RuleStatus.INACTIVE, "Can't Activate Rule");
             emit Activated(ruleHash);
@@ -192,10 +215,14 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
             require(rule.status == RuleStatus.EXECUTED, "Rule isn't pending redemption");
             emit Redeemed(ruleHash);
         } else {
-            revert("FundStatus not covered!");
+            revert("RuleStatus not covered!");
         }
 
         rule.status = newStatus;
+
+        _setRule(ruleHash, rule);
+
+        return rule;
     }
 
     function activateRule(bytes32 ruleHash) external onlyOwner {
@@ -210,7 +237,7 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
         return keccak256(abi.encode(triggers, actions, msg.sender, block.timestamp, address(this)));
     }
 
-    function _checkTriggers(Trigger[] storage triggers) internal view returns (bool, TriggerReturn[] memory) {
+    function _checkTriggers(Trigger[] memory triggers) internal view returns (bool, TriggerReturn[] memory) {
         TriggerReturn[] memory triggerReturnArr = new TriggerReturn[](triggers.length);
         TriggerReturn memory triggerReturn;
         bool valid = false;
@@ -223,10 +250,10 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
     }
 
     function checkRule(bytes32 ruleHash) external view returns (bool valid) {
-        (valid, ) = _checkTriggers(rules[ruleHash].triggers);
+        (valid, ) = _checkTriggers(getRule(ruleHash).triggers);
     }
 
-    function _takeAction(Action storage action, ActionRuntimeParams memory runtimeParams)
+    function _takeAction(Action memory action, ActionRuntimeParams memory runtimeParams)
         private
         returns (uint256[] memory)
     {
@@ -264,9 +291,9 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
         return response.tokenOutputs;
     }
 
-    function executeRule(bytes32 ruleHash) external ruleExists(ruleHash) nonReentrant {
-        Rule storage rule = rules[ruleHash];
-        _setRuleStatus(ruleHash, RuleStatus.EXECUTED); // This ensures only active rules can be executed
+    function executeRule(bytes32 ruleHash) external nonReentrant {
+        Rule memory rule = getRule(ruleHash);
+        rule = _setRuleStatus(ruleHash, RuleStatus.EXECUTED); // This ensures only active rules can be executed
         (bool valid, TriggerReturn[] memory triggerReturnArr) = _checkTriggers(rule.triggers);
         require(valid, "Trigger != Satisfied");
 
@@ -277,13 +304,14 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
 
         uint256[] memory outputs;
         for (uint256 i = 0; i < rule.actions.length; i++) {
-            Action storage action = rule.actions[i];
+            Action memory action = rule.actions[i];
             outputs = _takeAction(action, runtimeParams);
             runtimeParams.collaterals = outputs; // changes because outputTokens of action[i-1] is inputTokens of action[i]
             _noteIdOfERC721Outputs(outputs, action.outputTokens);
         }
 
         rule.outputs = outputs;
+        _setRule(ruleHash, rule);
         payable(msg.sender).transfer(rule.incentive); // slither-disable-next-line arbitrary-send // for the taking. // As long as the execution reaches this point, the incentive is there // We dont need to check sender here.
     }
 
@@ -295,7 +323,7 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
         return actionPositionsMap[keccak256(abi.encode(action))].length > 0;
     }
 
-    function _noteIdOfERC721Outputs(uint256[] memory outputs, Token[] storage outputTokens) internal {
+    function _noteIdOfERC721Outputs(uint256[] memory outputs, Token[] memory outputTokens) internal {
         // Even if we do know which NFT contract we're going to get an output from,
         // we probably don't know the id of the token issued (determined at the point of execution)
         // so we mutate the rule.outputToken accordingly
