@@ -42,6 +42,7 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
     EnumerableSet.Bytes32Set private pendingPositions;
     mapping(bytes32 => mapping(address => uint256)) public ruleIncentiveProviders;
     mapping(bytes32 => uint256) tokensOnHold; // demarcate tokens which can't be redeemed
+    uint256 totalNumOutputTokens; // convenience variable
 
     // Storage End
 
@@ -74,6 +75,9 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
     // Redeems balance of all executed rules
     function redeemOutputs() external nonReentrant onlyOwner returns (Token[] memory, uint256[] memory) {
         bytes32[] memory redeemableHashes = getRuleHashesByStatus(RuleStatus.EXECUTED);
+        Token[] memory rawResTokens = new Token[](totalNumOutputTokens);
+        uint256[] memory rawResAmounts = new uint256[](totalNumOutputTokens);
+        uint256 rawResIdx = 0;
 
         for (uint256 i = 0; i < redeemableHashes.length; i++) {
             _setRuleStatus(redeemableHashes[i], RuleStatus.REDEEMED);
@@ -85,12 +89,30 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
                     uint256 canSend = amount - tokensOnHold[keccak256(abi.encode(tokens[j]))];
                     if (canSend > 0) {
                         tokens[j].send(owner(), canSend);
+                        rawResTokens[rawResIdx] = tokens[j];
+                        rawResAmounts[rawResIdx] = canSend;
+                        rawResIdx++;
                     }
                 } else if (tokens[j].t == TokenType.ERC721) {
-                    tokens[j].send(owner(), getRule(redeemableHashes[i]).outputs[j]);
+                    uint256 nft_id = getRule(redeemableHashes[i]).outputs[j];
+                    tokens[j].send(owner(), nft_id);
+                    rawResTokens[rawResIdx] = tokens[j];
+                    rawResAmounts[rawResIdx] = nft_id;
+                    rawResIdx++;
                 }
             }
         }
+
+        // Give back only the non-empty part of the arrays
+        Token[] memory resTokens = new Token[](rawResIdx);
+        uint256[] memory resAmounts = new uint256[](rawResIdx);
+
+        for (uint256 i = 0; i < rawResIdx; i++) {
+            resTokens[i] = rawResTokens[i];
+            resAmounts[i] = rawResAmounts[i];
+        }
+
+        return (resTokens, resAmounts);
     }
 
     function getRuleHashesByStatus(RuleStatus status) public returns (bytes32[] memory) {
@@ -177,6 +199,7 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
         rule.incentive += msg.value;
         _setRule(ruleHash, rule);
         ruleIncentiveProviders[ruleHash][msg.sender] += msg.value;
+        tokensOnHold[keccak256(abi.encode(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0})))] += msg.value;
     }
 
     function withdrawIncentive(bytes32 ruleHash) external returns (uint256 balance) {
@@ -187,6 +210,7 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
         rule.incentive -= balance;
         _setRule(ruleHash, rule);
         ruleIncentiveProviders[ruleHash][msg.sender] = 0;
+        tokensOnHold[keccak256(abi.encode(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0})))] -= balance;
 
         // slither-disable-next-line arbitrary-send
         payable(msg.sender).transfer(balance);
@@ -231,6 +255,8 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
         _setRule(ruleHash, newRule);
 
         increaseIncentive(ruleHash);
+
+        totalNumOutputTokens += actions[actions.length - 1].outputTokens.length;
 
         emit Created(ruleHash);
         return ruleHash;
@@ -357,6 +383,7 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
 
         rule.outputs = outputs;
         _setRule(ruleHash, rule);
+        tokensOnHold[keccak256(abi.encode(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0})))] -= rule.incentive;
         payable(msg.sender).transfer(rule.incentive); // slither-disable-next-line arbitrary-send // for the taking. // As long as the execution reaches this point, the incentive is there // We dont need to check sender here.
     }
 

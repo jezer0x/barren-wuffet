@@ -684,16 +684,17 @@ describe("RoboCop", () => {
 
   describe("Redeem Balance", () => {
     it("should not allow redeeming balance if the rule is not yet executed", async () => {
-      const { ruleHashToken, ruleMakerWallet, roboCop, testToken1 } = await deployValidRuleFixture();
-      await expect(roboCop.connect(ruleMakerWallet).redeemBalance(ruleHashToken)).to.be.revertedWith(
-        "Rule isn't pending redemption"
-      );
-      const collateralAmount = BigNumber.from(30).mul(ERC20_DECIMALS);
-      await testToken1.connect(ruleMakerWallet).approve(roboCop.address, collateralAmount);
-      await roboCop.connect(ruleMakerWallet).addCollateral(ruleHashToken, [collateralAmount]);
-      await expect(roboCop.connect(ruleMakerWallet).redeemBalance(ruleHashToken)).to.be.revertedWith(
-        "Rule isn't pending redemption"
-      );
+      // TODO: does not make sense anymore since interface changed
+      // const { ruleHashToken, ruleMakerWallet, roboCop, testToken1 } = await deployValidRuleFixture();
+      // await expect(roboCop.connect(ruleMakerWallet).redeemBalance(ruleHashToken)).to.be.revertedWith(
+      //   "Rule isn't pending redemption"
+      // );
+      // const collateralAmount = BigNumber.from(30).mul(ERC20_DECIMALS);
+      // await testToken1.connect(ruleMakerWallet).approve(roboCop.address, collateralAmount);
+      // await roboCop.connect(ruleMakerWallet).addCollateral(ruleHashToken, [collateralAmount]);
+      // await expect(roboCop.connect(ruleMakerWallet).redeemBalance(ruleHashToken)).to.be.revertedWith(
+      //   "Rule isn't pending redemption"
+      // );
     });
 
     it.skip("should result in no token changes if the rule was executed and did not return a token", async () => {
@@ -704,7 +705,7 @@ describe("RoboCop", () => {
 
       await expect(roboCop.connect(botWallet).executeRule(ruleHashToken)).to.not.be.rejected;
 
-      const ex = expect(roboCop.connect(ruleMakerWallet).redeemBalance(ruleHashToken));
+      const ex = expect(roboCop.connect(ruleMakerWallet).redeemOutputs());
       await ex.to
         .changeTokenBalance(testToken1, roboCop, 0)
         .emit(roboCop, "Redeemed")
@@ -718,11 +719,9 @@ describe("RoboCop", () => {
       await testToken1.connect(ruleMakerWallet).approve(roboCop.address, collateralAmount);
       await roboCop.connect(ruleMakerWallet).addCollateral(ruleHashToken, [collateralAmount]);
       await roboCop.connect(botWallet).executeRule(ruleHashToken);
-      await expect(roboCop.connect(botWallet).redeemBalance(ruleHashToken)).to.be.revertedWith(
-        "Ownable: caller is not the owner"
-      );
+      await expect(roboCop.connect(botWallet).redeemOutputs()).to.be.revertedWith("Ownable: caller is not the owner");
 
-      const ex = expect(roboCop.connect(ruleMakerWallet).redeemBalance(ruleHashToken));
+      const ex = expect(roboCop.connect(ruleMakerWallet).redeemOutputs());
       await ex.to
         .changeEtherBalance(ruleMakerWallet, collateralAmount.mul(TST1_PRICE_IN_ETH).div(PRICE_TRIGGER_DECIMALS))
         .emit(roboCop, "Redeemed")
@@ -730,10 +729,11 @@ describe("RoboCop", () => {
 
       await ex.to.changeTokenBalance(testToken1, roboCop, 0);
 
-      // can only redeem once.
-      await expect(roboCop.connect(ruleMakerWallet).redeemBalance(ruleHashToken)).to.be.revertedWith(
-        "Rule isn't pending redemption"
-      );
+      // TODO: following test does not make sense after change in interface
+      // // can only redeem once.
+      // await expect(roboCop.connect(ruleMakerWallet).redeemOutputs(ruleHashToken)).to.be.revertedWith(
+      //   "Rule isn't pending redemption"
+      // );
     });
 
     it("should redeem all the balance only once by the subscriber if the rule was executed and returned token", async () => {
@@ -743,11 +743,9 @@ describe("RoboCop", () => {
         .connect(ruleMakerWallet)
         .addCollateral(ruleHashEth, [collateralAmount], { value: collateralAmount });
       await roboCop.connect(botWallet).executeRule(ruleHashEth);
-      await expect(roboCop.connect(botWallet).redeemBalance(ruleHashEth)).to.be.revertedWith(
-        "Ownable: caller is not the owner"
-      );
+      await expect(roboCop.connect(botWallet).redeemOutputs()).to.be.revertedWith("Ownable: caller is not the owner");
 
-      const ex = expect(roboCop.connect(ruleMakerWallet).redeemBalance(ruleHashEth));
+      const ex = expect(roboCop.connect(ruleMakerWallet).redeemOutputs());
 
       const tokenReceived = collateralAmount.mul(ETH_PRICE_IN_TST1).div(PRICE_TRIGGER_DECIMALS);
 
@@ -757,11 +755,6 @@ describe("RoboCop", () => {
         .withArgs(ruleHashEth);
 
       await ex.to.changeEtherBalance(roboCop.address, 0);
-
-      // can only redeem once.
-      await expect(roboCop.connect(ruleMakerWallet).redeemBalance(ruleHashEth)).to.be.revertedWith(
-        "Rule isn't pending redemption"
-      );
     });
 
     it.skip("Should redeem balance only from the final action if multiple actions were executed", async () => {});
