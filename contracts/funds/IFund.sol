@@ -63,26 +63,26 @@ interface IFund is ISubscription {
 
     function createRule(Trigger[] calldata triggers, Action[] calldata actions) external returns (bytes32 ruleHash);
 
-    function increaseRuleIncentive(uint256 openRuleIdx, uint256 amount) external;
+    function increaseRuleIncentive(bytes32 ruleHash, uint256 amount) external;
 
-    function withdrawRuleIncentive(uint256 openRuleIdx) external;
+    function withdrawRuleIncentive(bytes32 ruleHash) external;
 
-    function activateRule(uint256 openRuleIdx) external;
+    function activateRule(bytes32 ruleHash) external;
 
-    function deactivateRule(uint256 openRuleIdx) external;
+    function deactivateRule(bytes32 ruleHash) external;
 
     function addRuleCollateral(
-        uint256 openRuleIdx,
+        bytes32 ruleHash,
         Token[] calldata collateralTokens,
         uint256[] calldata collaterals,
         uint256[] calldata fees
     ) external;
 
-    function reduceRuleCollateral(uint256 openRuleIdx, uint256[] calldata collaterals) external;
+    function reduceRuleCollateral(bytes32 ruleHash, uint256[] calldata collaterals) external;
 
-    function cancelRule(uint256 openRuleIdx) external;
+    function cancelRule(bytes32 ruleHash) external;
 
-    function redeemRuleOutput(uint256 openRuleIdx) external;
+    function redeemRuleOutputs() external;
 
     function getStatus() external view returns (FundStatus);
 

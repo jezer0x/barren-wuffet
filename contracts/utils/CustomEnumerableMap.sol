@@ -70,4 +70,8 @@ library CustomEnumerableMap {
         require(contains(map, key), "EnumerableMap: nonexistent key");
         return map._values[key];
     }
+
+    function keys(Bytes32ToBytesMap storage map) internal view returns (bytes32[] memory) {
+        return map._keys.values();
+    }
 }

@@ -33,15 +33,25 @@ library TokenLib {
     function send(
         Token memory token,
         address receiver,
-        uint256 balance
+        uint256 amount
     ) public {
         if (token.t == TokenType.ERC20) {
-            IERC20(token.addr).safeTransfer(receiver, balance);
+            IERC20(token.addr).safeTransfer(receiver, amount);
         } else if (token.t == TokenType.NATIVE) {
-            payable(receiver).transfer(balance);
+            payable(receiver).transfer(amount);
         } else if (token.t == TokenType.ERC721) {
-            require(token.id == balance);
-            IERC721(token.addr).safeTransferFrom(address(this), receiver, balance);
+            require(token.id == amount);
+            IERC721(token.addr).safeTransferFrom(address(this), receiver, amount);
+        } else {
+            revert("Wrong token type!");
+        }
+    }
+
+    function balance(Token memory token) public view returns (uint256) {
+        if (token.t == TokenType.ERC20) {
+            return IERC20(token.addr).balanceOf(address(this));
+        } else if (token.t == TokenType.NATIVE) {
+            return address(this).balance;
         } else {
             revert("Wrong token type!");
         }

@@ -168,7 +168,7 @@ library Subscriptions {
         AssetTracker.Assets storage assets,
         Token memory token
     ) public view returns (uint256) {
-        return (assets.coinBalances[token.addr] * subStuff.subscriberToManagerFeePercentage) / 100_00;
+        return (assets.balances[keccak256(abi.encode(token))] * subStuff.subscriberToManagerFeePercentage) / 100_00;
     }
 
     function getShares(
@@ -179,7 +179,7 @@ library Subscriptions {
     ) public view returns (uint256) {
         if (token.t == TokenType.ERC20 || token.t == TokenType.NATIVE) {
             return
-                (subStuff.subscriptions[subscriber].collateralAmount * assets.coinBalances[token.addr]) /
+                (subStuff.subscriptions[subscriber].collateralAmount * assets.balances[keccak256(abi.encode(token))]) /
                 subStuff.totalCollateral;
         } else {
             revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);

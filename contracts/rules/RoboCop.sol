@@ -21,14 +21,14 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 /* 
     Token accoutning modifications: 
         - TokensOnHold = RoboCop has to maintain a list of tokens demarcated for rules that are not yet executed. Custom EnumerableMap(Token=>uint) should work.
-            -- At the end of add/reduceCollateral and executeRule, TokensOnHold will be modified by the inputTokens. 
+            _/ At the end of add/reduceCollateral and executeRule, TokensOnHold will be modified by the inputTokens. 
         - ERC20/Native works differently from ERC721. 
-            -- ERC20/Native can have a BalanceOf, but ERC721 can't (no way to list all the tokens an address holds)
-            -- i.e. ActionResponse.tokenOutputs still has to be kept, but only used for NFTs. 
+            _/ ERC20/Native can have a BalanceOf, but ERC721 can't (no way to list all the tokens an address holds)
+            _/ i.e. ActionResponse.tokenOutputs still has to be kept, but only used for NFTs. 
         - we'll change to a redeemAllBalances() thing, where we walk through every executed rule and send back tokens that are not demarcated: 
-            -- For ERC20/NATIVE this is send(getBalanceOf(Token) - TokensOnHold[Token])
-            -- For ERC721 this is send(rule.outputs[TokenIdx])
-            -- This means `rules` has to become a custom Enumerable Map too. 
+            _/ For ERC20/NATIVE this is send(getBalanceOf(Token) - TokensOnHold[Token])
+            _/ For ERC721 this is send(rule.outputs[TokenIdx])
+            _/ This means `rules` has to become a custom Enumerable Map too. 
 */
 contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
@@ -41,6 +41,7 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
     mapping(bytes32 => bytes32[]) public actionPositionsMap;
     EnumerableSet.Bytes32Set private pendingPositions;
     mapping(bytes32 => mapping(address => uint256)) public ruleIncentiveProviders;
+    mapping(bytes32 => uint256) tokensOnHold; // demarcate tokens which can't be redeemed
 
     // Storage End
 
@@ -70,14 +71,55 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
         return rule.actions[rule.actions.length - 1].outputTokens;
     }
 
-    function redeemBalance(bytes32 ruleHash) external nonReentrant onlyOwner {
-        Rule memory rule = getRule(ruleHash);
-        _setRuleStatus(ruleHash, RuleStatus.REDEEMED);
-        Token[] memory tokens = getOutputTokens(ruleHash);
+    // Redeems balance of all executed rules
+    function redeemOutputs() external nonReentrant onlyOwner returns (Token[] memory, uint256[] memory) {
+        bytes32[] memory redeemableHashes = getRuleHashesByStatus(RuleStatus.EXECUTED);
 
-        for (uint256 i = 0; i < tokens.length; i++) {
-            tokens[i].send(owner(), rule.outputs[i]);
+        for (uint256 i = 0; i < redeemableHashes.length; i++) {
+            _setRuleStatus(redeemableHashes[i], RuleStatus.REDEEMED);
+            Token[] memory tokens = getOutputTokens(redeemableHashes[i]);
+
+            for (uint256 j = 0; j < tokens.length; j++) {
+                if (tokens[j].t == TokenType.NATIVE || tokens[j].t == TokenType.ERC20) {
+                    uint256 amount = tokens[j].balance();
+                    uint256 canSend = amount - tokensOnHold[keccak256(abi.encode(tokens[j]))];
+                    if (canSend > 0) {
+                        tokens[j].send(owner(), canSend);
+                    }
+                } else if (tokens[j].t == TokenType.ERC721) {
+                    tokens[j].send(owner(), getRule(redeemableHashes[i]).outputs[j]);
+                }
+            }
         }
+    }
+
+    function getRuleHashesByStatus(RuleStatus status) public returns (bytes32[] memory) {
+        bytes32[] memory keys = rules.keys();
+
+        // Allocate the max length
+        bytes32[] memory rawRes = new bytes32[](keys.length);
+        uint256 rawResIdx = 0;
+
+        bytes32 ruleHash;
+        Rule memory rule;
+
+        for (uint256 i = 0; i < keys.length; i++) {
+            ruleHash = keys[i];
+            rule = getRule(ruleHash);
+
+            if (rule.status == status) {
+                rawRes[rawResIdx] = ruleHash;
+                rawResIdx++;
+            }
+        }
+
+        // Give back only the non-empty part of the array
+        bytes32[] memory res = new bytes32[](rawResIdx);
+        for (uint256 i = 0; i < rawResIdx; i++) {
+            res[i] = rawRes[i];
+        }
+
+        return res;
     }
 
     function addCollateral(bytes32 ruleHash, uint256[] memory collaterals) external payable onlyOwner nonReentrant {
@@ -103,6 +145,8 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
             } else {
                 tokens[i].take(msg.sender, collateral);
             }
+
+            tokensOnHold[keccak256(abi.encode(tokens[i]))] += collateral;
         }
 
         _setRule(ruleHash, rule);
@@ -121,6 +165,7 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
             require(rule.collaterals[i] >= amount, "Not enough collateral.");
             rule.collaterals[i] -= amount;
             tokens[i].send(msg.sender, amount);
+            tokensOnHold[keccak256(abi.encode(tokens[i]))] -= amount;
         }
         _setRule(ruleHash, rule);
         emit CollateralReduced(ruleHash, amounts);
@@ -259,8 +304,8 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
     {
         for (uint256 j = 0; j < action.inputTokens.length; j++) {
             // ignore return value
-
             action.inputTokens[j].approve(action.callee, runtimeParams.collaterals[j]);
+            tokensOnHold[keccak256(abi.encode(action.inputTokens[j]))] -= runtimeParams.collaterals[j];
         }
         bool positionsClosed;
         bytes32[] memory deletedPositionHashes;
@@ -324,7 +369,7 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
     }
 
     function _noteIdOfERC721Outputs(uint256[] memory outputs, Token[] memory outputTokens) internal {
-        // Even if we do know which NFT contract we're going to get an output from,
+        // Even if we know which NFT contract we're going to get an output from,
         // we probably don't know the id of the token issued (determined at the point of execution)
         // so we mutate the rule.outputToken accordingly
         for (uint256 i = 0; i < outputTokens.length; i++) {

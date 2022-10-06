@@ -55,7 +55,6 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
     // fund state that is modified over time
     AssetTracker.Assets assets;
 
-    bytes32[] openRules; // tracking all rules that the fund created but did not complete
     bool closed;
 
     // disable calling initialize() on the implementation contract
@@ -169,22 +168,19 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
     }
 
     function _closeFund() internal {
-        closed = true;
-
         // TODO: this is potentially broken after the position stuff
-        for (uint256 i = 0; i < openRules.length; i++) {
-            bytes32 ruleHash = openRules[i];
-            Rule memory rule = roboCop.getRule(ruleHash);
 
-            if (rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE) {
-                _cancelRule(i);
-            } else if (rule.status == RuleStatus.EXECUTED) {
-                _redeemRuleOutput(openRules[i]);
-            }
+        closed = true;
+        _redeemRuleOutputs();
+        bytes32[] memory activeRuleHashes = roboCop.getRuleHashesByStatus(RuleStatus.ACTIVE);
+        bytes32[] memory inactiveRuleHashes = roboCop.getRuleHashesByStatus(RuleStatus.INACTIVE);
+
+        for (uint256 i = 0; i < activeRuleHashes.length; i++) {
+            _cancelRule(activeRuleHashes[i]);
         }
 
-        for (uint256 i = 0; i < openRules.length; i++) {
-            _removeOpenRuleIdx(i);
+        for (uint256 i = 0; i < inactiveRuleHashes.length; i++) {
+            _cancelRule(inactiveRuleHashes[i]);
         }
 
         // TODO: potentially swap back all assets to 1 terminal asset
@@ -241,7 +237,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         _addRuleCollateral(ruleHash, action.inputTokens, collaterals, fees);
         roboCop.activateRule(ruleHash);
         roboCop.executeRule(ruleHash); // should be immediately executable
-        _redeemRuleOutput(ruleHash);
+        _redeemRuleOutputs();
     }
 
     function createRule(Trigger[] calldata triggers, Action[] calldata actions)
@@ -265,41 +261,40 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
             require(_onlyDeclaredTokens(actions[i].outputTokens), "!ATk");
         }
         ruleHash = roboCop.createRule(triggers, actions);
-        openRules.push(ruleHash);
     }
 
-    function increaseRuleIncentive(uint256 openRuleIdx, uint256 amount)
+    function increaseRuleIncentive(bytes32 ruleHash, uint256 amount)
         external
         onlyDeployedFund
         onlyFundManager
         nonReentrant
     {
         assets.decreaseAsset(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}), amount);
-        roboCop.increaseIncentive{value: amount}(openRules[openRuleIdx]);
+        roboCop.increaseIncentive{value: amount}(ruleHash);
     }
 
-    function withdrawRuleIncentive(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager nonReentrant {
+    function withdrawRuleIncentive(bytes32 ruleHash) external onlyDeployedFund onlyFundManager nonReentrant {
         assets.decreaseAsset(
             Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}),
-            roboCop.withdrawIncentive(openRules[openRuleIdx])
+            roboCop.withdrawIncentive(ruleHash)
         );
     }
 
-    function activateRule(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager nonReentrant {
-        roboCop.activateRule(openRules[openRuleIdx]);
+    function activateRule(bytes32 ruleHash) external onlyDeployedFund onlyFundManager nonReentrant {
+        roboCop.activateRule(ruleHash);
     }
 
-    function deactivateRule(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager nonReentrant {
-        roboCop.deactivateRule(openRules[openRuleIdx]);
+    function deactivateRule(bytes32 ruleHash) external onlyDeployedFund onlyFundManager nonReentrant {
+        roboCop.deactivateRule(ruleHash);
     }
 
     function addRuleCollateral(
-        uint256 openRuleIdx,
+        bytes32 ruleHash,
         Token[] calldata collateralTokens,
         uint256[] calldata collaterals,
         uint256[] calldata fees
     ) external onlyDeployedFund onlyFundManager nonReentrant {
-        _addRuleCollateral(openRules[openRuleIdx], collateralTokens, collaterals, fees);
+        _addRuleCollateral(ruleHash, collateralTokens, collaterals, fees);
     }
 
     function _addRuleCollateral(
@@ -324,17 +319,16 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         roboCop.addCollateral{value: ethCollateral}(ruleHash, collaterals);
     }
 
-    function reduceRuleCollateral(uint256 openRuleIdx, uint256[] calldata collaterals)
+    function reduceRuleCollateral(bytes32 ruleHash, uint256[] calldata collaterals)
         external
         onlyDeployedFund
         onlyFundManager
         nonReentrant
     {
-        _reduceRuleCollateral(openRuleIdx, collaterals);
+        _reduceRuleCollateral(ruleHash, collaterals);
     }
 
-    function _reduceRuleCollateral(uint256 openRuleIdx, uint256[] memory collaterals) internal {
-        bytes32 ruleHash = openRules[openRuleIdx];
+    function _reduceRuleCollateral(bytes32 ruleHash, uint256[] memory collaterals) internal {
         Token[] memory inputTokens = roboCop.getInputTokens(ruleHash);
         roboCop.reduceCollateral(ruleHash, collaterals);
 
@@ -343,40 +337,28 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         }
     }
 
-    function cancelRule(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager nonReentrant {
-        _cancelRule(openRuleIdx);
-        _removeOpenRuleIdx(openRuleIdx);
+    function cancelRule(bytes32 ruleHash) external onlyDeployedFund onlyFundManager nonReentrant {
+        _cancelRule(ruleHash);
     }
 
-    function _cancelRule(uint256 openRuleIdx) internal {
-        bytes32 ruleHash = openRules[openRuleIdx];
+    function _cancelRule(bytes32 ruleHash) internal {
         Rule memory rule = roboCop.getRule(ruleHash);
         if (rule.status != RuleStatus.INACTIVE) {
             roboCop.deactivateRule(ruleHash);
         }
-        _reduceRuleCollateral(openRuleIdx, rule.collaterals);
+        _reduceRuleCollateral(ruleHash, rule.collaterals);
     }
 
-    function redeemRuleOutput(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager nonReentrant {
-        _redeemRuleOutput(openRules[openRuleIdx]);
-        _removeOpenRuleIdx(openRuleIdx);
+    function redeemRuleOutputs() external onlyDeployedFund onlyFundManager nonReentrant {
+        _redeemRuleOutputs();
     }
 
-    function _redeemRuleOutput(bytes32 ruleHash) internal {
-        Rule memory rule = roboCop.getRule(ruleHash);
-        Token[] memory outputTokens = roboCop.getOutputTokens(ruleHash);
-        uint256[] memory outputs = rule.outputs;
-
-        roboCop.redeemBalance(ruleHash);
+    function _redeemRuleOutputs() internal {
+        (Token[] memory outputTokens, uint256[] memory outputs) = roboCop.redeemOutputs();
 
         for (uint256 i = 0; i < outputTokens.length; i++) {
             assets.increaseAsset(outputTokens[i], outputs[i]);
         }
-    }
-
-    function _removeOpenRuleIdx(uint256 openRuleIdx) private {
-        openRules[openRuleIdx] = openRules[openRules.length - 1];
-        openRules.pop();
     }
 
     function deposit(Token memory collateralToken, uint256 amountSent) external payable {
