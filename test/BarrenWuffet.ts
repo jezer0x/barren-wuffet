@@ -535,33 +535,33 @@ describe("BarrenWuffet", () => {
         );
 
         return {
-          ruleIndex: 0,
           ruleHash: ruleHash,
           rcInstance: roboCopInst1
         };
       }
+
       it("Should emit RoboCop events when fund manager creates / activates / deactivates / cancels a rule", async () => {
         const fixtureVars = await deployedFundsFixture();
         const { barrenWuffet, jerkshireFund } = fixtureVars;
 
-        const { ruleIndex, ruleHash, rcInstance } = await createOneRule(fixtureVars);
+        const { ruleHash, rcInstance } = await createOneRule(fixtureVars);
 
-        await expect(jerkshireFund.marlieChunger.activateRule(ruleIndex))
+        await expect(jerkshireFund.marlieChunger.activateRule(ruleHash))
           .to.changeEtherBalances([jerkshireFund.x, rcInstance], [0, 0])
           .emit(rcInstance, "Activated")
           .withArgs(ruleHash);
 
-        await expect(jerkshireFund.marlieChunger.deactivateRule(ruleIndex))
+        await expect(jerkshireFund.marlieChunger.deactivateRule(ruleHash))
           .to.changeEtherBalances([barrenWuffet, rcInstance], [0, 0])
           .emit(rcInstance, "Deactivated")
           .withArgs(ruleHash);
 
-        await expect(jerkshireFund.marlieChunger.activateRule(ruleIndex))
+        await expect(jerkshireFund.marlieChunger.activateRule(ruleHash))
           .to.changeEtherBalances([barrenWuffet, rcInstance], [0, 0])
           .emit(rcInstance, "Activated")
           .withArgs(ruleHash);
 
-        await expect(jerkshireFund.marlieChunger.cancelRule(ruleIndex))
+        await expect(jerkshireFund.marlieChunger.cancelRule(ruleHash))
           .to.changeEtherBalances([barrenWuffet, rcInstance], [0, 0])
           .emit(rcInstance, "Deactivated")
           .withArgs(ruleHash);
@@ -572,17 +572,17 @@ describe("BarrenWuffet", () => {
         const { jerkshireFund } = fixtureVars;
         const { marlieChunger } = await getNamedAccounts();
 
-        const { ruleIndex, ruleHash, rcInstance } = await createOneRule(fixtureVars);
+        const { ruleHash, rcInstance } = await createOneRule(fixtureVars);
 
         const addAmt = [utils.parseEther("1")];
 
-        await expect(jerkshireFund.marlieChunger.addRuleCollateral(ruleIndex, [ETH_TOKEN], addAmt, [0]))
+        await expect(jerkshireFund.marlieChunger.addRuleCollateral(ruleHash, [ETH_TOKEN], addAmt, [0]))
           .to.changeEtherBalances([jerkshireFund.x, rcInstance, marlieChunger], [addAmt[0].mul(-1), addAmt[0], 0])
           .emit(rcInstance, "CollateralAdded")
           .withArgs(ruleHash, addAmt);
 
         const redAmt = [utils.parseEther("0.6")];
-        await expect(jerkshireFund.marlieChunger.reduceRuleCollateral(ruleIndex, redAmt))
+        await expect(jerkshireFund.marlieChunger.reduceRuleCollateral(ruleHash, redAmt))
           .to.changeEtherBalances([jerkshireFund.x, rcInstance, marlieChunger], [redAmt[0], redAmt[0].mul(-1), 0])
           .emit(rcInstance, "CollateralReduced")
           .withArgs(ruleHash, redAmt);
@@ -594,16 +594,16 @@ describe("BarrenWuffet", () => {
           const { marlieChunger } = await getNamedAccounts();
           const { jerkshireFund } = fixtureVars;
 
-          const { ruleIndex, ruleHash, rcInstance } = await createOneRule(fixtureVars);
+          const { ruleHash, rcInstance } = await createOneRule(fixtureVars);
 
           const collateral = [utils.parseEther("0.6")];
-          await jerkshireFund.marlieChunger.addRuleCollateral(ruleIndex, [ETH_TOKEN], collateral, [0]);
+          await jerkshireFund.marlieChunger.addRuleCollateral(ruleHash, [ETH_TOKEN], collateral, [0]);
 
           if (isActive) {
-            await jerkshireFund.marlieChunger.activateRule(ruleIndex);
+            await jerkshireFund.marlieChunger.activateRule(ruleHash);
           }
 
-          const e = expect(jerkshireFund.marlieChunger.cancelRule(ruleIndex))
+          const e = expect(jerkshireFund.marlieChunger.cancelRule(ruleHash))
             .to.changeEtherBalances(
               [jerkshireFund.x, rcInstance, marlieChunger],
               [collateral[0], collateral[0].mul(-1), 0]
@@ -620,7 +620,10 @@ describe("BarrenWuffet", () => {
       });
 
       it("Should not allow anyone other than the fund manager to manage rules", async () => {
-        const { priceTrigger, testToken1, jerkshireFund, swapETHToTST1Action } = await deployedFundsFixture();
+        const fixtureVars = await deployedFundsFixture();
+        const { priceTrigger, testToken1, jerkshireFund, swapETHToTST1Action } = fixtureVars;
+
+        const { ruleHash, rcInstance } = await createOneRule(fixtureVars);
 
         await expect(
           jerkshireFund.fairyLink.createRule(
@@ -629,17 +632,12 @@ describe("BarrenWuffet", () => {
           )
         ).to.be.revertedWithoutReason();
 
-        await jerkshireFund.marlieChunger.createRule(
-          [makePassingTrigger(priceTrigger.address, testToken1)],
-          [swapETHToTST1Action]
-        );
-
         const ruleFns = [
-          () => jerkshireFund.fairyLink.activateRule(0),
-          () => jerkshireFund.fairyLink.deactivateRule(0),
-          () => jerkshireFund.fairyLink.addRuleCollateral(0, [ETH_TOKEN], [utils.parseEther("1")], [0]),
-          () => jerkshireFund.fairyLink.reduceRuleCollateral(0, [utils.parseEther("0.6")]),
-          () => jerkshireFund.fairyLink.cancelRule(0)
+          () => jerkshireFund.fairyLink.activateRule(ruleHash),
+          () => jerkshireFund.fairyLink.deactivateRule(ruleHash),
+          () => jerkshireFund.fairyLink.addRuleCollateral(ruleHash, [ETH_TOKEN], [utils.parseEther("1")], [0]),
+          () => jerkshireFund.fairyLink.reduceRuleCollateral(ruleHash, [utils.parseEther("0.6")]),
+          () => jerkshireFund.fairyLink.cancelRule(ruleHash)
         ];
 
         for (const fn of ruleFns) {
