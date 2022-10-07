@@ -33,48 +33,45 @@ contract GmxIncreasePosition is IAction, DelegatePerform {
         delegateOnly
         returns (ActionResponse memory)
     {
-        address[] memory _path = new address[](1); // assume swaps are done with GmxSwap Action separately.
-
-        // TODO: what happens if greater?
-        // checking because may change in the middle. Q: Why not leave it upto GMX to reject?
-        require(runtimeParams.collaterals[1] >= positionRouter.minExecutionFee());
-        uint256 fee = runtimeParams.collaterals[1];
-        uint256 _amountIn = runtimeParams.collaterals[0];
-
-        (address _indexToken, uint256 _sizeDelta, bool _isLong, uint256 _acceptablePrice) = abi.decode(
-            action.data,
-            (address, uint256, bool, uint256)
-        );
+        (
+            address[] memory _path,
+            address _indexToken,
+            uint256 _minOut,
+            uint256 _sizeDelta,
+            bool _isLong,
+            uint256 _acceptablePrice
+        ) = abi.decode(action.data, (address[], address, uint256, uint256, bool, uint256));
 
         if (action.inputTokens[0].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
-            _path[0] = positionRouter.weth();
-            positionRouter.createIncreasePositionETH{value: fee + _amountIn}(
+            positionRouter.createIncreasePositionETH{
+                value: runtimeParams.collaterals[1] + runtimeParams.collaterals[0]
+            }(
                 _path,
                 _indexToken,
-                0, // no swapping
+                _minOut,
                 _sizeDelta,
                 _isLong,
                 _acceptablePrice,
-                fee,
+                runtimeParams.collaterals[1],
                 referralCode
             );
         } else {
-            _path[0] = action.inputTokens[0].addr;
-            IERC20(_path[0]).safeApprove(address(positionRouter.router()), _amountIn);
-            positionRouter.createIncreasePosition{value: fee}(
+            IERC20(action.inputTokens[0].addr).safeApprove(
+                address(positionRouter.router()),
+                runtimeParams.collaterals[0]
+            );
+            positionRouter.createIncreasePosition{value: runtimeParams.collaterals[1]}(
                 _path,
                 _indexToken,
-                _amountIn,
-                0, // no swapping
+                runtimeParams.collaterals[0],
+                _minOut,
                 _sizeDelta,
                 _isLong,
                 _acceptablePrice,
-                fee,
+                runtimeParams.collaterals[1],
                 referralCode
             );
         }
-
-        uint256[] memory noOutputs;
 
         // setting up position
         Token[] memory inputTokens = new Token[](1);
@@ -86,21 +83,19 @@ contract GmxIncreasePosition is IAction, DelegatePerform {
             outputTokens: new Token[](0)
         });
         Position memory pos = Position({actionConstraints: new ActionConstraints[](0), nextActions: nextActions});
-
-        return ActionResponse({tokenOutputs: noOutputs, position: pos});
+        return ActionResponse({tokenOutputs: new uint256[](0), position: pos});
     }
 
     function validate(Action calldata action) external view returns (bool) {
-        // note: _path[1] not supported; swap beforehand manually
         // the first is tokenIn, the second is ETH for the fee
         require(action.inputTokens.length == 2);
-        require(action.inputTokens[1].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0})));
         require(action.inputTokens[0].t == TokenType.ERC20 || action.inputTokens[0].t == TokenType.NATIVE);
+        require(action.inputTokens[1].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0})));
 
         // no outputToken
         require(action.outputTokens.length == 0);
 
-        // action.data has (address _indexToken, uint256 _sizeDelta, bool _isLong, uint256 _acceptablePrice)
-        abi.decode(action.data, (address, uint256, bool, uint256));
+        // action.data has (address[] path, address _indexToken, uint256 _minOut, uint256 _sizeDelta, bool _isLong, uint256 _acceptablePrice)
+        abi.decode(action.data, (address[], address, uint256, uint256, bool, uint256));
     }
 }

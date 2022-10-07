@@ -18,18 +18,6 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-/* 
-    Token accoutning modifications: 
-        - TokensOnHold = RoboCop has to maintain a list of tokens demarcated for rules that are not yet executed. Custom EnumerableMap(Token=>uint) should work.
-            _/ At the end of add/reduceCollateral and executeRule, TokensOnHold will be modified by the inputTokens. 
-        - ERC20/Native works differently from ERC721. 
-            _/ ERC20/Native can have a BalanceOf, but ERC721 can't (no way to list all the tokens an address holds)
-            _/ i.e. ActionResponse.tokenOutputs still has to be kept, but only used for NFTs. 
-        - we'll change to a redeemAllBalances() thing, where we walk through every executed rule and send back tokens that are not demarcated: 
-            _/ For ERC20/NATIVE this is send(getBalanceOf(Token) - TokensOnHold[Token])
-            _/ For ERC721 this is send(rule.outputs[TokenIdx])
-            _/ This means `rules` has to become a custom Enumerable Map too. 
-*/
 contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
