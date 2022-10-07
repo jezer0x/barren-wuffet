@@ -47,12 +47,12 @@ contract UniSwapExactInputSingle is IAction, DelegatePerform {
         Token memory outputToken;
         uint256 ethCollateral;
 
-        if (action.inputTokens[0].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
+        if (action.inputTokens[0].isETH()) {
             // if input is ETH, we need to set it to WETH and pass take not of what to send as msg.value
             inputToken = Token({t: TokenType.ERC20, addr: WETH9Addr, id: 0});
             outputToken = action.outputTokens[0];
             ethCollateral = runtimeParams.collaterals[0];
-        } else if (action.outputTokens[0].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
+        } else if (action.outputTokens[0].isETH()) {
             // if output is ETH, we need to set it to WETH, and approve the input token amount for swapRouter
             inputToken = action.inputTokens[0];
             outputToken = Token({t: TokenType.ERC20, addr: WETH9Addr, id: 0});

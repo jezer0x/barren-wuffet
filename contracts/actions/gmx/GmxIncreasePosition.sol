@@ -42,7 +42,7 @@ contract GmxIncreasePosition is IAction, DelegatePerform {
             uint256 _acceptablePrice
         ) = abi.decode(action.data, (address[], address, uint256, uint256, bool, uint256));
 
-        if (action.inputTokens[0].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
+        if (action.inputTokens[0].isETH()) {
             positionRouter.createIncreasePositionETH{
                 value: runtimeParams.collaterals[1] + runtimeParams.collaterals[0]
             }(
@@ -90,7 +90,7 @@ contract GmxIncreasePosition is IAction, DelegatePerform {
         // the first is tokenIn, the second is ETH for the fee
         require(action.inputTokens.length == 2);
         require(action.inputTokens[0].t == TokenType.ERC20 || action.inputTokens[0].t == TokenType.NATIVE);
-        require(action.inputTokens[1].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0})));
+        require(action.inputTokens[1].isETH());
 
         // no outputToken
         require(action.outputTokens.length == 0);

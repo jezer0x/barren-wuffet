@@ -49,7 +49,7 @@ contract SushiSwapExactXForY is IAction, DelegatePerform {
         uint256[] memory outputs = new uint256[](1);
         uint256[] memory amounts;
 
-        if (action.inputTokens[0].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
+        if (action.inputTokens[0].isETH()) {
             amounts = swapRouter.swapExactETHForTokens{value: runtimeParams.collaterals[0]}({
                 amountOutMin: (SimpleSwapUtils._getRelevantPriceTriggerData(
                     action.inputTokens[0],
@@ -60,7 +60,7 @@ contract SushiSwapExactXForY is IAction, DelegatePerform {
                 to: address(this),
                 deadline: block.timestamp
             });
-        } else if (action.outputTokens[0].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
+        } else if (action.outputTokens[0].isETH()) {
             IERC20(action.inputTokens[0].addr).safeApprove(address(swapRouter), runtimeParams.collaterals[0]);
             amounts = swapRouter.swapExactTokensForETH({
                 amountIn: runtimeParams.collaterals[0],

@@ -66,12 +66,12 @@ contract UniMintLiquidityPosition is IAction, DelegatePerform {
         address token1Addr;
 
         // Approve the position manager
-        if (action.inputTokens[0].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
+        if (action.inputTokens[0].isETH()) {
             token0Addr = WETH9Addr;
             token1Addr = action.inputTokens[1].addr;
             ethCollateral = runtimeParams.collaterals[0];
             IERC20(token1Addr).safeApprove(address(nonfungiblePositionManager), runtimeParams.collaterals[1]);
-        } else if (action.inputTokens[1].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
+        } else if (action.inputTokens[1].isETH()) {
             token0Addr = action.inputTokens[0].addr;
             token1Addr = WETH9Addr;
             ethCollateral = runtimeParams.collaterals[1];

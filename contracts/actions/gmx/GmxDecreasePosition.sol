@@ -45,7 +45,7 @@
 //             (address, uint256, bool, uint256)
 //         );
 
-//         if (action.inputTokens[0].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
+//         if (action.inputTokens[0].isETH()) {
 //             _path[0] = positionRouter.weth();
 //             positionRouter.createIncreasePositionETH{value: fee + _amountIn}(
 //                 _path,

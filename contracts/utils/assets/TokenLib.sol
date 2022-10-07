@@ -71,4 +71,8 @@ library TokenLib {
             revert("Wrong token type!");
         }
     }
+
+    function isETH(Token memory token) public view returns (bool) {
+        return equals(token, Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}));
+    }
 }

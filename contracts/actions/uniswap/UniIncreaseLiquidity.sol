@@ -55,13 +55,13 @@ contract UniIncreaseLiquidity is IAction, DelegatePerform {
         uint256[] memory outputs = new uint256[](3);
 
         uint256 ethCollateral;
-        if (action.inputTokens[1].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
+        if (action.inputTokens[1].isETH()) {
             ethCollateral = runtimeParams.collaterals[1];
             IERC20(action.inputTokens[2].addr).safeApprove(
                 address(nonfungiblePositionManager),
                 runtimeParams.collaterals[2]
             );
-        } else if (action.inputTokens[2].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
+        } else if (action.inputTokens[2].isETH()) {
             ethCollateral = runtimeParams.collaterals[1];
             IERC20(action.inputTokens[1].addr).safeApprove(
                 address(nonfungiblePositionManager),

@@ -79,7 +79,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         manager = _manager;
 
         // For now we'll only allow subscribing with ETH
-        require(_constraints.allowedDepositToken.equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0})));
+        require(_constraints.allowedDepositToken.isETH());
         subStuff.setConstraints(_constraints);
         subStuff.setSubscriptionFeeParams(
             _feeParams.subscriberToManagerFeePercentage,
@@ -311,7 +311,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
             uint256 amount = collaterals[i];
             assets.decreaseAsset(token, amount);
             token.approve(address(roboCop), amount);
-            if (token.equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
+            if (token.isETH()) {
                 ethCollateral = amount;
             }
         }

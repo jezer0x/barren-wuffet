@@ -61,9 +61,9 @@ contract SushiAddLiquidity is IAction, DelegatePerform {
 
         // take note whether ETH is present in the LP
         int256 ethIdx = -1;
-        if (action.inputTokens[0].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
+        if (action.inputTokens[0].isETH()) {
             ethIdx = 0;
-        } else if (action.inputTokens[1].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
+        } else if (action.inputTokens[1].isETH()) {
             ethIdx = 1;
         }
 

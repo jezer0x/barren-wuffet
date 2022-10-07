@@ -103,7 +103,7 @@ library Subscriptions {
 
         uint256 prevCollateralAmount = subStuff.subscriptions[subscriber].collateralAmount;
 
-        if ((collateralToken.equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0})))) {
+        if ((collateralToken.isETH())) {
             require(collateralAmount == msg.value);
         }
 

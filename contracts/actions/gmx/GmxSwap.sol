@@ -33,10 +33,10 @@ contract GmxSwap is IAction, DelegatePerform {
         uint256 amountOut;
         uint256 fee;
 
-        if (action.inputTokens[0].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
+        if (action.inputTokens[0].isETH()) {
             _path[0] = router.weth();
             _path[1] = action.outputTokens[0].addr;
-        } else if (action.outputTokens[0].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
+        } else if (action.outputTokens[0].isETH()) {
             _path[0] = action.inputTokens[0].addr;
             _path[1] = router.weth();
             IERC20(_path[0]).safeApprove(address(router), _amountIn);
@@ -55,9 +55,9 @@ contract GmxSwap is IAction, DelegatePerform {
             ) * _amountIn) / 10**8) -
             fee;
 
-        if (action.inputTokens[0].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
+        if (action.inputTokens[0].isETH()) {
             router.swapETHToTokens{value: _amountIn}(_path, _minOut, address(this));
-        } else if (action.outputTokens[0].equals(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}))) {
+        } else if (action.outputTokens[0].isETH()) {
             router.swapTokensToETH(_path, _amountIn, _minOut, payable(address(this)));
         } else {
             router.swap(_path, _amountIn, _minOut, address(this));
