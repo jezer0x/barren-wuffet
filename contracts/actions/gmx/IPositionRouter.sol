@@ -38,6 +38,10 @@ interface IPositionRouter {
         bool _withdrawETH
     ) external payable;
 
+    function increasePositionsIndex(address) external returns (uint256);
+
+    function getRequestKey(address, uint256) external returns (bytes32);
+
     function weth() external returns (address);
 
     function router() external returns (address);

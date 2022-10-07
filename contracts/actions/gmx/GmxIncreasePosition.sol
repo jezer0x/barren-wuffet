@@ -14,18 +14,18 @@ contract GmxIncreasePosition is IAction, DelegatePerform {
     IReader immutable reader;
     IPositionRouter immutable positionRouter;
     bytes32 immutable referralCode;
-    address public immutable closePositionAddress;
+    address public immutable confirmReqCancelOrExecAddr;
 
     constructor(
         address readerAddress,
         address positionRouterAddress,
-        address _closePositionAddress,
+        address _confirmReqCancelOrExecAddr,
         bytes32 _referralCode
     ) {
         reader = IReader(readerAddress);
         positionRouter = IPositionRouter(positionRouterAddress);
         referralCode = _referralCode;
-        closePositionAddress = _closePositionAddress;
+        confirmReqCancelOrExecAddr = _confirmReqCancelOrExecAddr;
     }
 
     function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
@@ -70,17 +70,34 @@ contract GmxIncreasePosition is IAction, DelegatePerform {
             );
         }
 
+        // increase position request -> confirmReqCancelOrExec -> confirmNoPos (if any)
+        // decreasePositionRequest -> confirmReqCancelOrExec -> confirmNoPos (if any)
+
         // setting up position
-        Token[] memory inputTokens = new Token[](1);
         Action[] memory nextActions = new Action[](1);
-        nextActions[0] = Action({
-            callee: closePositionAddress,
-            data: abi.encode(positionRouter.vault(), address(this), _path, _path, [_isLong]),
-            inputTokens: new Token[](0),
-            outputTokens: new Token[](0)
-        });
-        Position memory pos = Position({actionConstraints: new ActionConstraints[](0), nextActions: nextActions});
-        return ActionResponse({tokenOutputs: new uint256[](0), position: pos});
+
+        {
+            Token[] memory outputTokens = new Token[](1);
+            outputTokens[0] = action.inputTokens[0]; // will only be used for cancellations, but we won't know how much/if was refunded
+
+            nextActions[0] = Action({
+                callee: confirmReqCancelOrExecAddr,
+                data: abi.encode(
+                    positionRouter.getRequestKey(address(this), positionRouter.increasePositionsIndex(address(this))),
+                    _path.length == 2 ? _path[1] : _path[0],
+                    _indexToken,
+                    _isLong
+                ),
+                inputTokens: new Token[](0),
+                outputTokens: outputTokens
+            });
+        }
+
+        return
+            ActionResponse({
+                tokenOutputs: new uint256[](0),
+                position: Position({actionConstraints: new ActionConstraints[](0), nextActions: nextActions})
+            });
     }
 
     function validate(Action calldata action) external view returns (bool) {
