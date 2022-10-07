@@ -1,6 +1,37 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+struct IncreasePositionRequest {
+    address account;
+    address[] path;
+    address indexToken;
+    uint256 amountIn;
+    uint256 minOut;
+    uint256 sizeDelta;
+    bool isLong;
+    uint256 acceptablePrice;
+    uint256 executionFee;
+    uint256 blockNumber;
+    uint256 blockTime;
+    bool hasCollateralInETH;
+}
+
+struct DecreasePositionRequest {
+    address account;
+    address[] path;
+    address indexToken;
+    uint256 collateralDelta;
+    uint256 sizeDelta;
+    bool isLong;
+    address receiver;
+    uint256 acceptablePrice;
+    uint256 minOut;
+    uint256 executionFee;
+    uint256 blockNumber;
+    uint256 blockTime;
+    bool withdrawETH;
+}
+
 interface IPositionRouter {
     function createIncreasePosition(
         address[] memory _path,
@@ -41,6 +72,10 @@ interface IPositionRouter {
     function increasePositionsIndex(address) external returns (uint256);
 
     function getRequestKey(address, uint256) external returns (bytes32);
+
+    function increasePositionRequests(bytes32) external returns (IncreasePositionRequest memory);
+
+    function decreasePositionRequests(bytes32) external returns (DecreasePositionRequest memory);
 
     function weth() external returns (address);
 
