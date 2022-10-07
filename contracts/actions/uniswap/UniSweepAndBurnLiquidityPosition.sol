@@ -33,7 +33,7 @@ contract UniSweepAndBurnLiquidityPosition is IAction, DelegatePerform {
 
     function validate(Action calldata action) external view returns (bool) {
         require(action.inputTokens.length == 1);
-        require(action.inputTokens[0].t == TokenType.ERC721);
+        require(action.inputTokens[0].isERC721());
         require(action.outputTokens.length == 2);
 
         (, , address token0, address token1, , , , , , , , ) = nonfungiblePositionManager.positions(

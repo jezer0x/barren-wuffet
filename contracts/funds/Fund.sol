@@ -195,7 +195,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         uint256[] calldata fees
     ) internal {
         for (uint256 i = 0; i < tokens.length; i++) {
-            if (tokens[i].t == TokenType.ERC20 || tokens[i].t == TokenType.NATIVE) {
+            if (tokens[i].isERC20() || tokens[i].isETH()) {
                 require(fees[i] >= ((collaterals[i] * feeParams.managerToPlatformFeePercentage) / 100_00));
                 tokens[i].send(feeParams.platformFeeWallet, fees[i]);
             }

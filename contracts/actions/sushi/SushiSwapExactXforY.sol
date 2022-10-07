@@ -61,7 +61,7 @@ contract SushiSwapExactXForY is IAction, DelegatePerform {
                 deadline: block.timestamp
             });
         } else if (action.outputTokens[0].isETH()) {
-            IERC20(action.inputTokens[0].addr).safeApprove(address(swapRouter), runtimeParams.collaterals[0]);
+            action.inputTokens[0].approve(address(swapRouter), runtimeParams.collaterals[0]);
             amounts = swapRouter.swapExactTokensForETH({
                 amountIn: runtimeParams.collaterals[0],
                 amountOutMin: (SimpleSwapUtils._getRelevantPriceTriggerData(
@@ -74,7 +74,7 @@ contract SushiSwapExactXForY is IAction, DelegatePerform {
                 deadline: block.timestamp
             });
         } else {
-            IERC20(action.inputTokens[0].addr).safeApprove(address(swapRouter), runtimeParams.collaterals[0]);
+            action.inputTokens[0].approve(address(swapRouter), runtimeParams.collaterals[0]);
             amounts = swapRouter.swapExactTokensForTokens({
                 amountIn: runtimeParams.collaterals[0],
                 amountOutMin: (SimpleSwapUtils._getRelevantPriceTriggerData(
@@ -92,8 +92,8 @@ contract SushiSwapExactXForY is IAction, DelegatePerform {
         outputs[0] = amounts[amounts.length - 1];
 
         // If the ORIGINAL inputToken was not ETH, need to take back approval
-        if (action.inputTokens[0].t == TokenType.ERC20) {
-            IERC20(action.inputTokens[0].addr).safeApprove(address(swapRouter), 0);
+        if (action.inputTokens[0].isERC20()) {
+            action.inputTokens[0].approve(address(swapRouter), 0);
         }
 
         Position memory none;

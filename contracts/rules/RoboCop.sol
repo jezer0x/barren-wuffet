@@ -72,7 +72,7 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
             Token[] memory tokens = getOutputTokens(redeemableHashes[i]);
 
             for (uint256 j = 0; j < tokens.length; j++) {
-                if (tokens[j].t == TokenType.NATIVE || tokens[j].t == TokenType.ERC20) {
+                if (tokens[j].isETH() || tokens[j].isERC20()) {
                     uint256 amount = tokens[j].balance();
                     uint256 canSend = amount - tokensOnHold[keccak256(abi.encode(tokens[j]))];
                     if (canSend > 0) {
@@ -81,7 +81,7 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
                         rawResAmounts[rawResIdx] = canSend;
                         rawResIdx++;
                     }
-                } else if (tokens[j].t == TokenType.ERC721) {
+                } else if (tokens[j].isERC721()) {
                     uint256 nft_id = getRule(redeemableHashes[i]).outputs[j];
                     tokens[j].send(owner(), nft_id);
                     rawResTokens[rawResIdx] = tokens[j];
@@ -142,7 +142,7 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
         for (uint256 i = 0; i < tokens.length; i++) {
             collateral = collaterals[i];
 
-            if (tokens[i].t == TokenType.NATIVE || tokens[i].t == TokenType.ERC20) {
+            if (tokens[i].isETH() || tokens[i].isERC20()) {
                 require(collateral > 0, "amount <= 0");
                 rule.collaterals[i] += collateral;
             } else {
@@ -150,7 +150,7 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
                 rule.collaterals[i] = collateral; //TODO: already part of token.id; why store again?
             }
 
-            if (tokens[i].t == TokenType.NATIVE) {
+            if (tokens[i].isETH()) {
                 require(collateral == msg.value, "ETH: amount != msg.value");
             } else {
                 tokens[i].take(msg.sender, collateral);
@@ -388,7 +388,7 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
         // we probably don't know the id of the token issued (determined at the point of execution)
         // so we mutate the rule.outputToken accordingly
         for (uint256 i = 0; i < outputTokens.length; i++) {
-            if (outputTokens[i].t == TokenType.ERC721) {
+            if (outputTokens[i].isERC721()) {
                 outputTokens[i].id = outputs[i];
             }
         }

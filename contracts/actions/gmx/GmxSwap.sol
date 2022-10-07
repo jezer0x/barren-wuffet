@@ -67,8 +67,8 @@ contract GmxSwap is IAction, DelegatePerform {
         outputs[0] = amountOut;
 
         // If the ORIGINAL inputToken was not ETH, need to take back approval
-        if (action.inputTokens[0].t == TokenType.ERC20) {
-            IERC20(action.inputTokens[0].addr).safeApprove(address(router), 0);
+        if (action.inputTokens[0].isERC20()) {
+            action.inputTokens[0].approve(address(router), 0);
         }
 
         Position memory none;

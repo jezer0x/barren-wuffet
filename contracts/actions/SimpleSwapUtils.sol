@@ -9,10 +9,10 @@ library SimpleSwapUtils {
 
     function _validate(Action calldata action) internal view returns (bool) {
         require(action.inputTokens.length == 1);
-        require(action.inputTokens[0].t == TokenType.ERC20 || action.inputTokens[0].t == TokenType.NATIVE);
+        require(action.inputTokens[0].isERC20() || action.inputTokens[0].isETH());
 
         require(action.outputTokens.length == 1);
-        require(action.outputTokens[0].t == TokenType.ERC20 || action.outputTokens[0].t == TokenType.NATIVE);
+        require(action.outputTokens[0].isERC20() || action.outputTokens[0].isETH());
 
         require(!action.inputTokens[0].equals(action.outputTokens[0]));
 

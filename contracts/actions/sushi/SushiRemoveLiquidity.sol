@@ -30,14 +30,14 @@ contract SushiRemoveLiquidity is IAction, DelegatePerform {
 
     function validate(Action calldata action) external view returns (bool) {
         require(action.inputTokens.length == 1);
-        require(action.inputTokens[0].t == TokenType.ERC20);
+        require(action.inputTokens[0].isERC20());
 
         require(action.outputTokens.length == 2);
-        require(action.outputTokens[0].t == TokenType.ERC20 || action.outputTokens[0].t == TokenType.NATIVE);
-        require(action.outputTokens[1].t == TokenType.ERC20 || action.outputTokens[1].t == TokenType.NATIVE);
+        require(action.outputTokens[0].isERC20() || action.outputTokens[0].isETH());
+        require(action.outputTokens[1].isERC20() || action.outputTokens[1].isETH());
 
-        address token0Addr = action.outputTokens[0].t == TokenType.NATIVE ? router.WETH() : action.outputTokens[0].addr;
-        address token1Addr = action.outputTokens[1].t == TokenType.NATIVE ? router.WETH() : action.outputTokens[1].addr;
+        address token0Addr = action.outputTokens[0].isETH() ? router.WETH() : action.outputTokens[0].addr;
+        address token1Addr = action.outputTokens[1].isETH() ? router.WETH() : action.outputTokens[1].addr;
 
         require(
             action.inputTokens[0].addr == IUniswapV2Factory(router.factory()).getPair(token0Addr, token1Addr),
@@ -62,7 +62,7 @@ contract SushiRemoveLiquidity is IAction, DelegatePerform {
             ethIdx = 1;
         }
 
-        IERC20(action.inputTokens[0].addr).safeApprove(address(router), runtimeParams.collaterals[0]);
+        action.inputTokens[0].approve(address(router), runtimeParams.collaterals[0]);
 
         if (ethIdx >= 0) {
             uint256 tokenIdx = 1 - uint256(ethIdx);
@@ -87,7 +87,7 @@ contract SushiRemoveLiquidity is IAction, DelegatePerform {
             );
         }
 
-        IERC20(action.inputTokens[0].addr).safeApprove(address(router), 0);
+        action.inputTokens[0].approve(address(router), 0);
 
         Position memory none;
         return ActionResponse({tokenOutputs: outputs, position: none});

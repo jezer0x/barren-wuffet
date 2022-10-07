@@ -18,11 +18,11 @@ library TokenLib {
         address to,
         uint256 collateral
     ) public returns (uint256 ethCollateral) {
-        if (token.t == TokenType.ERC20) {
-            SafeERC20.safeIncreaseAllowance(IERC20(token.addr), to, collateral);
-        } else if (token.t == TokenType.NATIVE) {
+        if (isERC20(token)) {
+            IERC20(token.addr).safeApprove(to, collateral);
+        } else if (isETH(token)) {
             ethCollateral = collateral;
-        } else if (token.t == TokenType.ERC721) {
+        } else if (isERC721(token)) {
             require(token.id == collateral);
             IERC721(token.addr).approve(to, collateral);
         } else {
@@ -35,11 +35,11 @@ library TokenLib {
         address receiver,
         uint256 amount
     ) public {
-        if (token.t == TokenType.ERC20) {
+        if (isERC20(token)) {
             IERC20(token.addr).safeTransfer(receiver, amount);
-        } else if (token.t == TokenType.NATIVE) {
+        } else if (isETH(token)) {
             payable(receiver).transfer(amount);
-        } else if (token.t == TokenType.ERC721) {
+        } else if (isERC721(token)) {
             require(token.id == amount);
             IERC721(token.addr).safeTransferFrom(address(this), receiver, amount);
         } else {
@@ -48,9 +48,9 @@ library TokenLib {
     }
 
     function balance(Token memory token) public view returns (uint256) {
-        if (token.t == TokenType.ERC20) {
+        if (isERC20(token)) {
             return IERC20(token.addr).balanceOf(address(this));
-        } else if (token.t == TokenType.NATIVE) {
+        } else if (isETH(token)) {
             return address(this).balance;
         } else {
             revert("Wrong token type!");
@@ -62,17 +62,25 @@ library TokenLib {
         address sender,
         uint256 collateral
     ) public {
-        if (token.t == TokenType.ERC20) {
+        if (isERC20(token)) {
             IERC20(token.addr).safeTransferFrom(sender, address(this), collateral);
-        } else if (token.t == TokenType.ERC721) {
+        } else if (isERC721(token)) {
             require(token.id == collateral);
             IERC721(token.addr).safeTransferFrom(sender, address(this), collateral);
-        } else if (token.t != TokenType.NATIVE) {
+        } else if (!isETH(token)) {
             revert("Wrong token type!");
         }
     }
 
     function isETH(Token memory token) public view returns (bool) {
         return equals(token, Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}));
+    }
+
+    function isERC20(Token memory token) public view returns (bool) {
+        return token.t == TokenType.ERC20;
+    }
+
+    function isERC721(Token memory token) public view returns (bool) {
+        return token.t == TokenType.ERC721;
     }
 }

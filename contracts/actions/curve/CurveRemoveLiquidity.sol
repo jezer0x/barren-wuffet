@@ -27,6 +27,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  */
 contract CurveRemoveLiquidity is PlainPool, IAction, DelegatePerform {
     using SafeERC20 for IERC20;
+    using TokenLib for Token;
 
     IAddressProvider public immutable address_provider;
 
@@ -61,9 +62,9 @@ contract CurveRemoveLiquidity is PlainPool, IAction, DelegatePerform {
         IPlainPool pool = IPlainPool(poolAddr);
         uint256[] memory _min_amounts = new uint256[](action.outputTokens.length); // TODO
 
-        IERC20(action.inputTokens[0].addr).safeApprove(address(pool), runtimeParams.collaterals[0]);
+        action.inputTokens[0].approve(address(pool), runtimeParams.collaterals[0]);
         outputs = pool.remove_liquidity(runtimeParams.collaterals[0], _min_amounts);
-        IERC20(action.inputTokens[0].addr).safeApprove(address(pool), 0);
+        action.inputTokens[0].approve(address(pool), 0);
 
         Position memory none;
         return ActionResponse({tokenOutputs: outputs, position: none});

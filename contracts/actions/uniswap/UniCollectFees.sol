@@ -31,11 +31,11 @@ contract UniCollectFees is IAction, DelegatePerform {
 
     function validate(Action calldata action) external view returns (bool) {
         require(action.inputTokens.length == 1);
-        require(action.inputTokens[0].t == TokenType.ERC721);
+        require(action.inputTokens[0].isERC721());
         require(action.outputTokens.length == 3);
         require(action.inputTokens[0].equals(action.outputTokens[0]));
-        require(action.outputTokens[1].t == TokenType.ERC20 || action.outputTokens[0].t == TokenType.NATIVE);
-        require(action.outputTokens[2].t == TokenType.ERC20 || action.outputTokens[1].t == TokenType.NATIVE);
+        require(action.outputTokens[1].isERC20() || action.outputTokens[0].isETH());
+        require(action.outputTokens[2].isERC20() || action.outputTokens[1].isETH());
 
         (, , address token0, address token1, , , , , , , , ) = nonfungiblePositionManager.positions(
             action.inputTokens[0].id

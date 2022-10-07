@@ -31,7 +31,7 @@ contract UniDecreaseLiquidity is IAction, DelegatePerform {
 
     function validate(Action calldata action) external view returns (bool) {
         require(action.inputTokens.length == 1);
-        require(action.inputTokens[0].t == TokenType.ERC721);
+        require(action.inputTokens[0].isERC721());
         require(action.outputTokens.length == 1);
         require(action.inputTokens[0].equals(action.outputTokens[0]));
 

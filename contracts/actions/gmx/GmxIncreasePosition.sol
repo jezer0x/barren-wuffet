@@ -56,10 +56,7 @@ contract GmxIncreasePosition is IAction, DelegatePerform {
                 referralCode
             );
         } else {
-            IERC20(action.inputTokens[0].addr).safeApprove(
-                address(positionRouter.router()),
-                runtimeParams.collaterals[0]
-            );
+            action.inputTokens[0].approve(address(positionRouter.router()), runtimeParams.collaterals[0]);
             positionRouter.createIncreasePosition{value: runtimeParams.collaterals[1]}(
                 _path,
                 _indexToken,
@@ -89,7 +86,7 @@ contract GmxIncreasePosition is IAction, DelegatePerform {
     function validate(Action calldata action) external view returns (bool) {
         // the first is tokenIn, the second is ETH for the fee
         require(action.inputTokens.length == 2);
-        require(action.inputTokens[0].t == TokenType.ERC20 || action.inputTokens[0].t == TokenType.NATIVE);
+        require(action.inputTokens[0].isERC20() || action.inputTokens[0].isETH());
         require(action.inputTokens[1].isETH());
 
         // no outputToken

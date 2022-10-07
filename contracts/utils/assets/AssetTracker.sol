@@ -16,10 +16,10 @@ library AssetTracker {
         uint256 amount
     ) public {
         bytes32 tokenHash = keccak256(abi.encode(token));
-        if (token.t == TokenType.ERC721) {
+        if (token.isERC721()) {
             assets.balances[tokenHash] = amount;
             assets.tokens.push(token);
-        } else if (token.t == TokenType.ERC20 || token.t == TokenType.NATIVE) {
+        } else if (token.isERC20() || token.isETH()) {
             if (assets.balances[tokenHash] == 0) {
                 assets.tokens.push(token);
             }
@@ -35,10 +35,10 @@ library AssetTracker {
         uint256 amount
     ) public {
         bytes32 tokenHash = keccak256(abi.encode(token));
-        if (token.t == TokenType.ERC721) {
+        if (token.isERC721()) {
             delete assets.balances[tokenHash];
             removeFromAssets(assets, token);
-        } else if (token.t == TokenType.ERC20 || token.t == TokenType.NATIVE) {
+        } else if (token.isERC20() || token.isETH()) {
             require(assets.balances[tokenHash] >= amount);
             assets.balances[tokenHash] -= amount;
             // TODO: could be made more efficient if we kept token => idx in storage

@@ -134,8 +134,8 @@ contract UniMintLiquidityPosition is IAction, DelegatePerform {
         console.log("minted");
 
         // Remove allowance and refund in both assets.
-        IERC20(action.inputTokens[0].addr).safeApprove(address(nonfungiblePositionManager), 0);
-        IERC20(action.inputTokens[1].addr).safeApprove(address(nonfungiblePositionManager), 0);
+        action.inputTokens[0].approve(address(nonfungiblePositionManager), 0);
+        action.inputTokens[1].approve(address(nonfungiblePositionManager), 0);
 
         outputs[0] = amount0 < runtimeParams.collaterals[0] ? runtimeParams.collaterals[0] - amount0 : 0;
         outputs[1] = amount1 < runtimeParams.collaterals[1] ? runtimeParams.collaterals[1] - amount1 : 0;

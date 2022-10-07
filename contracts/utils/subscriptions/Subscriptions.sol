@@ -177,7 +177,7 @@ library Subscriptions {
         address subscriber,
         Token memory token
     ) public view returns (uint256) {
-        if (token.t == TokenType.ERC20 || token.t == TokenType.NATIVE) {
+        if (token.isERC20() || token.isETH()) {
             return
                 (subStuff.subscriptions[subscriber].collateralAmount * assets.balances[keccak256(abi.encode(token))]) /
                 subStuff.totalCollateral;

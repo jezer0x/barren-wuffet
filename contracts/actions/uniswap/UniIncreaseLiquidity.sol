@@ -31,11 +31,11 @@ contract UniIncreaseLiquidity is IAction, DelegatePerform {
 
     function validate(Action calldata action) external view returns (bool) {
         require(action.inputTokens.length == 1);
-        require(action.inputTokens[0].t == TokenType.ERC721);
+        require(action.inputTokens[0].isERC721());
         require(action.outputTokens.length == 3);
         require(action.inputTokens[0].equals(action.outputTokens[0]));
-        require(action.outputTokens[1].t == TokenType.ERC20 || action.outputTokens[0].t == TokenType.NATIVE);
-        require(action.outputTokens[2].t == TokenType.ERC20 || action.outputTokens[1].t == TokenType.NATIVE);
+        require(action.outputTokens[1].isERC20() || action.outputTokens[0].isETH());
+        require(action.outputTokens[2].isERC20() || action.outputTokens[1].isETH());
 
         (, , address token0, address token1, , , , , , , , ) = nonfungiblePositionManager.positions(
             action.inputTokens[0].id
@@ -57,25 +57,13 @@ contract UniIncreaseLiquidity is IAction, DelegatePerform {
         uint256 ethCollateral;
         if (action.inputTokens[1].isETH()) {
             ethCollateral = runtimeParams.collaterals[1];
-            IERC20(action.inputTokens[2].addr).safeApprove(
-                address(nonfungiblePositionManager),
-                runtimeParams.collaterals[2]
-            );
+            action.inputTokens[2].approve(address(nonfungiblePositionManager), runtimeParams.collaterals[2]);
         } else if (action.inputTokens[2].isETH()) {
             ethCollateral = runtimeParams.collaterals[1];
-            IERC20(action.inputTokens[1].addr).safeApprove(
-                address(nonfungiblePositionManager),
-                runtimeParams.collaterals[1]
-            );
+            action.inputTokens[1].approve(address(nonfungiblePositionManager), runtimeParams.collaterals[1]);
         } else {
-            IERC20(action.inputTokens[1].addr).safeApprove(
-                address(nonfungiblePositionManager),
-                runtimeParams.collaterals[1]
-            );
-            IERC20(action.inputTokens[2].addr).safeApprove(
-                address(nonfungiblePositionManager),
-                runtimeParams.collaterals[2]
-            );
+            action.inputTokens[1].approve(address(nonfungiblePositionManager), runtimeParams.collaterals[1]);
+            action.inputTokens[2].approve(address(nonfungiblePositionManager), runtimeParams.collaterals[2]);
         }
 
         INonfungiblePositionManager.IncreaseLiquidityParams memory params = INonfungiblePositionManager

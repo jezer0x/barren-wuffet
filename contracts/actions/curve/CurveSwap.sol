@@ -39,6 +39,7 @@ interface ISwapper {
 */
 contract CurveSwap is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
+    using TokenLib for Token;
 
     IAddressProvider public immutable address_provider;
 
@@ -77,7 +78,7 @@ contract CurveSwap is IAction, DelegatePerform {
         address poolAddr = abi.decode(action.data, (address));
         ISwapper swapper = ISwapper(_getSwapper());
 
-        IERC20(action.inputTokens[0].addr).safeApprove(address(swapper), runtimeParams.collaterals[0]);
+        action.inputTokens[0].approve(address(swapper), runtimeParams.collaterals[0]);
         outputs[0] = swapper.exchange(
             poolAddr,
             action.inputTokens[0].addr,
@@ -90,7 +91,7 @@ contract CurveSwap is IAction, DelegatePerform {
             ) * runtimeParams.collaterals[0]) / 10**8,
             address(this)
         );
-        IERC20(action.inputTokens[0].addr).safeApprove(address(swapper), 0);
+        action.inputTokens[0].approve(address(swapper), 0);
 
         Position memory none;
         return ActionResponse({tokenOutputs: outputs, position: none});

@@ -34,15 +34,15 @@ contract SushiAddLiquidity is IAction, DelegatePerform {
 
     function validate(Action calldata action) external view returns (bool) {
         require(action.inputTokens.length == 2);
-        require(action.inputTokens[0].t == TokenType.ERC20 || action.inputTokens[0].t == TokenType.NATIVE);
-        require(action.inputTokens[1].t == TokenType.ERC20 || action.inputTokens[1].t == TokenType.NATIVE);
+        require(action.inputTokens[0].isERC20() || action.inputTokens[0].isETH());
+        require(action.inputTokens[1].isERC20() || action.inputTokens[1].isETH());
 
         require(action.outputTokens.length == 3);
         require(action.outputTokens[0].equals(action.inputTokens[0]));
         require(action.outputTokens[1].equals(action.inputTokens[1]));
 
-        address token0Addr = action.inputTokens[0].t == TokenType.NATIVE ? router.WETH() : action.inputTokens[0].addr;
-        address token1Addr = action.inputTokens[1].t == TokenType.NATIVE ? router.WETH() : action.inputTokens[1].addr;
+        address token0Addr = action.inputTokens[0].isETH() ? router.WETH() : action.inputTokens[0].addr;
+        address token1Addr = action.inputTokens[1].isETH() ? router.WETH() : action.inputTokens[1].addr;
 
         require(
             action.outputTokens[2].addr == IUniswapV2Factory(router.factory()).getPair(token0Addr, token1Addr),
@@ -70,7 +70,7 @@ contract SushiAddLiquidity is IAction, DelegatePerform {
         if (ethIdx >= 0) {
             uint256 tokenIdx = 1 - uint256(ethIdx);
 
-            IERC20(action.inputTokens[tokenIdx].addr).safeApprove(address(router), runtimeParams.collaterals[tokenIdx]);
+            action.inputTokens[tokenIdx].approve(address(router), runtimeParams.collaterals[tokenIdx]);
 
             (outputs[tokenIdx], outputs[uint256(ethIdx)], outputs[2]) = router.addLiquidityETH{
                 value: runtimeParams.collaterals[uint256(ethIdx)]
@@ -93,10 +93,10 @@ contract SushiAddLiquidity is IAction, DelegatePerform {
             outputs[tokenIdx] = runtimeParams.collaterals[tokenIdx] - outputs[tokenIdx];
             outputs[uint256(ethIdx)] = runtimeParams.collaterals[uint256(ethIdx)] - outputs[uint256(ethIdx)];
 
-            IERC20(action.inputTokens[tokenIdx].addr).safeApprove(address(router), 0);
+            action.inputTokens[tokenIdx].approve(address(router), 0);
         } else {
-            IERC20(action.inputTokens[0].addr).safeApprove(address(router), runtimeParams.collaterals[0]);
-            IERC20(action.inputTokens[1].addr).safeApprove(address(router), runtimeParams.collaterals[1]);
+            action.inputTokens[0].approve(address(router), runtimeParams.collaterals[0]);
+            action.inputTokens[1].approve(address(router), runtimeParams.collaterals[1]);
 
             (outputs[0], outputs[1], outputs[2]) = router.addLiquidity(
                 action.inputTokens[0].addr,
@@ -120,8 +120,8 @@ contract SushiAddLiquidity is IAction, DelegatePerform {
             outputs[0] = runtimeParams.collaterals[0] - outputs[0];
             outputs[1] = runtimeParams.collaterals[1] - outputs[1];
 
-            IERC20(action.inputTokens[0].addr).safeApprove(address(router), 0);
-            IERC20(action.inputTokens[1].addr).safeApprove(address(router), 0);
+            action.inputTokens[0].approve(address(router), 0);
+            action.inputTokens[1].approve(address(router), 0);
         }
 
         // None because the Sushi Liquidty Provider token is ERC20, so investors can get back collateral for themselves if needed
