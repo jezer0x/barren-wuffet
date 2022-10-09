@@ -70,9 +70,6 @@ contract GmxIncreasePosition is IAction, DelegatePerform {
             );
         }
 
-        // increase position request -> confirmReqCancelOrExec -> confirmNoPos (if any)
-        // decreasePositionRequest -> confirmReqCancelOrExec -> confirmNoPos (if any)
-
         // setting up position
         Action[] memory nextActions = new Action[](1);
 

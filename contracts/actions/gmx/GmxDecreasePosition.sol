@@ -1,99 +1,93 @@
-// // SPDX-License-Identifier: MIT
-// pragma solidity ^0.8.9;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.9;
 
-// import "../IAction.sol";
-// import "../DelegatePerform.sol";
-// import "./IRouter.sol";
-// import "./IReader.sol";
-// import "./IPositionRouter.sol";
-// import "../SimpleSwapUtils.sol";
+import "../IAction.sol";
+import "../DelegatePerform.sol";
+import "./IReader.sol";
+import "./IPositionRouter.sol";
+import "../SimpleSwapUtils.sol";
 
-// contract GmxDecreasePosition is IAction, DelegatePerform {
-//     using SafeERC20 for IERC20;
-//     using TokenLib for Token;
+contract GmxDecreasePosition is IAction, DelegatePerform {
+    using SafeERC20 for IERC20;
+    using TokenLib for Token;
 
-//     IReader immutable reader;
-//     IPositionRouter immutable positionRouter;
-//     bytes32 immutable referralCode;
+    IReader immutable reader;
+    IPositionRouter immutable positionRouter;
+    bytes32 immutable referralCode;
+    address public immutable confirmReqCancelOrExecAddr;
 
-//     constructor(
-//         address readerAddress,
-//         address positionRouterAddress,
-//         bytes32 _referralCode
-//     ) {
-//         reader = IReader(readerAddress);
-//         positionRouter = IPositionRouter(positionRouterAddress);
-//         referralCode = _referralCode;
-//         closePositionAddress = _closePositionAddress;
-//     }
+    constructor(
+        address readerAddress,
+        address positionRouterAddress,
+        address _confirmReqCancelOrExecAddr,
+    ) {
+        reader = IReader(readerAddress);
+        positionRouter = IPositionRouter(positionRouterAddress);
+        confirmReqCancelOrExecAddr = _confirmReqCancelOrExecAddr;
+    }
 
-//     function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
-//         external
-//         delegateOnly
-//         returns (ActionResponse memory)
-//     {
-//         address[] memory _path = new address[](1); // assume swaps are done with GmxSwap Action separately.
+    function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
+        external
+        delegateOnly
+        returns (ActionResponse memory)
+    {
+        (
+            address[] memory _path,
+            address _indexToken,
+            uint256 _collateralDelta,
+            uint256 _sizeDelta,
+            bool _isLong,
+            uint256 _acceptablePrice,
+            uint256 _minOut,
+            bool _withdrawETH
+        ) = abi.decode(action.data, (address[], address, uint256, uint256, bool, uint256, uint256, bool));
 
-//         // TODO: what happens if greater?
-//         // checking because may change in the middle. Q: Why not leave it upto GMX to reject?
-//         require(runtimeParams.collaterals[1] >= positionRouter.minExecutionFee());
-//         uint256 fee = runtimeParams.collaterals[1];
-//         uint256 _amountIn = runtimeParams.collaterals[0];
+        positionRouter.createDecreasePosition(
+            _path,
+            _indexToken,
+            _collateralDelta,
+            _sizeDelta,
+            _isLong,
+            address(this),
+            _acceptablePrice,
+            _minOut,
+            runtimeParams.collaterals[0],
+            _withdrawETH
+        );
 
-//         (address _indexToken, uint256 _sizeDelta, bool _isLong, uint256 _acceptablePrice) = abi.decode(
-//             action.data,
-//             (address, uint256, bool, uint256)
-//         );
+        // setting up position
+        Action[] memory nextActions = new Action[](1);
 
-//         if (action.inputTokens[0].isETH()) {
-//             _path[0] = positionRouter.weth();
-//             positionRouter.createIncreasePositionETH{value: fee + _amountIn}(
-//                 _path,
-//                 _indexToken,
-//                 0, // no swapping
-//                 _sizeDelta,
-//                 _isLong,
-//                 _acceptablePrice,
-//                 fee,
-//                 referralCode
-//             );
-//         } else {
-//             _path[0] = action.inputTokens[0].addr;
+        {
+            nextActions[0] = Action({
+                callee: confirmReqCancelOrExecAddr,
+                data: abi.encode(
+                    false,
+                    positionRouter.getRequestKey(address(this), positionRouter.decreasePositionsIndex(address(this))),
+                    _path.length == 2 ? _path[1] : _path[0],
+                    _indexToken,
+                    _isLong
+                ),
+                inputTokens: new Token[](0),
+                outputTokens: new Token[](0)
+            });
+        }
 
-//             positionRouter.createIncreasePosition{value: fee}(
-//                 _path,
-//                 _indexToken,
-//                 _amountIn,
-//                 0, // no swapping
-//                 _sizeDelta,
-//                 _isLong,
-//                 _acceptablePrice,
-//                 fee,
-//                 referralCode
-//             );
-//         }
+        return
+            ActionResponse({
+                tokenOutputs: new uint256[](0),
+                position: Position({actionConstraints: new ActionConstraints[](0), nextActions: nextActions})
+            });
+    }
 
-//         uint256[] memory noOutputs;
-//         Position memory none;
-//         return ActionResponse({tokenOutputs: noOutputs, position: none});
-//     }
+    function validate(Action calldata action) external view returns (bool) {
+        // ETH for fee
+        require(action.inputTokens.length == 1);
+        require(action.inputTokens[0].isETH());
 
-//     function validate(Action calldata action) external view returns (bool) {
-//         // ETH for the fee
-//         require(action.inputTokens.length == 1);
+        // no outputToken
+        require(action.outputTokens.length == 0);
 
-//         // output token == collateralToken
-//         require(action.outputTokens.length == 1);
-
-//     function createDecreasePosition(
-//         address _receiver,
-//         uint256 _acceptablePrice,
-//         uint256 _minOut,
-//         uint256 _executionFee,
-//         bool _withdrawETH
-//     ) external payable;
-
-//         // action.data has (address[] _path, address _indexToken, uint256 _collateralDelta, uint256 _sizeDelta, bool _isLong, uint256 _acceptablePrice, uint256 _minOut)
-//         abi.decode(action.data, (address, uint256, uint256, bool, uint256, uint256));
-//     }
-// }
+        abi.decode(action.data, (address[], address, uint256, uint256, bool, uint256, uint256, bool));
+    }
+}
