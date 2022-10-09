@@ -82,7 +82,7 @@ contract GmxIncreasePosition is IAction, DelegatePerform {
                 data: abi.encode(
                     true,
                     positionRouter.getRequestKey(address(this), positionRouter.increasePositionsIndex(address(this))),
-                    _path.length == 2 ? _path[1] : _path[0],
+                    _path[_path.length - 1],
                     _indexToken,
                     _isLong
                 ),

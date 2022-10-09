@@ -42,7 +42,7 @@ contract GmxDecreasePosition is IAction, DelegatePerform {
             bool _withdrawETH
         ) = abi.decode(action.data, (address[], address, uint256, uint256, bool, uint256, uint256, bool));
 
-        positionRouter.createDecreasePosition(
+        positionRouter.createDecreasePosition{value: runtimeParams.collaterals[0]}(
             _path,
             _indexToken,
             _collateralDelta,
@@ -59,17 +59,24 @@ contract GmxDecreasePosition is IAction, DelegatePerform {
         Action[] memory nextActions = new Action[](1);
 
         {
+            Token[] memory outputTokens = new Token[](1); // will only be used if successful, but we won't know how much/if was given
+            if (_withdrawETH) {
+                outputTokens[0] = Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}) 
+            } else {
+                outputTokens[0] = Token({t: TokenType.NATIVE, addr: _path[_path.length - 1], id: 0}) 
+            }
+
             nextActions[0] = Action({
                 callee: confirmReqCancelOrExecAddr,
                 data: abi.encode(
                     false,
                     positionRouter.getRequestKey(address(this), positionRouter.decreasePositionsIndex(address(this))),
-                    _path.length == 2 ? _path[1] : _path[0],
+                    _path[_path.length - 1],
                     _indexToken,
                     _isLong
                 ),
                 inputTokens: new Token[](0),
-                outputTokens: new Token[](0)
+                outputTokens: outputTokens
             });
         }
 
