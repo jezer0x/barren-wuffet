@@ -4,6 +4,7 @@ pragma solidity ^0.8.9;
 import "../IAction.sol";
 import "../DelegatePerform.sol";
 import "./IReader.sol";
+import "./IRouter.sol";
 import "./IPositionRouter.sol";
 import "../SimpleSwapUtils.sol";
 
@@ -34,7 +35,8 @@ contract GmxIncreasePosition is IAction, DelegatePerform {
         returns (ActionResponse memory)
     {
         IncreasePositionParams memory params = abi.decode(action.data, (IncreasePositionParams));
-
+        address router = positionRouter.router();
+        IRouter(router).approvePlugin(address(positionRouter));
         {
             if (action.inputTokens[0].isETH()) {
                 positionRouter.createIncreasePositionETH{
@@ -50,7 +52,7 @@ contract GmxIncreasePosition is IAction, DelegatePerform {
                     referralCode
                 );
             } else {
-                action.inputTokens[0].approve(address(positionRouter.router()), runtimeParams.collaterals[0]);
+                action.inputTokens[0].approve(router, runtimeParams.collaterals[0]);
                 positionRouter.createIncreasePosition{value: runtimeParams.collaterals[1]}(
                     params._path,
                     params._indexToken,
@@ -102,7 +104,8 @@ contract GmxIncreasePosition is IAction, DelegatePerform {
         // no outputToken
         require(action.outputTokens.length == 0);
 
-        // action.data has (IncreasePositionParams)
         abi.decode(action.data, (IncreasePositionParams));
+
+        return true;
     }
 }

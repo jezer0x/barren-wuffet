@@ -22,6 +22,8 @@ interface IRouter {
         address payable _receiver
     ) external;
 
+    function approvePlugin(address _plugin) external;
+
     function vault() external returns (address);
 
     function weth() external returns (address);

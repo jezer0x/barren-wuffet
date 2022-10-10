@@ -21,6 +21,7 @@ import {
 import { getAddressFromEvent } from "../helper";
 import { abi as FACTORY_ABI } from "@134dd3v/uniswap-v3-core-0.8-support/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json";
 import { abi as POOL_ABI } from "@134dd3v/uniswap-v3-core-0.8-support/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json";
+import { AbiCoder } from "@ethersproject/abi";
 
 async function makeSubConstraints() {
   const latestTime = await time.latest();
@@ -123,6 +124,41 @@ async function main() {
     ethers.utils.formatEther(postEthBalance.sub(prevEthBalance))
   );
   balance_usdc = await usdc_contract.balanceOf(McFundAddr);
+
+  const gmxIncreasePosition = await ethers.getContract("GmxIncreasePosition");
+
+  //   struct IncreasePositionParams {
+  //     address[] _path;
+  //     address _indexToken;
+  //     uint256 _minOut;
+  //     uint256 _sizeDelta;
+  //     bool _isLong;
+  //     uint256 _acceptablePrice;
+  // }
+
+  await McFund.takeAction(
+    trueTrigger,
+    {
+      callee: gmxIncreasePosition.address,
+      data: ethers.utils.defaultAbiCoder.encode(
+        ["tuple(address[], address, uint256, uint256, bool, uint256)"],
+        [
+          [
+            ["0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"],
+            "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+            0,
+            balance_usdc.mul(5), // 5x long on ETH price
+            true,
+            BigNumber.from(1310456800000000).mul(ERC20_DECIMALS)
+          ]
+        ]
+      ),
+      inputTokens: [USDC_TOKEN, ETH_TOKEN],
+      outputTokens: []
+    },
+    [balance_usdc, BigNumber.from(100000000000000)],
+    [BigNumber.from(0), BigNumber.from(0)]
+  );
 
   //   // Case 3: path is wrong
   //   try {

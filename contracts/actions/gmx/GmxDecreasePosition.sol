@@ -66,6 +66,8 @@ contract GmxDecreasePosition is IAction, DelegatePerform {
         require(action.outputTokens.length == 0);
 
         abi.decode(action.data, (DecreasePositionParams));
+
+        return true;
     }
 
     function _getNextActions(
