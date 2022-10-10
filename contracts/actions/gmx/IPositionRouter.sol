@@ -71,6 +71,8 @@ interface IPositionRouter {
 
     function increasePositionsIndex(address) external returns (uint256);
 
+    function decreasePositionsIndex(address) external returns (uint256);
+
     function getRequestKey(address, uint256) external returns (bytes32);
 
     function increasePositionRequests(bytes32) external returns (IncreasePositionRequest memory);

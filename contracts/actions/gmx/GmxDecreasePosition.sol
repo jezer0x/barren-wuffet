@@ -13,13 +13,12 @@ contract GmxDecreasePosition is IAction, DelegatePerform {
 
     IReader immutable reader;
     IPositionRouter immutable positionRouter;
-    bytes32 immutable referralCode;
     address public immutable confirmReqCancelOrExecAddr;
 
     constructor(
         address readerAddress,
         address positionRouterAddress,
-        address _confirmReqCancelOrExecAddr,
+        address _confirmReqCancelOrExecAddr
     ) {
         reader = IReader(readerAddress);
         positionRouter = IPositionRouter(positionRouterAddress);
@@ -61,9 +60,9 @@ contract GmxDecreasePosition is IAction, DelegatePerform {
         {
             Token[] memory outputTokens = new Token[](1); // will only be used if successful, but we won't know how much/if was given
             if (_withdrawETH) {
-                outputTokens[0] = Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}) 
+                outputTokens[0] = Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0});
             } else {
-                outputTokens[0] = Token({t: TokenType.NATIVE, addr: _path[_path.length - 1], id: 0}) 
+                outputTokens[0] = Token({t: TokenType.NATIVE, addr: _path[_path.length - 1], id: 0});
             }
 
             nextActions[0] = Action({
