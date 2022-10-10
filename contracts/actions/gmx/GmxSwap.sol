@@ -47,13 +47,12 @@ contract GmxSwap is IAction, DelegatePerform {
         }
 
         (amountOut, fee) = reader.getAmountOut(router.vault(), _path[0], _path[1], _amountIn);
-        _minOut =
-            ((SimpleSwapUtils._getRelevantPriceTriggerData(
-                action.inputTokens[0],
-                action.outputTokens[0],
-                runtimeParams.triggerReturnArr
-            ) * _amountIn) / 10**8) -
-            fee;
+        _minOut = ((SimpleSwapUtils._getRelevantPriceTriggerData(
+            action.inputTokens[0],
+            action.outputTokens[0],
+            runtimeParams.triggerReturnArr
+        ) * _amountIn) / 10**8);
+        _minOut = _minOut > fee ? _minOut - fee : 0;
 
         if (action.inputTokens[0].isETH()) {
             router.swapETHToTokens{value: _amountIn}(_path, _minOut, address(this));
