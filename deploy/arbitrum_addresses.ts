@@ -36,3 +36,10 @@ export const dopex = {
 export const curve = {
   address_provider: "0x0000000022d53366457f9d5e68ec105046fc4383"
 };
+
+// https://gmxio.gitbook.io/gmx/contracts
+export const gmx = {
+  router: "0xaBBc5F99639c9B6bCb58544ddf04EFA6802F4064",
+  position_router: "0x3D6bA331e3D9702C5e8A8d254e5d8a285F223aba",
+  reader: "0x22199a49A999c351eF7927602CFB187ec3cae489"
+};

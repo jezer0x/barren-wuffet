@@ -39,6 +39,16 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     TokenLibAddr,
     hre.config.networks.hardhat.forking?.enabled
   );
+
+  await deployGmxActions(
+    deploy,
+    deployer,
+    whitelistService,
+    actWlHash,
+    TokenLibAddr,
+    hre.config.networks.hardhat.forking?.enabled
+  );
+
   // TODO: deploy all the other actions
 
   if ((await whitelistService.getWhitelistOwner(actWlHash)) == deployer) {
@@ -163,6 +173,63 @@ async function deploySushiActions(
   await addToWhitelist(deployer, whitelistService, actWlHash, sushiSwapExactXForY.address);
   await addToWhitelist(deployer, whitelistService, actWlHash, sushiAddLiquidity.address);
   await addToWhitelist(deployer, whitelistService, actWlHash, sushiRemoveLiquidity.address);
+}
+
+async function deployGmxActions(
+  deploy: any,
+  deployer: string,
+  whitelistService: Contract,
+  actWlHash: any,
+  TokenLibAddr: string,
+  forked: undefined | boolean
+) {
+  let router;
+  let position_router;
+  let reader;
+
+  // Note: tests will fail against Gmx if run on unforked network
+  router = liveAddresses.gmx.router;
+  position_router = liveAddresses.gmx.position_router;
+  reader = liveAddresses.gmx.reader;
+
+  const gmxSwap = await deploy("GmxSwap", {
+    from: deployer,
+    args: [router, reader],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  const gmxConfirmNoPosition = await deploy("GmxConfirmNoPosition", {
+    from: deployer,
+    args: [reader, position_router],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  const gmxConfirmRequestExecOrCancel = await deploy("GmxConfirmRequestExecOrCancel", {
+    from: deployer,
+    args: [reader, position_router, gmxConfirmNoPosition.address],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  const gmxIncreasePosition = await deploy("GmxIncreasePosition", {
+    from: deployer,
+    args: [reader, position_router, gmxConfirmRequestExecOrCancel.address, ethers.constants.HashZero],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  const gmxDecreasePosition = await deploy("GmxDecreasePosition", {
+    from: deployer,
+    args: [reader, position_router, gmxConfirmRequestExecOrCancel.address],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  await addToWhitelist(deployer, whitelistService, actWlHash, gmxSwap.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, gmxIncreasePosition.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, gmxDecreasePosition.address);
 }
 
 export default func;
