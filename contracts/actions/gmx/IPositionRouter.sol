@@ -16,6 +16,26 @@ struct IncreasePositionRequest {
     bool hasCollateralInETH;
 }
 
+struct DecreasePositionParams {
+    address[] _path;
+    address _indexToken;
+    uint256 _collateralDelta;
+    uint256 _sizeDelta;
+    bool _isLong;
+    uint256 _acceptablePrice;
+    uint256 _minOut;
+    bool _withdrawETH;
+}
+
+struct IncreasePositionParams {
+    address[] _path;
+    address _indexToken;
+    uint256 _minOut;
+    uint256 _sizeDelta;
+    bool _isLong;
+    uint256 _acceptablePrice;
+}
+
 struct DecreasePositionRequest {
     address account;
     address[] path;

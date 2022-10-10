@@ -30,59 +30,30 @@ contract GmxDecreasePosition is IAction, DelegatePerform {
         delegateOnly
         returns (ActionResponse memory)
     {
-        (
-            address[] memory _path,
-            address _indexToken,
-            uint256 _collateralDelta,
-            uint256 _sizeDelta,
-            bool _isLong,
-            uint256 _acceptablePrice,
-            uint256 _minOut,
-            bool _withdrawETH
-        ) = abi.decode(action.data, (address[], address, uint256, uint256, bool, uint256, uint256, bool));
-
-        positionRouter.createDecreasePosition{value: runtimeParams.collaterals[0]}(
-            _path,
-            _indexToken,
-            _collateralDelta,
-            _sizeDelta,
-            _isLong,
-            address(this),
-            _acceptablePrice,
-            _minOut,
-            runtimeParams.collaterals[0],
-            _withdrawETH
-        );
-
-        // setting up position
-        Action[] memory nextActions = new Action[](1);
+        DecreasePositionParams memory params = abi.decode(action.data, (DecreasePositionParams));
 
         {
-            Token[] memory outputTokens = new Token[](1); // will only be used if successful, but we won't know how much/if was given
-            if (_withdrawETH) {
-                outputTokens[0] = Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0});
-            } else {
-                outputTokens[0] = Token({t: TokenType.NATIVE, addr: _path[_path.length - 1], id: 0});
-            }
-
-            nextActions[0] = Action({
-                callee: confirmReqCancelOrExecAddr,
-                data: abi.encode(
-                    false,
-                    positionRouter.getRequestKey(address(this), positionRouter.decreasePositionsIndex(address(this))),
-                    _path[_path.length - 1],
-                    _indexToken,
-                    _isLong
-                ),
-                inputTokens: new Token[](0),
-                outputTokens: outputTokens
-            });
+            positionRouter.createDecreasePosition{value: runtimeParams.collaterals[0]}(
+                params._path,
+                params._indexToken,
+                params._collateralDelta,
+                params._sizeDelta,
+                params._isLong,
+                address(this),
+                params._acceptablePrice,
+                params._minOut,
+                runtimeParams.collaterals[0],
+                params._withdrawETH
+            );
         }
 
         return
             ActionResponse({
                 tokenOutputs: new uint256[](0),
-                position: Position({actionConstraints: new ActionConstraints[](0), nextActions: nextActions})
+                position: Position({
+                    actionConstraints: new ActionConstraints[](0),
+                    nextActions: _getNextActions(params._withdrawETH, params._path, params._indexToken, params._isLong)
+                })
             });
     }
 
@@ -94,6 +65,36 @@ contract GmxDecreasePosition is IAction, DelegatePerform {
         // no outputToken
         require(action.outputTokens.length == 0);
 
-        abi.decode(action.data, (address[], address, uint256, uint256, bool, uint256, uint256, bool));
+        abi.decode(action.data, (DecreasePositionParams));
+    }
+
+    function _getNextActions(
+        bool _withdrawETH,
+        address[] memory _path,
+        address _indexToken,
+        bool _isLong
+    ) internal returns (Action[] memory) {
+        // setting up position
+        Action[] memory nextActions = new Action[](1);
+
+        Token[] memory outputTokens = new Token[](1); // will only be used if successful, but we won't know how much/if was given
+        if (_withdrawETH) {
+            outputTokens[0] = Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0});
+        } else {
+            outputTokens[0] = Token({t: TokenType.NATIVE, addr: _path[_path.length - 1], id: 0});
+        }
+
+        nextActions[0] = Action({
+            callee: confirmReqCancelOrExecAddr,
+            data: abi.encode(
+                false,
+                positionRouter.getRequestKey(address(this), positionRouter.decreasePositionsIndex(address(this))),
+                _path[_path.length - 1],
+                _indexToken,
+                _isLong
+            ),
+            inputTokens: new Token[](0),
+            outputTokens: outputTokens
+        });
     }
 }

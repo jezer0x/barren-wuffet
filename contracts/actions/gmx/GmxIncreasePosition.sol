@@ -33,41 +33,36 @@ contract GmxIncreasePosition is IAction, DelegatePerform {
         delegateOnly
         returns (ActionResponse memory)
     {
-        (
-            address[] memory _path,
-            address _indexToken,
-            uint256 _minOut,
-            uint256 _sizeDelta,
-            bool _isLong,
-            uint256 _acceptablePrice
-        ) = abi.decode(action.data, (address[], address, uint256, uint256, bool, uint256));
+        IncreasePositionParams memory params = abi.decode(action.data, (IncreasePositionParams));
 
-        if (action.inputTokens[0].isETH()) {
-            positionRouter.createIncreasePositionETH{
-                value: runtimeParams.collaterals[1] + runtimeParams.collaterals[0]
-            }(
-                _path,
-                _indexToken,
-                _minOut,
-                _sizeDelta,
-                _isLong,
-                _acceptablePrice,
-                runtimeParams.collaterals[1],
-                referralCode
-            );
-        } else {
-            action.inputTokens[0].approve(address(positionRouter.router()), runtimeParams.collaterals[0]);
-            positionRouter.createIncreasePosition{value: runtimeParams.collaterals[1]}(
-                _path,
-                _indexToken,
-                runtimeParams.collaterals[0],
-                _minOut,
-                _sizeDelta,
-                _isLong,
-                _acceptablePrice,
-                runtimeParams.collaterals[1],
-                referralCode
-            );
+        {
+            if (action.inputTokens[0].isETH()) {
+                positionRouter.createIncreasePositionETH{
+                    value: runtimeParams.collaterals[1] + runtimeParams.collaterals[0]
+                }(
+                    params._path,
+                    params._indexToken,
+                    params._minOut,
+                    params._sizeDelta,
+                    params._isLong,
+                    params._acceptablePrice,
+                    runtimeParams.collaterals[1],
+                    referralCode
+                );
+            } else {
+                action.inputTokens[0].approve(address(positionRouter.router()), runtimeParams.collaterals[0]);
+                positionRouter.createIncreasePosition{value: runtimeParams.collaterals[1]}(
+                    params._path,
+                    params._indexToken,
+                    runtimeParams.collaterals[0],
+                    params._minOut,
+                    params._sizeDelta,
+                    params._isLong,
+                    params._acceptablePrice,
+                    runtimeParams.collaterals[1],
+                    referralCode
+                );
+            }
         }
 
         // setting up position
@@ -82,9 +77,9 @@ contract GmxIncreasePosition is IAction, DelegatePerform {
                 data: abi.encode(
                     true,
                     positionRouter.getRequestKey(address(this), positionRouter.increasePositionsIndex(address(this))),
-                    _path[_path.length - 1],
-                    _indexToken,
-                    _isLong
+                    params._path[params._path.length - 1],
+                    params._indexToken,
+                    params._isLong
                 ),
                 inputTokens: new Token[](0),
                 outputTokens: outputTokens
@@ -107,7 +102,7 @@ contract GmxIncreasePosition is IAction, DelegatePerform {
         // no outputToken
         require(action.outputTokens.length == 0);
 
-        // action.data has (address[] path, address _indexToken, uint256 _minOut, uint256 _sizeDelta, bool _isLong, uint256 _acceptablePrice)
-        abi.decode(action.data, (address[], address, uint256, uint256, bool, uint256));
+        // action.data has (IncreasePositionParams)
+        abi.decode(action.data, (IncreasePositionParams));
     }
 }
