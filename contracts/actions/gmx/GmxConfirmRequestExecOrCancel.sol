@@ -37,10 +37,10 @@ contract GmxConfirmRequestExecOrCancel is IAction, DelegatePerform {
 
         if (isIncrease) {
             IncreasePositionRequest memory req = positionRouter.increasePositionRequests(key);
-            require(req.account == address(0));
+            require(req.account == address(0), "Key still active");
         } else {
             DecreasePositionRequest memory req = positionRouter.decreasePositionRequests(key);
-            require(req.account == address(0));
+            require(req.account == address(0), "Key still active");
         }
 
         address[] memory collateralTokenAddrs = new address[](1);

@@ -230,6 +230,8 @@ async function deployGmxActions(
   await addToWhitelist(deployer, whitelistService, actWlHash, gmxSwap.address);
   await addToWhitelist(deployer, whitelistService, actWlHash, gmxIncreasePosition.address);
   await addToWhitelist(deployer, whitelistService, actWlHash, gmxDecreasePosition.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, gmxConfirmRequestExecOrCancel.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, gmxConfirmNoPosition.address);
 }
 
 export default func;

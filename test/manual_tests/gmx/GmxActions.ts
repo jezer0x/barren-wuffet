@@ -1,6 +1,9 @@
 import { ethers, getNamedAccounts, hardhatArguments } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { Contract, Bytes, BigNumber, utils } from "ethers";
+import PositionRouter from "./GmxPositionRouter.json";
+import Reader from "./GmxReader.json";
+import Router from "./GmxRouter.json";
 import {
   GT,
   ERC20_DECIMALS,
@@ -17,8 +20,8 @@ import {
   LT,
   TOKEN_TYPE,
   TIMESTAMP_TRIGGER_TYPE
-} from "../Constants";
-import { getAddressFromEvent } from "../helper";
+} from "../../Constants";
+import { getAddressFromEvent } from "../../helper";
 import { abi as FACTORY_ABI } from "@134dd3v/uniswap-v3-core-0.8-support/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json";
 import { abi as POOL_ABI } from "@134dd3v/uniswap-v3-core-0.8-support/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json";
 import { AbiCoder } from "@ethersproject/abi";
@@ -159,6 +162,45 @@ async function main() {
     [balance_usdc, BigNumber.from(100000000000000)],
     [BigNumber.from(0), BigNumber.from(0)]
   );
+
+  const confirmReqExecOrCancel = await ethers.getContract("GmxConfirmRequestExecOrCancel");
+  const gmxReader = new Contract("0x22199a49A999c351eF7927602CFB187ec3cae489", Reader.abi, ethers.provider);
+  const gmxRouter = new Contract("0xaBBc5F99639c9B6bCb58544ddf04EFA6802F4064", Router.abi, ethers.provider);
+  const gmxPositionRouter = new Contract(
+    "0x3D6bA331e3D9702C5e8A8d254e5d8a285F223aba",
+    PositionRouter.abi,
+    ethers.provider
+  );
+
+  const rc = await McFund.roboCop();
+  var idx = await gmxPositionRouter.increasePositionsIndex(rc);
+  var key = await gmxPositionRouter.getRequestKey(rc, idx);
+  console.log(rc, idx, key);
+  const res = await gmxPositionRouter.increasePositionRequests(key);
+  console.log(res);
+
+  // try {
+  await McFund.takeAction(
+    trueTrigger,
+    {
+      callee: confirmReqExecOrCancel.address,
+      data: ethers.utils.defaultAbiCoder.encode(
+        ["bool", "uint256", "address", "address", "bool"],
+        [true, key, "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", true]
+      ),
+      inputTokens: [],
+      outputTokens: []
+    },
+    [],
+    [],
+    {
+      gasLimit: 30000000
+    }
+  );
+  // } catch (e) {
+  //   console.log("Successfully failed at confirming reqExec!");
+  //   console.log(e);
+  // }
 
   //   // Case 3: path is wrong
   //   try {

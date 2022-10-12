@@ -3,7 +3,6 @@ pragma solidity ^0.8.9;
 
 struct IncreasePositionRequest {
     address account;
-    address[] path;
     address indexToken;
     uint256 amountIn;
     uint256 minOut;
@@ -38,7 +37,6 @@ struct IncreasePositionParams {
 
 struct DecreasePositionRequest {
     address account;
-    address[] path;
     address indexToken;
     uint256 collateralDelta;
     uint256 sizeDelta;
@@ -95,9 +93,9 @@ interface IPositionRouter {
 
     function getRequestKey(address, uint256) external returns (bytes32);
 
-    function increasePositionRequests(bytes32) external returns (IncreasePositionRequest memory);
+    function increasePositionRequests(bytes32) external view returns (IncreasePositionRequest memory);
 
-    function decreasePositionRequests(bytes32) external returns (DecreasePositionRequest memory);
+    function decreasePositionRequests(bytes32) external view returns (DecreasePositionRequest memory);
 
     function weth() external returns (address);
 
