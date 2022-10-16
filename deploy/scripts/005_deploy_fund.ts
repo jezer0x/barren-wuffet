@@ -2,7 +2,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 import { getLibraries } from "../utils";
 
-const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
 
@@ -17,10 +17,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     libraries: {
       Subscriptions: SubLibAddr,
       AssetTracker: AssetTrackerLibAddr,
-      TokenLib: TokenLibAddr,
-    },
+      TokenLib: TokenLibAddr
+    }
   });
 };
 
 export default func;
-func.tags = ["FundImplementation"];
+func.tags = ["Fund"];

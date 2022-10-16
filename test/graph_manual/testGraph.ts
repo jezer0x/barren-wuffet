@@ -16,7 +16,7 @@ import {
   ETH_TOKEN,
   LT,
   TOKEN_TYPE
-} from "../test/Constants";
+} from "../Constants";
 
 async function makeSubConstraints() {
   const latestTime = await time.latest();
