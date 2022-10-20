@@ -1,5 +1,5 @@
 import { ethers, getNamedAccounts, hardhatArguments } from "hardhat";
-import { time } from "@nomicfoundation/hardhat-network-helpers";
+import { time, impersonateAccount } from "@nomicfoundation/hardhat-network-helpers";
 import { Contract, Bytes, BigNumber, utils } from "ethers";
 import PositionRouter from "./GmxPositionRouter.json";
 import Reader from "./GmxReader.json";
@@ -147,12 +147,15 @@ async function main() {
         ["tuple(address[], address, uint256, uint256, bool, uint256)"],
         [
           [
-            ["0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"],
+            ["0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"],
             "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
             0,
-            balance_usdc.mul(5), // 5x long on ETH price
+            balance_usdc
+              .mul(2)
+              .mul(BigNumber.from(10).pow(30))
+              .div(BigNumber.from(10).pow(6)), // 2x long on ETH price
             true,
-            BigNumber.from(1310456800000000).mul(ERC20_DECIMALS)
+            BigNumber.from(2000).mul(BigNumber.from(10).pow(30)) // entry price of 2000
           ]
         ]
       ),
@@ -175,11 +178,35 @@ async function main() {
   const rc = await McFund.roboCop();
   var idx = await gmxPositionRouter.increasePositionsIndex(rc);
   var key = await gmxPositionRouter.getRequestKey(rc, idx);
-  console.log(rc, idx, key);
-  const res = await gmxPositionRouter.increasePositionRequests(key);
-  console.log(res);
 
-  // try {
+  try {
+    await McFund.takeAction(
+      trueTrigger,
+      {
+        callee: confirmReqExecOrCancel.address,
+        data: ethers.utils.defaultAbiCoder.encode(
+          ["bool", "uint256", "address", "address", "bool"],
+          [true, key, "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", true]
+        ),
+        inputTokens: [],
+        outputTokens: []
+      },
+      [],
+      []
+    );
+  } catch (e) {
+    console.log("Successfully failed at confirming reqExec!");
+  }
+
+  // impersonated admin tries to make himself a keeper and then execute the increase position
+  const gmxAdminAddr = await gmxPositionRouter.admin();
+  await impersonateAccount(gmxAdminAddr);
+  const gmxAdmin = await ethers.getSigner(gmxAdminAddr);
+  const gmxPositionRouterByAdmin = new Contract(gmxPositionRouter.address, PositionRouter.abi, gmxAdmin);
+  await gmxPositionRouterByAdmin.setPositionKeeper(gmxAdminAddr, true);
+  await gmxPositionRouterByAdmin.executeIncreasePosition(key, gmxAdmin.address);
+
+  // confirm exec passes
   await McFund.takeAction(
     trueTrigger,
     {
@@ -192,77 +219,29 @@ async function main() {
       outputTokens: []
     },
     [],
-    [],
-    {
-      gasLimit: 30000000
-    }
+    []
   );
-  // } catch (e) {
-  //   console.log("Successfully failed at confirming reqExec!");
-  //   console.log(e);
-  // }
 
-  //   // Case 3: path is wrong
-  //   try {
-  //     await McFund.takeAction(
-  //       trueTrigger,
-  //       {
-  //         callee: sushiSwapExactXForY.address,
-  //         data: ethers.utils.defaultAbiCoder.encode(
-  //           ["address[]"],
-  //           [["0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"]]
-  //         ),
-  //         inputTokens: [ETH_TOKEN], // eth
-  //         outputTokens: [USDC_TOKEN] // swapping for USDC
-  //       },
-  //       [BigNumber.from(1).mul(ERC20_DECIMALS)],
-  //       [BigNumber.from(0)] // 0 fees set in deploy
-  //     );
-  //   } catch (e) {
-  //     console.log("Wrong _path send during swap doesn't work");
-  //   }
+  const confirmNoPosition = await ethers.getContract("GmxConfirmNoPosition");
 
-  //   const sushiAddLiquidity = await ethers.getContract("SushiAddLiquidity");
+  // try confirm no pos should fail
+  try {
+    await McFund.takeAction(trueTrigger, {
+      callee: confirmNoPosition.address,
+      data: ethers.utils.defaultAbiCoder.encode(
+        ["address", "address", "bool"],
+        ["0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", true]
+      ),
+      inputTokens: [],
+      outputTokens: []
+    });
+  } catch {
+    console.log("successfully confirmed position exists");
+  }
 
-  //   const usdc_weth_slp_contract = new Contract(
-  //     "0x905dfCD5649217c42684f23958568e533C711Aa3",
-  //     erc20abifrag,
-  //     ethers.provider
-  //   );
+  // decrease position
 
-  //   const USDC_WETH_SLP_TOKEN = {
-  //     t: TOKEN_TYPE.ERC20,
-  //     addr: usdc_weth_slp_contract.address,
-  //     id: BigNumber.from(0)
-  //   };
-
-  //   console.log(usdc_weth_slp_contract.address);
-
-  //   // Case 4: add LP
-  //   await McFund.takeAction(
-  //     trueTrigger,
-  //     {
-  //       callee: sushiAddLiquidity.address,
-  //       data: "0x",
-  //       inputTokens: [USDC_TOKEN, ETH_TOKEN],
-  //       outputTokens: [USDC_TOKEN, ETH_TOKEN, USDC_WETH_SLP_TOKEN]
-  //     },
-  //     [balance_usdc, BigNumber.from(1).mul(ERC20_DECIMALS)],
-  //     [BigNumber.from(0), BigNumber.from(0)] // 0 fees set in deploy
-  //   );
-
-  //   console.log("WETH-USDC-SLP received after LP: ", (await usdc_weth_slp_contract.balanceOf(McFundAddr)).toString());
-
-  //   // Case 5: subscribers get back the SLP token if funds are closed -> no position stuff required
-
-  //   await McFund.closeFund(); // trader closes fund prematurely
-  //   await McFund.withdraw(); // trader was subscriber himself
-
-  //   const { deployer } = await getNamedAccounts();
-  //   console.log(
-  //     "SLP Token balance after withdraw on closed fund: ",
-  //     (await usdc_weth_slp_contract.balanceOf(deployer)).toString()
-  //   );
+  // confirm no pos should pass
 }
 
 main().catch(error => {
