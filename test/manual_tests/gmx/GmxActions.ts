@@ -176,8 +176,7 @@ async function main() {
   );
 
   const rc = await McFund.roboCop();
-  var idx = await gmxPositionRouter.increasePositionsIndex(rc);
-  var key = await gmxPositionRouter.getRequestKey(rc, idx);
+  var key = await gmxPositionRouter.getRequestKey(rc, await gmxPositionRouter.increasePositionsIndex(rc));
 
   try {
     await McFund.takeAction(
@@ -239,9 +238,102 @@ async function main() {
     console.log("successfully confirmed position exists");
   }
 
+  var res = await gmxReader.getPositions(
+    await gmxPositionRouter.vault(),
+    rc,
+    ["0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"],
+    ["0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"],
+    [true]
+  );
+  console.log(res);
+
   // decrease position
 
+  const gmxDecreasePosition = await ethers.getContract("GmxDecreasePosition");
+
+  //   struct DecreasePositionParams {
+  //     address[] _path;
+  //     address _indexToken;
+  //     uint256 _collateralDelta;
+  //     uint256 _sizeDelta;
+  //     bool _isLong;
+  //     uint256 _acceptablePrice;
+  //     uint256 _minOut;
+  //     bool _withdrawETH;
+  // }
+
+  // taking out the entire position
+  await McFund.takeAction(
+    trueTrigger,
+    {
+      callee: gmxDecreasePosition.address,
+      data: ethers.utils.defaultAbiCoder.encode(
+        ["tuple(address[], address, uint256, uint256, bool, uint256, uint256, bool)"],
+        [
+          [
+            ["0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"],
+            "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+            0,
+            balance_usdc
+              .mul(2)
+              .mul(BigNumber.from(10).pow(30))
+              .div(BigNumber.from(10).pow(6)),
+            true,
+            BigNumber.from(1000).mul(BigNumber.from(10).pow(30)),
+            0,
+            false
+          ]
+        ]
+      ),
+      inputTokens: [ETH_TOKEN],
+      outputTokens: []
+    },
+    [BigNumber.from(100000000000000)],
+    [0]
+  );
+
+  key = await gmxPositionRouter.getRequestKey(rc, await gmxPositionRouter.decreasePositionsIndex(rc));
+  await gmxPositionRouterByAdmin.executeDecreasePosition(key, gmxAdmin.address);
+
+  await McFund.takeAction(
+    trueTrigger,
+    {
+      callee: confirmReqExecOrCancel.address,
+      data: ethers.utils.defaultAbiCoder.encode(
+        ["bool", "uint256", "address", "address", "bool"],
+        [true, key, "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", true]
+      ),
+      inputTokens: [],
+      outputTokens: []
+    },
+    [],
+    []
+  );
+
+  res = await gmxReader.getPositions(
+    await gmxPositionRouter.vault(),
+    rc,
+    ["0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"],
+    ["0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"],
+    [true]
+  );
+  console.log(res);
+
   // confirm no pos should pass
+  await McFund.takeAction(
+    trueTrigger,
+    {
+      callee: confirmNoPosition.address,
+      data: ethers.utils.defaultAbiCoder.encode(
+        ["address", "address", "bool"],
+        ["0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", true]
+      ),
+      inputTokens: [],
+      outputTokens: []
+    },
+    [],
+    []
+  );
 }
 
 main().catch(error => {
