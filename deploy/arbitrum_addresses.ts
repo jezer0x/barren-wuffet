@@ -1,14 +1,24 @@
+export const tokens = {
+  WETH: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+  USDC: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
+  DAI: "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1"
+};
+
 // https://docs.chain.link/docs/arbitrum-price-feeds/
 // TODO
 
 // https://docs.uniswap.org/protocol/reference/deployments
-uniswap = {
+export const uniswap = {
   swap_router: "0xe592427a0aece92de3edee1f18e0157c05861564",
-  non_fungible_position_manager: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+  non_fungible_position_manager: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+};
+
+export const sushiswap = {
+  swap_router: "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506"
 };
 
 // https://docs.dopex.io/contracts/arbitrum
-dopex = {
+export const dopex = {
   DpxMonthlyCallsSsovV3: "0x1ae38835Bf3afbEC178E8a59Ca82aA383dC3DF57",
   RdpxMonthlyCallsSsovV3: "0xAfD90Af84ae892C2DFeEA6D379087A7B4D21eC34",
   EthMonthlyCallsSsovV3: "0x8161033b2776a9556b326D5eB468B2B76B7B4a23",
@@ -19,10 +29,17 @@ dopex = {
   EthWeeklyPutsSsovV3: "0xC7552Cd237823DeFa7F3a2E2cB6A3D0B9759F32C",
   GohmWeeklyPutsSsovV3: "0x541fDD2284852Dacc5BA7E31241Ff5bc646b8985",
   GmxWeeklyPutsSsovV3: "0x7e513B848cFAF3Bc9FfB69a35981E5E1279acE59",
-  CrvWeeklyPutsSsovV3: "0x03475494dc89d378C4268e90A62876eFb0278a1a",
+  CrvWeeklyPutsSsovV3: "0x03475494dc89d378C4268e90A62876eFb0278a1a"
 };
 
 // https://curve.readthedocs.io/ref-addresses.html
-curve = {
-  address_provider: "0x0000000022d53366457f9d5e68ec105046fc4383",
+export const curve = {
+  address_provider: "0x0000000022d53366457f9d5e68ec105046fc4383"
+};
+
+// https://gmxio.gitbook.io/gmx/contracts
+export const gmx = {
+  router: "0xaBBc5F99639c9B6bCb58544ddf04EFA6802F4064",
+  position_router: "0x3D6bA331e3D9702C5e8A8d254e5d8a285F223aba",
+  reader: "0x22199a49A999c351eF7927602CFB187ec3cae489"
 };

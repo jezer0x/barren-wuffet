@@ -26,7 +26,7 @@ import {
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 // const { deployMockContract } = waffle;
 import { FakeContract, smock } from "@defi-wonderland/smock";
-import { SwapUniSingleAction } from "../typechain-types/contracts/actions/uniswap/SwapUniSingleAction";
+import { UniSwapExactInputSingle } from "../typechain-types/contracts/actions/uniswap/UniSwapExactInputSingle";
 
 chai_should(); // if you like should syntax
 chai_use(smock.matchers);
@@ -230,7 +230,7 @@ describe("BarrenWuffet", () => {
       const { fundSubscriber } = await getNamedAccounts();
       await expect(jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit }))
         .to.emit(jerkshireFund.x, "Deposit")
-        .withArgs(fundSubscriber, 0, ETH_ADDRESS, validDeposit);
+        .withArgs(fundSubscriber, ETH_ADDRESS, validDeposit);
     });
 
     it("Should allow the fund manager to deposit native token into their own fund", async () => {
@@ -238,7 +238,7 @@ describe("BarrenWuffet", () => {
       const { marlieChunger } = await getNamedAccounts();
       await expect(jerkshireFund.marlieChunger.deposit(ETH_TOKEN, validDeposit, { value: validDeposit }))
         .to.emit(jerkshireFund.x, "Deposit")
-        .withArgs(marlieChunger, 0, ETH_ADDRESS, validDeposit);
+        .withArgs(marlieChunger, ETH_ADDRESS, validDeposit);
     });
 
     it("Should not allow anyone to deposit ERC20 tokens into a raising fund. We only allow native right now", async () => {
@@ -275,7 +275,7 @@ describe("BarrenWuffet", () => {
       );
     });
 
-    it("xx Should allow anyone to deposit more than max subscriber threshold by splitting the deposits into multiple subscriptions", async () => {
+    it("Should not allow anyone to deposit more than max subscriber threshold by splitting the deposits into multiple subscriptions", async () => {
       const { jerkshireFund, jerkshireConstraints } = await raisingFundsFixture();
       // unclear if this is a feature or a bug, but we want to document the usecase
       // check if multiple smaller deposits, that exceed collateral limit in total, get reverted.
@@ -283,12 +283,12 @@ describe("BarrenWuffet", () => {
       const { fundSubscriber } = await getNamedAccounts();
       await expect(jerkshireFund.subscriber.deposit(ETH_TOKEN, depositAmt1, { value: depositAmt1 }))
         .to.emit(jerkshireFund.x, "Deposit")
-        .withArgs(fundSubscriber, 0, ETH_ADDRESS, depositAmt1);
+        .withArgs(fundSubscriber, ETH_ADDRESS, depositAmt1);
 
       const depositAmt2 = jerkshireConstraints.minCollateralPerSub;
-      await expect(jerkshireFund.subscriber.deposit(ETH_TOKEN, depositAmt2, { value: depositAmt2 }))
-        .to.emit(jerkshireFund.x, "Deposit")
-        .withArgs(fundSubscriber, 1, ETH_ADDRESS, depositAmt2);
+      await expect(jerkshireFund.subscriber.deposit(ETH_TOKEN, depositAmt2, { value: depositAmt2 })).to.revertedWith(
+        "> maxCollateralPerSub"
+      );
     });
 
     it("Should revert if deposit is attempted on a fund where collateral limit is reached", async () => {
@@ -312,7 +312,7 @@ describe("BarrenWuffet", () => {
           await expect(tx)
             .to.changeEtherBalance(fundSubscriber, amt.mul(-1))
             .emit(jerkshireFund.x, "Deposit")
-            .withArgs(fundSubscriber, idOrError, ETH_ADDRESS, amt);
+            .withArgs(fundSubscriber, ETH_ADDRESS, amt);
         } else {
           await expect(tx).to.be.revertedWith(idOrError.toString());
         }
@@ -324,35 +324,35 @@ describe("BarrenWuffet", () => {
       await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
       const subscriptionId = 0;
       const { fundSubscriber } = await getNamedAccounts();
-      await expect(jerkshireFund.subscriber.withdraw(subscriptionId))
+      await expect(jerkshireFund.subscriber.withdraw())
         .to.changeEtherBalance(fundSubscriber, validDeposit)
         .emit(jerkshireFund.x, "Withdraw")
-        .withArgs(fundSubscriber, subscriptionId, ETH_ADDRESS, validDeposit);
+        .withArgs(fundSubscriber, ETH_ADDRESS, validDeposit);
     });
 
     it("should not allow withdrawing if there have not been any deposits from this user", async () => {
       const { jerkshireFund } = await raisingFundsFixture();
       await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
-      await expect(jerkshireFund.subscriber2.withdraw(0)).to.be.rejectedWith("Not Active Subscriber");
+      await expect(jerkshireFund.subscriber2.withdraw()).to.be.rejectedWith("!AS");
     });
 
     it("should allow only the fund manager to close a Raising fund, and the subscriber to withdraw funds", async () => {
       const { barrenWuffet, jerkshireFund, crackBlockFund } = await raisingFundsFixture();
       // add some funds so we can confirm that even a fund with funds can be closed
       await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
-      await expect(jerkshireFund.fairyLink.closeFund()).to.be.revertedWith("onlyFundManager");
+      await expect(jerkshireFund.fairyLink.closeFund()).to.be.revertedWith("OFM");
       const { fundSubscriber, marlieChunger } = await getNamedAccounts();
       await expect(jerkshireFund.marlieChunger.closeFund())
         .to.changeEtherBalances([marlieChunger, barrenWuffet], [0, 0])
         .emit(jerkshireFund.x, "Closed");
 
-      await expect(jerkshireFund.subscriber.withdraw(0))
+      await expect(jerkshireFund.subscriber.withdraw())
         .to.changeEtherBalance(fundSubscriber, validDeposit)
         .emit(jerkshireFund.x, "Withdraw")
-        .withArgs(fundSubscriber, 0, ETH_ADDRESS, validDeposit);
+        .withArgs(fundSubscriber, ETH_ADDRESS, validDeposit);
 
       // this is a clean fund
-      await expect(crackBlockFund.marlieChunger.closeFund()).to.be.revertedWith("onlyFundManager");
+      await expect(crackBlockFund.marlieChunger.closeFund()).to.be.revertedWith("OFM");
       await expect(crackBlockFund.fairyLink.closeFund()).to.emit(crackBlockFund.fairyLink, "Closed");
     });
 
@@ -364,12 +364,12 @@ describe("BarrenWuffet", () => {
           [makePassingTrigger(priceTrigger.address, testToken1)],
           [swapETHToTST1Action]
         )
-      ).be.revertedWith("Not Deployed");
+      ).be.revertedWith("!D");
     });
     it("should revert if ManagementFee withdrawal is attempted on a raising fund", async () => {
       const { jerkshireFund } = await raisingFundsFixture();
       await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
-      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("Not Closed");
+      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("!C");
     });
 
     it.skip("should return fund status as DEPLOYED once the fund is created, deadline has been hit (min collateral has to be met)", async () => {
@@ -474,20 +474,20 @@ describe("BarrenWuffet", () => {
       );
 
       await expect(jerkshireFund.subscriber.deposit(ETH_TOKEN, depositAmt, { value: depositAmt })).to.be.revertedWith(
-        "Not Raising"
+        "!R"
       );
     });
 
     it("should revert if withdrawal is attempted on a deployed fund", async () => {
       const { jerkshireFund } = await deployedFundsFixture();
 
-      await expect(jerkshireFund.subscriber.withdraw(0)).to.be.revertedWith("Can't get money back from deployed fund!");
+      await expect(jerkshireFund.subscriber.withdraw()).to.be.revertedWith("D");
     });
 
     it("should revert if ManagementFee withdrawal is attempted on a deployed fund", async () => {
       const { jerkshireFund } = await deployedFundsFixture();
 
-      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("Not Closed");
+      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("!C");
     });
 
     describe("Manage rules", () => {
@@ -535,33 +535,33 @@ describe("BarrenWuffet", () => {
         );
 
         return {
-          ruleIndex: 0,
           ruleHash: ruleHash,
           rcInstance: roboCopInst1
         };
       }
+
       it("Should emit RoboCop events when fund manager creates / activates / deactivates / cancels a rule", async () => {
         const fixtureVars = await deployedFundsFixture();
         const { barrenWuffet, jerkshireFund } = fixtureVars;
 
-        const { ruleIndex, ruleHash, rcInstance } = await createOneRule(fixtureVars);
+        const { ruleHash, rcInstance } = await createOneRule(fixtureVars);
 
-        await expect(jerkshireFund.marlieChunger.activateRule(ruleIndex))
+        await expect(jerkshireFund.marlieChunger.activateRule(ruleHash))
           .to.changeEtherBalances([jerkshireFund.x, rcInstance], [0, 0])
           .emit(rcInstance, "Activated")
           .withArgs(ruleHash);
 
-        await expect(jerkshireFund.marlieChunger.deactivateRule(ruleIndex))
+        await expect(jerkshireFund.marlieChunger.deactivateRule(ruleHash))
           .to.changeEtherBalances([barrenWuffet, rcInstance], [0, 0])
           .emit(rcInstance, "Deactivated")
           .withArgs(ruleHash);
 
-        await expect(jerkshireFund.marlieChunger.activateRule(ruleIndex))
+        await expect(jerkshireFund.marlieChunger.activateRule(ruleHash))
           .to.changeEtherBalances([barrenWuffet, rcInstance], [0, 0])
           .emit(rcInstance, "Activated")
           .withArgs(ruleHash);
 
-        await expect(jerkshireFund.marlieChunger.cancelRule(ruleIndex))
+        await expect(jerkshireFund.marlieChunger.cancelRule(ruleHash))
           .to.changeEtherBalances([barrenWuffet, rcInstance], [0, 0])
           .emit(rcInstance, "Deactivated")
           .withArgs(ruleHash);
@@ -572,17 +572,17 @@ describe("BarrenWuffet", () => {
         const { jerkshireFund } = fixtureVars;
         const { marlieChunger } = await getNamedAccounts();
 
-        const { ruleIndex, ruleHash, rcInstance } = await createOneRule(fixtureVars);
+        const { ruleHash, rcInstance } = await createOneRule(fixtureVars);
 
         const addAmt = [utils.parseEther("1")];
 
-        await expect(jerkshireFund.marlieChunger.addRuleCollateral(ruleIndex, [ETH_TOKEN], addAmt, [0]))
+        await expect(jerkshireFund.marlieChunger.addRuleCollateral(ruleHash, [ETH_TOKEN], addAmt, [0]))
           .to.changeEtherBalances([jerkshireFund.x, rcInstance, marlieChunger], [addAmt[0].mul(-1), addAmt[0], 0])
           .emit(rcInstance, "CollateralAdded")
           .withArgs(ruleHash, addAmt);
 
         const redAmt = [utils.parseEther("0.6")];
-        await expect(jerkshireFund.marlieChunger.reduceRuleCollateral(ruleIndex, redAmt))
+        await expect(jerkshireFund.marlieChunger.reduceRuleCollateral(ruleHash, redAmt))
           .to.changeEtherBalances([jerkshireFund.x, rcInstance, marlieChunger], [redAmt[0], redAmt[0].mul(-1), 0])
           .emit(rcInstance, "CollateralReduced")
           .withArgs(ruleHash, redAmt);
@@ -594,16 +594,16 @@ describe("BarrenWuffet", () => {
           const { marlieChunger } = await getNamedAccounts();
           const { jerkshireFund } = fixtureVars;
 
-          const { ruleIndex, ruleHash, rcInstance } = await createOneRule(fixtureVars);
+          const { ruleHash, rcInstance } = await createOneRule(fixtureVars);
 
           const collateral = [utils.parseEther("0.6")];
-          await jerkshireFund.marlieChunger.addRuleCollateral(ruleIndex, [ETH_TOKEN], collateral, [0]);
+          await jerkshireFund.marlieChunger.addRuleCollateral(ruleHash, [ETH_TOKEN], collateral, [0]);
 
           if (isActive) {
-            await jerkshireFund.marlieChunger.activateRule(ruleIndex);
+            await jerkshireFund.marlieChunger.activateRule(ruleHash);
           }
 
-          const e = expect(jerkshireFund.marlieChunger.cancelRule(ruleIndex))
+          const e = expect(jerkshireFund.marlieChunger.cancelRule(ruleHash))
             .to.changeEtherBalances(
               [jerkshireFund.x, rcInstance, marlieChunger],
               [collateral[0], collateral[0].mul(-1), 0]
@@ -620,7 +620,10 @@ describe("BarrenWuffet", () => {
       });
 
       it("Should not allow anyone other than the fund manager to manage rules", async () => {
-        const { priceTrigger, testToken1, jerkshireFund, swapETHToTST1Action } = await deployedFundsFixture();
+        const fixtureVars = await deployedFundsFixture();
+        const { priceTrigger, testToken1, jerkshireFund, swapETHToTST1Action } = fixtureVars;
+
+        const { ruleHash, rcInstance } = await createOneRule(fixtureVars);
 
         await expect(
           jerkshireFund.fairyLink.createRule(
@@ -629,17 +632,12 @@ describe("BarrenWuffet", () => {
           )
         ).to.be.revertedWithoutReason();
 
-        await jerkshireFund.marlieChunger.createRule(
-          [makePassingTrigger(priceTrigger.address, testToken1)],
-          [swapETHToTST1Action]
-        );
-
         const ruleFns = [
-          () => jerkshireFund.fairyLink.activateRule(0),
-          () => jerkshireFund.fairyLink.deactivateRule(0),
-          () => jerkshireFund.fairyLink.addRuleCollateral(0, [ETH_TOKEN], [utils.parseEther("1")], [0]),
-          () => jerkshireFund.fairyLink.reduceRuleCollateral(0, [utils.parseEther("0.6")]),
-          () => jerkshireFund.fairyLink.cancelRule(0)
+          () => jerkshireFund.fairyLink.activateRule(ruleHash),
+          () => jerkshireFund.fairyLink.deactivateRule(ruleHash),
+          () => jerkshireFund.fairyLink.addRuleCollateral(ruleHash, [ETH_TOKEN], [utils.parseEther("1")], [0]),
+          () => jerkshireFund.fairyLink.reduceRuleCollateral(ruleHash, [utils.parseEther("0.6")]),
+          () => jerkshireFund.fairyLink.cancelRule(ruleHash)
         ];
 
         for (const fn of ruleFns) {
@@ -669,11 +667,13 @@ describe("BarrenWuffet", () => {
 
         const etherToSwap = utils.parseEther("0.3");
 
-        const mockSwapUniSingleAction: FakeContract<SwapUniSingleAction> = await smock.fake("SwapUniSingleAction");
+        const mockUniSwapExactInputSingle: FakeContract<UniSwapExactInputSingle> = await smock.fake(
+          "UniSwapExactInputSingle"
+        );
 
         const mockSwapETHToTST1Action = {
           ...swapETHToTST1Action,
-          callee: mockSwapUniSingleAction.address
+          callee: mockUniSwapExactInputSingle.address
         };
 
         await whitelistAction(mockSwapETHToTST1Action.callee);
@@ -688,7 +688,7 @@ describe("BarrenWuffet", () => {
         };
 
         // @ts-ignore
-        mockSwapUniSingleAction.perform.returns(([action, params]) => {
+        mockUniSwapExactInputSingle.perform.returns(([action, params]) => {
           // hack to check if it's called with the right params
           // i am not able to figure out how to use calledWith at the end to check for these complex objects
 
@@ -713,7 +713,7 @@ describe("BarrenWuffet", () => {
 
         await ex.to.not.be.reverted;
 
-        expect(mockSwapUniSingleAction.perform).to.have.been.calledOnce.delegatedFrom(
+        expect(mockUniSwapExactInputSingle.perform).to.have.been.calledOnce.delegatedFrom(
           jerkshireFund.marlieChunger.address
         );
       });

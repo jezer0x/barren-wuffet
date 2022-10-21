@@ -4,7 +4,7 @@ import { ethers, getChainId } from "hardhat";
 import dotenv from "dotenv";
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
-  dotenv.config({ path: (await getChainId()) == "31337" ? ".test.env" : ".env" });
+  dotenv.config({ path: (await getChainId()) == "31337" ? ".test.env" : ".env", override: true });
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
 

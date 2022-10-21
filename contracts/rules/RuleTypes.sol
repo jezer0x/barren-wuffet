@@ -5,7 +5,6 @@ import "../actions/ActionTypes.sol";
 import "../triggers/TriggerTypes.sol";
 
 enum RuleStatus {
-    NULL,
     ACTIVE, // Action can be executed when trigger is met, can add/withdraw collateral, can add/reduce incentive
     INACTIVE, // Action can not be executed even if trigger is met, can add/withdraw collateral, can add/reduce incentive
     EXECUTED, // Action has been executed, can withdraw output, can't add/reduce incentive

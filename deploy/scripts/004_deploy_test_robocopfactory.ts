@@ -9,7 +9,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const { deployer } = await getNamedAccounts();
   const roboCopImplementation = await ethers.getContract("RoboCop");
 
-  if ((await getChainId()) == "31337") {
+  if ((await getChainId()) == "31337" && !hre.config.networks.hardhat.forking?.enabled) {
     await deploy("RoboCopFactory", {
       from: deployer,
       args: [roboCopImplementation.address],

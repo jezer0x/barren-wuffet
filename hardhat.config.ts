@@ -1,5 +1,4 @@
 import "@nomicfoundation/hardhat-toolbox";
-
 import "@typechain/hardhat";
 import "@nomiclabs/hardhat-ethers";
 import "hardhat-deploy";
@@ -21,8 +20,12 @@ const config = {
     ]
   },
   networks: {
-    localhost: {
-      url: "http://0.0.0.0:8545"
+    hardhat: {
+      forking: {
+        url: `https://arb-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY_ARBI}`,
+        blockNumber: 20005467, // using a pre-nitro block
+        enabled: true
+      }
     },
     goerli: {
       url: `https://eth-goerli.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY_GOERLI}`,

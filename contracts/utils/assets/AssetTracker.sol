@@ -7,8 +7,7 @@ library AssetTracker {
 
     struct Assets {
         Token[] tokens; // tracking all the assets this fund has atm
-        mapping(address => uint256) coinBalances; // tracking balances of ERC20 and ETH
-        mapping(address => uint256) NftIdx; // tracking ids of NFTs
+        mapping(bytes32 => uint256) balances; // tracking balances of ERC20 and ETH, ids for NFT
     }
 
     function increaseAsset(
@@ -16,16 +15,15 @@ library AssetTracker {
         Token memory token,
         uint256 amount
     ) public {
-        if (token.t == TokenType.ERC721) {
-            assets.NftIdx[token.addr] = amount;
+        bytes32 tokenHash = keccak256(abi.encode(token));
+        if (token.isERC721()) {
+            assets.balances[tokenHash] = amount;
             assets.tokens.push(token);
-        } else if (token.t == TokenType.ERC20 || token.t == TokenType.NATIVE) {
-            if (assets.coinBalances[token.addr] == 0) {
-                assets.coinBalances[token.addr] = amount;
+        } else if (token.isERC20() || token.isETH()) {
+            if (assets.balances[tokenHash] == 0) {
                 assets.tokens.push(token);
-            } else {
-                assets.coinBalances[token.addr] += amount;
             }
+            assets.balances[tokenHash] = amount;
         } else {
             revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
         }
@@ -36,14 +34,15 @@ library AssetTracker {
         Token memory token,
         uint256 amount
     ) public {
-        if (token.t == TokenType.ERC721) {
-            delete assets.NftIdx[token.addr];
+        bytes32 tokenHash = keccak256(abi.encode(token));
+        if (token.isERC721()) {
+            delete assets.balances[tokenHash];
             removeFromAssets(assets, token);
-        } else if (token.t == TokenType.ERC20 || token.t == TokenType.NATIVE) {
-            require(assets.coinBalances[token.addr] >= amount);
-            assets.coinBalances[token.addr] -= amount;
+        } else if (token.isERC20() || token.isETH()) {
+            require(assets.balances[tokenHash] >= amount);
+            assets.balances[tokenHash] -= amount;
             // TODO: could be made more efficient if we kept token => idx in storage
-            if (assets.coinBalances[token.addr] == 0) {
+            if (assets.balances[tokenHash] == 0) {
                 removeFromAssets(assets, token);
             }
         } else {

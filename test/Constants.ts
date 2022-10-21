@@ -25,13 +25,13 @@ export const FUND_STATUS = {
   RAISING: 0,
   DEPLOYED: 1,
   CLOSABLE: 2,
-  CLOSED: 3,
+  CLOSED: 3
 };
 
 export const TOKEN_TYPE = {
   NATIVE: 0,
   ERC721: 1,
-  ERC20: 2,
+  ERC20: 2
 };
 
 export const ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
@@ -40,6 +40,7 @@ export const USD_ADDRESS = constants.AddressZero;
 export const ETH_TOKEN = {
   t: TOKEN_TYPE.NATIVE,
   addr: ETH_ADDRESS,
+  id: BigNumber.from(0)
 };
 
 export const DEFAULT_SUB_TO_MAN_FEE_PCT = 100;

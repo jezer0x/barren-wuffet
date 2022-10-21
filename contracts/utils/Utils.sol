@@ -19,7 +19,7 @@ library Utils {
     {
         (bool success, bytes memory returndata) = action.callee.delegatecall(
             abi.encodeWithSignature(
-                "perform((address,bytes,(uint8,address)[],(uint8,address)[]),((uint8,bytes)[],uint256[]))",
+                "perform((address,bytes,(uint8,address,uint256)[],(uint8,address,uint256)[]),((uint8,bytes)[],uint256[]))",
                 action,
                 runtimeParams
             )

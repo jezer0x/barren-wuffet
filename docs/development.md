@@ -62,6 +62,7 @@ This section mostly follows: https://github.com/graphprotocol/hardhat-graph
 - yarn add @graphprotocol/graph-ts
 - yarn add @graphprotocol/hardhat-graph
 
+
 * from another terminal in the root folder, run `yarn hardhat node --hostname 0.0.0.0`
 * deploy hardhat on localhost `yarn hardhat deploy --network localhost`
 * `yarn hardhat graph init --contract-name BarrenWuffet --address 0x3Aa5ebB10DC797CAC828524e59A333d0A371443c`. (replace the address with the address from deploy)

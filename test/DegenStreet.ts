@@ -11,7 +11,7 @@ import {
   ERC20_DECIMALS,
   ETH_PRICE_IN_TST1,
   TST1_PRICE_IN_ETH,
-  GT,
+  GT
 } from "./Constants";
 import { makePassingTrigger, makeSwapAction, setupDegenStreet, setupSwapTrades } from "./Fixtures";
 import { getHashFromEvent } from "./helper";
@@ -29,7 +29,7 @@ async function makeSubConstraints(): Promise<SubscriptionConstraintsStruct> {
     maxCollateralTotal: MAX_COLLATERAL_TOTAL,
     deadline: (await time.latest()) + 86400,
     lockin: (await time.latest()) + 86400 * 10,
-    subscriberToManagerFeePercentage: 100,
+    subscriberToManagerFeePercentage: 100
   };
 }
 
@@ -46,7 +46,7 @@ describe.skip("DegenStreet", () => {
     const {
       ownerWallet,
       priceTrigger,
-      swapUniSingleAction,
+      uniSwapExactInputSingle,
       testToken1,
       testToken2,
       degenStreet,
@@ -54,12 +54,12 @@ describe.skip("DegenStreet", () => {
       someOtherWallet,
       tradeSubscriberWallet,
       roboCop,
-      botWallet,
+      botWallet
     } = await deployDegenStreetFixture();
 
     const { tradeTST1forETHHash, tradeETHforTST1Hash } = await setupSwapTrades(
       priceTrigger,
-      swapUniSingleAction,
+      uniSwapExactInputSingle,
       testToken1,
       await makeSubConstraints(),
       degenStreet,
@@ -76,29 +76,29 @@ describe.skip("DegenStreet", () => {
       tradeTST1forETHHash,
       tradeETHforTST1Hash,
       roboCop,
-      botWallet,
+      botWallet
     };
   }
 
   describe("Deployment", () => {
-    it("Should set the right owner", async function () {
+    it("Should set the right owner", async function() {
       const { degenStreet, ownerWallet } = await loadFixture(deployDegenStreetFixture);
       expect(await degenStreet.owner()).to.equal(ownerWallet.address);
     });
   });
 
   describe.skip("Admin functions", () => {
-    it("Should be able to X if owner", async function () {});
-    it("Should not be able to X if not owner", async function () {});
+    it("Should be able to X if owner", async function() {});
+    it("Should not be able to X if not owner", async function() {});
   });
 
   describe("Opening a Trade", () => {
-    it("Should emit the Created event properly", async function () {
-      const { priceTrigger, swapUniSingleAction, testToken1, degenStreet, traderWallet } = await loadFixture(
+    it("Should emit the Created event properly", async function() {
+      const { priceTrigger, uniSwapExactInputSingle, testToken1, degenStreet, traderWallet } = await loadFixture(
         deployDegenStreetFixture
       );
       const passingTrigger = makePassingTrigger(priceTrigger.address);
-      const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, ETH_ADDRESS);
+      const executableAction = makeSwapAction(uniSwapExactInputSingle.address, testToken1.address, ETH_ADDRESS);
       const properContraints = await makeSubConstraints();
 
       await expect(
@@ -108,12 +108,12 @@ describe.skip("DegenStreet", () => {
       ).to.emit(degenStreet, "Created");
     });
 
-    it("Should revert if tries to open duplicate trades in same block", async function () {
-      const { priceTrigger, swapUniSingleAction, testToken1, degenStreet, traderWallet } = await loadFixture(
+    it("Should revert if tries to open duplicate trades in same block", async function() {
+      const { priceTrigger, uniSwapExactInputSingle, testToken1, degenStreet, traderWallet } = await loadFixture(
         deployDegenStreetFixture
       );
       const passingTrigger = makePassingTrigger(priceTrigger.address);
-      const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, ETH_ADDRESS);
+      const executableAction = makeSwapAction(uniSwapExactInputSingle.address, testToken1.address, ETH_ADDRESS);
       const properContraints = await makeSubConstraints();
 
       await network.provider.send("evm_setAutomine", [false]);
@@ -141,12 +141,12 @@ describe.skip("DegenStreet", () => {
       expect(tx1Success).to.not.equal(tx2Success);
     });
 
-    it("Should succeed if tries to open duplicate trade in a different block", async function () {
-      const { priceTrigger, swapUniSingleAction, testToken1, degenStreet, traderWallet } = await loadFixture(
+    it("Should succeed if tries to open duplicate trade in a different block", async function() {
+      const { priceTrigger, uniSwapExactInputSingle, testToken1, degenStreet, traderWallet } = await loadFixture(
         deployDegenStreetFixture
       );
       const passingTrigger = makePassingTrigger(priceTrigger.address);
-      const executableAction = makeSwapAction(swapUniSingleAction.address, testToken1.address, ETH_ADDRESS);
+      const executableAction = makeSwapAction(uniSwapExactInputSingle.address, testToken1.address, ETH_ADDRESS);
       const properContraints = await makeSubConstraints();
 
       await expect(
@@ -163,7 +163,7 @@ describe.skip("DegenStreet", () => {
     });
 
     // TODO: maybe should check if the entire trade/rule chain was proper?
-    it("Should set the right manager for the trade", async function () {
+    it("Should set the right manager for the trade", async function() {
       const { tradeTST1forETHHash, degenStreet, traderWallet } = await loadFixture(deployValidTradeFixture);
       const trade: TradeStructOutput = await degenStreet.getTrade(tradeTST1forETHHash);
       expect(trade.manager).to.equal(traderWallet.address);
@@ -171,14 +171,14 @@ describe.skip("DegenStreet", () => {
   });
 
   describe("Cancelling a Trade", () => {
-    it("Should revert if non-owner tries to cancel your trade", async function () {
+    it("Should revert if non-owner tries to cancel your trade", async function() {
       const { tradeTST1forETHHash, degenStreet, someOtherWallet } = await loadFixture(deployValidTradeFixture);
       const trade: TradeStructOutput = await degenStreet.getTrade(tradeTST1forETHHash);
       await expect(degenStreet.connect(someOtherWallet).cancelTrade(tradeTST1forETHHash)).to.be.revertedWith(
         "onlyManager"
       );
     });
-    it("Should succeed if manager wants to cancel trade, and give back proper reward", async function () {
+    it("Should succeed if manager wants to cancel trade, and give back proper reward", async function() {
       const { tradeTST1forETHHash, degenStreet, traderWallet } = await loadFixture(deployValidTradeFixture);
 
       const prevBalance = await ethers.provider.getBalance(traderWallet.address);
@@ -190,11 +190,11 @@ describe.skip("DegenStreet", () => {
       const gasUsed = (await ethers.provider.getBlock("latest")).gasUsed;
       expect(postBalance.sub(prevBalance).add(gasPrice.mul(gasUsed))).to.equal(DEFAULT_INCENTIVE);
     });
-    it("Should revert if trying to cancel non-existing trade", async function () {
+    it("Should revert if trying to cancel non-existing trade", async function() {
       const { tradeTST1forETHHash, degenStreet, traderWallet } = await loadFixture(deployValidTradeFixture);
       await expect(degenStreet.connect(traderWallet).cancelTrade(BAD_RULE_HASH)).to.be.reverted;
     });
-    it("Should revert if manager tries to cancel same trade twice", async function () {
+    it("Should revert if manager tries to cancel same trade twice", async function() {
       const { tradeTST1forETHHash, degenStreet, traderWallet } = await loadFixture(deployValidTradeFixture);
       await expect(degenStreet.connect(traderWallet).cancelTrade(tradeTST1forETHHash))
         .to.emit(degenStreet, "Cancelled")
@@ -203,7 +203,7 @@ describe.skip("DegenStreet", () => {
       await expect(degenStreet.connect(traderWallet).cancelTrade(tradeTST1forETHHash)).to.be.reverted;
     });
 
-    it("Should revert if manager tries to cancel a trade that is completed", async function () {
+    it("Should revert if manager tries to cancel a trade that is completed", async function() {
       const {
         ownerWallet,
         tradeTST1forETHHash,
@@ -212,7 +212,7 @@ describe.skip("DegenStreet", () => {
         tradeSubscriberWallet,
         testToken1,
         botWallet,
-        roboCop,
+        roboCop
       } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       const times = MIN_COLLATERAL_TOTAL.div(collateralAmount);
@@ -242,9 +242,15 @@ describe.skip("DegenStreet", () => {
   });
 
   describe("Subscriber depositing", () => {
-    it("Should revert if subscriber deposits wrong asset", async function () {
-      const { ownerWallet, tradeTST1forETHHash, degenStreet, traderWallet, tradeSubscriberWallet, testToken2 } =
-        await loadFixture(deployValidTradeFixture);
+    it("Should revert if subscriber deposits wrong asset", async function() {
+      const {
+        ownerWallet,
+        tradeTST1forETHHash,
+        degenStreet,
+        traderWallet,
+        tradeSubscriberWallet,
+        testToken2
+      } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MIN_COLLATERAL_PER_SUB.add(1);
       await testToken2.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
       await testToken2.connect(tradeSubscriberWallet).approve(degenStreet.address, collateralAmount);
@@ -253,9 +259,15 @@ describe.skip("DegenStreet", () => {
       ).to.be.revertedWith("Wrong Collateral Type");
     });
 
-    it("Should revert if subscriber deposits too little / much at once", async function () {
-      const { ownerWallet, tradeTST1forETHHash, degenStreet, traderWallet, tradeSubscriberWallet, testToken1 } =
-        await loadFixture(deployValidTradeFixture);
+    it("Should revert if subscriber deposits too little / much at once", async function() {
+      const {
+        ownerWallet,
+        tradeTST1forETHHash,
+        degenStreet,
+        traderWallet,
+        tradeSubscriberWallet,
+        testToken1
+      } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB.add(1);
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
       await testToken1.connect(tradeSubscriberWallet).approve(degenStreet.address, collateralAmount);
@@ -273,10 +285,16 @@ describe.skip("DegenStreet", () => {
       ).to.be.revertedWith("< minCollateralPerSub");
     });
 
-    it("Should succeed in depositing ERC20 properly", async function () {
+    it("Should succeed in depositing ERC20 properly", async function() {
       // anything between MIN_COLLATERAL_PER_SUB and MAX_COLLATERAL_PER_SUB should work (inclusive)
-      const { ownerWallet, tradeTST1forETHHash, degenStreet, traderWallet, tradeSubscriberWallet, testToken1 } =
-        await loadFixture(deployValidTradeFixture);
+      const {
+        ownerWallet,
+        tradeTST1forETHHash,
+        degenStreet,
+        traderWallet,
+        tradeSubscriberWallet,
+        testToken1
+      } = await loadFixture(deployValidTradeFixture);
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, MAX_COLLATERAL_TOTAL);
       await testToken1.connect(tradeSubscriberWallet).approve(degenStreet.address, MAX_COLLATERAL_TOTAL);
 
@@ -310,9 +328,15 @@ describe.skip("DegenStreet", () => {
         );
     });
 
-    it("Should succeed if same acccount subscribes multiple times", async function () {
-      const { ownerWallet, tradeTST1forETHHash, degenStreet, traderWallet, tradeSubscriberWallet, testToken1 } =
-        await loadFixture(deployValidTradeFixture);
+    it("Should succeed if same acccount subscribes multiple times", async function() {
+      const {
+        ownerWallet,
+        tradeTST1forETHHash,
+        degenStreet,
+        traderWallet,
+        tradeSubscriberWallet,
+        testToken1
+      } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_TOTAL;
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, MAX_COLLATERAL_TOTAL);
       await testToken1.connect(tradeSubscriberWallet).approve(degenStreet.address, MAX_COLLATERAL_TOTAL);
@@ -327,7 +351,7 @@ describe.skip("DegenStreet", () => {
       );
     });
 
-    it("Should activate rule if minCollateral for trade is reached", async function () {
+    it("Should activate rule if minCollateral for trade is reached", async function() {
       const {
         ownerWallet,
         tradeTST1forETHHash,
@@ -335,7 +359,7 @@ describe.skip("DegenStreet", () => {
         traderWallet,
         tradeSubscriberWallet,
         testToken1,
-        roboCop,
+        roboCop
       } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       const times = MIN_COLLATERAL_TOTAL.div(collateralAmount);
@@ -357,10 +381,16 @@ describe.skip("DegenStreet", () => {
         .withArgs(trade.ruleHash);
     });
 
-    it("Should allow multiple subscriptions from multiple people", async function () {
+    it("Should allow multiple subscriptions from multiple people", async function() {
       // here tradeSubscriberWaller and ownerWallet are both subscribing to the same trade
-      const { ownerWallet, tradeTST1forETHHash, degenStreet, traderWallet, tradeSubscriberWallet, testToken1 } =
-        await loadFixture(deployValidTradeFixture);
+      const {
+        ownerWallet,
+        tradeTST1forETHHash,
+        degenStreet,
+        traderWallet,
+        tradeSubscriberWallet,
+        testToken1
+      } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
       await testToken1.connect(tradeSubscriberWallet).approve(degenStreet.address, collateralAmount);
@@ -377,9 +407,15 @@ describe.skip("DegenStreet", () => {
         .withArgs(tradeTST1forETHHash, 1, testToken1.address, collateralAmount);
     });
 
-    it("Should revert if deposits take it beyond maxCollateralTotal", async function () {
-      const { ownerWallet, tradeTST1forETHHash, degenStreet, traderWallet, tradeSubscriberWallet, testToken1 } =
-        await loadFixture(deployValidTradeFixture);
+    it("Should revert if deposits take it beyond maxCollateralTotal", async function() {
+      const {
+        ownerWallet,
+        tradeTST1forETHHash,
+        degenStreet,
+        traderWallet,
+        tradeSubscriberWallet,
+        testToken1
+      } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       const times = MAX_COLLATERAL_TOTAL.div(MAX_COLLATERAL_PER_SUB);
       await testToken1
@@ -402,14 +438,20 @@ describe.skip("DegenStreet", () => {
       ).to.be.revertedWith("Max Collateral for Trade exceeded");
     });
 
-    it("Should succeed in depositing ETH properly", async function () {
+    it("Should succeed in depositing ETH properly", async function() {
       // anything between MIN_COLLATERAL_PER_SUB and MAX_COLLATERAL_PER_SUB should work (inclusive)
-      const { ownerWallet, tradeETHforTST1Hash, degenStreet, traderWallet, tradeSubscriberWallet, testToken1 } =
-        await loadFixture(deployValidTradeFixture);
+      const {
+        ownerWallet,
+        tradeETHforTST1Hash,
+        degenStreet,
+        traderWallet,
+        tradeSubscriberWallet,
+        testToken1
+      } = await loadFixture(deployValidTradeFixture);
 
       await expect(
         degenStreet.connect(tradeSubscriberWallet).deposit(tradeETHforTST1Hash, ETH_ADDRESS, MIN_COLLATERAL_PER_SUB, {
-          value: MIN_COLLATERAL_PER_SUB,
+          value: MIN_COLLATERAL_PER_SUB
         })
       )
         .to.emit(degenStreet, "Deposit")
@@ -417,7 +459,7 @@ describe.skip("DegenStreet", () => {
 
       await expect(
         degenStreet.connect(tradeSubscriberWallet).deposit(tradeETHforTST1Hash, ETH_ADDRESS, MAX_COLLATERAL_PER_SUB, {
-          value: MAX_COLLATERAL_PER_SUB,
+          value: MAX_COLLATERAL_PER_SUB
         })
       )
         .to.emit(degenStreet, "Deposit")
@@ -427,18 +469,18 @@ describe.skip("DegenStreet", () => {
         degenStreet
           .connect(tradeSubscriberWallet)
           .deposit(tradeETHforTST1Hash, ETH_ADDRESS, MIN_COLLATERAL_PER_SUB.add(MAX_COLLATERAL_PER_SUB).div(2), {
-            value: MIN_COLLATERAL_PER_SUB.add(MAX_COLLATERAL_PER_SUB).div(2),
+            value: MIN_COLLATERAL_PER_SUB.add(MAX_COLLATERAL_PER_SUB).div(2)
           })
       )
         .to.emit(degenStreet, "Deposit")
         .withArgs(tradeETHforTST1Hash, 2, ETH_ADDRESS, MIN_COLLATERAL_PER_SUB.add(MAX_COLLATERAL_PER_SUB).div(2));
     });
 
-    it.skip("Should only allow deposits in ACTIVE trades", async function () {});
+    it.skip("Should only allow deposits in ACTIVE trades", async function() {});
   });
 
   describe("Subscriber withdrawing", () => {
-    it("Should revert if non-subscriber is trying to withdraw collateral", async function () {
+    it("Should revert if non-subscriber is trying to withdraw collateral", async function() {
       const {
         ownerWallet,
         tradeTST1forETHHash,
@@ -446,7 +488,7 @@ describe.skip("DegenStreet", () => {
         traderWallet,
         tradeSubscriberWallet,
         testToken1,
-        roboCop,
+        roboCop
       } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
@@ -461,7 +503,7 @@ describe.skip("DegenStreet", () => {
       );
     });
 
-    it("Should succeed if subscriber tries to withdraw if rule is active (ERC20)", async function () {
+    it("Should succeed if subscriber tries to withdraw if rule is active (ERC20)", async function() {
       const {
         ownerWallet,
         tradeTST1forETHHash,
@@ -469,7 +511,7 @@ describe.skip("DegenStreet", () => {
         traderWallet,
         tradeSubscriberWallet,
         testToken1,
-        roboCop,
+        roboCop
       } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount.mul(2));
@@ -490,7 +532,7 @@ describe.skip("DegenStreet", () => {
         .withArgs(tradeTST1forETHHash, 0, testToken1.address, collateralAmount);
     });
 
-    it("Should succeed if subscriber tries to withdraw if rule is inactive (ERC20), but a second time will revert", async function () {
+    it("Should succeed if subscriber tries to withdraw if rule is inactive (ERC20), but a second time will revert", async function() {
       const {
         ownerWallet,
         tradeTST1forETHHash,
@@ -498,7 +540,7 @@ describe.skip("DegenStreet", () => {
         traderWallet,
         tradeSubscriberWallet,
         testToken1,
-        roboCop,
+        roboCop
       } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
@@ -516,7 +558,7 @@ describe.skip("DegenStreet", () => {
       );
     });
 
-    it("Should succeed if subscriber tries to withdraw from a cancelled trade", async function () {
+    it("Should succeed if subscriber tries to withdraw from a cancelled trade", async function() {
       const {
         ownerWallet,
         tradeTST1forETHHash,
@@ -524,7 +566,7 @@ describe.skip("DegenStreet", () => {
         traderWallet,
         tradeSubscriberWallet,
         testToken1,
-        roboCop,
+        roboCop
       } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       await testToken1.connect(ownerWallet).transfer(tradeSubscriberWallet.address, collateralAmount);
@@ -542,7 +584,7 @@ describe.skip("DegenStreet", () => {
         .withArgs(tradeTST1forETHHash, 0, testToken1.address, collateralAmount);
     });
 
-    it("Should deactivate rule if withdrawal takes it below minCollateral", async function () {
+    it("Should deactivate rule if withdrawal takes it below minCollateral", async function() {
       const {
         ownerWallet,
         tradeTST1forETHHash,
@@ -550,7 +592,7 @@ describe.skip("DegenStreet", () => {
         traderWallet,
         tradeSubscriberWallet,
         testToken1,
-        roboCop,
+        roboCop
       } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       const times = MIN_COLLATERAL_TOTAL.div(collateralAmount);
@@ -577,7 +619,7 @@ describe.skip("DegenStreet", () => {
         .withArgs(trade.ruleHash);
     });
 
-    it("Should succeed in giving back output after trade is completed (get back ETH)", async function () {
+    it("Should succeed in giving back output after trade is completed (get back ETH)", async function() {
       const {
         ownerWallet,
         tradeTST1forETHHash,
@@ -586,7 +628,7 @@ describe.skip("DegenStreet", () => {
         tradeSubscriberWallet,
         testToken1,
         botWallet,
-        roboCop,
+        roboCop
       } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       const times = MIN_COLLATERAL_TOTAL.div(collateralAmount);
@@ -636,7 +678,7 @@ describe.skip("DegenStreet", () => {
       }
     });
 
-    it("Should succeed in giving back output after trade is completed (get back ERC20)", async function () {
+    it("Should succeed in giving back output after trade is completed (get back ERC20)", async function() {
       const {
         ownerWallet,
         tradeETHforTST1Hash,
@@ -645,7 +687,7 @@ describe.skip("DegenStreet", () => {
         tradeSubscriberWallet,
         testToken1,
         botWallet,
-        roboCop,
+        roboCop
       } = await loadFixture(deployValidTradeFixture);
       const collateralAmount = MAX_COLLATERAL_PER_SUB;
       const times = MIN_COLLATERAL_TOTAL.div(collateralAmount);
@@ -666,7 +708,7 @@ describe.skip("DegenStreet", () => {
       await degenStreet
         .connect(tradeSubscriberWallet)
         .deposit(tradeETHforTST1Hash, ETH_ADDRESS, MIN_COLLATERAL_PER_SUB, {
-          value: MIN_COLLATERAL_PER_SUB,
+          value: MIN_COLLATERAL_PER_SUB
         });
 
       const trade: TradeStructOutput = await degenStreet.getTrade(tradeETHforTST1Hash);
