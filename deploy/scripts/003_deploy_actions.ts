@@ -4,9 +4,10 @@ import { ethers, getChainId } from "hardhat";
 import { addToWhitelist, getLibraries } from "../utils";
 import { Contract } from "ethers";
 import dotenv from "dotenv";
+import * as liveAddresses from "../arbitrum_addresses";
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
-  dotenv.config({ path: (await getChainId()) == "31337" ? ".test.env" : ".env" });
+  dotenv.config({ path: (await getChainId()) == "31337" ? ".test.env" : ".env", override: true });
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
   const { deployer } = await getNamedAccounts();
@@ -21,7 +22,33 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     // loose test for "that that whitelist was already created"
   }
 
-  await deploySwapUniSingleAction(deploy, deployer, whitelistService, actWlHash, TokenLibAddr);
+  await deployUniswapActions(
+    deploy,
+    deployer,
+    whitelistService,
+    actWlHash,
+    TokenLibAddr,
+    hre.config.networks.hardhat.forking?.enabled
+  );
+
+  await deploySushiActions(
+    deploy,
+    deployer,
+    whitelistService,
+    actWlHash,
+    TokenLibAddr,
+    hre.config.networks.hardhat.forking?.enabled
+  );
+
+  await deployGmxActions(
+    deploy,
+    deployer,
+    whitelistService,
+    actWlHash,
+    TokenLibAddr,
+    hre.config.networks.hardhat.forking?.enabled
+  );
+
   // TODO: deploy all the other actions
 
   if ((await whitelistService.getWhitelistOwner(actWlHash)) == deployer) {
@@ -29,33 +56,182 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   } // else was already transferred
 };
 
-async function deploySwapUniSingleAction(
+async function deployUniswapActions(
   deploy: any,
   deployer: string,
   whitelistService: Contract,
   actWlHash: any,
-  TokenLibAddr: string
+  TokenLibAddr: string,
+  forked: undefined | boolean
 ) {
-  let uniswapAddr;
+  let uniswapRouterAddr;
+  let nonfungiblePositionManagerAddr;
   let weth9Addr;
 
   // TODO: utils to change the following to vars, depending on chainID
-  if ((await getChainId()) == "31337") {
-    uniswapAddr = (await ethers.getContract("TestSwapRouter")).address;
+  if ((await getChainId()) == "31337" && !forked) {
+    uniswapRouterAddr = (await ethers.getContract("TestSwapRouter")).address;
+    nonfungiblePositionManagerAddr = ethers.constants.AddressZero;
     weth9Addr = (await ethers.getContract("WETH")).address;
   } else {
-    uniswapAddr = ethers.constants.AddressZero;
-    weth9Addr = ethers.constants.AddressZero;
+    uniswapRouterAddr = liveAddresses.uniswap.swap_router;
+    nonfungiblePositionManagerAddr = liveAddresses.uniswap.non_fungible_position_manager;
+    weth9Addr = liveAddresses.tokens.WETH;
   }
 
-  const swapUniSingleAction = await deploy("SwapUniSingleAction", {
+  const uniSwapExactInputSingle = await deploy("UniSwapExactInputSingle", {
     from: deployer,
-    args: [uniswapAddr, weth9Addr],
+    args: [uniswapRouterAddr, weth9Addr],
     log: true,
     libraries: { TokenLib: TokenLibAddr }
   });
 
-  await addToWhitelist(deployer, whitelistService, actWlHash, swapUniSingleAction.address);
+  const UniSweepAndBurnLiquidityPositionAction = await deploy("UniSweepAndBurnLiquidityPosition", {
+    from: deployer,
+    args: [nonfungiblePositionManagerAddr, weth9Addr],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  const UniMintLiquidityPositionAction = await deploy("UniMintLiquidityPosition", {
+    from: deployer,
+    args: [nonfungiblePositionManagerAddr, weth9Addr, UniSweepAndBurnLiquidityPositionAction.address],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  const UniCollectFeesAction = await deploy("UniCollectFees", {
+    from: deployer,
+    args: [nonfungiblePositionManagerAddr, weth9Addr],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  const UniIncreaseLiquidityAction = await deploy("UniIncreaseLiquidity", {
+    from: deployer,
+    args: [nonfungiblePositionManagerAddr, weth9Addr],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  const UniDecreaseLiquidityAction = await deploy("UniDecreaseLiquidity", {
+    from: deployer,
+    args: [nonfungiblePositionManagerAddr, weth9Addr],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  await addToWhitelist(deployer, whitelistService, actWlHash, uniSwapExactInputSingle.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, UniSweepAndBurnLiquidityPositionAction.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, UniMintLiquidityPositionAction.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, UniCollectFeesAction.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, UniIncreaseLiquidityAction.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, UniDecreaseLiquidityAction.address);
+}
+
+async function deploySushiActions(
+  deploy: any,
+  deployer: string,
+  whitelistService: Contract,
+  actWlHash: any,
+  TokenLibAddr: string,
+  forked: undefined | boolean
+) {
+  let router;
+  let weth9Addr;
+
+  // TODO: utils to change the following to vars, depending on chainID
+  if ((await getChainId()) == "31337" && !forked) {
+    router = (await ethers.getContract("TestSwapRouter")).address;
+    weth9Addr = (await ethers.getContract("WETH")).address;
+  } else {
+    router = liveAddresses.sushiswap.swap_router;
+    weth9Addr = liveAddresses.tokens.WETH;
+  }
+
+  const sushiSwapExactXForY = await deploy("SushiSwapExactXForY", {
+    from: deployer,
+    args: [router, weth9Addr],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  const sushiAddLiquidity = await deploy("SushiAddLiquidity", {
+    from: deployer,
+    args: [router],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  const sushiRemoveLiquidity = await deploy("SushiRemoveLiquidity", {
+    from: deployer,
+    args: [router],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  await addToWhitelist(deployer, whitelistService, actWlHash, sushiSwapExactXForY.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, sushiAddLiquidity.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, sushiRemoveLiquidity.address);
+}
+
+async function deployGmxActions(
+  deploy: any,
+  deployer: string,
+  whitelistService: Contract,
+  actWlHash: any,
+  TokenLibAddr: string,
+  forked: undefined | boolean
+) {
+  let router;
+  let position_router;
+  let reader;
+
+  // Note: tests will fail against Gmx if run on unforked network
+  router = liveAddresses.gmx.router;
+  position_router = liveAddresses.gmx.position_router;
+  reader = liveAddresses.gmx.reader;
+
+  const gmxSwap = await deploy("GmxSwap", {
+    from: deployer,
+    args: [router, reader],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  const gmxConfirmNoPosition = await deploy("GmxConfirmNoPosition", {
+    from: deployer,
+    args: [reader, position_router],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  const gmxConfirmRequestExecOrCancel = await deploy("GmxConfirmRequestExecOrCancel", {
+    from: deployer,
+    args: [reader, position_router, gmxConfirmNoPosition.address],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  const gmxIncreasePosition = await deploy("GmxIncreasePosition", {
+    from: deployer,
+    args: [reader, position_router, gmxConfirmRequestExecOrCancel.address, ethers.constants.HashZero],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  const gmxDecreasePosition = await deploy("GmxDecreasePosition", {
+    from: deployer,
+    args: [reader, position_router, gmxConfirmRequestExecOrCancel.address],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
+
+  await addToWhitelist(deployer, whitelistService, actWlHash, gmxSwap.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, gmxIncreasePosition.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, gmxDecreasePosition.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, gmxConfirmRequestExecOrCancel.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, gmxConfirmNoPosition.address);
 }
 
 export default func;

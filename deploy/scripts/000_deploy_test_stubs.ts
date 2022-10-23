@@ -10,7 +10,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const { deployer } = await getNamedAccounts();
 
   // we only need TestStubs when running tests
-  if ((await getChainId()) == "31337") {
+  if ((await getChainId()) == "31337" && !hre.config.networks.hardhat.forking?.enabled) {
     await deploy("TestOracleEth", {
       contract: "TestOracle",
       from: deployer,

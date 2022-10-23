@@ -21,6 +21,7 @@ import "./ISsovV3.sol";
 */
 contract DopexSsovV3SettleEuropean is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
+    using TokenLib for Token;
 
     constructor() {}
 
@@ -56,9 +57,9 @@ contract DopexSsovV3SettleEuropean is IAction, DelegatePerform {
 
         // TODO: anything to do with triggerdata?
 
-        IERC20(action.inputTokens[0].addr).safeApprove(vaultAddr, runtimeParams.collaterals[0]);
+        action.inputTokens[0].approve(vaultAddr, runtimeParams.collaterals[0]);
         uint256 pnl = vault.settle(strikeIdx, amount, epoch, address(this));
-        IERC20(action.inputTokens[0].addr).safeApprove(vaultAddr, 0);
+        action.inputTokens[0].approve(vaultAddr, 0);
         outputs[0] = pnl;
         Position memory none;
         return ActionResponse({tokenOutputs: outputs, position: none});

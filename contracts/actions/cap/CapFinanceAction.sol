@@ -21,9 +21,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
     TriggerReturn: 
         Applicable TriggerReturn must be in (asset1, asset2, val) where val.decimals = 8, asset1 = inputToken and asset2 = outputToken
-            Example: 
-            ETH/USD -> USD per ETH -> ETH Price in USD -> triggerReturn = [ETH, USD, val] -> Must use when tokenIn = ETH and tokenOut = USD (i.e. buying USD with ETH)
-            USD/ETH -> ETH per USD -> USD Price in ETH -> triggerReturn = [USD, ETH, val] -> Must use when tokenIn = USD* and tokenOut = ETH (i.e. buying ETH with USD)
 */
 contract CapFinanceAction is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
