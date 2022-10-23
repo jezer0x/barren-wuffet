@@ -6,3 +6,4 @@ Barren Wuffet is a decentralized fund management platform that allows you to dep
 
 - [Architecture](./docs/architecture.md)
 - [Development](./docs/development.md)
+- [Operations](./docs/operations.md)

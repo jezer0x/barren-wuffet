@@ -10,4 +10,5 @@ enum TokenType {
 struct Token {
     TokenType t;
     address addr;
+    uint256 id; // only used for ERC721, else set to 0
 }

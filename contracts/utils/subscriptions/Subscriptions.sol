@@ -14,7 +14,6 @@ library Subscriptions {
     }
 
     struct Subscription {
-        address subscriber;
         uint256 collateralAmount;
         Status status;
     }
@@ -31,7 +30,7 @@ library Subscriptions {
 
     struct SubStuff {
         Constraints constraints;
-        Subscription[] subscriptions;
+        mapping(address => Subscription) subscriptions;
         uint256 totalCollateral; // tracking total ETH received from subscriptions
         uint256 subscriberToManagerFeePercentage; // 1% = 100;
         uint256 subscriberToPlatformFeePercentage; // 1% = 100;
@@ -43,22 +42,20 @@ library Subscriptions {
         AssetTracker.Assets storage assets,
         Token memory collateralToken,
         uint256 collateralAmount
-    ) public returns (uint256) {
+    ) public {
+        // Take the platform fee
         uint256 platformFee = (collateralAmount * subStuff.subscriberToPlatformFeePercentage) / 100_00;
-        uint256 remainingColalteralAmount = collateralAmount - platformFee;
-        validateCollateral(subStuff, collateralToken, remainingColalteralAmount);
-
         collateralToken.send(subStuff.platformFeeWallet, platformFee);
 
-        Subscriptions.Subscription storage newSub = subStuff.subscriptions.push();
-        newSub.subscriber = msg.sender;
-        newSub.status = Subscriptions.Status.ACTIVE;
-        newSub.collateralAmount = remainingColalteralAmount;
+        uint256 remainingCollateralAmount = collateralAmount - platformFee;
+        validateCollateral(subStuff, msg.sender, collateralToken, remainingCollateralAmount);
 
-        subStuff.totalCollateral += remainingColalteralAmount;
-        assets.increaseAsset(collateralToken, remainingColalteralAmount);
+        Subscriptions.Subscription storage sub = subStuff.subscriptions[msg.sender];
+        sub.status = Subscriptions.Status.ACTIVE;
+        sub.collateralAmount += remainingCollateralAmount;
 
-        return subStuff.subscriptions.length - 1;
+        subStuff.totalCollateral += remainingCollateralAmount;
+        assets.increaseAsset(collateralToken, remainingCollateralAmount);
     }
 
     function setConstraints(SubStuff storage subStuff, Constraints memory constraints) public {
@@ -98,17 +95,23 @@ library Subscriptions {
 
     function validateCollateral(
         SubStuff storage subStuff,
+        address subscriber,
         Token memory collateralToken,
         uint256 collateralAmount
     ) public view returns (bool) {
         require(collateralToken.equals(subStuff.constraints.allowedDepositToken));
 
-        if ((collateralToken.equals(Token({t: TokenType.NATIVE, addr: Constants.ETH})))) {
+        uint256 prevCollateralAmount = subStuff.subscriptions[subscriber].collateralAmount;
+
+        if ((collateralToken.isETH())) {
             require(collateralAmount == msg.value);
         }
 
         require(subStuff.constraints.minCollateralPerSub <= collateralAmount, "< minCollateralPerSub");
-        require(subStuff.constraints.maxCollateralPerSub >= collateralAmount, "> maxCollateralPerSub");
+        require(
+            subStuff.constraints.maxCollateralPerSub >= collateralAmount + prevCollateralAmount,
+            "> maxCollateralPerSub"
+        );
         require(
             subStuff.constraints.maxCollateralTotal >= (subStuff.totalCollateral + collateralAmount),
             "> maxColalteralTotal"
@@ -118,32 +121,32 @@ library Subscriptions {
         return true;
     }
 
-    function withdrawCollateral(
-        SubStuff storage subStuff,
-        uint256 subscriptionIdx,
-        AssetTracker.Assets storage assets
-    ) public returns (Token[] memory, uint256[] memory) {
-        Subscriptions.Subscription storage subscription = subStuff.subscriptions[subscriptionIdx];
+    function withdrawCollateral(SubStuff storage subStuff, AssetTracker.Assets storage assets)
+        public
+        returns (Token[] memory, uint256[] memory)
+    {
+        Subscriptions.Subscription storage subscription = subStuff.subscriptions[msg.sender];
         subscription.status = Subscriptions.Status.WITHDRAWN;
+        uint256 amountToSendBack = subscription.collateralAmount;
+        subscription.collateralAmount = 0;
 
-        assets.decreaseAsset(subStuff.constraints.allowedDepositToken, subscription.collateralAmount);
-        subscription.status = Subscriptions.Status.WITHDRAWN;
+        assets.decreaseAsset(subStuff.constraints.allowedDepositToken, amountToSendBack);
 
-        subStuff.constraints.allowedDepositToken.send(subscription.subscriber, subscription.collateralAmount);
+        subStuff.constraints.allowedDepositToken.send(msg.sender, amountToSendBack);
 
         Token[] memory tokens = new Token[](1);
         tokens[0] = subStuff.constraints.allowedDepositToken;
         uint256[] memory balances = new uint256[](1);
-        balances[0] = subscription.collateralAmount;
+        balances[0] = amountToSendBack;
+
         return (tokens, balances);
     }
 
-    function withdrawAssets(
-        SubStuff storage subStuff,
-        uint256 subscriptionIdx,
-        AssetTracker.Assets storage assets
-    ) public returns (Token[] memory, uint256[] memory) {
-        Subscriptions.Subscription storage subscription = subStuff.subscriptions[subscriptionIdx];
+    function withdrawAssets(SubStuff storage subStuff, AssetTracker.Assets storage assets)
+        public
+        returns (Token[] memory, uint256[] memory)
+    {
+        Subscriptions.Subscription storage subscription = subStuff.subscriptions[msg.sender];
         subscription.status = Subscriptions.Status.WITHDRAWN;
 
         Token[] memory tokens = new Token[](assets.tokens.length);
@@ -153,30 +156,30 @@ library Subscriptions {
         for (uint256 i = 0; i < assets.tokens.length; i++) {
             tokens[i] = assets.tokens[i];
             balances[i] =
-                getShares(subStuff, assets, subscriptionIdx, assets.tokens[i]) -
+                getShares(subStuff, assets, msg.sender, assets.tokens[i]) -
                 getManagementFeeShare(subStuff, assets, tokens[i]);
-            tokens[i].send(subscription.subscriber, balances[i]);
+            tokens[i].send(msg.sender, balances[i]);
         }
         return (tokens, balances);
     }
 
     function getManagementFeeShare(
-        SubStuff memory subStuff,
+        SubStuff storage subStuff,
         AssetTracker.Assets storage assets,
         Token memory token
     ) public view returns (uint256) {
-        return (assets.coinBalances[token.addr] * subStuff.subscriberToManagerFeePercentage) / 100_00;
+        return (assets.balances[keccak256(abi.encode(token))] * subStuff.subscriberToManagerFeePercentage) / 100_00;
     }
 
     function getShares(
-        SubStuff memory subStuff,
+        SubStuff storage subStuff,
         AssetTracker.Assets storage assets,
-        uint256 subscriptionIdx,
+        address subscriber,
         Token memory token
     ) public view returns (uint256) {
-        if (token.t == TokenType.ERC20 || token.t == TokenType.NATIVE) {
+        if (token.isERC20() || token.isETH()) {
             return
-                (subStuff.subscriptions[subscriptionIdx].collateralAmount * assets.coinBalances[token.addr]) /
+                (subStuff.subscriptions[subscriber].collateralAmount * assets.balances[keccak256(abi.encode(token))]) /
                 subStuff.totalCollateral;
         } else {
             revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);

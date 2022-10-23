@@ -10,8 +10,8 @@ import "../rules/IRoboCop.sol";
 import "./IFund.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/proxy/Clones.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -19,7 +19,18 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../utils/whitelists/WhitelistService.sol";
 import "../utils/assets/AssetTracker.sol";
 
-contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
+// !AS = Not Active Subscriber
+// D = Not Deployed
+// !D = Not Deployed
+// PP = Pending Positions
+// OFM = Only Fund Manager
+// !AA = Not Authorized Action
+// !ATk = Not Authorized Token
+// !ATr = Not Authorized Trigger
+// !R = Not Raising
+// !C = Not Closed
+
+contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using AssetTracker for AssetTracker.Assets;
@@ -44,9 +55,6 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     // fund state that is modified over time
     AssetTracker.Assets assets;
 
-    bytes32[] openRules; // tracking all rules that the fund created but did not complete
-    mapping(bytes32 => bytes32[]) public actionPositionsMap;
-    EnumerableSet.Bytes32Set private pendingPositions;
     bool closed;
 
     // disable calling initialize() on the implementation contract
@@ -62,14 +70,16 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         address _wlServiceAddr,
         bytes32 _triggerWhitelistHash,
         bytes32 _actionWhitelistHash,
-        address roboCopImplementationAddr,
+        address roboCopBeaconAddr,
         address[] calldata _declaredTokenAddrs
     ) external nonReentrant initializer {
+        __ReentrancyGuard_init();
+
         name = _name;
         manager = _manager;
 
         // For now we'll only allow subscribing with ETH
-        require(_constraints.allowedDepositToken.equals(Token({t: TokenType.NATIVE, addr: Constants.ETH})));
+        require(_constraints.allowedDepositToken.isETH());
         subStuff.setConstraints(_constraints);
         subStuff.setSubscriptionFeeParams(
             _feeParams.subscriberToManagerFeePercentage,
@@ -92,7 +102,8 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         triggerWhitelistHash = _triggerWhitelistHash;
         actionWhitelistHash = _actionWhitelistHash;
 
-        roboCop = IRoboCop(Clones.clone(roboCopImplementationAddr));
+        bytes memory nodata;
+        roboCop = IRoboCop(address(new BeaconProxy(roboCopBeaconAddr, nodata)));
         roboCop.initialize(address(this));
     }
 
@@ -108,11 +119,11 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         return true;
     }
 
-    modifier onlyActiveSubscriber(uint256 subscriptionIdx) {
+    modifier onlyActiveSubscriber() {
         require(
-            subStuff.subscriptions[subscriptionIdx].subscriber == msg.sender &&
-                subStuff.subscriptions[subscriptionIdx].status == Subscriptions.Status.ACTIVE,
-            "Not Active Subscriber"
+            subStuff.subscriptions[msg.sender].collateralAmount > 0 &&
+                subStuff.subscriptions[msg.sender].status == Subscriptions.Status.ACTIVE,
+            "!AS"
         );
         _;
     }
@@ -123,13 +134,13 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     }
 
     modifier onlyDeployedFund() {
-        require(getStatus() == FundStatus.DEPLOYED, "Not Deployed");
+        require(getStatus() == FundStatus.DEPLOYED, "!D");
         _;
     }
 
     function getInputTokens() external pure returns (Token[] memory) {
         Token[] memory tokens = new Token[](1);
-        tokens[0] = Token({t: TokenType.NATIVE, addr: Constants.ETH});
+        tokens[0] = Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0});
         return tokens;
     }
 
@@ -138,7 +149,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     }
 
     function closeFund() external nonReentrant {
-        require(!hasPendingPosition(), "pending positions");
+        require(!roboCop.hasPendingPosition(), "PP");
 
         if (getStatus() == FundStatus.CLOSABLE) {
             // anyone can call if closable
@@ -147,7 +158,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
                 subStuff.subscriberToManagerFeePercentage = 0;
             }
         } else {
-            require(manager == msg.sender, "onlyFundManager");
+            require(manager == msg.sender, "OFM");
             // closed prematurely (so that people can withdraw their capital)
             // no managementFee since did not see through lockin
             subStuff.subscriberToManagerFeePercentage = 0;
@@ -157,22 +168,19 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     }
 
     function _closeFund() internal {
-        closed = true;
-
         // TODO: this is potentially broken after the position stuff
-        for (uint256 i = 0; i < openRules.length; i++) {
-            bytes32 ruleHash = openRules[i];
-            Rule memory rule = roboCop.getRule(ruleHash);
 
-            if (rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE) {
-                _cancelRule(i);
-            } else if (rule.status == RuleStatus.EXECUTED) {
-                _redeemRuleOutput(i);
-            }
+        closed = true;
+        _redeemRuleOutputs();
+        bytes32[] memory activeRuleHashes = roboCop.getRuleHashesByStatus(RuleStatus.ACTIVE);
+        bytes32[] memory inactiveRuleHashes = roboCop.getRuleHashesByStatus(RuleStatus.INACTIVE);
+
+        for (uint256 i = 0; i < activeRuleHashes.length; i++) {
+            _cancelRule(activeRuleHashes[i]);
         }
 
-        for (uint256 i = 0; i < openRules.length; i++) {
-            _removeOpenRuleIdx(i);
+        for (uint256 i = 0; i < inactiveRuleHashes.length; i++) {
+            _cancelRule(inactiveRuleHashes[i]);
         }
 
         // TODO: potentially swap back all assets to 1 terminal asset
@@ -187,7 +195,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         uint256[] calldata fees
     ) internal {
         for (uint256 i = 0; i < tokens.length; i++) {
-            if (tokens[i].t == TokenType.ERC20 || tokens[i].t == TokenType.NATIVE) {
+            if (tokens[i].isERC20() || tokens[i].isETH()) {
                 require(fees[i] >= ((collaterals[i] * feeParams.managerToPlatformFeePercentage) / 100_00));
                 tokens[i].send(feeParams.platformFeeWallet, fees[i]);
             }
@@ -195,73 +203,41 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
     }
 
     function takeAction(
+        Trigger calldata trigger,
         Action calldata action,
-        ActionRuntimeParams calldata runtimeParams,
+        uint256[] calldata collaterals,
         uint256[] calldata fees
-    ) public nonReentrant onlyDeployedFund onlyFundManager returns (ActionResponse memory) {
-        return _takeAction(action, runtimeParams, fees);
+    ) public nonReentrant onlyDeployedFund onlyFundManager {
+        return _takeAction(trigger, action, collaterals, fees);
     }
 
     function takeActionToClosePosition(
+        Trigger calldata trigger,
         Action calldata action,
-        ActionRuntimeParams calldata runtimeParams,
+        uint256[] calldata collaterals,
         uint256[] calldata fees
-    ) public nonReentrant onlyDeployedFund returns (ActionResponse memory resp) {
-        require(actionPositionsMap[keccak256(abi.encode(action))].length > 0);
-        resp = _takeAction(action, runtimeParams, fees);
-        require(resp.position.nextActions.length == 0);
+    ) public nonReentrant onlyDeployedFund {
+        require(block.timestamp >= subStuff.constraints.lockin); // fund expired
+        require(roboCop.actionClosesPendingPosition(action)); // but positions are still open that can be closed by this
+        _takeAction(trigger, action, collaterals, fees);
+        // TODO: how to make sure new action does not spawn another position?
     }
 
     function _takeAction(
+        Trigger calldata trigger,
         Action calldata action,
-        ActionRuntimeParams calldata runtimeParams,
+        uint256[] calldata collaterals,
         uint256[] calldata fees
-    ) internal returns (ActionResponse memory resp) {
-        require(wlService.isWhitelisted(actionWhitelistHash, action.callee), "Unauthorized Action");
-        require(_onlyDeclaredTokens(action.outputTokens), "Unauthorized Token");
-        IAction(action.callee).validate(action);
-        _validateAndTakeFees(action.inputTokens, runtimeParams.collaterals, fees);
-
-        bool positionsClosed;
-        bytes32[] memory deletedPositionHashes;
-        (positionsClosed, deletedPositionHashes) = Utils._closePosition(action, pendingPositions, actionPositionsMap);
-        if (positionsClosed) {
-            emit PositionsClosed(abi.encode(action), deletedPositionHashes);
-        }
-
-        uint256 ethCollateral = 0;
-        for (uint256 i = 0; i < action.inputTokens.length; i++) {
-            Token memory token = action.inputTokens[i];
-            // TODO: take managerToPlatformFeePercentage from collaterals[i] here; what about NFT?
-            uint256 amount = runtimeParams.collaterals[i];
-            assets.decreaseAsset(token, amount);
-            // only 1 of these tokens should be ETH, so we can just overwrite
-            ethCollateral = token.approve(action.callee, amount);
-        }
-
-        resp = Utils._delegatePerformAction(action, runtimeParams);
-
-        for (uint256 i = 0; i < action.inputTokens.length; i++) {
-            assets.increaseAsset(action.outputTokens[i], resp.tokenOutputs[i]);
-        }
-
-        bool positionCreated;
-        bytes32 positionHash;
-        (positionCreated, positionHash) = Utils._createPosition(
-            action,
-            resp.position.nextActions,
-            pendingPositions,
-            actionPositionsMap
-        );
-        if (positionCreated) {
-            bytes[] memory abiEncodedNextActions = new bytes[](resp.position.nextActions.length);
-            for (uint256 i = 0; i < resp.position.nextActions.length; i++) {
-                abiEncodedNextActions[i] = abi.encode(resp.position.nextActions[i]);
-            }
-            emit PositionCreated(positionHash, abi.encode(action), abiEncodedNextActions);
-        }
-
-        emit Executed(abi.encode(action));
+    ) internal {
+        Trigger[] memory triggers = new Trigger[](1);
+        triggers[0] = trigger;
+        Action[] memory actions = new Action[](1);
+        actions[0] = action;
+        bytes32 ruleHash = _createRule(triggers, actions);
+        _addRuleCollateral(ruleHash, action.inputTokens, collaterals, fees);
+        roboCop.activateRule(ruleHash);
+        roboCop.executeRule(ruleHash); // should be immediately executable
+        _redeemRuleOutputs();
     }
 
     function createRule(Trigger[] calldata triggers, Action[] calldata actions)
@@ -274,66 +250,59 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         return _createRule(triggers, actions);
     }
 
-    function createRuleToClosePosition(Action calldata action)
-        external
-        nonReentrant
-        onlyDeployedFund
-        returns (bytes32)
-    {
-        require(block.timestamp >= subStuff.constraints.lockin); // fund expired
-        require(roboCop.actionClosesPendingPosition(action)); // but positions are still open that can be closed by this
-
-        Trigger[] memory noTriggers; // should be immediately executable
-        Action[] memory actions = new Action[](1);
-        actions[0] = action;
-        return _createRule(noTriggers, actions);
-    }
-
     function _createRule(Trigger[] memory triggers, Action[] memory actions) internal returns (bytes32 ruleHash) {
         for (uint256 i = 0; i < triggers.length; i++) {
-            require(wlService.isWhitelisted(triggerWhitelistHash, triggers[i].callee), "Unauthorized Trigger");
+            require(wlService.isWhitelisted(triggerWhitelistHash, triggers[i].callee), "!ATr");
         }
         for (uint256 i = 0; i < actions.length; i++) {
-            require(wlService.isWhitelisted(actionWhitelistHash, actions[i].callee), "Unauthorized Action");
+            require(wlService.isWhitelisted(actionWhitelistHash, actions[i].callee), "!AA");
         }
         for (uint256 i = 0; i < actions.length; i++) {
-            require(_onlyDeclaredTokens(actions[i].outputTokens), "Unauthorized Token");
+            require(_onlyDeclaredTokens(actions[i].outputTokens), "!ATk");
         }
         ruleHash = roboCop.createRule(triggers, actions);
-        openRules.push(ruleHash);
     }
 
-    function increaseRuleIncentive(uint256 openRuleIdx, uint256 amount)
+    function increaseRuleIncentive(bytes32 ruleHash, uint256 amount)
         external
         onlyDeployedFund
         onlyFundManager
         nonReentrant
     {
-        assets.decreaseAsset(Token({t: TokenType.NATIVE, addr: Constants.ETH}), amount);
-        roboCop.increaseIncentive{value: amount}(openRules[openRuleIdx]);
+        assets.decreaseAsset(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}), amount);
+        roboCop.increaseIncentive{value: amount}(ruleHash);
     }
 
-    function withdrawRuleIncentive(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager nonReentrant {
+    function withdrawRuleIncentive(bytes32 ruleHash) external onlyDeployedFund onlyFundManager nonReentrant {
         assets.decreaseAsset(
-            Token({t: TokenType.NATIVE, addr: Constants.ETH}),
-            roboCop.withdrawIncentive(openRules[openRuleIdx])
+            Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}),
+            roboCop.withdrawIncentive(ruleHash)
         );
     }
 
-    function activateRule(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager nonReentrant {
-        roboCop.activateRule(openRules[openRuleIdx]);
+    function activateRule(bytes32 ruleHash) external onlyDeployedFund onlyFundManager nonReentrant {
+        roboCop.activateRule(ruleHash);
     }
 
-    function deactivateRule(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager nonReentrant {
-        roboCop.deactivateRule(openRules[openRuleIdx]);
+    function deactivateRule(bytes32 ruleHash) external onlyDeployedFund onlyFundManager nonReentrant {
+        roboCop.deactivateRule(ruleHash);
     }
 
     function addRuleCollateral(
-        uint256 openRuleIdx,
+        bytes32 ruleHash,
         Token[] calldata collateralTokens,
         uint256[] calldata collaterals,
         uint256[] calldata fees
     ) external onlyDeployedFund onlyFundManager nonReentrant {
+        _addRuleCollateral(ruleHash, collateralTokens, collaterals, fees);
+    }
+
+    function _addRuleCollateral(
+        bytes32 ruleHash,
+        Token[] calldata collateralTokens,
+        uint256[] calldata collaterals,
+        uint256[] calldata fees
+    ) internal {
         _validateAndTakeFees(collateralTokens, collaterals, fees);
         uint256 ethCollateral = 0;
 
@@ -341,23 +310,25 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
             Token memory token = collateralTokens[i];
             uint256 amount = collaterals[i];
             assets.decreaseAsset(token, amount);
-            ethCollateral = token.approve(address(roboCop), amount);
+            token.approve(address(roboCop), amount);
+            if (token.isETH()) {
+                ethCollateral = amount;
+            }
         }
 
-        roboCop.addCollateral{value: ethCollateral}(openRules[openRuleIdx], collaterals);
+        roboCop.addCollateral{value: ethCollateral}(ruleHash, collaterals);
     }
 
-    function reduceRuleCollateral(uint256 openRuleIdx, uint256[] calldata collaterals)
+    function reduceRuleCollateral(bytes32 ruleHash, uint256[] calldata collaterals)
         external
         onlyDeployedFund
         onlyFundManager
         nonReentrant
     {
-        _reduceRuleCollateral(openRuleIdx, collaterals);
+        _reduceRuleCollateral(ruleHash, collaterals);
     }
 
-    function _reduceRuleCollateral(uint256 openRuleIdx, uint256[] memory collaterals) internal {
-        bytes32 ruleHash = openRules[openRuleIdx];
+    function _reduceRuleCollateral(bytes32 ruleHash, uint256[] memory collaterals) internal {
         Token[] memory inputTokens = roboCop.getInputTokens(ruleHash);
         roboCop.reduceCollateral(ruleHash, collaterals);
 
@@ -366,46 +337,34 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         }
     }
 
-    function cancelRule(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager nonReentrant {
-        _cancelRule(openRuleIdx);
-        _removeOpenRuleIdx(openRuleIdx);
+    function cancelRule(bytes32 ruleHash) external onlyDeployedFund onlyFundManager nonReentrant {
+        _cancelRule(ruleHash);
     }
 
-    function _cancelRule(uint256 openRuleIdx) internal {
-        bytes32 ruleHash = openRules[openRuleIdx];
+    function _cancelRule(bytes32 ruleHash) internal {
         Rule memory rule = roboCop.getRule(ruleHash);
         if (rule.status != RuleStatus.INACTIVE) {
             roboCop.deactivateRule(ruleHash);
         }
-        _reduceRuleCollateral(openRuleIdx, rule.collaterals);
+        _reduceRuleCollateral(ruleHash, rule.collaterals);
     }
 
-    function redeemRuleOutput(uint256 openRuleIdx) external onlyDeployedFund onlyFundManager nonReentrant {
-        _redeemRuleOutput(openRuleIdx);
-        _removeOpenRuleIdx(openRuleIdx);
+    function redeemRuleOutputs() external onlyDeployedFund onlyFundManager nonReentrant {
+        _redeemRuleOutputs();
     }
 
-    function _redeemRuleOutput(uint256 openRuleIdx) internal {
-        bytes32 ruleHash = openRules[openRuleIdx];
-        Rule memory rule = roboCop.getRule(ruleHash);
-        Token[] memory outputTokens = roboCop.getOutputTokens(ruleHash);
-        uint256[] memory outputs = rule.outputs;
-        roboCop.redeemBalance(ruleHash);
+    function _redeemRuleOutputs() internal {
+        (Token[] memory outputTokens, uint256[] memory outputs) = roboCop.redeemOutputs();
 
         for (uint256 i = 0; i < outputTokens.length; i++) {
             assets.increaseAsset(outputTokens[i], outputs[i]);
         }
     }
 
-    function _removeOpenRuleIdx(uint256 openRuleIdx) private {
-        openRules[openRuleIdx] = openRules[openRules.length - 1];
-        openRules.pop();
-    }
-
-    function deposit(Token memory collateralToken, uint256 amountSent) external payable returns (uint256 idx) {
-        require(getStatus() == FundStatus.RAISING, "Not Raising");
-        idx = subStuff.deposit(assets, collateralToken, amountSent);
-        emit Deposit(msg.sender, idx, collateralToken.addr, subStuff.subscriptions[idx].collateralAmount);
+    function deposit(Token memory collateralToken, uint256 amountSent) external payable {
+        require(getStatus() == FundStatus.RAISING, "!R");
+        subStuff.deposit(assets, collateralToken, amountSent);
+        emit Deposit(msg.sender, collateralToken.addr, amountSent);
     }
 
     function getStatus() public view returns (FundStatus) {
@@ -425,7 +384,7 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
                         return FundStatus.DEPLOYED;
                     } else {
                         // lockin exceeded
-                        if (!hasPendingPosition()) {
+                        if (!roboCop.hasPendingPosition()) {
                             return FundStatus.CLOSABLE;
                         } else {
                             // positions still open
@@ -437,37 +396,32 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         }
     }
 
-    function withdraw(uint256 subscriptionIdx)
+    function withdraw()
         external
         nonReentrant
-        onlyActiveSubscriber(subscriptionIdx)
+        onlyActiveSubscriber
         returns (Token[] memory tokens, uint256[] memory balances)
     {
         FundStatus status = getStatus();
         if (status == FundStatus.CLOSABLE) {
-            revert("Call closeFund before withdrawing!");
+            revert("!C");
         } else if (status == FundStatus.RAISING) {
-            emit Withdraw(
-                msg.sender,
-                subscriptionIdx,
-                Constants.ETH,
-                subStuff.subscriptions[subscriptionIdx].collateralAmount
-            );
-            (tokens, balances) = subStuff.withdrawCollateral(subscriptionIdx, assets);
+            emit Withdraw(msg.sender, Constants.ETH, subStuff.subscriptions[msg.sender].collateralAmount);
+            (tokens, balances) = subStuff.withdrawCollateral(assets);
         } else if (status == FundStatus.CLOSED) {
-            (tokens, balances) = subStuff.withdrawAssets(subscriptionIdx, assets);
+            (tokens, balances) = subStuff.withdrawAssets(assets);
             for (uint256 i = 0; i < tokens.length; i++) {
-                emit Withdraw(msg.sender, subscriptionIdx, tokens[i].addr, balances[i]);
+                emit Withdraw(msg.sender, tokens[i].addr, balances[i]);
             }
         } else if (status == FundStatus.DEPLOYED) {
-            revert("Can't get money back from deployed fund!");
+            revert("D");
         } else {
             revert(Constants.UNREACHABLE_STATE);
         }
     }
 
     function withdrawManagementFee() public onlyFundManager nonReentrant returns (Token[] memory, uint256[] memory) {
-        require(getStatus() == FundStatus.CLOSED, "Not Closed");
+        require(getStatus() == FundStatus.CLOSED, "!C");
 
         Token[] memory tokens = new Token[](assets.tokens.length);
         uint256[] memory balances = new uint256[](assets.tokens.length);
@@ -479,10 +433,6 @@ contract Fund is IFund, ReentrancyGuard, IERC721Receiver, Initializable {
         }
 
         return (tokens, balances);
-    }
-
-    function hasPendingPosition() public view returns (bool) {
-        return pendingPositions.length() > 0 || roboCop.hasPendingPosition();
     }
 
     receive() external payable {}

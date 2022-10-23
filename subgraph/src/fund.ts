@@ -23,14 +23,13 @@ export function handleClosed(event: ClosedEvent): void {
 }
 
 export function handleDeposit(event: DepositEvent): void {
-  let entity = Sub.load(event.address.toHexString() + "-" + event.params.subIdx.toString());
+  let entity = Sub.load(event.address.toHexString() + "-" + event.params.subscriber.toString());
 
   if (!entity) {
-    entity = new Sub(event.address.toHexString() + "-" + event.params.subIdx.toString());
+    entity = new Sub(event.address.toHexString() + "-" + event.params.subscriber.toString());
   }
 
   entity.address = event.params.subscriber;
-  entity.idx = event.params.subIdx;
   entity.deposit_timestamp = event.block.timestamp;
   entity.fund = event.address;
 
@@ -81,7 +80,7 @@ export function handlePositionsClosed(event: PositionsClosedEvent): void {
 }
 
 export function handleWithdraw(event: WithdrawEvent): void {
-  let entity = Sub.load(event.address.toHexString() + "-" + event.params.subIdx.toString());
+  let entity = Sub.load(event.address.toHexString() + "-" + event.params.subscriber.toString());
   if (!entity) {
     throw Error;
   }

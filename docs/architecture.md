@@ -61,13 +61,11 @@ Some Actions are straightforward and one-shot give and take. For example, give u
 However, some Actions are more complicated and require something akin to a `close()` operation. For example, if you LP on uniswap, you get an NFT that you have to return to get your initial capital back (and you can collect LP rewards as long as you hold the NFT).
 Furthermore, some actions can be "closed" in multiple ways. To capture this workflow, Actions return `Position` (which is a list of possible Actions that one might take to close the position created by the initial Action). These possible Actions are hashed and kept by the Fund and RoboCop. If ANY of those Actions are called, the corresponding `Position` is considered closed.
 
-Fund and RoboCop maintain separate lists of Positions because positions are typially context dependent [ie. the Fund contract cant close a position that RoboCop created].
-
 We dont prevent multiple positions from returning the same action. If 2 actions both return `[Action A]` as the position, they are both considered as being the same positon. The fund will only track 1 position in this case, which will be closed by performing `Action A`. However, if `Action 1` returns `[Action X, Action Y]`. And `Action 2` returns `[Action X, Action Z]`, these are stored as 2 different positions. Performing `Action X` will close both positions, while performing `Action Y` or `Action Z` will only close one of the positions.
 
 An action defined in a position can also subsequenty return a `Position` when called, essentially encoding a state machine as a sequence of actions.
 
-To save on storage, `Fund` and `RoboCop` do not store the details of the position itself. They only store a todo list of hashes of pending positions (so we know for example, whether the fund can be closed). To close the position, the corresponding action and all of its details needs to be provided by the user (directly via `takeAction` in a Fund; By adding a rule to a RoboCop).
+To save on storage,`RoboCop` does not store the details of the position itself. They only store a todo list of hashes of PP (so we know for example, whether the fund can be closed). To close the position, the corresponding action and all of its details needs to be provided by the user (By adding a rule to a RoboCop).
 
 ## Fees
 

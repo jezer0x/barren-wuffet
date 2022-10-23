@@ -11,12 +11,13 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /*
+/*
     Reference: 
         Will only work for plain Pools
         https://curve.readthedocs.io/exchange-pools.html#plain-pools
 
     Tokens: 
-        Expects multiple input tokens and 1 output token
+        Expects 1 input token and multiple output tokens
 
     TriggerReturn: 
         Applicable triggerReturn must be ???
@@ -24,8 +25,9 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
     Action: 
         action.data must be in the form of (address)
  */
-contract AddLiquidityCurveAction is PlainPool, IAction, DelegatePerform {
+contract CurveRemoveLiquidity is PlainPool, IAction, DelegatePerform {
     using SafeERC20 for IERC20;
+    using TokenLib for Token;
 
     IAddressProvider public immutable address_provider;
 
@@ -38,13 +40,13 @@ contract AddLiquidityCurveAction is PlainPool, IAction, DelegatePerform {
         address poolAddr = abi.decode(action.data, (address));
         IRegistry registry = IRegistry(address_provider.get_address(0));
 
-        require(action.inputTokens.length > 1);
-        require(action.outputTokens.length == 1);
-        require(registry.get_pool_from_lp_token(action.outputTokens[0].addr) == poolAddr);
+        require(action.inputTokens.length == 1);
+        require(action.outputTokens.length > 1);
+        require(registry.get_pool_from_lp_token(action.inputTokens[0].addr) == poolAddr);
         address[8] memory poolTokens = registry.get_coins(poolAddr);
 
-        for (uint256 i = 0; i < action.inputTokens.length; i++) {
-            require(_coinInPool(action.inputTokens[i].addr, poolTokens));
+        for (uint256 i = 0; i < action.outputTokens.length; i++) {
+            require(_coinInPool(action.outputTokens[i].addr, poolTokens));
         }
 
         return true;
@@ -55,20 +57,15 @@ contract AddLiquidityCurveAction is PlainPool, IAction, DelegatePerform {
         delegateOnly
         returns (ActionResponse memory)
     {
-        uint256[] memory outputs = new uint256[](1);
+        uint256[] memory outputs = new uint256[](action.outputTokens.length);
         address poolAddr = abi.decode(action.data, (address));
         IPlainPool pool = IPlainPool(poolAddr);
-        uint256 _min_mint_amount = 0; // TODO
+        uint256[] memory _min_amounts = new uint256[](action.outputTokens.length); // TODO
 
-        for (uint256 i = 0; i < action.inputTokens.length; i++) {
-            IERC20(action.inputTokens[i].addr).safeApprove(address(pool), runtimeParams.collaterals[i]);
-        }
+        action.inputTokens[0].approve(address(pool), runtimeParams.collaterals[0]);
+        outputs = pool.remove_liquidity(runtimeParams.collaterals[0], _min_amounts);
+        action.inputTokens[0].approve(address(pool), 0);
 
-        outputs[0] = pool.add_liquidity(runtimeParams.collaterals, _min_mint_amount);
-
-        for (uint256 i = 0; i < action.inputTokens.length; i++) {
-            IERC20(action.inputTokens[i].addr).safeApprove(address(pool), 0);
-        }
         Position memory none;
         return ActionResponse({tokenOutputs: outputs, position: none});
     }

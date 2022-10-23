@@ -22,7 +22,9 @@ interface IRoboCop {
 
     function getOutputTokens(bytes32 ruleHash) external view returns (Token[] memory);
 
-    function redeemBalance(bytes32 ruleHash) external;
+    function redeemOutputs() external returns (Token[] memory, uint256[] memory);
+
+    function getRuleHashesByStatus(RuleStatus status) external returns (bytes32[] memory);
 
     function addCollateral(bytes32 ruleHash, uint256[] memory amounts) external payable;
 
@@ -43,4 +45,6 @@ interface IRoboCop {
     function hasPendingPosition() external view returns (bool);
 
     function actionClosesPendingPosition(Action calldata action) external view returns (bool);
+
+    function executeRule(bytes32 ruleHash) external;
 }

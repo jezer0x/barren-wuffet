@@ -28,12 +28,6 @@
       },
       {
         "indexed": false,
-        "internalType": "uint256",
-        "name": "subIdx",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
         "internalType": "address",
         "name": "token",
         "type": "address"
@@ -126,12 +120,6 @@
         "internalType": "address",
         "name": "subscriber",
         "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "subIdx",
-        "type": "uint256"
       },
       {
         "indexed": false,
