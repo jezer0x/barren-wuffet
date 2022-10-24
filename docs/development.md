@@ -68,8 +68,6 @@ This section mostly follows: https://github.com/graphprotocol/hardhat-graph
 * `yarn create-local`
 * `yarn deploy-local`
 * Run `yarn hardhat run test/graph_manual/testGraph.ts --network localhost`
-* Run `yarn hardhat run test/graph_manual/testGraph2.ts --network localhost`
-* Run `yarn hardhat run test/graph_manual/testGraph3.ts --network localhost`
 * go to http://localhost:8000/subgraphs/name/barren-wuffet and query with { funds }. You should see the list of funds on right hand side!
 
 CLEANUP:

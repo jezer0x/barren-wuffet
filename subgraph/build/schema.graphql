@@ -4,39 +4,26 @@ type Fund @entity {
   creation_timestamp: BigInt! # block.timestamp for when the fund was created
   closed_timestamp: BigInt # indicates when the fund was closed, null means not closed yet
   subscriptions: [Sub!]! @derivedFrom(field: "fund")
-  actions: [Action!]! @derivedFrom(field: "fund") # to keep history of actions taken via takeActions
   rules: [Rule!]! @derivedFrom(field: "fund") # to keep track of all the ruleHashes created via roboCop
   positions: [Position!]! @derivedFrom(field: "fund")
+  total_collateral_raised: BigInt!
 }
 
 type Position @entity {
   id: Bytes! # positionHash stored in the contracts
   next_actions: [Bytes!]! # array of possible actions that can be done
   fund: Fund!
-  source: PositionSource
   creation_timestamp: BigInt!
   closed_timestamp: BigInt
-}
-
-enum PositionSource {
-  Fund
-  RoboCop
-}
-
-type Action @entity {
-  id: ID!
-  action: Bytes!
-  timestamp: BigInt!
-  fund: Fund!
 }
 
 type Sub @entity {
   id: ID!
   address: Bytes!
-  idx: BigInt!
   fund: Fund!
-  deposit_timestamp: BigInt!
-  withdraw_timestamp: BigInt
+  deposit_timestamps: [BigInt!]!
+  deposit_amounts: [BigInt!]!
+  withdraw_timestamps: [BigInt!]!
 }
 
 type Rule @entity {

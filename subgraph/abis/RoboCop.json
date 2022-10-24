@@ -214,6 +214,11 @@
                 "internalType": "address",
                 "name": "addr",
                 "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "id",
+                "type": "uint256"
               }
             ],
             "internalType": "struct Token[]",
@@ -231,6 +236,11 @@
                 "internalType": "address",
                 "name": "addr",
                 "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "id",
+                "type": "uint256"
               }
             ],
             "internalType": "struct Token[]",
@@ -300,7 +310,7 @@
       },
       {
         "internalType": "uint256[]",
-        "name": "amounts",
+        "name": "collaterals",
         "type": "uint256[]"
       }
     ],
@@ -375,6 +385,11 @@
                 "internalType": "address",
                 "name": "addr",
                 "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "id",
+                "type": "uint256"
               }
             ],
             "internalType": "struct Token[]",
@@ -392,6 +407,11 @@
                 "internalType": "address",
                 "name": "addr",
                 "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "id",
+                "type": "uint256"
               }
             ],
             "internalType": "struct Token[]",
@@ -462,6 +482,11 @@
             "internalType": "address",
             "name": "addr",
             "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
           }
         ],
         "internalType": "struct Token[]",
@@ -493,6 +518,11 @@
             "internalType": "address",
             "name": "addr",
             "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
           }
         ],
         "internalType": "struct Token[]",
@@ -560,6 +590,11 @@
                     "internalType": "address",
                     "name": "addr",
                     "type": "address"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "id",
+                    "type": "uint256"
                   }
                 ],
                 "internalType": "struct Token[]",
@@ -577,6 +612,11 @@
                     "internalType": "address",
                     "name": "addr",
                     "type": "address"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "id",
+                    "type": "uint256"
                   }
                 ],
                 "internalType": "struct Token[]",
@@ -615,6 +655,25 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "enum RuleStatus",
+        "name": "status",
+        "type": "uint8"
+      }
+    ],
+    "name": "getRuleHashesByStatus",
+    "outputs": [
+      {
+        "internalType": "bytes32[]",
+        "name": "",
+        "type": "bytes32[]"
+      }
+    ],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -704,15 +763,37 @@
     "type": "function"
   },
   {
-    "inputs": [
+    "inputs": [],
+    "name": "redeemOutputs",
+    "outputs": [
       {
-        "internalType": "bytes32",
-        "name": "ruleHash",
-        "type": "bytes32"
+        "components": [
+          {
+            "internalType": "enum TokenType",
+            "name": "t",
+            "type": "uint8"
+          },
+          {
+            "internalType": "address",
+            "name": "addr",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct Token[]",
+        "name": "",
+        "type": "tuple[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
       }
     ],
-    "name": "redeemBalance",
-    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },

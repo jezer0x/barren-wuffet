@@ -86,15 +86,6 @@ export class Fund extends Entity {
     this.set("subscriptions", Value.fromStringArray(value));
   }
 
-  get actions(): Array<string> {
-    let value = this.get("actions");
-    return value!.toStringArray();
-  }
-
-  set actions(value: Array<string>) {
-    this.set("actions", Value.fromStringArray(value));
-  }
-
   get rules(): Array<Bytes> {
     let value = this.get("rules");
     return value!.toBytesArray();
@@ -111,6 +102,15 @@ export class Fund extends Entity {
 
   set positions(value: Array<Bytes>) {
     this.set("positions", Value.fromBytesArray(value));
+  }
+
+  get total_collateral_raised(): BigInt {
+    let value = this.get("total_collateral_raised");
+    return value!.toBigInt();
+  }
+
+  set total_collateral_raised(value: BigInt) {
+    this.set("total_collateral_raised", Value.fromBigInt(value));
   }
 }
 
@@ -163,23 +163,6 @@ export class Position extends Entity {
     this.set("fund", Value.fromBytes(value));
   }
 
-  get source(): string | null {
-    let value = this.get("source");
-    if (!value || value.kind == ValueKind.NULL) {
-      return null;
-    } else {
-      return value.toString();
-    }
-  }
-
-  set source(value: string | null) {
-    if (!value) {
-      this.unset("source");
-    } else {
-      this.set("source", Value.fromString(<string>value));
-    }
-  }
-
   get creation_timestamp(): BigInt {
     let value = this.get("creation_timestamp");
     return value!.toBigInt();
@@ -204,65 +187,6 @@ export class Position extends Entity {
     } else {
       this.set("closed_timestamp", Value.fromBigInt(<BigInt>value));
     }
-  }
-}
-
-export class Action extends Entity {
-  constructor(id: string) {
-    super();
-    this.set("id", Value.fromString(id));
-  }
-
-  save(): void {
-    let id = this.get("id");
-    assert(id != null, "Cannot save Action entity without an ID");
-    if (id) {
-      assert(
-        id.kind == ValueKind.STRING,
-        `Entities of type Action must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`
-      );
-      store.set("Action", id.toString(), this);
-    }
-  }
-
-  static load(id: string): Action | null {
-    return changetype<Action | null>(store.get("Action", id));
-  }
-
-  get id(): string {
-    let value = this.get("id");
-    return value!.toString();
-  }
-
-  set id(value: string) {
-    this.set("id", Value.fromString(value));
-  }
-
-  get action(): Bytes {
-    let value = this.get("action");
-    return value!.toBytes();
-  }
-
-  set action(value: Bytes) {
-    this.set("action", Value.fromBytes(value));
-  }
-
-  get timestamp(): BigInt {
-    let value = this.get("timestamp");
-    return value!.toBigInt();
-  }
-
-  set timestamp(value: BigInt) {
-    this.set("timestamp", Value.fromBigInt(value));
-  }
-
-  get fund(): Bytes {
-    let value = this.get("fund");
-    return value!.toBytes();
-  }
-
-  set fund(value: Bytes) {
-    this.set("fund", Value.fromBytes(value));
   }
 }
 
@@ -306,15 +230,6 @@ export class Sub extends Entity {
     this.set("address", Value.fromBytes(value));
   }
 
-  get idx(): BigInt {
-    let value = this.get("idx");
-    return value!.toBigInt();
-  }
-
-  set idx(value: BigInt) {
-    this.set("idx", Value.fromBigInt(value));
-  }
-
   get fund(): Bytes {
     let value = this.get("fund");
     return value!.toBytes();
@@ -324,30 +239,31 @@ export class Sub extends Entity {
     this.set("fund", Value.fromBytes(value));
   }
 
-  get deposit_timestamp(): BigInt {
-    let value = this.get("deposit_timestamp");
-    return value!.toBigInt();
+  get deposit_timestamps(): Array<BigInt> {
+    let value = this.get("deposit_timestamps");
+    return value!.toBigIntArray();
   }
 
-  set deposit_timestamp(value: BigInt) {
-    this.set("deposit_timestamp", Value.fromBigInt(value));
+  set deposit_timestamps(value: Array<BigInt>) {
+    this.set("deposit_timestamps", Value.fromBigIntArray(value));
   }
 
-  get withdraw_timestamp(): BigInt | null {
-    let value = this.get("withdraw_timestamp");
-    if (!value || value.kind == ValueKind.NULL) {
-      return null;
-    } else {
-      return value.toBigInt();
-    }
+  get deposit_amounts(): Array<BigInt> {
+    let value = this.get("deposit_amounts");
+    return value!.toBigIntArray();
   }
 
-  set withdraw_timestamp(value: BigInt | null) {
-    if (!value) {
-      this.unset("withdraw_timestamp");
-    } else {
-      this.set("withdraw_timestamp", Value.fromBigInt(<BigInt>value));
-    }
+  set deposit_amounts(value: Array<BigInt>) {
+    this.set("deposit_amounts", Value.fromBigIntArray(value));
+  }
+
+  get withdraw_timestamps(): Array<BigInt> {
+    let value = this.get("withdraw_timestamps");
+    return value!.toBigIntArray();
+  }
+
+  set withdraw_timestamps(value: Array<BigInt>) {
+    this.set("withdraw_timestamps", Value.fromBigIntArray(value));
   }
 }
 

@@ -1,3 +1,4 @@
+import { BigInt } from "@graphprotocol/graph-ts";
 import { Created, OwnershipTransferred, Paused, Unpaused } from "../generated/BarrenWuffet/BarrenWuffet";
 import { Fund as FundEntity } from "../generated/schema";
 import { Fund as FundTemplate } from "../generated/templates";
@@ -19,6 +20,7 @@ export function handleCreated(event: Created): void {
   // Entity fields can be set based on event parameters
   entity.manager = event.params.manager;
   entity.creation_timestamp = event.block.timestamp;
+  entity.total_collateral_raised = BigInt.zero();
 
   // Entities can be written to the store with `.save()`
   entity.save();

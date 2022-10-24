@@ -45,12 +45,12 @@
       },
       {
         "internalType": "address",
-        "name": "_roboCopImplAddr",
+        "name": "_roboCopBeaconAddr",
         "type": "address"
       },
       {
         "internalType": "address",
-        "name": "_fundImplAddr",
+        "name": "_fundBeaconAddr",
         "type": "address"
       }
     ],
@@ -184,6 +184,11 @@
                 "internalType": "address",
                 "name": "addr",
                 "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "id",
+                "type": "uint256"
               }
             ],
             "internalType": "struct Token",
@@ -247,7 +252,7 @@
   },
   {
     "inputs": [],
-    "name": "fundImplAddr",
+    "name": "fundBeaconAddr",
     "outputs": [
       {
         "internalType": "address",
@@ -300,7 +305,7 @@
   },
   {
     "inputs": [],
-    "name": "roboCopImplAddr",
+    "name": "roboCopBeaconAddr",
     "outputs": [
       {
         "internalType": "address",
@@ -320,32 +325,6 @@
       }
     ],
     "name": "setActionWhitelistHash",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_fundImplAddr",
-        "type": "address"
-      }
-    ],
-    "name": "setFundImplementationAddress",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_roboCopImplAddr",
-        "type": "address"
-      }
-    ],
-    "name": "setRoboCopImplementationAddress",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

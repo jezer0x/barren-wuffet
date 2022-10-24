@@ -6,6 +6,7 @@ type Fund @entity {
   subscriptions: [Sub!]! @derivedFrom(field: "fund")
   rules: [Rule!]! @derivedFrom(field: "fund") # to keep track of all the ruleHashes created via roboCop
   positions: [Position!]! @derivedFrom(field: "fund")
+  total_collateral_raised: BigInt!
 }
 
 type Position @entity {

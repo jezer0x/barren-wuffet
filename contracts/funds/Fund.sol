@@ -19,6 +19,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../utils/whitelists/WhitelistService.sol";
 import "../utils/assets/AssetTracker.sol";
 
+// Error Codes
 // !AS = Not Active Subscriber
 // D = Not Deployed
 // !D = Not Deployed
@@ -41,7 +42,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
     string name;
     address manager;
 
-    Subscriptions.SubStuff subStuff;
+    Subscriptions.SubStuff public subStuff;
 
     bool public degenMode; // if true, then ignore declaredTokens and let traders trade whatever token
 

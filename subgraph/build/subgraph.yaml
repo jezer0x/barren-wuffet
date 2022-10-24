@@ -47,14 +47,8 @@ templates:
           handler: handleClosed
         - event: Deposit(address,address,uint256)
           handler: handleDeposit
-        - event: Executed(bytes)
-          handler: handleExecuted
         - event: Initialized(uint8)
           handler: handleInitialized
-        - event: PositionCreated(bytes32,bytes,bytes[])
-          handler: handlePositionCreated
-        - event: PositionsClosed(bytes,bytes32[])
-          handler: handlePositionsClosed
         - event: Withdraw(address,address,uint256)
           handler: handleWithdraw
       file: templates/Fund/Fund.wasm

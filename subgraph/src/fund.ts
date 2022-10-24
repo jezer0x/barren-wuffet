@@ -1,12 +1,11 @@
 import {
   Closed as ClosedEvent,
   Deposit as DepositEvent,
-  Executed as ExecutedEvent,
   Initialized as InitializedEvent,
   Withdraw as WithdrawEvent,
   Fund as FundContract
 } from "../generated/templates/Fund/Fund";
-import { Action, Fund, Position, Sub } from "../generated/schema";
+import { Fund, Sub } from "../generated/schema";
 import { RoboCop } from "../generated/templates";
 
 export function handleClosed(event: ClosedEvent): void {
@@ -22,37 +21,39 @@ export function handleClosed(event: ClosedEvent): void {
 }
 
 export function handleDeposit(event: DepositEvent): void {
-  let entity = Sub.load(event.address.toHexString() + "-" + event.params.subscriber.toString());
+  let subscription = Sub.load(event.address.toHexString() + "-" + event.params.subscriber.toHexString());
 
-  if (!entity) {
-    entity = new Sub(event.address.toHexString() + "-" + event.params.subscriber.toString());
-    entity.deposit_timestamps = [];
-    entity.withdraw_timestamps = [];
-    entity.deposit_amounts = [];
+  if (!subscription) {
+    subscription = new Sub(event.address.toHexString() + "-" + event.params.subscriber.toHexString());
+    subscription.deposit_timestamps = [];
+    subscription.withdraw_timestamps = [];
+    subscription.deposit_amounts = [];
   }
 
-  entity.address = event.params.subscriber;
+  subscription.address = event.params.subscriber;
 
-  let ts_arr = entity.deposit_timestamps;
+  let ts_arr = subscription.deposit_timestamps;
   ts_arr.push(event.block.timestamp);
-  entity.deposit_timestamps = ts_arr;
+  subscription.deposit_timestamps = ts_arr;
 
-  let amt_arr = entity.deposit_amounts;
+  let amt_arr = subscription.deposit_amounts;
   amt_arr.push(event.params.balance);
-  entity.deposit_amounts = amt_arr;
+  subscription.deposit_amounts = amt_arr;
 
-  entity.fund = event.address;
+  subscription.fund = event.address;
 
-  entity.save();
-}
+  subscription.save();
 
-export function handleExecuted(event: ExecutedEvent): void {
-  let entity = new Action(event.transaction.hash.toHex() + "-" + event.logIndex.toString());
-  entity.action = event.params.action;
-  entity.timestamp = event.block.timestamp;
-  entity.fund = event.address;
+  let fund = Fund.load(event.address);
 
-  entity.save();
+  if (!fund) {
+    throw Error;
+  }
+
+  fund.total_collateral_raised = FundContract.bind(event.address)
+    .subStuff()
+    .getTotalCollateral();
+  fund.save();
 }
 
 export function handleInitialized(event: InitializedEvent): void {
@@ -62,14 +63,25 @@ export function handleInitialized(event: InitializedEvent): void {
 }
 
 export function handleWithdraw(event: WithdrawEvent): void {
-  let entity = Sub.load(event.address.toHexString() + "-" + event.params.subscriber.toString());
-  if (!entity) {
+  let subscription = Sub.load(event.address.toHexString() + "-" + event.params.subscriber.toHexString());
+  if (!subscription) {
     throw Error;
   }
 
-  let ts_arr = entity.withdraw_timestamps;
+  let ts_arr = subscription.withdraw_timestamps;
   ts_arr.push(event.block.timestamp);
-  entity.withdraw_timestamps = ts_arr;
+  subscription.withdraw_timestamps = ts_arr;
 
-  entity.save();
+  subscription.save();
+
+  let fund = Fund.load(event.address);
+
+  if (!fund) {
+    throw Error;
+  }
+
+  fund.total_collateral_raised = FundContract.bind(event.address)
+    .subStuff()
+    .getTotalCollateral();
+  fund.save();
 }
