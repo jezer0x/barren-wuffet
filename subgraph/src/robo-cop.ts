@@ -67,7 +67,6 @@ export function handlePositionCreated(event: PositionCreatedEvent): void {
   let fund = RoboCopContract.bind(event.address).owner();
   let position = new Position(event.params.positionHash);
   position.next_actions = event.params.nextActions;
-  position.source = "RoboCop";
   position.fund = fund;
   position.creation_timestamp = event.block.timestamp;
   position.save();

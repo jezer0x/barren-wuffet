@@ -3,8 +3,6 @@ import {
   Deposit as DepositEvent,
   Executed as ExecutedEvent,
   Initialized as InitializedEvent,
-  PositionCreated as PositionCreatedEvent,
-  PositionsClosed as PositionsClosedEvent,
   Withdraw as WithdrawEvent,
   Fund as FundContract
 } from "../generated/templates/Fund/Fund";
@@ -19,6 +17,7 @@ export function handleClosed(event: ClosedEvent): void {
   }
 
   entity.closed_timestamp = event.block.timestamp;
+
   entity.save();
 }
 
@@ -27,10 +26,21 @@ export function handleDeposit(event: DepositEvent): void {
 
   if (!entity) {
     entity = new Sub(event.address.toHexString() + "-" + event.params.subscriber.toString());
+    entity.deposit_timestamps = [];
+    entity.withdraw_timestamps = [];
+    entity.deposit_amounts = [];
   }
 
   entity.address = event.params.subscriber;
-  entity.deposit_timestamp = event.block.timestamp;
+
+  let ts_arr = entity.deposit_timestamps;
+  ts_arr.push(event.block.timestamp);
+  entity.deposit_timestamps = ts_arr;
+
+  let amt_arr = entity.deposit_amounts;
+  amt_arr.push(event.params.balance);
+  entity.deposit_amounts = amt_arr;
+
   entity.fund = event.address;
 
   entity.save();
@@ -51,38 +61,15 @@ export function handleInitialized(event: InitializedEvent): void {
   RoboCop.create(roboCopAddr);
 }
 
-export function handlePositionCreated(event: PositionCreatedEvent): void {
-  let fund = Fund.load(event.address);
-
-  if (!fund) {
-    throw Error;
-  }
-
-  let position = new Position(event.params.positionHash);
-  position.next_actions = event.params.nextActions;
-  position.source = "Fund";
-  position.fund = event.address;
-  position.creation_timestamp = event.block.timestamp;
-
-  position.save();
-}
-
-export function handlePositionsClosed(event: PositionsClosedEvent): void {
-  var i: i32;
-  for (i = 0; i < event.params.positionHashesClosed.length; i++) {
-    let position = Position.load(event.params.positionHashesClosed[i]);
-    if (!position) {
-      throw Error;
-    }
-    position.closed_timestamp = event.block.timestamp;
-    position.save();
-  }
-}
-
 export function handleWithdraw(event: WithdrawEvent): void {
   let entity = Sub.load(event.address.toHexString() + "-" + event.params.subscriber.toString());
   if (!entity) {
     throw Error;
   }
-  entity.withdraw_timestamp = event.block.timestamp;
+
+  let ts_arr = entity.withdraw_timestamps;
+  ts_arr.push(event.block.timestamp);
+  entity.withdraw_timestamps = ts_arr;
+
+  entity.save();
 }
