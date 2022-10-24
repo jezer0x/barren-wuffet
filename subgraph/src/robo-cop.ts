@@ -51,10 +51,7 @@ export function handleDeactivated(event: DeactivatedEvent): void {
 }
 
 export function handleExecuted(event: ExecutedEvent): void {
-  let rule = Rule.load(event.params.ruleHash);
-  if (!rule) {
-    throw Error;
-  }
+  let rule = new Rule(event.params.ruleHash);
   rule.execution_timestamp = event.block.timestamp;
   rule.save();
 }
@@ -75,20 +72,14 @@ export function handlePositionCreated(event: PositionCreatedEvent): void {
 export function handlePositionsClosed(event: PositionsClosedEvent): void {
   var i: i32;
   for (i = 0; i < event.params.positionHashesClosed.length; i++) {
-    let position = Position.load(event.params.positionHashesClosed[i]);
-    if (!position) {
-      throw Error;
-    }
+    let position = new Position(event.params.positionHashesClosed[i]);
     position.closed_timestamp = event.block.timestamp;
     position.save();
   }
 }
 
 export function handleRedeemed(event: RedeemedEvent): void {
-  let rule = Rule.load(event.params.ruleHash);
-  if (!rule) {
-    throw Error;
-  }
+  let rule = new Rule(event.params.ruleHash);
   rule.redemption_timestamp = event.block.timestamp;
   rule.save();
 }

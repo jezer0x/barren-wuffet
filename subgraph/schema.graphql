@@ -4,9 +4,11 @@ type Fund @entity {
   creation_timestamp: BigInt! # block.timestamp for when the fund was created
   closed_timestamp: BigInt # indicates when the fund was closed, null means not closed yet
   subscriptions: [Sub!]! @derivedFrom(field: "fund")
+  total_collateral_raised: BigInt!
+  manager_fee_percentage: BigInt!
+  subscription_constraints: SubConstraints! @derivedFrom(field: "fund")
   rules: [Rule!]! @derivedFrom(field: "fund") # to keep track of all the ruleHashes created via roboCop
   positions: [Position!]! @derivedFrom(field: "fund")
-  total_collateral_raised: BigInt!
 }
 
 type Position @entity {
@@ -17,6 +19,18 @@ type Position @entity {
   closed_timestamp: BigInt
 }
 
+type SubConstraints @entity {
+  id: ID!
+  minCollateralPerSub: BigInt!
+  maxCollateralPerSub: BigInt!
+  minCollateralTotal: BigInt!
+  maxCollateralTotal: BigInt!
+  deadline: BigInt!
+  lockin: BigInt!
+  fund: Fund!
+}
+
+# Because "Subscription" is a reserved keyword...
 type Sub @entity {
   id: ID!
   address: Bytes!

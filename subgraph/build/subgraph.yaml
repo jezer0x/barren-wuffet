@@ -17,6 +17,8 @@ dataSources:
       abis:
         - name: BarrenWuffet
           file: BarrenWuffet/abis/BarrenWuffet.json
+        - name: Fund
+          file: BarrenWuffet/abis/Fund.json
       eventHandlers:
         - event: Created(indexed address,address)
           handler: handleCreated

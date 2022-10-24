@@ -86,6 +86,33 @@ export class Fund extends Entity {
     this.set("subscriptions", Value.fromStringArray(value));
   }
 
+  get total_collateral_raised(): BigInt {
+    let value = this.get("total_collateral_raised");
+    return value!.toBigInt();
+  }
+
+  set total_collateral_raised(value: BigInt) {
+    this.set("total_collateral_raised", Value.fromBigInt(value));
+  }
+
+  get manager_fee_percentage(): BigInt {
+    let value = this.get("manager_fee_percentage");
+    return value!.toBigInt();
+  }
+
+  set manager_fee_percentage(value: BigInt) {
+    this.set("manager_fee_percentage", Value.fromBigInt(value));
+  }
+
+  get subscription_constraints(): string {
+    let value = this.get("subscription_constraints");
+    return value!.toString();
+  }
+
+  set subscription_constraints(value: string) {
+    this.set("subscription_constraints", Value.fromString(value));
+  }
+
   get rules(): Array<Bytes> {
     let value = this.get("rules");
     return value!.toBytesArray();
@@ -102,15 +129,6 @@ export class Fund extends Entity {
 
   set positions(value: Array<Bytes>) {
     this.set("positions", Value.fromBytesArray(value));
-  }
-
-  get total_collateral_raised(): BigInt {
-    let value = this.get("total_collateral_raised");
-    return value!.toBigInt();
-  }
-
-  set total_collateral_raised(value: BigInt) {
-    this.set("total_collateral_raised", Value.fromBigInt(value));
   }
 }
 
@@ -187,6 +205,101 @@ export class Position extends Entity {
     } else {
       this.set("closed_timestamp", Value.fromBigInt(<BigInt>value));
     }
+  }
+}
+
+export class SubConstraints extends Entity {
+  constructor(id: string) {
+    super();
+    this.set("id", Value.fromString(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(id != null, "Cannot save SubConstraints entity without an ID");
+    if (id) {
+      assert(
+        id.kind == ValueKind.STRING,
+        `Entities of type SubConstraints must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`
+      );
+      store.set("SubConstraints", id.toString(), this);
+    }
+  }
+
+  static load(id: string): SubConstraints | null {
+    return changetype<SubConstraints | null>(store.get("SubConstraints", id));
+  }
+
+  get id(): string {
+    let value = this.get("id");
+    return value!.toString();
+  }
+
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
+  }
+
+  get minCollateralPerSub(): BigInt {
+    let value = this.get("minCollateralPerSub");
+    return value!.toBigInt();
+  }
+
+  set minCollateralPerSub(value: BigInt) {
+    this.set("minCollateralPerSub", Value.fromBigInt(value));
+  }
+
+  get maxCollateralPerSub(): BigInt {
+    let value = this.get("maxCollateralPerSub");
+    return value!.toBigInt();
+  }
+
+  set maxCollateralPerSub(value: BigInt) {
+    this.set("maxCollateralPerSub", Value.fromBigInt(value));
+  }
+
+  get minCollateralTotal(): BigInt {
+    let value = this.get("minCollateralTotal");
+    return value!.toBigInt();
+  }
+
+  set minCollateralTotal(value: BigInt) {
+    this.set("minCollateralTotal", Value.fromBigInt(value));
+  }
+
+  get maxCollateralTotal(): BigInt {
+    let value = this.get("maxCollateralTotal");
+    return value!.toBigInt();
+  }
+
+  set maxCollateralTotal(value: BigInt) {
+    this.set("maxCollateralTotal", Value.fromBigInt(value));
+  }
+
+  get deadline(): BigInt {
+    let value = this.get("deadline");
+    return value!.toBigInt();
+  }
+
+  set deadline(value: BigInt) {
+    this.set("deadline", Value.fromBigInt(value));
+  }
+
+  get lockin(): BigInt {
+    let value = this.get("lockin");
+    return value!.toBigInt();
+  }
+
+  set lockin(value: BigInt) {
+    this.set("lockin", Value.fromBigInt(value));
+  }
+
+  get fund(): Bytes {
+    let value = this.get("fund");
+    return value!.toBytes();
+  }
+
+  set fund(value: Bytes) {
+    this.set("fund", Value.fromBytes(value));
   }
 }
 
