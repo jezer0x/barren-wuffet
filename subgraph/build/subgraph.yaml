@@ -20,7 +20,9 @@ dataSources:
         - name: Fund
           file: BarrenWuffet/abis/Fund.json
       eventHandlers:
-        - event: Created(indexed address,address)
+        - event: ManagerMetadata(indexed address,string,string,string,string,string)
+          handler: handleManagerMetadata
+        - event: Created(indexed address,address,string)
           handler: handleCreated
         - event: OwnershipTransferred(indexed address,indexed address)
           handler: handleOwnershipTransferred

@@ -39,7 +39,6 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
     using TokenLib for Token;
 
     // unique identifier for fund
-    string name;
     address manager;
 
     Subscriptions.SubStuff public subStuff;
@@ -64,7 +63,6 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
     }
 
     function initialize(
-        string memory _name,
         address _manager,
         Subscriptions.Constraints memory _constraints,
         FeeParams calldata _feeParams,
@@ -76,7 +74,6 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
     ) external nonReentrant initializer {
         __ReentrancyGuard_init();
 
-        name = _name;
         manager = _manager;
 
         // For now we'll only allow subscribing with ETH
@@ -92,7 +89,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         if (_declaredTokenAddrs.length == 0) {
             degenMode = true;
         } else {
-            bytes32 declaredTokenAddrWlHash = wlService.createWhitelist(_name);
+            bytes32 declaredTokenAddrWlHash = wlService.createWhitelist("fund");
             for (uint256 i = 0; i < _declaredTokenAddrs.length; i++) {
                 wlService.addToWhitelist(declaredTokenAddrWlHash, _declaredTokenAddrs[i]);
             }
@@ -112,7 +109,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         if (degenMode) return true;
         else {
             for (uint256 i = 0; i < tokens.length; i++) {
-                if (!wlService.isWhitelisted(wlService.getWhitelistHash(address(this), name), tokens[i].addr)) {
+                if (!wlService.isWhitelisted(wlService.getWhitelistHash(address(this), "fund"), tokens[i].addr)) {
                     return false;
                 }
             }

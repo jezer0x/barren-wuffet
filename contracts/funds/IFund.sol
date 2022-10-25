@@ -27,7 +27,6 @@ interface IFund is ISubscription {
     event Closed(address indexed fundAddr);
 
     function initialize(
-        string memory _name,
         address _manager,
         Subscriptions.Constraints memory _constraints,
         FeeParams calldata _feeParams,

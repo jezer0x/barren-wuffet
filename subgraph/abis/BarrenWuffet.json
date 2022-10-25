@@ -71,9 +71,58 @@
         "internalType": "address",
         "name": "fundAddr",
         "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "fundName",
+        "type": "string"
       }
     ],
     "name": "Created",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "walletAddr",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "socialHandle",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "chatroomInvite",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "customLink",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "aboutText",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "strategyText",
+        "type": "string"
+      }
+    ],
+    "name": "ManagerMetadata",
     "type": "event"
   },
   {
@@ -325,6 +374,39 @@
       }
     ],
     "name": "setActionWhitelistHash",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "socialHandle",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "chatroomInvite",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "customLink",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "aboutText",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "strategyText",
+        "type": "string"
+      }
+    ],
+    "name": "setManagerMetadata",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

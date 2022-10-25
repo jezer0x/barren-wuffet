@@ -42,6 +42,15 @@ export class Fund extends Entity {
     this.set("id", Value.fromBytes(value));
   }
 
+  get name(): string {
+    let value = this.get("name");
+    return value!.toString();
+  }
+
+  set name(value: string) {
+    this.set("name", Value.fromString(value));
+  }
+
   get manager(): Bytes {
     let value = this.get("manager");
     return value!.toBytes();
@@ -479,5 +488,131 @@ export class Rule extends Entity {
 
   set fund(value: Bytes) {
     this.set("fund", Value.fromBytes(value));
+  }
+}
+
+export class Manager extends Entity {
+  constructor(id: Bytes) {
+    super();
+    this.set("id", Value.fromBytes(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(id != null, "Cannot save Manager entity without an ID");
+    if (id) {
+      assert(
+        id.kind == ValueKind.BYTES,
+        `Entities of type Manager must have an ID of type Bytes but the id '${id.displayData()}' is of type ${id.displayKind()}`
+      );
+      store.set("Manager", id.toBytes().toHexString(), this);
+    }
+  }
+
+  static load(id: Bytes): Manager | null {
+    return changetype<Manager | null>(store.get("Manager", id.toHexString()));
+  }
+
+  get id(): Bytes {
+    let value = this.get("id");
+    return value!.toBytes();
+  }
+
+  set id(value: Bytes) {
+    this.set("id", Value.fromBytes(value));
+  }
+
+  get socialHandle(): string | null {
+    let value = this.get("socialHandle");
+    if (!value || value.kind == ValueKind.NULL) {
+      return null;
+    } else {
+      return value.toString();
+    }
+  }
+
+  set socialHandle(value: string | null) {
+    if (!value) {
+      this.unset("socialHandle");
+    } else {
+      this.set("socialHandle", Value.fromString(<string>value));
+    }
+  }
+
+  get chatroomInvite(): string | null {
+    let value = this.get("chatroomInvite");
+    if (!value || value.kind == ValueKind.NULL) {
+      return null;
+    } else {
+      return value.toString();
+    }
+  }
+
+  set chatroomInvite(value: string | null) {
+    if (!value) {
+      this.unset("chatroomInvite");
+    } else {
+      this.set("chatroomInvite", Value.fromString(<string>value));
+    }
+  }
+
+  get customLink(): string | null {
+    let value = this.get("customLink");
+    if (!value || value.kind == ValueKind.NULL) {
+      return null;
+    } else {
+      return value.toString();
+    }
+  }
+
+  set customLink(value: string | null) {
+    if (!value) {
+      this.unset("customLink");
+    } else {
+      this.set("customLink", Value.fromString(<string>value));
+    }
+  }
+
+  get aboutText(): string | null {
+    let value = this.get("aboutText");
+    if (!value || value.kind == ValueKind.NULL) {
+      return null;
+    } else {
+      return value.toString();
+    }
+  }
+
+  set aboutText(value: string | null) {
+    if (!value) {
+      this.unset("aboutText");
+    } else {
+      this.set("aboutText", Value.fromString(<string>value));
+    }
+  }
+
+  get strategyText(): string | null {
+    let value = this.get("strategyText");
+    if (!value || value.kind == ValueKind.NULL) {
+      return null;
+    } else {
+      return value.toString();
+    }
+  }
+
+  set strategyText(value: string | null) {
+    if (!value) {
+      this.unset("strategyText");
+    } else {
+      this.set("strategyText", Value.fromString(<string>value));
+    }
+  }
+
+  get funds(): Array<Bytes> {
+    let value = this.get("funds");
+    return value!.toBytesArray();
+  }
+
+  set funds(value: Array<Bytes>) {
+    this.set("funds", Value.fromBytesArray(value));
   }
 }
