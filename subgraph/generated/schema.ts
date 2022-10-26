@@ -481,6 +481,59 @@ export class Rule extends Entity {
     }
   }
 
+  get actions(): Array<string> {
+    let value = this.get("actions");
+    return value!.toStringArray();
+  }
+
+  set actions(value: Array<string>) {
+    this.set("actions", Value.fromStringArray(value));
+  }
+
+  get triggers(): Array<string> {
+    let value = this.get("triggers");
+    return value!.toStringArray();
+  }
+
+  set triggers(value: Array<string>) {
+    this.set("triggers", Value.fromStringArray(value));
+  }
+
+  get outputs(): Array<BigInt> {
+    let value = this.get("outputs");
+    return value!.toBigIntArray();
+  }
+
+  set outputs(value: Array<BigInt>) {
+    this.set("outputs", Value.fromBigIntArray(value));
+  }
+
+  get incentive(): BigInt {
+    let value = this.get("incentive");
+    return value!.toBigInt();
+  }
+
+  set incentive(value: BigInt) {
+    this.set("incentive", Value.fromBigInt(value));
+  }
+
+  get collaterals(): Array<BigInt> | null {
+    let value = this.get("collaterals");
+    if (!value || value.kind == ValueKind.NULL) {
+      return null;
+    } else {
+      return value.toBigIntArray();
+    }
+  }
+
+  set collaterals(value: Array<BigInt> | null) {
+    if (!value) {
+      this.unset("collaterals");
+    } else {
+      this.set("collaterals", Value.fromBigIntArray(<Array<BigInt>>value));
+    }
+  }
+
   get fund(): Bytes {
     let value = this.get("fund");
     return value!.toBytes();
@@ -488,6 +541,236 @@ export class Rule extends Entity {
 
   set fund(value: Bytes) {
     this.set("fund", Value.fromBytes(value));
+  }
+}
+
+export class Action extends Entity {
+  constructor(id: string) {
+    super();
+    this.set("id", Value.fromString(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(id != null, "Cannot save Action entity without an ID");
+    if (id) {
+      assert(
+        id.kind == ValueKind.STRING,
+        `Entities of type Action must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`
+      );
+      store.set("Action", id.toString(), this);
+    }
+  }
+
+  static load(id: string): Action | null {
+    return changetype<Action | null>(store.get("Action", id));
+  }
+
+  get id(): string {
+    let value = this.get("id");
+    return value!.toString();
+  }
+
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
+  }
+
+  get callee(): Bytes {
+    let value = this.get("callee");
+    return value!.toBytes();
+  }
+
+  set callee(value: Bytes) {
+    this.set("callee", Value.fromBytes(value));
+  }
+
+  get data(): Bytes {
+    let value = this.get("data");
+    return value!.toBytes();
+  }
+
+  set data(value: Bytes) {
+    this.set("data", Value.fromBytes(value));
+  }
+
+  get input_tokens(): Array<string> {
+    let value = this.get("input_tokens");
+    return value!.toStringArray();
+  }
+
+  set input_tokens(value: Array<string>) {
+    this.set("input_tokens", Value.fromStringArray(value));
+  }
+
+  get output_tokens(): Array<string> {
+    let value = this.get("output_tokens");
+    return value!.toStringArray();
+  }
+
+  set output_tokens(value: Array<string>) {
+    this.set("output_tokens", Value.fromStringArray(value));
+  }
+
+  get rule(): Bytes {
+    let value = this.get("rule");
+    return value!.toBytes();
+  }
+
+  set rule(value: Bytes) {
+    this.set("rule", Value.fromBytes(value));
+  }
+}
+
+export class Trigger extends Entity {
+  constructor(id: string) {
+    super();
+    this.set("id", Value.fromString(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(id != null, "Cannot save Trigger entity without an ID");
+    if (id) {
+      assert(
+        id.kind == ValueKind.STRING,
+        `Entities of type Trigger must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`
+      );
+      store.set("Trigger", id.toString(), this);
+    }
+  }
+
+  static load(id: string): Trigger | null {
+    return changetype<Trigger | null>(store.get("Trigger", id));
+  }
+
+  get id(): string {
+    let value = this.get("id");
+    return value!.toString();
+  }
+
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
+  }
+
+  get type(): BigInt {
+    let value = this.get("type");
+    return value!.toBigInt();
+  }
+
+  set type(value: BigInt) {
+    this.set("type", Value.fromBigInt(value));
+  }
+
+  get callee(): Bytes {
+    let value = this.get("callee");
+    return value!.toBytes();
+  }
+
+  set callee(value: Bytes) {
+    this.set("callee", Value.fromBytes(value));
+  }
+
+  get create_time_params(): Bytes {
+    let value = this.get("create_time_params");
+    return value!.toBytes();
+  }
+
+  set create_time_params(value: Bytes) {
+    this.set("create_time_params", Value.fromBytes(value));
+  }
+
+  get rule(): Bytes {
+    let value = this.get("rule");
+    return value!.toBytes();
+  }
+
+  set rule(value: Bytes) {
+    this.set("rule", Value.fromBytes(value));
+  }
+}
+
+export class Token extends Entity {
+  constructor(id: string) {
+    super();
+    this.set("id", Value.fromString(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(id != null, "Cannot save Token entity without an ID");
+    if (id) {
+      assert(
+        id.kind == ValueKind.STRING,
+        `Entities of type Token must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`
+      );
+      store.set("Token", id.toString(), this);
+    }
+  }
+
+  static load(id: string): Token | null {
+    return changetype<Token | null>(store.get("Token", id));
+  }
+
+  get id(): string {
+    let value = this.get("id");
+    return value!.toString();
+  }
+
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
+  }
+
+  get address(): Bytes {
+    let value = this.get("address");
+    return value!.toBytes();
+  }
+
+  set address(value: Bytes) {
+    this.set("address", Value.fromBytes(value));
+  }
+
+  get type(): BigInt {
+    let value = this.get("type");
+    return value!.toBigInt();
+  }
+
+  set type(value: BigInt) {
+    this.set("type", Value.fromBigInt(value));
+  }
+
+  get nft_id(): BigInt | null {
+    let value = this.get("nft_id");
+    if (!value || value.kind == ValueKind.NULL) {
+      return null;
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set nft_id(value: BigInt | null) {
+    if (!value) {
+      this.unset("nft_id");
+    } else {
+      this.set("nft_id", Value.fromBigInt(<BigInt>value));
+    }
+  }
+
+  get input_of(): Array<string> {
+    let value = this.get("input_of");
+    return value!.toStringArray();
+  }
+
+  set input_of(value: Array<string>) {
+    this.set("input_of", Value.fromStringArray(value));
+  }
+
+  get output_of(): Array<string> {
+    let value = this.get("output_of");
+    return value!.toStringArray();
+  }
+
+  set output_of(value: Array<string>) {
+    this.set("output_of", Value.fromStringArray(value));
   }
 }
 

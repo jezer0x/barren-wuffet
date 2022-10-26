@@ -48,8 +48,39 @@ type Rule @entity {
   deactivation_timestamps: [BigInt!]!
   execution_timestamp: BigInt
   redemption_timestamp: BigInt
+  actions: [Action!]! @derivedFrom(field: "rule")
+  triggers: [Trigger!]! @derivedFrom(field: "rule")
+  outputs: [BigInt!]!
+  incentive: BigInt! # TODO, no event to notify of changes yet
+  collaterals: [BigInt!]
   # what about all the other kinds of events? collateralAdd/reduce, incentiveAdd/reduce?
   fund: Fund!
+}
+
+type Action @entity {
+  id: ID!
+  callee: Bytes!
+  data: Bytes!
+  input_tokens: [Token!]! @derivedFrom(field: "input_of")
+  output_tokens: [Token!]! @derivedFrom(field: "output_of")
+  rule: Rule!
+}
+
+type Trigger @entity {
+  id: ID!
+  type: BigInt!
+  callee: Bytes!
+  create_time_params: Bytes!
+  rule: Rule!
+}
+
+type Token @entity {
+  id: ID!
+  address: Bytes!
+  type: BigInt!
+  nft_id: BigInt # only used for ERC721, else null
+  input_of: [Action!]!
+  output_of: [Action!]!
 }
 
 type Manager @entity {
