@@ -20,23 +20,31 @@ const config = {
     ]
   },
   networks: {
-    hardhat: {
-      forking: {
-        url: `https://arb-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY_ARBI}`,
-        blockNumber: 20005467, // using a pre-nitro block
-        enabled: false
-      }
-    },
-    goerli: {
-      url: `https://eth-goerli.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY_GOERLI}`,
-      accounts: [process.env.DEPLOYER_PRIV_KEY],
-      verify: {
-        etherscan: {
-          apiUrl: "https://api-goerli.etherscan.io/",
-          apiKey: process.env.ETHERSCAN_API_KEY
+    ...(process.env.ALCHEMY_API_KEY_ARBI
+      ? {
+          hardhat: {
+            forking: {
+              url: `https://arb-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY_ARBI}`,
+              blockNumber: 20005467, // using a pre-nitro block
+              enabled: false
+            }
+          }
         }
-      }
-    }
+      : {}),
+    ...(process.env.ALCHEMY_API_KEY_GOERLI
+      ? {
+          goerli: {
+            url: `https://eth-goerli.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY_GOERLI}`,
+            accounts: [process.env.DEPLOYER_PRIV_KEY],
+            verify: {
+              etherscan: {
+                apiUrl: "https://api-goerli.etherscan.io/",
+                apiKey: process.env.ETHERSCAN_API_KEY
+              }
+            }
+          }
+        }
+      : {})
   },
   namedAccounts: {
     deployer: 0,
