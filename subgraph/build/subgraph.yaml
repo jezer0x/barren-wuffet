@@ -6,8 +6,9 @@ dataSources:
     name: BarrenWuffet
     network: localhost
     source:
-      address: "0x82e01223d51Eb87e16A03E24687EDF0F294da6f1"
+      address: "0xB0D4afd8879eD9F52b28595d31B441D079B2Ca07"
       abi: BarrenWuffet
+      startBlock: 20005467
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.6
