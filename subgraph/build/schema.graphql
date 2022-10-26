@@ -1,5 +1,5 @@
 type Fund @entity {
-  id: Bytes! #address of the cloned Fund
+  id: ID! #address of the cloned Fund
   name: String!
   manager: Manager! # address of the msg.sender who created the fund
   creation_timestamp: BigInt! # block.timestamp for when the fund was created
@@ -13,7 +13,7 @@ type Fund @entity {
 }
 
 type Position @entity {
-  id: Bytes! # positionHash stored in the contracts
+  id: ID! # positionHash stored in the contracts
   next_actions: [Bytes!]! # array of possible actions that can be done
   fund: Fund!
   creation_timestamp: BigInt!
@@ -42,7 +42,7 @@ type Sub @entity {
 }
 
 type Rule @entity {
-  id: Bytes! # ruleHash
+  id: ID! # ruleHash
   creation_timestamp: BigInt!
   activation_timestamps: [BigInt!]!
   deactivation_timestamps: [BigInt!]!
@@ -58,7 +58,7 @@ type Rule @entity {
 }
 
 type Action @entity {
-  id: ID!
+  id: ID! # random shit that doesn't mean anything
   callee: Bytes!
   data: Bytes!
   input_tokens: [Token!]! @derivedFrom(field: "input_of")
@@ -67,7 +67,7 @@ type Action @entity {
 }
 
 type Trigger @entity {
-  id: ID!
+  id: ID! # random shit that doesn't mean anything
   type: BigInt!
   callee: Bytes!
   create_time_params: Bytes!
@@ -75,7 +75,7 @@ type Trigger @entity {
 }
 
 type Token @entity {
-  id: ID!
+  id: ID! # concat of address-type-nftId
   address: Bytes!
   type: BigInt!
   nft_id: BigInt # only used for ERC721, else null
@@ -84,7 +84,7 @@ type Token @entity {
 }
 
 type Manager @entity {
-  id: Bytes!
+  id: ID!
   socialHandle: String
   chatroomInvite: String
   customLink: String

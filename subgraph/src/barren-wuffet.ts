@@ -14,18 +14,18 @@ export function handleCreated(event: Created): void {
   // create a new Data Source from the Template so Node can index this new clone too
   FundTemplate.create(event.params.fundAddr);
 
-  let fund = new FundEntity(event.params.fundAddr);
+  let fund = new FundEntity(event.params.fundAddr.toHexString());
   let subStuff = FundContract.bind(event.params.fundAddr).subStuff();
 
-  let manager = Manager.load(event.params.manager);
+  let manager = Manager.load(event.params.manager.toHexString());
   if (!manager) {
     // has not set metadata yet
-    manager = new Manager(event.params.manager);
+    manager = new Manager(event.params.manager.toHexString());
     manager.save();
   }
 
   fund.name = event.params.fundName;
-  fund.manager = event.params.manager;
+  fund.manager = event.params.manager.toHexString();
   fund.creation_timestamp = event.block.timestamp;
   fund.total_collateral_raised = BigInt.zero();
   fund.manager_fee_percentage = BigInt.zero();
@@ -34,7 +34,7 @@ export function handleCreated(event: Created): void {
 
   let constraint_entity = new SubConstraints(event.params.fundAddr.toHexString() + "-constraints");
   let constraints = subStuff.getConstraints();
-  constraint_entity.fund = event.params.fundAddr;
+  constraint_entity.fund = event.params.fundAddr.toHexString();
   constraint_entity.deadline = constraints.deadline;
   constraint_entity.lockin = constraints.lockin;
   constraint_entity.maxCollateralPerSub = constraints.maxCollateralPerSub;
@@ -51,7 +51,7 @@ export function handlePaused(event: Paused): void {}
 export function handleUnpaused(event: Unpaused): void {}
 
 export function handleManagerMetadata(event: ManagerMetadata): void {
-  let manager = new Manager(event.params.walletAddr);
+  let manager = new Manager(event.params.walletAddr.toHexString());
   manager.aboutText = event.params.aboutText;
   manager.strategyText = event.params.strategyText;
   manager.chatroomInvite = event.params.chatroomInvite;

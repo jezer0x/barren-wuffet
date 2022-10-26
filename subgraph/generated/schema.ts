@@ -12,9 +12,9 @@ import {
 } from "@graphprotocol/graph-ts";
 
 export class Fund extends Entity {
-  constructor(id: Bytes) {
+  constructor(id: string) {
     super();
-    this.set("id", Value.fromBytes(id));
+    this.set("id", Value.fromString(id));
   }
 
   save(): void {
@@ -22,24 +22,24 @@ export class Fund extends Entity {
     assert(id != null, "Cannot save Fund entity without an ID");
     if (id) {
       assert(
-        id.kind == ValueKind.BYTES,
-        `Entities of type Fund must have an ID of type Bytes but the id '${id.displayData()}' is of type ${id.displayKind()}`
+        id.kind == ValueKind.STRING,
+        `Entities of type Fund must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`
       );
-      store.set("Fund", id.toBytes().toHexString(), this);
+      store.set("Fund", id.toString(), this);
     }
   }
 
-  static load(id: Bytes): Fund | null {
-    return changetype<Fund | null>(store.get("Fund", id.toHexString()));
+  static load(id: string): Fund | null {
+    return changetype<Fund | null>(store.get("Fund", id));
   }
 
-  get id(): Bytes {
+  get id(): string {
     let value = this.get("id");
-    return value!.toBytes();
+    return value!.toString();
   }
 
-  set id(value: Bytes) {
-    this.set("id", Value.fromBytes(value));
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
   }
 
   get name(): string {
@@ -51,13 +51,13 @@ export class Fund extends Entity {
     this.set("name", Value.fromString(value));
   }
 
-  get manager(): Bytes {
+  get manager(): string {
     let value = this.get("manager");
-    return value!.toBytes();
+    return value!.toString();
   }
 
-  set manager(value: Bytes) {
-    this.set("manager", Value.fromBytes(value));
+  set manager(value: string) {
+    this.set("manager", Value.fromString(value));
   }
 
   get creation_timestamp(): BigInt {
@@ -122,29 +122,29 @@ export class Fund extends Entity {
     this.set("subscription_constraints", Value.fromString(value));
   }
 
-  get rules(): Array<Bytes> {
+  get rules(): Array<string> {
     let value = this.get("rules");
-    return value!.toBytesArray();
+    return value!.toStringArray();
   }
 
-  set rules(value: Array<Bytes>) {
-    this.set("rules", Value.fromBytesArray(value));
+  set rules(value: Array<string>) {
+    this.set("rules", Value.fromStringArray(value));
   }
 
-  get positions(): Array<Bytes> {
+  get positions(): Array<string> {
     let value = this.get("positions");
-    return value!.toBytesArray();
+    return value!.toStringArray();
   }
 
-  set positions(value: Array<Bytes>) {
-    this.set("positions", Value.fromBytesArray(value));
+  set positions(value: Array<string>) {
+    this.set("positions", Value.fromStringArray(value));
   }
 }
 
 export class Position extends Entity {
-  constructor(id: Bytes) {
+  constructor(id: string) {
     super();
-    this.set("id", Value.fromBytes(id));
+    this.set("id", Value.fromString(id));
   }
 
   save(): void {
@@ -152,24 +152,24 @@ export class Position extends Entity {
     assert(id != null, "Cannot save Position entity without an ID");
     if (id) {
       assert(
-        id.kind == ValueKind.BYTES,
-        `Entities of type Position must have an ID of type Bytes but the id '${id.displayData()}' is of type ${id.displayKind()}`
+        id.kind == ValueKind.STRING,
+        `Entities of type Position must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`
       );
-      store.set("Position", id.toBytes().toHexString(), this);
+      store.set("Position", id.toString(), this);
     }
   }
 
-  static load(id: Bytes): Position | null {
-    return changetype<Position | null>(store.get("Position", id.toHexString()));
+  static load(id: string): Position | null {
+    return changetype<Position | null>(store.get("Position", id));
   }
 
-  get id(): Bytes {
+  get id(): string {
     let value = this.get("id");
-    return value!.toBytes();
+    return value!.toString();
   }
 
-  set id(value: Bytes) {
-    this.set("id", Value.fromBytes(value));
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
   }
 
   get next_actions(): Array<Bytes> {
@@ -181,13 +181,13 @@ export class Position extends Entity {
     this.set("next_actions", Value.fromBytesArray(value));
   }
 
-  get fund(): Bytes {
+  get fund(): string {
     let value = this.get("fund");
-    return value!.toBytes();
+    return value!.toString();
   }
 
-  set fund(value: Bytes) {
-    this.set("fund", Value.fromBytes(value));
+  set fund(value: string) {
+    this.set("fund", Value.fromString(value));
   }
 
   get creation_timestamp(): BigInt {
@@ -302,13 +302,13 @@ export class SubConstraints extends Entity {
     this.set("lockin", Value.fromBigInt(value));
   }
 
-  get fund(): Bytes {
+  get fund(): string {
     let value = this.get("fund");
-    return value!.toBytes();
+    return value!.toString();
   }
 
-  set fund(value: Bytes) {
-    this.set("fund", Value.fromBytes(value));
+  set fund(value: string) {
+    this.set("fund", Value.fromString(value));
   }
 }
 
@@ -352,13 +352,13 @@ export class Sub extends Entity {
     this.set("address", Value.fromBytes(value));
   }
 
-  get fund(): Bytes {
+  get fund(): string {
     let value = this.get("fund");
-    return value!.toBytes();
+    return value!.toString();
   }
 
-  set fund(value: Bytes) {
-    this.set("fund", Value.fromBytes(value));
+  set fund(value: string) {
+    this.set("fund", Value.fromString(value));
   }
 
   get deposit_timestamps(): Array<BigInt> {
@@ -390,9 +390,9 @@ export class Sub extends Entity {
 }
 
 export class Rule extends Entity {
-  constructor(id: Bytes) {
+  constructor(id: string) {
     super();
-    this.set("id", Value.fromBytes(id));
+    this.set("id", Value.fromString(id));
   }
 
   save(): void {
@@ -400,24 +400,24 @@ export class Rule extends Entity {
     assert(id != null, "Cannot save Rule entity without an ID");
     if (id) {
       assert(
-        id.kind == ValueKind.BYTES,
-        `Entities of type Rule must have an ID of type Bytes but the id '${id.displayData()}' is of type ${id.displayKind()}`
+        id.kind == ValueKind.STRING,
+        `Entities of type Rule must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`
       );
-      store.set("Rule", id.toBytes().toHexString(), this);
+      store.set("Rule", id.toString(), this);
     }
   }
 
-  static load(id: Bytes): Rule | null {
-    return changetype<Rule | null>(store.get("Rule", id.toHexString()));
+  static load(id: string): Rule | null {
+    return changetype<Rule | null>(store.get("Rule", id));
   }
 
-  get id(): Bytes {
+  get id(): string {
     let value = this.get("id");
-    return value!.toBytes();
+    return value!.toString();
   }
 
-  set id(value: Bytes) {
-    this.set("id", Value.fromBytes(value));
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
   }
 
   get creation_timestamp(): BigInt {
@@ -534,13 +534,13 @@ export class Rule extends Entity {
     }
   }
 
-  get fund(): Bytes {
+  get fund(): string {
     let value = this.get("fund");
-    return value!.toBytes();
+    return value!.toString();
   }
 
-  set fund(value: Bytes) {
-    this.set("fund", Value.fromBytes(value));
+  set fund(value: string) {
+    this.set("fund", Value.fromString(value));
   }
 }
 
@@ -611,13 +611,13 @@ export class Action extends Entity {
     this.set("output_tokens", Value.fromStringArray(value));
   }
 
-  get rule(): Bytes {
+  get rule(): string {
     let value = this.get("rule");
-    return value!.toBytes();
+    return value!.toString();
   }
 
-  set rule(value: Bytes) {
-    this.set("rule", Value.fromBytes(value));
+  set rule(value: string) {
+    this.set("rule", Value.fromString(value));
   }
 }
 
@@ -679,13 +679,13 @@ export class Trigger extends Entity {
     this.set("create_time_params", Value.fromBytes(value));
   }
 
-  get rule(): Bytes {
+  get rule(): string {
     let value = this.get("rule");
-    return value!.toBytes();
+    return value!.toString();
   }
 
-  set rule(value: Bytes) {
-    this.set("rule", Value.fromBytes(value));
+  set rule(value: string) {
+    this.set("rule", Value.fromString(value));
   }
 }
 
@@ -775,9 +775,9 @@ export class Token extends Entity {
 }
 
 export class Manager extends Entity {
-  constructor(id: Bytes) {
+  constructor(id: string) {
     super();
-    this.set("id", Value.fromBytes(id));
+    this.set("id", Value.fromString(id));
   }
 
   save(): void {
@@ -785,24 +785,24 @@ export class Manager extends Entity {
     assert(id != null, "Cannot save Manager entity without an ID");
     if (id) {
       assert(
-        id.kind == ValueKind.BYTES,
-        `Entities of type Manager must have an ID of type Bytes but the id '${id.displayData()}' is of type ${id.displayKind()}`
+        id.kind == ValueKind.STRING,
+        `Entities of type Manager must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`
       );
-      store.set("Manager", id.toBytes().toHexString(), this);
+      store.set("Manager", id.toString(), this);
     }
   }
 
-  static load(id: Bytes): Manager | null {
-    return changetype<Manager | null>(store.get("Manager", id.toHexString()));
+  static load(id: string): Manager | null {
+    return changetype<Manager | null>(store.get("Manager", id));
   }
 
-  get id(): Bytes {
+  get id(): string {
     let value = this.get("id");
-    return value!.toBytes();
+    return value!.toString();
   }
 
-  set id(value: Bytes) {
-    this.set("id", Value.fromBytes(value));
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
   }
 
   get socialHandle(): string | null {
@@ -890,12 +890,12 @@ export class Manager extends Entity {
     }
   }
 
-  get funds(): Array<Bytes> {
+  get funds(): Array<string> {
     let value = this.get("funds");
-    return value!.toBytesArray();
+    return value!.toStringArray();
   }
 
-  set funds(value: Array<Bytes>) {
-    this.set("funds", Value.fromBytesArray(value));
+  set funds(value: Array<string>) {
+    this.set("funds", Value.fromStringArray(value));
   }
 }
