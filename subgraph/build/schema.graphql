@@ -1,6 +1,7 @@
 type Fund @entity {
   id: Bytes! #address of the cloned Fund
-  manager: Bytes! # address of the msg.sender who created the fund
+  name: String!
+  manager: Manager! # address of the msg.sender who created the fund
   creation_timestamp: BigInt! # block.timestamp for when the fund was created
   closed_timestamp: BigInt # indicates when the fund was closed, null means not closed yet
   subscriptions: [Sub!]! @derivedFrom(field: "fund")
@@ -49,4 +50,14 @@ type Rule @entity {
   redemption_timestamp: BigInt
   # what about all the other kinds of events? collateralAdd/reduce, incentiveAdd/reduce?
   fund: Fund!
+}
+
+type Manager @entity {
+  id: Bytes!
+  socialHandle: String
+  chatroomInvite: String
+  customLink: String
+  aboutText: String
+  strategyText: String
+  funds: [Fund!]! @derivedFrom(field: "manager")
 }

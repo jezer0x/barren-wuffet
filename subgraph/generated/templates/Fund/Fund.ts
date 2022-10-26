@@ -1078,44 +1078,40 @@ export class InitializeCall__Inputs {
     this._call = call;
   }
 
-  get _name(): string {
-    return this._call.inputValues[0].value.toString();
-  }
-
   get _manager(): Address {
-    return this._call.inputValues[1].value.toAddress();
+    return this._call.inputValues[0].value.toAddress();
   }
 
   get _constraints(): InitializeCall_constraintsStruct {
     return changetype<InitializeCall_constraintsStruct>(
-      this._call.inputValues[2].value.toTuple()
+      this._call.inputValues[1].value.toTuple()
     );
   }
 
   get _feeParams(): InitializeCall_feeParamsStruct {
     return changetype<InitializeCall_feeParamsStruct>(
-      this._call.inputValues[3].value.toTuple()
+      this._call.inputValues[2].value.toTuple()
     );
   }
 
   get _wlServiceAddr(): Address {
-    return this._call.inputValues[4].value.toAddress();
+    return this._call.inputValues[3].value.toAddress();
   }
 
   get _triggerWhitelistHash(): Bytes {
-    return this._call.inputValues[5].value.toBytes();
+    return this._call.inputValues[4].value.toBytes();
   }
 
   get _actionWhitelistHash(): Bytes {
-    return this._call.inputValues[6].value.toBytes();
+    return this._call.inputValues[5].value.toBytes();
   }
 
   get roboCopBeaconAddr(): Address {
-    return this._call.inputValues[7].value.toAddress();
+    return this._call.inputValues[6].value.toAddress();
   }
 
   get _declaredTokenAddrs(): Array<Address> {
-    return this._call.inputValues[8].value.toAddressArray();
+    return this._call.inputValues[7].value.toAddressArray();
   }
 }
 

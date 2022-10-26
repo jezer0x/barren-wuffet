@@ -30,6 +30,48 @@ export class Created__Params {
   get fundAddr(): Address {
     return this._event.parameters[1].value.toAddress();
   }
+
+  get fundName(): string {
+    return this._event.parameters[2].value.toString();
+  }
+}
+
+export class ManagerMetadata extends ethereum.Event {
+  get params(): ManagerMetadata__Params {
+    return new ManagerMetadata__Params(this);
+  }
+}
+
+export class ManagerMetadata__Params {
+  _event: ManagerMetadata;
+
+  constructor(event: ManagerMetadata) {
+    this._event = event;
+  }
+
+  get walletAddr(): Address {
+    return this._event.parameters[0].value.toAddress();
+  }
+
+  get socialHandle(): string {
+    return this._event.parameters[1].value.toString();
+  }
+
+  get chatroomInvite(): string {
+    return this._event.parameters[2].value.toString();
+  }
+
+  get customLink(): string {
+    return this._event.parameters[3].value.toString();
+  }
+
+  get aboutText(): string {
+    return this._event.parameters[4].value.toString();
+  }
+
+  get strategyText(): string {
+    return this._event.parameters[5].value.toString();
+  }
 }
 
 export class OwnershipTransferred extends ethereum.Event {
@@ -638,6 +680,52 @@ export class SetActionWhitelistHashCall__Outputs {
   _call: SetActionWhitelistHashCall;
 
   constructor(call: SetActionWhitelistHashCall) {
+    this._call = call;
+  }
+}
+
+export class SetManagerMetadataCall extends ethereum.Call {
+  get inputs(): SetManagerMetadataCall__Inputs {
+    return new SetManagerMetadataCall__Inputs(this);
+  }
+
+  get outputs(): SetManagerMetadataCall__Outputs {
+    return new SetManagerMetadataCall__Outputs(this);
+  }
+}
+
+export class SetManagerMetadataCall__Inputs {
+  _call: SetManagerMetadataCall;
+
+  constructor(call: SetManagerMetadataCall) {
+    this._call = call;
+  }
+
+  get socialHandle(): string {
+    return this._call.inputValues[0].value.toString();
+  }
+
+  get chatroomInvite(): string {
+    return this._call.inputValues[1].value.toString();
+  }
+
+  get customLink(): string {
+    return this._call.inputValues[2].value.toString();
+  }
+
+  get aboutText(): string {
+    return this._call.inputValues[3].value.toString();
+  }
+
+  get strategyText(): string {
+    return this._call.inputValues[4].value.toString();
+  }
+}
+
+export class SetManagerMetadataCall__Outputs {
+  _call: SetManagerMetadataCall;
+
+  constructor(call: SetManagerMetadataCall) {
     this._call = call;
   }
 }

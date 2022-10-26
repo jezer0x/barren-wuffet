@@ -1,27 +1,15 @@
-import { ethers, getNamedAccounts, hardhatArguments } from "hardhat";
+import { ethers, getNamedAccounts } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
-import { Contract, Bytes, BigNumber, utils } from "ethers";
+import { Contract, BigNumber, utils } from "ethers";
 import {
   GT,
   ERC20_DECIMALS,
-  TST1_PRICE_IN_ETH,
-  DEFAULT_INCENTIVE,
-  ETH_PRICE_IN_USD,
-  PRICE_TRIGGER_DECIMALS,
-  TST1_PRICE_IN_USD,
-  ETH_PRICE_IN_TST1,
-  ETH_ADDRESS,
-  PRICE_TRIGGER_TYPE,
   DEFAULT_SUB_TO_MAN_FEE_PCT,
   ETH_TOKEN,
-  LT,
   TOKEN_TYPE,
   TIMESTAMP_TRIGGER_TYPE
 } from "../Constants";
 import { getAddressFromEvent } from "../helper";
-import { abi as FACTORY_ABI } from "@134dd3v/uniswap-v3-core-0.8-support/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json";
-import { abi as POOL_ABI } from "@134dd3v/uniswap-v3-core-0.8-support/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json";
-
 async function makeSubConstraints() {
   const latestTime = await time.latest();
   return {
@@ -74,9 +62,7 @@ async function main() {
   ];
 
   const usdc_contract = new Contract("0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", erc20abifrag, ethers.provider);
-  const dai_contract = new Contract("0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1", erc20abifrag, ethers.provider);
   const USDC_TOKEN = { t: TOKEN_TYPE.ERC20, addr: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", id: BigNumber.from(0) };
-  const DAI_TOKEN = { t: TOKEN_TYPE.ERC20, addr: "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1", id: BigNumber.from(0) };
 
   let balance_usdc = await usdc_contract.balanceOf(McFundAddr);
 
@@ -94,8 +80,11 @@ async function main() {
     {
       callee: sushiSwapExactXForY.address,
       data: ethers.utils.defaultAbiCoder.encode(
-        ["address[]"],
-        [["0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"]]
+        ["address[]", "uint256"],
+        [
+          ["0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"],
+          BigNumber.from(19).mul(BigNumber.from(10).pow(8)) // translates to ~1900USD/ETH [1900000000e18/1e18]
+        ]
       ),
       inputTokens: [ETH_TOKEN], // eth
       outputTokens: [USDC_TOKEN] // swapping for USDC
@@ -114,8 +103,11 @@ async function main() {
     {
       callee: sushiSwapExactXForY.address,
       data: ethers.utils.defaultAbiCoder.encode(
-        ["address[]"],
-        [["0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"]]
+        ["address[]", "uint256"],
+        [
+          ["0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"],
+          BigNumber.from(500).mul(BigNumber.from(10).pow(24)) // translates to ~2000USD/ETH [1e18*1e18 / 1900000000]
+        ]
       ),
       inputTokens: [USDC_TOKEN],
       outputTokens: [ETH_TOKEN]
@@ -137,8 +129,8 @@ async function main() {
       {
         callee: sushiSwapExactXForY.address,
         data: ethers.utils.defaultAbiCoder.encode(
-          ["address[]"],
-          [["0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"]]
+          ["address[]", "uint256"],
+          [["0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"], 0]
         ),
         inputTokens: [ETH_TOKEN], // eth
         outputTokens: [USDC_TOKEN] // swapping for USDC

@@ -9,7 +9,17 @@ import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 
 contract BarrenWuffet is Ownable, Pausable {
     // event used by frontend to pick up newly created funds
-    event Created(address indexed manager, address fundAddr);
+    event Created(address indexed manager, address fundAddr, string fundName);
+
+    // event used by frontend to display manager
+    event ManagerMetadata(
+        address indexed walletAddr,
+        string socialHandle,
+        string chatroomInvite,
+        string customLink,
+        string aboutText,
+        string strategyText
+    );
 
     FeeParams public feeParams;
 
@@ -78,7 +88,6 @@ contract BarrenWuffet is Ownable, Pausable {
         feeParams.subscriberToManagerFeePercentage = subscriberToManagerFeePercentage;
 
         fund.initialize(
-            name,
             msg.sender,
             constraints,
             feeParams,
@@ -88,7 +97,17 @@ contract BarrenWuffet is Ownable, Pausable {
             roboCopBeaconAddr,
             declaredTokens
         );
-        emit Created(msg.sender, address(fund));
+        emit Created(msg.sender, address(fund), name);
         return address(fund);
+    }
+
+    function setManagerMetadata(
+        string calldata socialHandle,
+        string calldata chatroomInvite,
+        string calldata customLink,
+        string calldata aboutText,
+        string calldata strategyText
+    ) external {
+        emit ManagerMetadata(msg.sender, socialHandle, chatroomInvite, customLink, aboutText, strategyText);
     }
 }
