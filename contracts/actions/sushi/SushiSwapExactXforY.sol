@@ -16,14 +16,13 @@ import "../SimpleSwapUtils.sol";
 
     Tokens: 
         Will only have 1 input token and 1 output token
+    
+    Action.data: 
+        - path as defined by sushiswap
+        -  minimum amount of Y tokens per X accepted (8 decimals). Examples with ETH(18 decimals) and USDC (6 decimals): 
+            -- If you want to buy ETH with USDC at a price of 2000USD/ETH, you should provide 5e26
+            -- If you want to sell ETH for USDC at a price of 2000USD/ETH, you should provide 2e9
 
-    TriggerReturn: 
-        Applicable TriggerReturn must be in (asset1, asset2, val) where val.decimals = 8, asset1 = inputToken and asset2 = outputToken
-        If not present, trade is in danger of getting frontrun.
-        
-        Example:
-            ETH/USD -> USD per ETH -> ETH Price in USD -> triggerReturn = [ETH, USD, val] -> Must use when tokenIn = ETH and tokenOut = USD (i.e. buying USD with ETH)
-            USD/ETH -> ETH per USD -> USD Price in ETH -> triggerReturn = [USD, ETH, val] -> Must use when tokenIn = USD and tokenOut = ETH (i.e. buying ETH with USD)
 */
 contract SushiSwapExactXForY is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
@@ -48,15 +47,12 @@ contract SushiSwapExactXForY is IAction, DelegatePerform {
     {
         uint256[] memory outputs = new uint256[](1);
         uint256[] memory amounts;
+        (address[] memory path, uint256 minAmountOfYPerX) = abi.decode(action.data, (address[], uint256));
 
         if (action.inputTokens[0].isETH()) {
             amounts = swapRouter.swapExactETHForTokens{value: runtimeParams.collaterals[0]}({
-                amountOutMin: (SimpleSwapUtils._getRelevantPriceTriggerData(
-                    action.inputTokens[0],
-                    action.outputTokens[0],
-                    runtimeParams.triggerReturnArr
-                ) * runtimeParams.collaterals[0]) / 10**8, // assumption: triggerReturn in the form of tokenIn/tokenOut.,
-                path: abi.decode(action.data, (address[])),
+                amountOutMin: (minAmountOfYPerX * runtimeParams.collaterals[0]) / 10**18,
+                path: path,
                 to: address(this),
                 deadline: block.timestamp
             });
@@ -64,12 +60,8 @@ contract SushiSwapExactXForY is IAction, DelegatePerform {
             action.inputTokens[0].approve(address(swapRouter), runtimeParams.collaterals[0]);
             amounts = swapRouter.swapExactTokensForETH({
                 amountIn: runtimeParams.collaterals[0],
-                amountOutMin: (SimpleSwapUtils._getRelevantPriceTriggerData(
-                    action.inputTokens[0],
-                    action.outputTokens[0],
-                    runtimeParams.triggerReturnArr
-                ) * runtimeParams.collaterals[0]) / 10**8, // assumption: triggerReturn in the form of tokenIn/tokenOut.,
-                path: abi.decode(action.data, (address[])),
+                amountOutMin: (minAmountOfYPerX * runtimeParams.collaterals[0]) / 10**18,
+                path: path,
                 to: address(this),
                 deadline: block.timestamp
             });
@@ -77,12 +69,8 @@ contract SushiSwapExactXForY is IAction, DelegatePerform {
             action.inputTokens[0].approve(address(swapRouter), runtimeParams.collaterals[0]);
             amounts = swapRouter.swapExactTokensForTokens({
                 amountIn: runtimeParams.collaterals[0],
-                amountOutMin: (SimpleSwapUtils._getRelevantPriceTriggerData(
-                    action.inputTokens[0],
-                    action.outputTokens[0],
-                    runtimeParams.triggerReturnArr
-                ) * runtimeParams.collaterals[0]) / 10**8, // assumption: triggerReturn in the form of tokenIn/tokenOut.,
-                path: abi.decode(action.data, (address[])),
+                amountOutMin: (minAmountOfYPerX * runtimeParams.collaterals[0]) / 10**18,
+                path: path,
                 to: address(this),
                 deadline: block.timestamp
             });

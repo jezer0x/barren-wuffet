@@ -1,51 +1,94 @@
 type Fund @entity {
-  id: Bytes! #address of the cloned Fund
-  manager: Bytes! # address of the msg.sender who created the fund
+  id: ID! #address of the cloned Fund
+  name: String!
+  manager: Manager! # address of the msg.sender who created the fund
   creation_timestamp: BigInt! # block.timestamp for when the fund was created
   closed_timestamp: BigInt # indicates when the fund was closed, null means not closed yet
   subscriptions: [Sub!]! @derivedFrom(field: "fund")
-  actions: [Action!]! @derivedFrom(field: "fund") # to keep history of actions taken via takeActions
+  total_collateral_raised: BigInt!
+  manager_fee_percentage: BigInt!
+  subscription_constraints: SubConstraints! @derivedFrom(field: "fund")
   rules: [Rule!]! @derivedFrom(field: "fund") # to keep track of all the ruleHashes created via roboCop
   positions: [Position!]! @derivedFrom(field: "fund")
 }
 
 type Position @entity {
-  id: Bytes! # positionHash stored in the contracts
+  id: ID! # positionHash stored in the contracts
   next_actions: [Bytes!]! # array of possible actions that can be done
   fund: Fund!
-  source: PositionSource
   creation_timestamp: BigInt!
   closed_timestamp: BigInt
 }
 
-enum PositionSource {
-  Fund
-  RoboCop
-}
-
-type Action @entity {
+type SubConstraints @entity {
   id: ID!
-  action: Bytes!
-  timestamp: BigInt!
+  minCollateralPerSub: BigInt!
+  maxCollateralPerSub: BigInt!
+  minCollateralTotal: BigInt!
+  maxCollateralTotal: BigInt!
+  deadline: BigInt!
+  lockin: BigInt!
   fund: Fund!
 }
 
+# Because "Subscription" is a reserved keyword...
 type Sub @entity {
   id: ID!
   address: Bytes!
-  idx: BigInt!
   fund: Fund!
-  deposit_timestamp: BigInt!
-  withdraw_timestamp: BigInt
+  deposit_timestamps: [BigInt!]!
+  deposit_amounts: [BigInt!]!
+  withdraw_timestamps: [BigInt!]!
 }
 
 type Rule @entity {
-  id: Bytes! # ruleHash
+  id: ID! # ruleHash
   creation_timestamp: BigInt!
   activation_timestamps: [BigInt!]!
   deactivation_timestamps: [BigInt!]!
   execution_timestamp: BigInt
   redemption_timestamp: BigInt
+  actions: [Action!]! @derivedFrom(field: "rule")
+  triggers: [Trigger!]! @derivedFrom(field: "rule")
+  outputs: [BigInt!]!
+  incentive: BigInt! # TODO, no event to notify of changes yet
+  collaterals: [BigInt!]
   # what about all the other kinds of events? collateralAdd/reduce, incentiveAdd/reduce?
   fund: Fund!
+}
+
+type Action @entity {
+  id: ID! # random shit that doesn't mean anything
+  callee: Bytes!
+  data: Bytes!
+  input_tokens: [Token!]! @derivedFrom(field: "input_of")
+  output_tokens: [Token!]! @derivedFrom(field: "output_of")
+  rule: Rule!
+}
+
+type Trigger @entity {
+  id: ID! # random shit that doesn't mean anything
+  type: BigInt!
+  callee: Bytes!
+  create_time_params: Bytes!
+  rule: Rule!
+}
+
+type Token @entity {
+  id: ID! # concat of address-type-nftId
+  address: Bytes!
+  type: BigInt!
+  nft_id: BigInt # only used for ERC721, else null
+  input_of: [Action!]!
+  output_of: [Action!]!
+}
+
+type Manager @entity {
+  id: ID!
+  socialHandle: String
+  chatroomInvite: String
+  customLink: String
+  aboutText: String
+  strategyText: String
+  funds: [Fund!]! @derivedFrom(field: "manager")
 }

@@ -45,10 +45,14 @@
       },
       {
         "internalType": "address",
-        "name": "_roboCopImplAddr",
+        "name": "_roboCopBeaconAddr",
         "type": "address"
       },
-      { "internalType": "address", "name": "_fundImplAddr", "type": "address" }
+      {
+        "internalType": "address",
+        "name": "_fundBeaconAddr",
+        "type": "address"
+      }
     ],
     "stateMutability": "nonpayable",
     "type": "constructor"
@@ -67,9 +71,58 @@
         "internalType": "address",
         "name": "fundAddr",
         "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "fundName",
+        "type": "string"
       }
     ],
     "name": "Created",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "walletAddr",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "socialHandle",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "chatroomInvite",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "customLink",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "aboutText",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "strategyText",
+        "type": "string"
+      }
+    ],
+    "name": "ManagerMetadata",
     "type": "event"
   },
   {
@@ -120,13 +173,23 @@
   {
     "inputs": [],
     "name": "actionWhitelistHash",
-    "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [
-      { "internalType": "string", "name": "name", "type": "string" },
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
       {
         "components": [
           {
@@ -149,8 +212,16 @@
             "name": "maxCollateralTotal",
             "type": "uint256"
           },
-          { "internalType": "uint256", "name": "deadline", "type": "uint256" },
-          { "internalType": "uint256", "name": "lockin", "type": "uint256" },
+          {
+            "internalType": "uint256",
+            "name": "deadline",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "lockin",
+            "type": "uint256"
+          },
           {
             "components": [
               {
@@ -158,7 +229,16 @@
                 "name": "t",
                 "type": "uint8"
               },
-              { "internalType": "address", "name": "addr", "type": "address" }
+              {
+                "internalType": "address",
+                "name": "addr",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "id",
+                "type": "uint256"
+              }
             ],
             "internalType": "struct Token",
             "name": "allowedDepositToken",
@@ -181,7 +261,13 @@
       }
     ],
     "name": "createFund",
-    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
     "stateMutability": "nonpayable",
     "type": "function"
   },
@@ -215,15 +301,27 @@
   },
   {
     "inputs": [],
-    "name": "fundImplAddr",
-    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "name": "fundBeaconAddr",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [],
     "name": "owner",
-    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
@@ -237,7 +335,13 @@
   {
     "inputs": [],
     "name": "paused",
-    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
@@ -250,8 +354,14 @@
   },
   {
     "inputs": [],
-    "name": "roboCopImplAddr",
-    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "name": "roboCopBeaconAddr",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
@@ -270,22 +380,33 @@
   },
   {
     "inputs": [
-      { "internalType": "address", "name": "_fundImplAddr", "type": "address" }
-    ],
-    "name": "setFundImplementationAddress",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
       {
-        "internalType": "address",
-        "name": "_roboCopImplAddr",
-        "type": "address"
+        "internalType": "string",
+        "name": "socialHandle",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "chatroomInvite",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "customLink",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "aboutText",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "strategyText",
+        "type": "string"
       }
     ],
-    "name": "setRoboCopImplementationAddress",
+    "name": "setManagerMetadata",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -340,7 +461,11 @@
   },
   {
     "inputs": [
-      { "internalType": "address", "name": "_wlServiceAddr", "type": "address" }
+      {
+        "internalType": "address",
+        "name": "_wlServiceAddr",
+        "type": "address"
+      }
     ],
     "name": "setWhitelistServiceAddress",
     "outputs": [],
@@ -349,7 +474,11 @@
   },
   {
     "inputs": [
-      { "internalType": "address", "name": "newOwner", "type": "address" }
+      {
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
     ],
     "name": "transferOwnership",
     "outputs": [],
@@ -359,7 +488,13 @@
   {
     "inputs": [],
     "name": "triggerWhitelistHash",
-    "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   },
@@ -373,7 +508,13 @@
   {
     "inputs": [],
     "name": "wlServiceAddr",
-    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   }

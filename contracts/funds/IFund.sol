@@ -25,12 +25,8 @@ enum FundStatus {
 
 interface IFund is ISubscription {
     event Closed(address indexed fundAddr);
-    event Executed(bytes action);
-    event PositionCreated(bytes32 positionHash, bytes precursorAction, bytes[] nextActions);
-    event PositionsClosed(bytes closingAction, bytes32[] positionHashesClosed);
 
     function initialize(
-        string memory _name,
         address _manager,
         Subscriptions.Constraints memory _constraints,
         FeeParams calldata _feeParams,

@@ -270,6 +270,10 @@ export class RoboCop__actionClosesPendingPositionInputActionInputTokensStruct ex
   get addr(): Address {
     return this[1].toAddress();
   }
+
+  get id(): BigInt {
+    return this[2].toBigInt();
+  }
 }
 
 export class RoboCop__actionClosesPendingPositionInputActionOutputTokensStruct extends ethereum.Tuple {
@@ -279,6 +283,10 @@ export class RoboCop__actionClosesPendingPositionInputActionOutputTokensStruct e
 
   get addr(): Address {
     return this[1].toAddress();
+  }
+
+  get id(): BigInt {
+    return this[2].toBigInt();
   }
 }
 
@@ -290,6 +298,10 @@ export class RoboCop__getInputTokensResultValue0Struct extends ethereum.Tuple {
   get addr(): Address {
     return this[1].toAddress();
   }
+
+  get id(): BigInt {
+    return this[2].toBigInt();
+  }
 }
 
 export class RoboCop__getOutputTokensResultValue0Struct extends ethereum.Tuple {
@@ -299,6 +311,10 @@ export class RoboCop__getOutputTokensResultValue0Struct extends ethereum.Tuple {
 
   get addr(): Address {
     return this[1].toAddress();
+  }
+
+  get id(): BigInt {
+    return this[2].toBigInt();
   }
 }
 
@@ -376,6 +392,10 @@ export class RoboCop__getRuleResultValue0ActionsInputTokensStruct extends ethere
   get addr(): Address {
     return this[1].toAddress();
   }
+
+  get id(): BigInt {
+    return this[2].toBigInt();
+  }
 }
 
 export class RoboCop__getRuleResultValue0ActionsOutputTokensStruct extends ethereum.Tuple {
@@ -385,6 +405,52 @@ export class RoboCop__getRuleResultValue0ActionsOutputTokensStruct extends ether
 
   get addr(): Address {
     return this[1].toAddress();
+  }
+
+  get id(): BigInt {
+    return this[2].toBigInt();
+  }
+}
+
+export class RoboCop__redeemOutputsResultValue0Struct extends ethereum.Tuple {
+  get t(): i32 {
+    return this[0].toI32();
+  }
+
+  get addr(): Address {
+    return this[1].toAddress();
+  }
+
+  get id(): BigInt {
+    return this[2].toBigInt();
+  }
+}
+
+export class RoboCop__redeemOutputsResult {
+  value0: Array<RoboCop__redeemOutputsResultValue0Struct>;
+  value1: Array<BigInt>;
+
+  constructor(
+    value0: Array<RoboCop__redeemOutputsResultValue0Struct>,
+    value1: Array<BigInt>
+  ) {
+    this.value0 = value0;
+    this.value1 = value1;
+  }
+
+  toMap(): TypedMap<string, ethereum.Value> {
+    let map = new TypedMap<string, ethereum.Value>();
+    map.set("value0", ethereum.Value.fromTupleArray(this.value0));
+    map.set("value1", ethereum.Value.fromUnsignedBigIntArray(this.value1));
+    return map;
+  }
+
+  getValue0(): Array<RoboCop__redeemOutputsResultValue0Struct> {
+    return this.value0;
+  }
+
+  getValue1(): Array<BigInt> {
+    return this.value1;
   }
 }
 
@@ -398,7 +464,7 @@ export class RoboCop extends ethereum.SmartContract {
   ): boolean {
     let result = super.call(
       "actionClosesPendingPosition",
-      "actionClosesPendingPosition((address,bytes,(uint8,address)[],(uint8,address)[])):(bool)",
+      "actionClosesPendingPosition((address,bytes,(uint8,address,uint256)[],(uint8,address,uint256)[])):(bool)",
       [ethereum.Value.fromTuple(action)]
     );
 
@@ -410,7 +476,7 @@ export class RoboCop extends ethereum.SmartContract {
   ): ethereum.CallResult<boolean> {
     let result = super.tryCall(
       "actionClosesPendingPosition",
-      "actionClosesPendingPosition((address,bytes,(uint8,address)[],(uint8,address)[])):(bool)",
+      "actionClosesPendingPosition((address,bytes,(uint8,address,uint256)[],(uint8,address,uint256)[])):(bool)",
       [ethereum.Value.fromTuple(action)]
     );
     if (result.reverted) {
@@ -476,7 +542,7 @@ export class RoboCop extends ethereum.SmartContract {
   ): Array<RoboCop__getInputTokensResultValue0Struct> {
     let result = super.call(
       "getInputTokens",
-      "getInputTokens(bytes32):((uint8,address)[])",
+      "getInputTokens(bytes32):((uint8,address,uint256)[])",
       [ethereum.Value.fromFixedBytes(ruleHash)]
     );
 
@@ -488,7 +554,7 @@ export class RoboCop extends ethereum.SmartContract {
   ): ethereum.CallResult<Array<RoboCop__getInputTokensResultValue0Struct>> {
     let result = super.tryCall(
       "getInputTokens",
-      "getInputTokens(bytes32):((uint8,address)[])",
+      "getInputTokens(bytes32):((uint8,address,uint256)[])",
       [ethereum.Value.fromFixedBytes(ruleHash)]
     );
     if (result.reverted) {
@@ -505,7 +571,7 @@ export class RoboCop extends ethereum.SmartContract {
   ): Array<RoboCop__getOutputTokensResultValue0Struct> {
     let result = super.call(
       "getOutputTokens",
-      "getOutputTokens(bytes32):((uint8,address)[])",
+      "getOutputTokens(bytes32):((uint8,address,uint256)[])",
       [ethereum.Value.fromFixedBytes(ruleHash)]
     );
 
@@ -517,7 +583,7 @@ export class RoboCop extends ethereum.SmartContract {
   ): ethereum.CallResult<Array<RoboCop__getOutputTokensResultValue0Struct>> {
     let result = super.tryCall(
       "getOutputTokens",
-      "getOutputTokens(bytes32):((uint8,address)[])",
+      "getOutputTokens(bytes32):((uint8,address,uint256)[])",
       [ethereum.Value.fromFixedBytes(ruleHash)]
     );
     if (result.reverted) {
@@ -532,7 +598,7 @@ export class RoboCop extends ethereum.SmartContract {
   getRule(ruleHash: Bytes): RoboCop__getRuleResultValue0Struct {
     let result = super.call(
       "getRule",
-      "getRule(bytes32):(((address,uint8,bytes)[],(address,bytes,(uint8,address)[],(uint8,address)[])[],uint256[],uint8,uint256[],uint256))",
+      "getRule(bytes32):(((address,uint8,bytes)[],(address,bytes,(uint8,address,uint256)[],(uint8,address,uint256)[])[],uint256[],uint8,uint256[],uint256))",
       [ethereum.Value.fromFixedBytes(ruleHash)]
     );
 
@@ -544,7 +610,7 @@ export class RoboCop extends ethereum.SmartContract {
   ): ethereum.CallResult<RoboCop__getRuleResultValue0Struct> {
     let result = super.tryCall(
       "getRule",
-      "getRule(bytes32):(((address,uint8,bytes)[],(address,bytes,(uint8,address)[],(uint8,address)[])[],uint256[],uint8,uint256[],uint256))",
+      "getRule(bytes32):(((address,uint8,bytes)[],(address,bytes,(uint8,address,uint256)[],(uint8,address,uint256)[])[],uint256[],uint8,uint256[],uint256))",
       [ethereum.Value.fromFixedBytes(ruleHash)]
     );
     if (result.reverted) {
@@ -554,6 +620,29 @@ export class RoboCop extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(
       changetype<RoboCop__getRuleResultValue0Struct>(value[0].toTuple())
     );
+  }
+
+  getRuleHashesByStatus(status: i32): Array<Bytes> {
+    let result = super.call(
+      "getRuleHashesByStatus",
+      "getRuleHashesByStatus(uint8):(bytes32[])",
+      [ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(status))]
+    );
+
+    return result[0].toBytesArray();
+  }
+
+  try_getRuleHashesByStatus(status: i32): ethereum.CallResult<Array<Bytes>> {
+    let result = super.tryCall(
+      "getRuleHashesByStatus",
+      "getRuleHashesByStatus(uint8):(bytes32[])",
+      [ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(status))]
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytesArray());
   }
 
   hasPendingPosition(): boolean {
@@ -635,6 +724,37 @@ export class RoboCop extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
+  redeemOutputs(): RoboCop__redeemOutputsResult {
+    let result = super.call(
+      "redeemOutputs",
+      "redeemOutputs():((uint8,address,uint256)[],uint256[])",
+      []
+    );
+
+    return new RoboCop__redeemOutputsResult(
+      result[0].toTupleArray<RoboCop__redeemOutputsResultValue0Struct>(),
+      result[1].toBigIntArray()
+    );
+  }
+
+  try_redeemOutputs(): ethereum.CallResult<RoboCop__redeemOutputsResult> {
+    let result = super.tryCall(
+      "redeemOutputs",
+      "redeemOutputs():((uint8,address,uint256)[],uint256[])",
+      []
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(
+      new RoboCop__redeemOutputsResult(
+        value[0].toTupleArray<RoboCop__redeemOutputsResultValue0Struct>(),
+        value[1].toBigIntArray()
+      )
+    );
   }
 
   ruleIncentiveProviders(param0: Bytes, param1: Address): BigInt {
@@ -770,7 +890,7 @@ export class AddCollateralCall__Inputs {
     return this._call.inputValues[0].value.toBytes();
   }
 
-  get amounts(): Array<BigInt> {
+  get collaterals(): Array<BigInt> {
     return this._call.inputValues[1].value.toBigIntArray();
   }
 }
@@ -865,6 +985,10 @@ export class CreateRuleCallActionsInputTokensStruct extends ethereum.Tuple {
   get addr(): Address {
     return this[1].toAddress();
   }
+
+  get id(): BigInt {
+    return this[2].toBigInt();
+  }
 }
 
 export class CreateRuleCallActionsOutputTokensStruct extends ethereum.Tuple {
@@ -874,6 +998,10 @@ export class CreateRuleCallActionsOutputTokensStruct extends ethereum.Tuple {
 
   get addr(): Address {
     return this[1].toAddress();
+  }
+
+  get id(): BigInt {
+    return this[2].toBigInt();
   }
 }
 
@@ -937,6 +1065,40 @@ export class ExecuteRuleCall__Outputs {
   }
 }
 
+export class GetRuleHashesByStatusCall extends ethereum.Call {
+  get inputs(): GetRuleHashesByStatusCall__Inputs {
+    return new GetRuleHashesByStatusCall__Inputs(this);
+  }
+
+  get outputs(): GetRuleHashesByStatusCall__Outputs {
+    return new GetRuleHashesByStatusCall__Outputs(this);
+  }
+}
+
+export class GetRuleHashesByStatusCall__Inputs {
+  _call: GetRuleHashesByStatusCall;
+
+  constructor(call: GetRuleHashesByStatusCall) {
+    this._call = call;
+  }
+
+  get status(): i32 {
+    return this._call.inputValues[0].value.toI32();
+  }
+}
+
+export class GetRuleHashesByStatusCall__Outputs {
+  _call: GetRuleHashesByStatusCall;
+
+  constructor(call: GetRuleHashesByStatusCall) {
+    this._call = call;
+  }
+
+  get value0(): Array<Bytes> {
+    return this._call.outputValues[0].value.toBytesArray();
+  }
+}
+
 export class IncreaseIncentiveCall extends ethereum.Call {
   get inputs(): IncreaseIncentiveCall__Inputs {
     return new IncreaseIncentiveCall__Inputs(this);
@@ -997,33 +1159,53 @@ export class InitializeCall__Outputs {
   }
 }
 
-export class RedeemBalanceCall extends ethereum.Call {
-  get inputs(): RedeemBalanceCall__Inputs {
-    return new RedeemBalanceCall__Inputs(this);
+export class RedeemOutputsCall extends ethereum.Call {
+  get inputs(): RedeemOutputsCall__Inputs {
+    return new RedeemOutputsCall__Inputs(this);
   }
 
-  get outputs(): RedeemBalanceCall__Outputs {
-    return new RedeemBalanceCall__Outputs(this);
-  }
-}
-
-export class RedeemBalanceCall__Inputs {
-  _call: RedeemBalanceCall;
-
-  constructor(call: RedeemBalanceCall) {
-    this._call = call;
-  }
-
-  get ruleHash(): Bytes {
-    return this._call.inputValues[0].value.toBytes();
+  get outputs(): RedeemOutputsCall__Outputs {
+    return new RedeemOutputsCall__Outputs(this);
   }
 }
 
-export class RedeemBalanceCall__Outputs {
-  _call: RedeemBalanceCall;
+export class RedeemOutputsCall__Inputs {
+  _call: RedeemOutputsCall;
 
-  constructor(call: RedeemBalanceCall) {
+  constructor(call: RedeemOutputsCall) {
     this._call = call;
+  }
+}
+
+export class RedeemOutputsCall__Outputs {
+  _call: RedeemOutputsCall;
+
+  constructor(call: RedeemOutputsCall) {
+    this._call = call;
+  }
+
+  get value0(): Array<RedeemOutputsCallValue0Struct> {
+    return this._call.outputValues[0].value.toTupleArray<
+      RedeemOutputsCallValue0Struct
+    >();
+  }
+
+  get value1(): Array<BigInt> {
+    return this._call.outputValues[1].value.toBigIntArray();
+  }
+}
+
+export class RedeemOutputsCallValue0Struct extends ethereum.Tuple {
+  get t(): i32 {
+    return this[0].toI32();
+  }
+
+  get addr(): Address {
+    return this[1].toAddress();
+  }
+
+  get id(): BigInt {
+    return this[2].toBigInt();
   }
 }
 

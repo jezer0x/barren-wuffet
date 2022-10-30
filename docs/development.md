@@ -62,16 +62,12 @@ This section mostly follows: https://github.com/graphprotocol/hardhat-graph
 - yarn add @graphprotocol/graph-ts
 - yarn add @graphprotocol/hardhat-graph
 
-
-* from another terminal in the root folder, run `yarn hardhat node --hostname 0.0.0.0`
-* deploy hardhat on localhost `yarn hardhat deploy --network localhost`
-* `yarn hardhat graph init --contract-name BarrenWuffet --address 0x3Aa5ebB10DC797CAC828524e59A333d0A371443c`. (replace the address with the address from deploy)
+* From a terminal in the root folder, run `yarn hardhat node --hostname 0.0.0.0`. (Ensure forking is disabled).
+* If you're doing this for the first time: `yarn hardhat graph init --contract-name BarrenWuffet --address 0x82e01223d51Eb87e16A03E24687EDF0F294da6f1`. (replace the address with the address from deploy). Else put the new BarrenWuffet address in `subgraph.yaml`.
 * from root, `docker-compose up --force-recreate`
 * `yarn create-local`
 * `yarn deploy-local`
 * Run `yarn hardhat run test/graph_manual/testGraph.ts --network localhost`
-* Run `yarn hardhat run test/graph_manual/testGraph2.ts --network localhost`
-* Run `yarn hardhat run test/graph_manual/testGraph3.ts --network localhost`
 * go to http://localhost:8000/subgraphs/name/barren-wuffet and query with { funds }. You should see the list of funds on right hand side!
 
 CLEANUP:

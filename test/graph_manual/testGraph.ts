@@ -33,7 +33,25 @@ async function makeSubConstraints() {
 
 async function main() {
   const BW = await ethers.getContract("BarrenWuffet");
-  await BW.createFund("marlieChungerFund", await makeSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []);
+
+  let tx = await BW.createFund("marlieChungerFund", await makeSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []);
+  let McFundAddr = (await tx.wait()).events.find(
+    //@ts-ignore
+    (x: { event: string }) => x.event === "Created"
+  ).args.fundAddr;
+  const McFund = await ethers.getContractAt("Fund", McFundAddr);
+  await McFund.closeFund();
+
+  tx = await BW.createFund("jerkshireHathawayFund", await makeSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []);
+  let JhFundAddr = (await tx.wait()).events.find(
+    //@ts-ignore
+    (x: { event: string }) => x.event === "Created"
+  ).args.fundAddr;
+  const JhFund = await ethers.getContractAt("Fund", JhFundAddr);
+
+  await JhFund.deposit(ETH_TOKEN, BigNumber.from(11).mul(ERC20_DECIMALS), {
+    value: BigNumber.from(11).mul(ERC20_DECIMALS)
+  });
 }
 
 main().catch(error => {

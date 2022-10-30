@@ -130,6 +130,7 @@ library Subscriptions {
         uint256 amountToSendBack = subscription.collateralAmount;
         subscription.collateralAmount = 0;
 
+        subStuff.totalCollateral -= amountToSendBack;
         assets.decreaseAsset(subStuff.constraints.allowedDepositToken, amountToSendBack);
 
         subStuff.constraints.allowedDepositToken.send(msg.sender, amountToSendBack);

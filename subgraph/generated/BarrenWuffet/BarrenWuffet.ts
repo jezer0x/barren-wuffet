@@ -30,6 +30,48 @@ export class Created__Params {
   get fundAddr(): Address {
     return this._event.parameters[1].value.toAddress();
   }
+
+  get fundName(): string {
+    return this._event.parameters[2].value.toString();
+  }
+}
+
+export class ManagerMetadata extends ethereum.Event {
+  get params(): ManagerMetadata__Params {
+    return new ManagerMetadata__Params(this);
+  }
+}
+
+export class ManagerMetadata__Params {
+  _event: ManagerMetadata;
+
+  constructor(event: ManagerMetadata) {
+    this._event = event;
+  }
+
+  get walletAddr(): Address {
+    return this._event.parameters[0].value.toAddress();
+  }
+
+  get socialHandle(): string {
+    return this._event.parameters[1].value.toString();
+  }
+
+  get chatroomInvite(): string {
+    return this._event.parameters[2].value.toString();
+  }
+
+  get customLink(): string {
+    return this._event.parameters[3].value.toString();
+  }
+
+  get aboutText(): string {
+    return this._event.parameters[4].value.toString();
+  }
+
+  get strategyText(): string {
+    return this._event.parameters[5].value.toString();
+  }
 }
 
 export class OwnershipTransferred extends ethereum.Event {
@@ -130,6 +172,10 @@ export class BarrenWuffet__createFundInputConstraintsAllowedDepositTokenStruct e
   get addr(): Address {
     return this[1].toAddress();
   }
+
+  get id(): BigInt {
+    return this[2].toBigInt();
+  }
 }
 
 export class BarrenWuffet__feeParamsResult {
@@ -207,7 +253,7 @@ export class BarrenWuffet extends ethereum.SmartContract {
   ): Address {
     let result = super.call(
       "createFund",
-      "createFund(string,(uint256,uint256,uint256,uint256,uint256,uint256,(uint8,address)),uint256,address[]):(address)",
+      "createFund(string,(uint256,uint256,uint256,uint256,uint256,uint256,(uint8,address,uint256)),uint256,address[]):(address)",
       [
         ethereum.Value.fromString(name),
         ethereum.Value.fromTuple(constraints),
@@ -227,7 +273,7 @@ export class BarrenWuffet extends ethereum.SmartContract {
   ): ethereum.CallResult<Address> {
     let result = super.tryCall(
       "createFund",
-      "createFund(string,(uint256,uint256,uint256,uint256,uint256,uint256,(uint8,address)),uint256,address[]):(address)",
+      "createFund(string,(uint256,uint256,uint256,uint256,uint256,uint256,(uint8,address,uint256)),uint256,address[]):(address)",
       [
         ethereum.Value.fromString(name),
         ethereum.Value.fromTuple(constraints),
@@ -277,14 +323,18 @@ export class BarrenWuffet extends ethereum.SmartContract {
     );
   }
 
-  fundImplAddr(): Address {
-    let result = super.call("fundImplAddr", "fundImplAddr():(address)", []);
+  fundBeaconAddr(): Address {
+    let result = super.call("fundBeaconAddr", "fundBeaconAddr():(address)", []);
 
     return result[0].toAddress();
   }
 
-  try_fundImplAddr(): ethereum.CallResult<Address> {
-    let result = super.tryCall("fundImplAddr", "fundImplAddr():(address)", []);
+  try_fundBeaconAddr(): ethereum.CallResult<Address> {
+    let result = super.tryCall(
+      "fundBeaconAddr",
+      "fundBeaconAddr():(address)",
+      []
+    );
     if (result.reverted) {
       return new ethereum.CallResult();
     }
@@ -322,20 +372,20 @@ export class BarrenWuffet extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBoolean());
   }
 
-  roboCopImplAddr(): Address {
+  roboCopBeaconAddr(): Address {
     let result = super.call(
-      "roboCopImplAddr",
-      "roboCopImplAddr():(address)",
+      "roboCopBeaconAddr",
+      "roboCopBeaconAddr():(address)",
       []
     );
 
     return result[0].toAddress();
   }
 
-  try_roboCopImplAddr(): ethereum.CallResult<Address> {
+  try_roboCopBeaconAddr(): ethereum.CallResult<Address> {
     let result = super.tryCall(
-      "roboCopImplAddr",
-      "roboCopImplAddr():(address)",
+      "roboCopBeaconAddr",
+      "roboCopBeaconAddr():(address)",
       []
     );
     if (result.reverted) {
@@ -423,11 +473,11 @@ export class ConstructorCall__Inputs {
     return this._call.inputValues[3].value.toAddress();
   }
 
-  get _roboCopImplAddr(): Address {
+  get _roboCopBeaconAddr(): Address {
     return this._call.inputValues[4].value.toAddress();
   }
 
-  get _fundImplAddr(): Address {
+  get _fundBeaconAddr(): Address {
     return this._call.inputValues[5].value.toAddress();
   }
 }
@@ -546,6 +596,10 @@ export class CreateFundCallConstraintsAllowedDepositTokenStruct extends ethereum
   get addr(): Address {
     return this[1].toAddress();
   }
+
+  get id(): BigInt {
+    return this[2].toBigInt();
+  }
 }
 
 export class PauseCall extends ethereum.Call {
@@ -630,62 +684,48 @@ export class SetActionWhitelistHashCall__Outputs {
   }
 }
 
-export class SetFundImplementationAddressCall extends ethereum.Call {
-  get inputs(): SetFundImplementationAddressCall__Inputs {
-    return new SetFundImplementationAddressCall__Inputs(this);
+export class SetManagerMetadataCall extends ethereum.Call {
+  get inputs(): SetManagerMetadataCall__Inputs {
+    return new SetManagerMetadataCall__Inputs(this);
   }
 
-  get outputs(): SetFundImplementationAddressCall__Outputs {
-    return new SetFundImplementationAddressCall__Outputs(this);
+  get outputs(): SetManagerMetadataCall__Outputs {
+    return new SetManagerMetadataCall__Outputs(this);
   }
 }
 
-export class SetFundImplementationAddressCall__Inputs {
-  _call: SetFundImplementationAddressCall;
+export class SetManagerMetadataCall__Inputs {
+  _call: SetManagerMetadataCall;
 
-  constructor(call: SetFundImplementationAddressCall) {
+  constructor(call: SetManagerMetadataCall) {
     this._call = call;
   }
 
-  get _fundImplAddr(): Address {
-    return this._call.inputValues[0].value.toAddress();
+  get socialHandle(): string {
+    return this._call.inputValues[0].value.toString();
+  }
+
+  get chatroomInvite(): string {
+    return this._call.inputValues[1].value.toString();
+  }
+
+  get customLink(): string {
+    return this._call.inputValues[2].value.toString();
+  }
+
+  get aboutText(): string {
+    return this._call.inputValues[3].value.toString();
+  }
+
+  get strategyText(): string {
+    return this._call.inputValues[4].value.toString();
   }
 }
 
-export class SetFundImplementationAddressCall__Outputs {
-  _call: SetFundImplementationAddressCall;
+export class SetManagerMetadataCall__Outputs {
+  _call: SetManagerMetadataCall;
 
-  constructor(call: SetFundImplementationAddressCall) {
-    this._call = call;
-  }
-}
-
-export class SetRoboCopImplementationAddressCall extends ethereum.Call {
-  get inputs(): SetRoboCopImplementationAddressCall__Inputs {
-    return new SetRoboCopImplementationAddressCall__Inputs(this);
-  }
-
-  get outputs(): SetRoboCopImplementationAddressCall__Outputs {
-    return new SetRoboCopImplementationAddressCall__Outputs(this);
-  }
-}
-
-export class SetRoboCopImplementationAddressCall__Inputs {
-  _call: SetRoboCopImplementationAddressCall;
-
-  constructor(call: SetRoboCopImplementationAddressCall) {
-    this._call = call;
-  }
-
-  get _roboCopImplAddr(): Address {
-    return this._call.inputValues[0].value.toAddress();
-  }
-}
-
-export class SetRoboCopImplementationAddressCall__Outputs {
-  _call: SetRoboCopImplementationAddressCall;
-
-  constructor(call: SetRoboCopImplementationAddressCall) {
+  constructor(call: SetManagerMetadataCall) {
     this._call = call;
   }
 }
