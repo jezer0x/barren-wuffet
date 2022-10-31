@@ -41,7 +41,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     await bw.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
 
     try {
-      await botFrontend.setBarrenWuffetAddr(bw.address);
+      await botFrontend.setBarrenWuffet(bw.address);
     } catch {
       console.warn(
         `new BW ${bw.address} not set in BotFrontend because you're not the owner!
