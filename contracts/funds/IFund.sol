@@ -34,8 +34,11 @@ interface IFund is ISubscription {
         bytes32 _triggerWhitelistHash,
         bytes32 _actionWhitelistHash,
         address roboCopImplementationAddr,
-        address[] calldata _declaredTokens
+        address[] calldata _declaredTokens,
+        address botFrontendAddr
     ) external;
+
+    function roboCop() external view returns (IRoboCop);
 
     function getInputTokens() external pure returns (Token[] memory);
 

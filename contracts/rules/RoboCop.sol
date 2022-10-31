@@ -10,6 +10,7 @@ import "../utils/assets/TokenLib.sol";
 import "../utils/CustomEnumerableMap.sol";
 import "../actions/IAction.sol";
 import "../triggers/ITrigger.sol";
+import "../bot/IBotFrontend.sol";
 import "./RuleTypes.sol";
 import "./IRoboCop.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -31,6 +32,7 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
     mapping(bytes32 => mapping(address => uint256)) public ruleIncentiveProviders;
     mapping(bytes32 => uint256) tokensOnHold; // demarcate tokens which can't be redeemed
     uint256 totalNumOutputTokens; // convenience variable
+    IBotFrontend public botFrontend;
 
     // Storage End
 
@@ -39,8 +41,9 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
         _disableInitializers();
     }
 
-    function initialize(address _newOwner) external nonReentrant initializer {
+    function initialize(address _newOwner, address botFrontendAddr) external nonReentrant initializer {
         _transferOwnership(_newOwner);
+        botFrontend = IBotFrontend(botFrontendAddr);
     }
 
     function getRule(bytes32 ruleHash) public view returns (Rule memory) {
@@ -286,10 +289,12 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
 
     function activateRule(bytes32 ruleHash) external onlyOwner {
         _setRuleStatus(ruleHash, RuleStatus.ACTIVE);
+        botFrontend.startTask(ruleHash);
     }
 
     function deactivateRule(bytes32 ruleHash) external onlyOwner {
         _setRuleStatus(ruleHash, RuleStatus.INACTIVE);
+        botFrontend.stopTask(ruleHash);
     }
 
     function _getRuleHash(Trigger[] calldata triggers, Action[] calldata actions) private view returns (bytes32) {
@@ -371,6 +376,7 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
 
         rule.outputs = outputs;
         _setRule(ruleHash, rule);
+        botFrontend.stopTask(ruleHash);
         tokensOnHold[keccak256(abi.encode(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0})))] -= rule.incentive;
         payable(msg.sender).transfer(rule.incentive); // slither-disable-next-line arbitrary-send // for the taking. // As long as the execution reaches this point, the incentive is there // We dont need to check sender here.
     }

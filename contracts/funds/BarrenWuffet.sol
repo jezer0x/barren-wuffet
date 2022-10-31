@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import "./IFund.sol";
 import "../utils/FeeParams.sol";
+import "../bot/IBotFrontend.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
@@ -28,6 +29,9 @@ contract BarrenWuffet is Ownable, Pausable {
     bytes32 public actionWhitelistHash;
     address public wlServiceAddr;
 
+    // to register created roboCops
+    IBotFrontend public botFrontend;
+
     // singletons used for light clones later
     address public roboCopBeaconAddr;
     address public fundBeaconAddr;
@@ -38,7 +42,8 @@ contract BarrenWuffet is Ownable, Pausable {
         bytes32 _actionWhitelistHash,
         address _wlServiceAddr,
         address _roboCopBeaconAddr,
-        address _fundBeaconAddr
+        address _fundBeaconAddr,
+        address _botFrontendAddr
     ) {
         setSubscriptionFeeParams(_feeParams);
         triggerWhitelistHash = _triggerWhitelistHash;
@@ -46,6 +51,7 @@ contract BarrenWuffet is Ownable, Pausable {
         wlServiceAddr = _wlServiceAddr;
         roboCopBeaconAddr = _roboCopBeaconAddr;
         fundBeaconAddr = _fundBeaconAddr;
+        botFrontend = IBotFrontend(_botFrontendAddr);
     }
 
     function setSubscriptionFeeParams(FeeParams memory _feeParams) public onlyOwner {
@@ -95,8 +101,10 @@ contract BarrenWuffet is Ownable, Pausable {
             triggerWhitelistHash,
             actionWhitelistHash,
             roboCopBeaconAddr,
-            declaredTokens
+            declaredTokens,
+            address(botFrontend)
         );
+        botFrontend.registerRobocop(address(fund.roboCop()));
         emit Created(msg.sender, address(fund), name);
         return address(fund);
     }

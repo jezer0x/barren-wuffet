@@ -14,7 +14,7 @@ interface IRoboCop {
     event PositionCreated(bytes32 positionHash, bytes precursorAction, bytes[] nextActions);
     event PositionsClosed(bytes closingAction, bytes32[] positionHashesClosed);
 
-    function initialize(address owner) external;
+    function initialize(address owner, address botFrontendAddr) external;
 
     function getRule(bytes32 ruleHash) external view returns (Rule memory);
 

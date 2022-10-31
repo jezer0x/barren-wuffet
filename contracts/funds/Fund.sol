@@ -70,7 +70,8 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         bytes32 _triggerWhitelistHash,
         bytes32 _actionWhitelistHash,
         address roboCopBeaconAddr,
-        address[] calldata _declaredTokenAddrs
+        address[] calldata _declaredTokenAddrs,
+        address botFrontendAddr
     ) external nonReentrant initializer {
         __ReentrancyGuard_init();
 
@@ -102,7 +103,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
 
         bytes memory nodata;
         roboCop = IRoboCop(address(new BeaconProxy(roboCopBeaconAddr, nodata)));
-        roboCop.initialize(address(this));
+        roboCop.initialize(address(this), botFrontendAddr);
     }
 
     function _onlyDeclaredTokens(Token[] memory tokens) internal view returns (bool) {
