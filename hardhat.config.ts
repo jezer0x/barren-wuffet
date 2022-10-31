@@ -26,7 +26,7 @@ const config = {
             forking: {
               url: `https://arb-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY_ARBI}`,
               blockNumber: 20005467, // using a pre-nitro block
-              enabled: true
+              enabled: false
             }
           }
         }

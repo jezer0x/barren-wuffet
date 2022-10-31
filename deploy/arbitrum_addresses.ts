@@ -4,6 +4,12 @@ export const tokens = {
   DAI: "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1"
 };
 
+// https://docs.gelato.network/developer-products/gelato-ops-smart-contract-automation-hub/contract-addresses#arbitrum
+export const gelato = {
+  treasury: "0xB2f34fd4C16e656163dADFeEaE4Ae0c1F13b140A",
+  ops: "0xB3f5503f93d5Ef84b06993a1975B9D21B962892F"
+};
+
 // https://docs.chain.link/docs/arbitrum-price-feeds/
 // TODO
 
