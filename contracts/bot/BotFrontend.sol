@@ -65,7 +65,7 @@ contract BotFrontend is OpsReady, Ownable {
         IRoboCop(robocopAddr).executeRule(ruleHash);
     }
 
-    function deposit(uint256 _amount) external payable onlyOwner {
+    function deposit(uint256 _amount) external payable {
         treasury.depositFunds{value: _amount}(address(this), ETH, _amount);
     }
 
