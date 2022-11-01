@@ -21,7 +21,7 @@ import {
   TOKEN_TYPE,
   TIMESTAMP_TRIGGER_TYPE
 } from "../../Constants";
-import { getParamFromEvent } from "../../helper";
+import { getAddressFromEvent } from "../../helper";
 import { abi as FACTORY_ABI } from "@134dd3v/uniswap-v3-core-0.8-support/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json";
 import { abi as POOL_ABI } from "@134dd3v/uniswap-v3-core-0.8-support/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json";
 import { AbiCoder } from "@ethersproject/abi";
@@ -41,7 +41,7 @@ async function makeSubConstraints() {
 
 async function main() {
   const BW = await ethers.getContract("BarrenWuffet");
-  const McFundAddr = await getParamFromEvent(
+  const McFundAddr = await getAddressFromEvent(
     BW.createFund("marlieChungerFund", await makeSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []),
     "Created",
     BW.address,
@@ -77,9 +77,9 @@ async function main() {
     }
   ];
 
-  const usdc_contract = new Contract("0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", erc20abifrag, ethers.provider);
+  const usdc_contract = new Contract(liveAddresses.tokens.USDC, erc20abifrag, ethers.provider);
   const dai_contract = new Contract("0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1", erc20abifrag, ethers.provider);
-  const USDC_TOKEN = { t: TOKEN_TYPE.ERC20, addr: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", id: BigNumber.from(0) };
+  const USDC_TOKEN = { t: TOKEN_TYPE.ERC20, addr: liveAddresses.tokens.USDC, id: BigNumber.from(0) };
   const DAI_TOKEN = { t: TOKEN_TYPE.ERC20, addr: "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1", id: BigNumber.from(0) };
 
   let balance_usdc = await usdc_contract.balanceOf(McFundAddr);
@@ -147,8 +147,8 @@ async function main() {
         ["tuple(address[], address, uint256, uint256, bool, uint256)"],
         [
           [
-            ["0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"],
-            "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+            [liveAddresses.tokens.USDC, liveAddresses.tokens.WETH],
+            liveAddresses.tokens.WETH,
             0,
             balance_usdc
               .mul(2)
@@ -185,7 +185,7 @@ async function main() {
         callee: confirmReqExecOrCancel.address,
         data: ethers.utils.defaultAbiCoder.encode(
           ["bool", "uint256", "address", "address", "bool"],
-          [true, key, "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", true]
+          [true, key, liveAddresses.tokens.USDC, liveAddresses.tokens.WETH, true]
         ),
         inputTokens: [],
         outputTokens: []
@@ -212,7 +212,7 @@ async function main() {
       callee: confirmReqExecOrCancel.address,
       data: ethers.utils.defaultAbiCoder.encode(
         ["bool", "uint256", "address", "address", "bool"],
-        [true, key, "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", true]
+        [true, key, liveAddresses.tokens.USDC, liveAddresses.tokens.WETH, true]
       ),
       inputTokens: [],
       outputTokens: []
@@ -229,7 +229,7 @@ async function main() {
       callee: confirmNoPosition.address,
       data: ethers.utils.defaultAbiCoder.encode(
         ["address", "address", "bool"],
-        ["0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", true]
+        [liveAddresses.tokens.WETH, liveAddresses.tokens.WETH, true]
       ),
       inputTokens: [],
       outputTokens: []
@@ -241,8 +241,8 @@ async function main() {
   var res = await gmxReader.getPositions(
     await gmxPositionRouter.vault(),
     rc,
-    ["0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"],
-    ["0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"],
+    [liveAddresses.tokens.WETH],
+    [liveAddresses.tokens.WETH],
     [true]
   );
   console.log(res);
@@ -271,8 +271,8 @@ async function main() {
         ["tuple(address[], address, uint256, uint256, bool, uint256, uint256, bool)"],
         [
           [
-            ["0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"],
-            "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+            [liveAddresses.tokens.WETH, liveAddresses.tokens.USDC],
+            liveAddresses.tokens.WETH,
             0,
             balance_usdc
               .mul(2)
@@ -301,7 +301,7 @@ async function main() {
       callee: confirmReqExecOrCancel.address,
       data: ethers.utils.defaultAbiCoder.encode(
         ["bool", "uint256", "address", "address", "bool"],
-        [true, key, "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", true]
+        [true, key, liveAddresses.tokens.USDC, liveAddresses.tokens.WETH, true]
       ),
       inputTokens: [],
       outputTokens: []
@@ -313,8 +313,8 @@ async function main() {
   res = await gmxReader.getPositions(
     await gmxPositionRouter.vault(),
     rc,
-    ["0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"],
-    ["0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"],
+    [liveAddresses.tokens.WETH],
+    [liveAddresses.tokens.WETH],
     [true]
   );
   console.log(res);
@@ -326,7 +326,7 @@ async function main() {
       callee: confirmNoPosition.address,
       data: ethers.utils.defaultAbiCoder.encode(
         ["address", "address", "bool"],
-        ["0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", true]
+        [liveAddresses.tokens.WETH, liveAddresses.tokens.WETH, true]
       ),
       inputTokens: [],
       outputTokens: []

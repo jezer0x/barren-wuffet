@@ -18,7 +18,7 @@ import {
 import {
   depositMaxCollateral,
   getHashFromEvent,
-  getParamFromEvent,
+  getAddressFromEvent,
   expectEthersObjDeepEqual,
   erc20,
   whitelistAction
@@ -172,7 +172,7 @@ describe("BarrenWuffet", () => {
       allowedDepositToken: ETH_TOKEN
     };
 
-    const jerkshireAddr = await getParamFromEvent(
+    const jerkshireAddr = await getAddressFromEvent(
       barrenWuffetMarlie.createFund("Jerkshire Castaway", jerkshireConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []),
       "Created",
       barrenWuffet.address,
@@ -199,7 +199,7 @@ describe("BarrenWuffet", () => {
       allowedDepositToken: ETH_TOKEN
     };
 
-    const crackBlockAddr = await getParamFromEvent(
+    const crackBlockAddr = await getAddressFromEvent(
       barrenWuffetFairy.createFund("CrackBlock", crackBlockConstraints, 10, []),
       "Created",
       barrenWuffetFairy.address,

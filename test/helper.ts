@@ -3,7 +3,7 @@ import { BigNumber, Contract, ContractReceipt, ContractTransaction } from "ether
 import { ETH_TOKEN, TOKEN_TYPE } from "./Constants";
 import { ethers, getNamedAccounts } from "hardhat";
 
-export async function getParamFromEvent(
+export async function getAddressFromEvent(
   fnPromise: Promise<ContractTransaction>,
   eventName: string,
   eventAddress: string,
