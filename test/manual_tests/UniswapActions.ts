@@ -18,7 +18,7 @@ import {
   TOKEN_TYPE,
   TIMESTAMP_TRIGGER_TYPE
 } from "../Constants";
-import { getAddressFromEvent } from "../helper";
+import { getParamFromEvent } from "../helper";
 import { abi as FACTORY_ABI } from "@134dd3v/uniswap-v3-core-0.8-support/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json";
 import { abi as POOL_ABI } from "@134dd3v/uniswap-v3-core-0.8-support/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json";
 
@@ -37,7 +37,7 @@ async function makeSubConstraints() {
 
 async function main() {
   const BW = await ethers.getContract("BarrenWuffet");
-  const McFundAddr = await getAddressFromEvent(
+  const McFundAddr = await getParamFromEvent(
     BW.createFund("marlieChungerFund", await makeSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []),
     "Created",
     BW.address,

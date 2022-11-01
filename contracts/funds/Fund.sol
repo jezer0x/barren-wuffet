@@ -189,7 +189,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
     }
 
     function _validateAndTakeFees(
-        Token[] calldata tokens,
+        Token[] memory tokens,
         uint256[] calldata collaterals,
         uint256[] calldata fees
     ) internal {
@@ -233,7 +233,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         Action[] memory actions = new Action[](1);
         actions[0] = action;
         bytes32 ruleHash = _createRule(triggers, actions);
-        _addRuleCollateral(ruleHash, action.inputTokens, collaterals, fees);
+        _addRuleCollateral(ruleHash, collaterals, fees);
         roboCop.activateRule(ruleHash);
         roboCop.executeRule(ruleHash); // should be immediately executable
         _redeemRuleOutputs();
@@ -289,19 +289,18 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
 
     function addRuleCollateral(
         bytes32 ruleHash,
-        Token[] calldata collateralTokens,
         uint256[] calldata collaterals,
         uint256[] calldata fees
     ) external onlyDeployedFund onlyFundManager nonReentrant {
-        _addRuleCollateral(ruleHash, collateralTokens, collaterals, fees);
+        _addRuleCollateral(ruleHash, collaterals, fees);
     }
 
     function _addRuleCollateral(
         bytes32 ruleHash,
-        Token[] calldata collateralTokens,
         uint256[] calldata collaterals,
         uint256[] calldata fees
     ) internal {
+        Token[] memory collateralTokens = roboCop.getInputTokens(ruleHash);
         _validateAndTakeFees(collateralTokens, collaterals, fees);
         uint256 ethCollateral = 0;
 

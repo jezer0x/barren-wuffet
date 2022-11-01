@@ -2,9 +2,8 @@ import { expect } from "chai";
 import { BigNumber, Contract, ContractReceipt, ContractTransaction } from "ethers";
 import { ETH_TOKEN, TOKEN_TYPE } from "./Constants";
 import { ethers, getNamedAccounts } from "hardhat";
-import { exit } from "process";
 
-export async function getAddressFromEvent(
+export async function getParamFromEvent(
   fnPromise: Promise<ContractTransaction>,
   eventName: string,
   eventAddress: string,

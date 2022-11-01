@@ -72,7 +72,6 @@ interface IFund is ISubscription {
 
     function addRuleCollateral(
         bytes32 ruleHash,
-        Token[] calldata collateralTokens,
         uint256[] calldata collaterals,
         uint256[] calldata fees
     ) external;

@@ -9,7 +9,7 @@ import {
   TOKEN_TYPE,
   TIMESTAMP_TRIGGER_TYPE
 } from "../Constants";
-import { getAddressFromEvent } from "../helper";
+import { getParamFromEvent } from "../helper";
 async function makeSubConstraints() {
   const latestTime = await time.latest();
   return {
@@ -25,7 +25,7 @@ async function makeSubConstraints() {
 
 async function main() {
   const BW = await ethers.getContract("BarrenWuffet");
-  const McFundAddr = await getAddressFromEvent(
+  const McFundAddr = await getParamFromEvent(
     BW.createFund("marlieChungerFund", await makeSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []),
     "Created",
     BW.address,
@@ -142,6 +142,35 @@ async function main() {
     console.log("Wrong _path send during swap doesn't work");
   }
 
+  // Case 4: Trying out the Gelato Bot frontend with sushi Swap()
+  const ruleHash = await getParamFromEvent(
+    McFund.createRule(
+      [trueTrigger],
+      [
+        {
+          callee: sushiSwapExactXForY.address,
+          data: ethers.utils.defaultAbiCoder.encode(
+            ["address[]", "uint256"],
+            [
+              ["0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"],
+              BigNumber.from(19).mul(BigNumber.from(10).pow(8)) // translates to ~1900USD/ETH [1900000000e18/1e18]
+            ]
+          ),
+          inputTokens: [ETH_TOKEN], // eth
+          outputTokens: [USDC_TOKEN] // swapping for USDC
+        }
+      ]
+    ),
+    "Created",
+    await McFund.roboCop()
+  );
+
+  await McFund.addRuleCollateral(ruleHash, [BigNumber.from(1).mul(ERC20_DECIMALS)], [BigNumber.from(0)]); // 0 fees set in deploy
+
+  balance_usdc = await usdc_contract.balanceOf(McFundAddr);
+  console.log("USDC balance after selling 2 ETH:", balance_usdc.toString());
+
+  // Case 4: add LP
   const sushiAddLiquidity = await ethers.getContract("SushiAddLiquidity");
 
   const usdc_weth_slp_contract = new Contract(
@@ -156,9 +185,8 @@ async function main() {
     id: BigNumber.from(0)
   };
 
-  console.log(usdc_weth_slp_contract.address);
+  console.log("usdc_eth_slp_contract.address = ", usdc_weth_slp_contract.address);
 
-  // Case 4: add LP
   await McFund.takeAction(
     trueTrigger,
     {
@@ -174,7 +202,6 @@ async function main() {
   console.log("WETH-USDC-SLP received after LP: ", (await usdc_weth_slp_contract.balanceOf(McFundAddr)).toString());
 
   // Case 5: subscribers get back the SLP token if funds are closed -> no position stuff required
-
   await McFund.closeFund(); // trader closes fund prematurely
   await McFund.withdraw(); // trader was subscriber himself
 

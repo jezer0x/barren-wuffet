@@ -20,7 +20,7 @@ import {
   LT,
   TOKEN_TYPE
 } from "./Constants";
-import { getAddressFromEvent, getHashFromEvent, tx } from "./helper";
+import { getParamFromEvent, getHashFromEvent, tx } from "./helper";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 export async function setupTestTokens() {
@@ -178,7 +178,7 @@ export async function setupRoboCop(hre: HardhatRuntimeEnvironment) {
   const deployerWallet = await ethers.getSigner(deployer);
 
   const roboCopFactoryDeployer = await ethers.getContract("RoboCopFactory", deployer);
-  const roboCopAddr = await getAddressFromEvent(
+  const roboCopAddr = await getParamFromEvent(
     roboCopFactoryDeployer.createRoboCop(),
     "Created",
     roboCopFactoryDeployer.address
@@ -295,7 +295,7 @@ export async function setupBarrenWuffet({ getNamedAccounts, ethers }: HardhatRun
     swapTST1ToETHAction
   } = await setupSwapActions(priceTrigger, uniSwapExactInputSingle, testToken1);
 
-  const marlieChungerFundAddr = await getAddressFromEvent(
+  const marlieChungerFundAddr = await getParamFromEvent(
     barrenWuffetMarlie.createFund("marlieChungerFund", await makeSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []),
     "Created",
     barrenWuffetMarlie.address
@@ -304,7 +304,7 @@ export async function setupBarrenWuffet({ getNamedAccounts, ethers }: HardhatRun
   const marlieChungerFund: Fund = await ethers.getContractAt("Fund", marlieChungerFundAddr);
 
   const barrenWuffetFairy = await ethers.getContract("BarrenWuffet", fairyLink);
-  const fairyLinkFundAddr = await getAddressFromEvent(
+  const fairyLinkFundAddr = await getParamFromEvent(
     barrenWuffetFairy.createFund("fairyLinkFund", await makeSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []),
     "Created",
     barrenWuffetFairy.address
