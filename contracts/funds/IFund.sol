@@ -62,10 +62,6 @@ interface IFund is ISubscription {
 
     function createRule(Trigger[] calldata triggers, Action[] calldata actions) external returns (bytes32 ruleHash);
 
-    function increaseRuleIncentive(bytes32 ruleHash, uint256 amount) external;
-
-    function withdrawRuleIncentive(bytes32 ruleHash) external;
-
     function activateRule(bytes32 ruleHash) external;
 
     function deactivateRule(bytes32 ruleHash) external;

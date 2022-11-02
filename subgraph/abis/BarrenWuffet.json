@@ -52,6 +52,11 @@
         "internalType": "address",
         "name": "_fundBeaconAddr",
         "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_botFrontendAddr",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -178,6 +183,19 @@
         "internalType": "bytes32",
         "name": "",
         "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "botFrontend",
+    "outputs": [
+      {
+        "internalType": "contract IBotFrontend",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",

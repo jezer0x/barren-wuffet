@@ -1,30 +1,19 @@
-import { ethers, getNamedAccounts, hardhatArguments } from "hardhat";
+import { ethers } from "hardhat";
 import { time, impersonateAccount } from "@nomicfoundation/hardhat-network-helpers";
-import { Contract, Bytes, BigNumber, utils } from "ethers";
+import { Contract, BigNumber, utils } from "ethers";
 import PositionRouter from "./GmxPositionRouter.json";
 import Reader from "./GmxReader.json";
 import Router from "./GmxRouter.json";
+import * as liveAddresses from "../../../deploy/arbitrum_addresses";
 import {
   GT,
   ERC20_DECIMALS,
-  TST1_PRICE_IN_ETH,
-  DEFAULT_INCENTIVE,
-  ETH_PRICE_IN_USD,
-  PRICE_TRIGGER_DECIMALS,
-  TST1_PRICE_IN_USD,
-  ETH_PRICE_IN_TST1,
-  ETH_ADDRESS,
-  PRICE_TRIGGER_TYPE,
   DEFAULT_SUB_TO_MAN_FEE_PCT,
   ETH_TOKEN,
-  LT,
   TOKEN_TYPE,
   TIMESTAMP_TRIGGER_TYPE
 } from "../../Constants";
 import { getAddressFromEvent } from "../../helper";
-import { abi as FACTORY_ABI } from "@134dd3v/uniswap-v3-core-0.8-support/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json";
-import { abi as POOL_ABI } from "@134dd3v/uniswap-v3-core-0.8-support/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json";
-import { AbiCoder } from "@ethersproject/abi";
 
 async function makeSubConstraints() {
   const latestTime = await time.latest();

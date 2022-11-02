@@ -262,23 +262,6 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         ruleHash = roboCop.createRule(triggers, actions);
     }
 
-    function increaseRuleIncentive(bytes32 ruleHash, uint256 amount)
-        external
-        onlyDeployedFund
-        onlyFundManager
-        nonReentrant
-    {
-        assets.decreaseAsset(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}), amount);
-        roboCop.increaseIncentive{value: amount}(ruleHash);
-    }
-
-    function withdrawRuleIncentive(bytes32 ruleHash) external onlyDeployedFund onlyFundManager nonReentrant {
-        assets.decreaseAsset(
-            Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}),
-            roboCop.withdrawIncentive(ruleHash)
-        );
-    }
-
     function activateRule(bytes32 ruleHash) external onlyDeployedFund onlyFundManager nonReentrant {
         roboCop.activateRule(ruleHash);
     }

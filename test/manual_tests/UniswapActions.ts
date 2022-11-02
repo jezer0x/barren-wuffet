@@ -1,20 +1,12 @@
 import { ethers, getNamedAccounts } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { Contract, Bytes, BigNumber, utils } from "ethers";
+import * as liveAddresses from "../../deploy/arbitrum_addresses";
 import {
   GT,
   ERC20_DECIMALS,
-  TST1_PRICE_IN_ETH,
-  DEFAULT_INCENTIVE,
-  ETH_PRICE_IN_USD,
-  PRICE_TRIGGER_DECIMALS,
-  TST1_PRICE_IN_USD,
-  ETH_PRICE_IN_TST1,
-  ETH_ADDRESS,
-  PRICE_TRIGGER_TYPE,
   DEFAULT_SUB_TO_MAN_FEE_PCT,
   ETH_TOKEN,
-  LT,
   TOKEN_TYPE,
   TIMESTAMP_TRIGGER_TYPE
 } from "../Constants";

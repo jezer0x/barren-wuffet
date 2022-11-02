@@ -60,7 +60,6 @@ export function handleCreated(event: CreatedEvent): void {
   rule_entity.deactivation_timestamps = [];
   rule_entity.collaterals = [];
   rule_entity.outputs = [];
-  rule_entity.incentive = BigInt.zero();
   rule_entity.fund = fund.toHexString();
 
   rule_entity.save();

@@ -290,6 +290,70 @@ export class RoboCop__actionClosesPendingPositionInputActionOutputTokensStruct e
   }
 }
 
+export class RoboCop__createRuleInputTriggersStruct extends ethereum.Tuple {
+  get callee(): Address {
+    return this[0].toAddress();
+  }
+
+  get triggerType(): i32 {
+    return this[1].toI32();
+  }
+
+  get createTimeParams(): Bytes {
+    return this[2].toBytes();
+  }
+}
+
+export class RoboCop__createRuleInputActionsStruct extends ethereum.Tuple {
+  get callee(): Address {
+    return this[0].toAddress();
+  }
+
+  get data(): Bytes {
+    return this[1].toBytes();
+  }
+
+  get inputTokens(): Array<RoboCop__createRuleInputActionsInputTokensStruct> {
+    return this[2].toTupleArray<
+      RoboCop__createRuleInputActionsInputTokensStruct
+    >();
+  }
+
+  get outputTokens(): Array<RoboCop__createRuleInputActionsOutputTokensStruct> {
+    return this[3].toTupleArray<
+      RoboCop__createRuleInputActionsOutputTokensStruct
+    >();
+  }
+}
+
+export class RoboCop__createRuleInputActionsInputTokensStruct extends ethereum.Tuple {
+  get t(): i32 {
+    return this[0].toI32();
+  }
+
+  get addr(): Address {
+    return this[1].toAddress();
+  }
+
+  get id(): BigInt {
+    return this[2].toBigInt();
+  }
+}
+
+export class RoboCop__createRuleInputActionsOutputTokensStruct extends ethereum.Tuple {
+  get t(): i32 {
+    return this[0].toI32();
+  }
+
+  get addr(): Address {
+    return this[1].toAddress();
+  }
+
+  get id(): BigInt {
+    return this[2].toBigInt();
+  }
+}
+
 export class RoboCop__getInputTokensResultValue0Struct extends ethereum.Tuple {
   get t(): i32 {
     return this[0].toI32();
@@ -337,10 +401,6 @@ export class RoboCop__getRuleResultValue0Struct extends ethereum.Tuple {
 
   get outputs(): Array<BigInt> {
     return this[4].toBigIntArray();
-  }
-
-  get incentive(): BigInt {
-    return this[5].toBigInt();
   }
 }
 
@@ -518,6 +578,21 @@ export class RoboCop extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBytes());
   }
 
+  botFrontend(): Address {
+    let result = super.call("botFrontend", "botFrontend():(address)", []);
+
+    return result[0].toAddress();
+  }
+
+  try_botFrontend(): ethereum.CallResult<Address> {
+    let result = super.tryCall("botFrontend", "botFrontend():(address)", []);
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
   checkRule(ruleHash: Bytes): boolean {
     let result = super.call("checkRule", "checkRule(bytes32):(bool)", [
       ethereum.Value.fromFixedBytes(ruleHash)
@@ -535,6 +610,41 @@ export class RoboCop extends ethereum.SmartContract {
     }
     let value = result.value;
     return ethereum.CallResult.fromValue(value[0].toBoolean());
+  }
+
+  createRule(
+    triggers: Array<RoboCop__createRuleInputTriggersStruct>,
+    actions: Array<RoboCop__createRuleInputActionsStruct>
+  ): Bytes {
+    let result = super.call(
+      "createRule",
+      "createRule((address,uint8,bytes)[],(address,bytes,(uint8,address,uint256)[],(uint8,address,uint256)[])[]):(bytes32)",
+      [
+        ethereum.Value.fromTupleArray(triggers),
+        ethereum.Value.fromTupleArray(actions)
+      ]
+    );
+
+    return result[0].toBytes();
+  }
+
+  try_createRule(
+    triggers: Array<RoboCop__createRuleInputTriggersStruct>,
+    actions: Array<RoboCop__createRuleInputActionsStruct>
+  ): ethereum.CallResult<Bytes> {
+    let result = super.tryCall(
+      "createRule",
+      "createRule((address,uint8,bytes)[],(address,bytes,(uint8,address,uint256)[],(uint8,address,uint256)[])[]):(bytes32)",
+      [
+        ethereum.Value.fromTupleArray(triggers),
+        ethereum.Value.fromTupleArray(actions)
+      ]
+    );
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toBytes());
   }
 
   getInputTokens(
@@ -598,7 +708,7 @@ export class RoboCop extends ethereum.SmartContract {
   getRule(ruleHash: Bytes): RoboCop__getRuleResultValue0Struct {
     let result = super.call(
       "getRule",
-      "getRule(bytes32):(((address,uint8,bytes)[],(address,bytes,(uint8,address,uint256)[],(uint8,address,uint256)[])[],uint256[],uint8,uint256[],uint256))",
+      "getRule(bytes32):(((address,uint8,bytes)[],(address,bytes,(uint8,address,uint256)[],(uint8,address,uint256)[])[],uint256[],uint8,uint256[]))",
       [ethereum.Value.fromFixedBytes(ruleHash)]
     );
 
@@ -610,7 +720,7 @@ export class RoboCop extends ethereum.SmartContract {
   ): ethereum.CallResult<RoboCop__getRuleResultValue0Struct> {
     let result = super.tryCall(
       "getRule",
-      "getRule(bytes32):(((address,uint8,bytes)[],(address,bytes,(uint8,address,uint256)[],(uint8,address,uint256)[])[],uint256[],uint8,uint256[],uint256))",
+      "getRule(bytes32):(((address,uint8,bytes)[],(address,bytes,(uint8,address,uint256)[],(uint8,address,uint256)[])[],uint256[],uint8,uint256[]))",
       [ethereum.Value.fromFixedBytes(ruleHash)]
     );
     if (result.reverted) {
@@ -755,61 +865,6 @@ export class RoboCop extends ethereum.SmartContract {
         value[1].toBigIntArray()
       )
     );
-  }
-
-  ruleIncentiveProviders(param0: Bytes, param1: Address): BigInt {
-    let result = super.call(
-      "ruleIncentiveProviders",
-      "ruleIncentiveProviders(bytes32,address):(uint256)",
-      [
-        ethereum.Value.fromFixedBytes(param0),
-        ethereum.Value.fromAddress(param1)
-      ]
-    );
-
-    return result[0].toBigInt();
-  }
-
-  try_ruleIncentiveProviders(
-    param0: Bytes,
-    param1: Address
-  ): ethereum.CallResult<BigInt> {
-    let result = super.tryCall(
-      "ruleIncentiveProviders",
-      "ruleIncentiveProviders(bytes32,address):(uint256)",
-      [
-        ethereum.Value.fromFixedBytes(param0),
-        ethereum.Value.fromAddress(param1)
-      ]
-    );
-    if (result.reverted) {
-      return new ethereum.CallResult();
-    }
-    let value = result.value;
-    return ethereum.CallResult.fromValue(value[0].toBigInt());
-  }
-
-  withdrawIncentive(ruleHash: Bytes): BigInt {
-    let result = super.call(
-      "withdrawIncentive",
-      "withdrawIncentive(bytes32):(uint256)",
-      [ethereum.Value.fromFixedBytes(ruleHash)]
-    );
-
-    return result[0].toBigInt();
-  }
-
-  try_withdrawIncentive(ruleHash: Bytes): ethereum.CallResult<BigInt> {
-    let result = super.tryCall(
-      "withdrawIncentive",
-      "withdrawIncentive(bytes32):(uint256)",
-      [ethereum.Value.fromFixedBytes(ruleHash)]
-    );
-    if (result.reverted) {
-      return new ethereum.CallResult();
-    }
-    let value = result.value;
-    return ethereum.CallResult.fromValue(value[0].toBigInt());
   }
 }
 
@@ -1099,36 +1154,6 @@ export class GetRuleHashesByStatusCall__Outputs {
   }
 }
 
-export class IncreaseIncentiveCall extends ethereum.Call {
-  get inputs(): IncreaseIncentiveCall__Inputs {
-    return new IncreaseIncentiveCall__Inputs(this);
-  }
-
-  get outputs(): IncreaseIncentiveCall__Outputs {
-    return new IncreaseIncentiveCall__Outputs(this);
-  }
-}
-
-export class IncreaseIncentiveCall__Inputs {
-  _call: IncreaseIncentiveCall;
-
-  constructor(call: IncreaseIncentiveCall) {
-    this._call = call;
-  }
-
-  get ruleHash(): Bytes {
-    return this._call.inputValues[0].value.toBytes();
-  }
-}
-
-export class IncreaseIncentiveCall__Outputs {
-  _call: IncreaseIncentiveCall;
-
-  constructor(call: IncreaseIncentiveCall) {
-    this._call = call;
-  }
-}
-
 export class InitializeCall extends ethereum.Call {
   get inputs(): InitializeCall__Inputs {
     return new InitializeCall__Inputs(this);
@@ -1148,6 +1173,10 @@ export class InitializeCall__Inputs {
 
   get _newOwner(): Address {
     return this._call.inputValues[0].value.toAddress();
+  }
+
+  get botFrontendAddr(): Address {
+    return this._call.inputValues[1].value.toAddress();
   }
 }
 
@@ -1296,39 +1325,5 @@ export class TransferOwnershipCall__Outputs {
 
   constructor(call: TransferOwnershipCall) {
     this._call = call;
-  }
-}
-
-export class WithdrawIncentiveCall extends ethereum.Call {
-  get inputs(): WithdrawIncentiveCall__Inputs {
-    return new WithdrawIncentiveCall__Inputs(this);
-  }
-
-  get outputs(): WithdrawIncentiveCall__Outputs {
-    return new WithdrawIncentiveCall__Outputs(this);
-  }
-}
-
-export class WithdrawIncentiveCall__Inputs {
-  _call: WithdrawIncentiveCall;
-
-  constructor(call: WithdrawIncentiveCall) {
-    this._call = call;
-  }
-
-  get ruleHash(): Bytes {
-    return this._call.inputValues[0].value.toBytes();
-  }
-}
-
-export class WithdrawIncentiveCall__Outputs {
-  _call: WithdrawIncentiveCall;
-
-  constructor(call: WithdrawIncentiveCall) {
-    this._call = call;
-  }
-
-  get balance(): BigInt {
-    return this._call.outputValues[0].value.toBigInt();
   }
 }

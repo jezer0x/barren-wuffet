@@ -245,6 +245,21 @@ export class BarrenWuffet extends ethereum.SmartContract {
     return ethereum.CallResult.fromValue(value[0].toBytes());
   }
 
+  botFrontend(): Address {
+    let result = super.call("botFrontend", "botFrontend():(address)", []);
+
+    return result[0].toAddress();
+  }
+
+  try_botFrontend(): ethereum.CallResult<Address> {
+    let result = super.tryCall("botFrontend", "botFrontend():(address)", []);
+    if (result.reverted) {
+      return new ethereum.CallResult();
+    }
+    let value = result.value;
+    return ethereum.CallResult.fromValue(value[0].toAddress());
+  }
+
   createFund(
     name: string,
     constraints: BarrenWuffet__createFundInputConstraintsStruct,
@@ -479,6 +494,10 @@ export class ConstructorCall__Inputs {
 
   get _fundBeaconAddr(): Address {
     return this._call.inputValues[5].value.toAddress();
+  }
+
+  get _botFrontendAddr(): Address {
+    return this._call.inputValues[6].value.toAddress();
   }
 }
 

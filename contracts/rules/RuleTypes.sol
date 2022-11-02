@@ -5,10 +5,10 @@ import "../actions/ActionTypes.sol";
 import "../triggers/TriggerTypes.sol";
 
 enum RuleStatus {
-    ACTIVE, // Action can be executed when trigger is met, can add/withdraw collateral, can add/reduce incentive
-    INACTIVE, // Action can not be executed even if trigger is met, can add/withdraw collateral, can add/reduce incentive
-    EXECUTED, // Action has been executed, can withdraw output, can't add/reduce incentive
-    REDEEMED // Action has been executed, ouput has been withdrawn, can't add/reduce incentive
+    ACTIVE, // Action can be executed when trigger is met, can add/withdraw collateral
+    INACTIVE, // Action can not be executed even if trigger is met, can add/withdraw collateral
+    EXECUTED, // Action has been executed, can withdraw output
+    REDEEMED // Action has been executed, ouput has been withdrawn
 }
 
 struct Rule {
@@ -18,5 +18,4 @@ struct Rule {
     RuleStatus status;
     // Final output received after all the actions are done.
     uint256[] outputs; // idx if ERC721, amount if erc20 or native
-    uint256 incentive;
 }

@@ -29,7 +29,6 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
     CustomEnumerableMap.Bytes32ToBytesMap rules;
     mapping(bytes32 => bytes32[]) public actionPositionsMap;
     EnumerableSet.Bytes32Set private pendingPositions;
-    mapping(bytes32 => mapping(address => uint256)) public ruleIncentiveProviders;
     mapping(bytes32 => uint256) tokensOnHold; // demarcate tokens which can't be redeemed
     uint256 totalNumOutputTokens; // convenience variable
     IBotFrontend public botFrontend;
@@ -184,32 +183,8 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
         emit CollateralReduced(ruleHash, amounts);
     }
 
-    function increaseIncentive(bytes32 ruleHash) public payable {
-        Rule memory rule = getRule(ruleHash);
-        require(rule.status == RuleStatus.ACTIVE || rule.status == RuleStatus.INACTIVE);
-        rule.incentive += msg.value;
-        _setRule(ruleHash, rule);
-        ruleIncentiveProviders[ruleHash][msg.sender] += msg.value;
-        tokensOnHold[keccak256(abi.encode(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0})))] += msg.value;
-    }
-
-    function withdrawIncentive(bytes32 ruleHash) external returns (uint256 balance) {
-        Rule memory rule = getRule(ruleHash);
-        require(rule.status != RuleStatus.EXECUTED && rule.status != RuleStatus.REDEEMED, "Incentive paid");
-        balance = ruleIncentiveProviders[ruleHash][msg.sender];
-        require(balance > 0, "0 contribution");
-        rule.incentive -= balance;
-        _setRule(ruleHash, rule);
-        ruleIncentiveProviders[ruleHash][msg.sender] = 0;
-        tokensOnHold[keccak256(abi.encode(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0})))] -= balance;
-
-        // slither-disable-next-line arbitrary-send
-        payable(msg.sender).transfer(balance);
-    }
-
     function createRule(Trigger[] calldata triggers, Action[] calldata actions)
         external
-        payable
         nonReentrant
         onlyOwner
         returns (bytes32)
@@ -244,8 +219,6 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
         newRule.collaterals = new uint256[](actions[0].inputTokens.length);
 
         _setRule(ruleHash, newRule);
-
-        increaseIncentive(ruleHash);
 
         totalNumOutputTokens += actions[actions.length - 1].outputTokens.length;
 
@@ -377,8 +350,6 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
         rule.outputs = outputs;
         _setRule(ruleHash, rule);
         botFrontend.stopTask(ruleHash);
-        tokensOnHold[keccak256(abi.encode(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0})))] -= rule.incentive;
-        payable(msg.sender).transfer(rule.incentive); // slither-disable-next-line arbitrary-send // for the taking. // As long as the execution reaches this point, the incentive is there // We dont need to check sender here.
     }
 
     function hasPendingPosition() public view returns (bool) {

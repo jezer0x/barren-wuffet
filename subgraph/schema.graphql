@@ -51,9 +51,8 @@ type Rule @entity {
   actions: [Action!]! @derivedFrom(field: "rule")
   triggers: [Trigger!]! @derivedFrom(field: "rule")
   outputs: [BigInt!]!
-  incentive: BigInt! # TODO, no event to notify of changes yet
   collaterals: [BigInt!]
-  # what about all the other kinds of events? collateralAdd/reduce, incentiveAdd/reduce?
+  # what about all the other kinds of events? collateralAdd/reduce
   fund: Fund!
 }
 

@@ -508,15 +508,6 @@ export class Rule extends Entity {
     this.set("outputs", Value.fromBigIntArray(value));
   }
 
-  get incentive(): BigInt {
-    let value = this.get("incentive");
-    return value!.toBigInt();
-  }
-
-  set incentive(value: BigInt) {
-    this.set("incentive", Value.fromBigInt(value));
-  }
-
   get collaterals(): Array<BigInt> | null {
     let value = this.get("collaterals");
     if (!value || value.kind == ValueKind.NULL) {
