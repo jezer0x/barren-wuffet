@@ -4,7 +4,7 @@ import { Contract, BigNumber, utils } from "ethers";
 import PositionRouter from "./GmxPositionRouter.json";
 import Reader from "./GmxReader.json";
 import Router from "./GmxRouter.json";
-import * as liveAddresses from "../../../deploy/arbitrum_addresses";
+import { getLiveAddresses } from "../../../deploy/live_addresses";
 import {
   GT,
   ERC20_DECIMALS,
@@ -29,6 +29,7 @@ async function makeSubConstraints() {
 }
 
 async function main() {
+  const liveAddresses: any = getLiveAddresses("31337", true);
   const BW = await ethers.getContract("BarrenWuffet");
   const McFundAddr = await getAddressFromEvent(
     BW.createFund("marlieChungerFund", await makeSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []),

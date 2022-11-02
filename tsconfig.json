@@ -8,5 +8,5 @@
     "skipLibCheck": true, 
     "resolveJsonModule": true
   },
-  "include": ["./scripts", "./test", "./typechain-types", "./deploy/scripts", "./hardhat.config.ts", "deploy/arbitrum_addresses.ts"],
+  "include": ["./scripts", "./test", "./typechain-types", "./deploy/scripts", "./hardhat.config.ts", "deploy/live_addresses.ts"],
 }

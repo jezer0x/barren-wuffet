@@ -11,7 +11,7 @@ import {
   ETH_ADDRESS
 } from "../Constants";
 import { getAddressFromEvent, getHashFromEvent } from "../helper";
-import * as liveAddresses from "../../deploy/arbitrum_addresses";
+import { getLiveAddresses } from "../../deploy/live_addresses";
 import { IOps__factory } from "../../typechain-types";
 
 async function makeSubConstraints() {
@@ -28,6 +28,7 @@ async function makeSubConstraints() {
 }
 
 async function main() {
+  const liveAddresses: any = getLiveAddresses("31337", true);
   const BW = await ethers.getContract("BarrenWuffet");
   const McFundAddr = await getAddressFromEvent(
     BW.createFund("marlieChungerFund", await makeSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []),
