@@ -52,14 +52,36 @@ const arbitrum = {
   }
 };
 
-const arbitrum_goerli = {};
+const goerli = {
+  tokens: {
+    WETH: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+    USDC: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
+    DAI: "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1"
+  },
+
+  // https://docs.gelato.network/developer-products/gelato-ops-smart-contract-automation-hub/contract-addresses#arbitrum
+  gelato: {
+    treasury: "0x644CB00854EDC55FE8CCC9c1967BABb22F08Ad2f",
+    ops: "0x255F82563b5973264e89526345EcEa766DB3baB2"
+  },
+
+  // https://docs.uniswap.org/protocol/reference/deployments
+  uniswap: {
+    swap_router: "0xe592427a0aece92de3edee1f18e0157c05861564",
+    non_fungible_position_manager: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+  },
+
+  sushiswap: {
+    swap_router: "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506"
+  }
+};
 
 export function getLiveAddresses(chainID: string, forking: boolean | undefined) {
   if (chainID == "31337" && forking) {
     return arbitrum; // we'll be always forking mainnet arbitrum
   } else if (chainID == "42161") {
     return arbitrum;
-  } else if (chainID == "421613") {
-    return arbitrum_goerli;
+  } else if (chainID == "5") {
+    return goerli;
   }
 }
