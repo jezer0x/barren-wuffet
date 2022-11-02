@@ -1,3 +1,5 @@
+import { ethers } from "hardhat";
+
 const arbitrum = {
   tokens: {
     WETH: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
@@ -76,12 +78,38 @@ const goerli = {
   }
 };
 
-export function getLiveAddresses(chainID: string, forking: boolean | undefined) {
+export async function getLiveAddresses(chainID: string, forking: boolean | undefined) {
   if (chainID == "31337" && forking) {
     return arbitrum; // we'll be always forking mainnet arbitrum
+  } else if (chainID == "31337" && !forking) {
+    return await getLocalnetworkAddressesForTests(); // running tests mayhaps
   } else if (chainID == "42161") {
     return arbitrum;
   } else if (chainID == "5") {
     return goerli;
   }
+}
+
+async function getLocalnetworkAddressesForTests() {
+  return {
+    tokens: {
+      WETH: (await ethers.getContract("WETH")).address
+    },
+    uniswap: {
+      non_fungible_position_manager: ethers.constants.AddressZero,
+      swap_router: (await ethers.getContract("TestSwapRouter")).address
+    },
+    sushiswap: {
+      swap_router: (await ethers.getContract("TestSwapRouter")).address
+    },
+    gmx: {
+      router: ethers.constants.AddressZero,
+      position_router: ethers.constants.AddressZero,
+      reader: ethers.constants.AddressZero
+    },
+    gelato: {
+      ops: (await ethers.getContract("TestGelatoOps")).address,
+      treasury: ethers.constants.AddressZero
+    }
+  };
 }

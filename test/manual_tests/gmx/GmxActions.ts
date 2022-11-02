@@ -29,7 +29,7 @@ async function makeSubConstraints() {
 }
 
 async function main() {
-  const liveAddresses: any = getLiveAddresses("31337", true);
+  const liveAddresses: any = await getLiveAddresses("31337", true);
   const BW = await ethers.getContract("BarrenWuffet");
   const McFundAddr = await getAddressFromEvent(
     BW.createFund("marlieChungerFund", await makeSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []),

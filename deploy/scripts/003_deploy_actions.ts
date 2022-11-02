@@ -7,7 +7,7 @@ import dotenv from "dotenv";
 import { getLiveAddresses } from "../live_addresses";
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
-  const liveAddresses = getLiveAddresses(await getChainId(), hre.config.networks.hardhat.forking?.enabled);
+  const liveAddresses = await getLiveAddresses(await getChainId(), hre.config.networks.hardhat.forking?.enabled);
   dotenv.config({ path: (await getChainId()) == "31337" ? ".test.env" : ".env", override: true });
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
@@ -23,37 +23,25 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     // loose test for "that that whitelist was already created"
   }
 
-  await deployUniswapActions(
-    deploy,
-    deployer,
-    whitelistService,
-    actWlHash,
-    TokenLibAddr,
-    hre.config.networks.hardhat.forking?.enabled,
-    liveAddresses
-  );
+  // await deployUniswapActions(
+  //   deploy,
+  //   deployer,
+  //   whitelistService,
+  //   actWlHash,
+  //   TokenLibAddr,
+  //   liveAddresses
+  // );
 
-  await deploySushiActions(
-    deploy,
-    deployer,
-    whitelistService,
-    actWlHash,
-    TokenLibAddr,
-    hre.config.networks.hardhat.forking?.enabled,
-    liveAddresses
-  );
+  await deploySushiActions(deploy, deployer, whitelistService, actWlHash, TokenLibAddr, liveAddresses);
 
-  await deployGmxActions(
-    deploy,
-    deployer,
-    whitelistService,
-    actWlHash,
-    TokenLibAddr,
-    hre.config.networks.hardhat.forking?.enabled,
-    liveAddresses
-  );
-
-  // TODO: deploy all the other actions
+  // await deployGmxActions(
+  //   deploy,
+  //   deployer,
+  //   whitelistService,
+  //   actWlHash,
+  //   TokenLibAddr,
+  //   liveAddresses
+  // );
 
   if ((await whitelistService.getWhitelistOwner(actWlHash)) == deployer) {
     await whitelistService.transferWhitelistOwnership(actWlHash, process.env.PLATFORM_MULTI_SIG_ADDR);
@@ -66,23 +54,15 @@ async function deployUniswapActions(
   whitelistService: Contract,
   actWlHash: any,
   TokenLibAddr: string,
-  forked: undefined | boolean,
   liveAddresses: any
 ) {
   let uniswapRouterAddr;
   let nonfungiblePositionManagerAddr;
   let weth9Addr;
 
-  // TODO: utils to change the following to vars, depending on chainID
-  if ((await getChainId()) == "31337" && !forked) {
-    uniswapRouterAddr = (await ethers.getContract("TestSwapRouter")).address;
-    nonfungiblePositionManagerAddr = ethers.constants.AddressZero;
-    weth9Addr = (await ethers.getContract("WETH")).address;
-  } else {
-    uniswapRouterAddr = liveAddresses.uniswap.swap_router;
-    nonfungiblePositionManagerAddr = liveAddresses.uniswap.non_fungible_position_manager;
-    weth9Addr = liveAddresses.tokens.WETH;
-  }
+  uniswapRouterAddr = liveAddresses.uniswap.swap_router;
+  nonfungiblePositionManagerAddr = liveAddresses.uniswap.non_fungible_position_manager;
+  weth9Addr = liveAddresses.tokens.WETH;
 
   const uniSwapExactInputSingle = await deploy("UniSwapExactInputSingle", {
     from: deployer,
@@ -140,20 +120,10 @@ async function deploySushiActions(
   whitelistService: Contract,
   actWlHash: any,
   TokenLibAddr: string,
-  forked: undefined | boolean,
   liveAddresses: any
 ) {
-  let router;
-  let weth9Addr;
-
-  // TODO: utils to change the following to vars, depending on chainID
-  if ((await getChainId()) == "31337" && !forked) {
-    router = (await ethers.getContract("TestSwapRouter")).address;
-    weth9Addr = (await ethers.getContract("WETH")).address;
-  } else {
-    router = liveAddresses.sushiswap.swap_router;
-    weth9Addr = liveAddresses.tokens.WETH;
-  }
+  let router = liveAddresses.sushiswap.swap_router;
+  let weth9Addr = liveAddresses.tokens.WETH;
 
   const sushiSwapExactXForY = await deploy("SushiSwapExactXForY", {
     from: deployer,
@@ -187,23 +157,12 @@ async function deployGmxActions(
   whitelistService: Contract,
   actWlHash: any,
   TokenLibAddr: string,
-  forked: undefined | boolean,
   liveAddresses: any
 ) {
-  let router;
-  let position_router;
-  let reader;
-
   // Note: tests will fail against Gmx if run on unforked network
-  if ((await getChainId()) == "31337" && !forked) {
-    router = ethers.constants.AddressZero;
-    position_router = ethers.constants.AddressZero;
-    reader = ethers.constants.AddressZero;
-  } else {
-    router = liveAddresses.gmx.router;
-    position_router = liveAddresses.gmx.position_router;
-    reader = liveAddresses.gmx.reader;
-  }
+  let router = liveAddresses.gmx.router;
+  let position_router = liveAddresses.gmx.position_router;
+  let reader = liveAddresses.gmx.reader;
 
   const gmxSwap = await deploy("GmxSwap", {
     from: deployer,
