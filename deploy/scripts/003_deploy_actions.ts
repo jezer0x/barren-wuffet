@@ -4,10 +4,13 @@ import { ethers, getChainId } from "hardhat";
 import { addToWhitelist, getLibraries } from "../utils";
 import { Contract } from "ethers";
 import dotenv from "dotenv";
-import { getLiveAddresses } from "../live_addresses";
+import { getProtocolAddresses } from "../protocol_addresses";
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
-  const liveAddresses = await getLiveAddresses(await getChainId(), hre.config.networks.hardhat.forking?.enabled);
+  const protocolAddresses = await getProtocolAddresses(
+    await getChainId(),
+    hre.config.networks.hardhat.forking?.enabled
+  );
   dotenv.config({ path: (await getChainId()) == "31337" ? ".test.env" : ".env", override: true });
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
@@ -29,10 +32,10 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   //   whitelistService,
   //   actWlHash,
   //   TokenLibAddr,
-  //   liveAddresses
+  //   protocolAddresses
   // );
 
-  await deploySushiActions(deploy, deployer, whitelistService, actWlHash, TokenLibAddr, liveAddresses);
+  await deploySushiActions(deploy, deployer, whitelistService, actWlHash, TokenLibAddr, protocolAddresses);
 
   // await deployGmxActions(
   //   deploy,
@@ -40,7 +43,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   //   whitelistService,
   //   actWlHash,
   //   TokenLibAddr,
-  //   liveAddresses
+  //   protocolAddresses
   // );
 
   if ((await whitelistService.getWhitelistOwner(actWlHash)) == deployer) {
@@ -54,15 +57,15 @@ async function deployUniswapActions(
   whitelistService: Contract,
   actWlHash: any,
   TokenLibAddr: string,
-  liveAddresses: any
+  protocolAddresses: any
 ) {
   let uniswapRouterAddr;
   let nonfungiblePositionManagerAddr;
   let weth9Addr;
 
-  uniswapRouterAddr = liveAddresses.uniswap.swap_router;
-  nonfungiblePositionManagerAddr = liveAddresses.uniswap.non_fungible_position_manager;
-  weth9Addr = liveAddresses.tokens.WETH;
+  uniswapRouterAddr = protocolAddresses.uniswap.swap_router;
+  nonfungiblePositionManagerAddr = protocolAddresses.uniswap.non_fungible_position_manager;
+  weth9Addr = protocolAddresses.tokens.WETH;
 
   const uniSwapExactInputSingle = await deploy("UniSwapExactInputSingle", {
     from: deployer,
@@ -120,10 +123,10 @@ async function deploySushiActions(
   whitelistService: Contract,
   actWlHash: any,
   TokenLibAddr: string,
-  liveAddresses: any
+  protocolAddresses: any
 ) {
-  let router = liveAddresses.sushiswap.swap_router;
-  let weth9Addr = liveAddresses.tokens.WETH;
+  let router = protocolAddresses.sushiswap.swap_router;
+  let weth9Addr = protocolAddresses.tokens.WETH;
 
   const sushiSwapExactXForY = await deploy("SushiSwapExactXForY", {
     from: deployer,
@@ -157,12 +160,12 @@ async function deployGmxActions(
   whitelistService: Contract,
   actWlHash: any,
   TokenLibAddr: string,
-  liveAddresses: any
+  protocolAddresses: any
 ) {
   // Note: tests will fail against Gmx if run on unforked network
-  let router = liveAddresses.gmx.router;
-  let position_router = liveAddresses.gmx.position_router;
-  let reader = liveAddresses.gmx.reader;
+  let router = protocolAddresses.gmx.router;
+  let position_router = protocolAddresses.gmx.position_router;
+  let reader = protocolAddresses.gmx.reader;
 
   const gmxSwap = await deploy("GmxSwap", {
     from: deployer,

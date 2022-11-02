@@ -78,7 +78,7 @@ const goerli = {
   }
 };
 
-export async function getLiveAddresses(chainID: string, forking: boolean | undefined) {
+export async function getProtocolAddresses(chainID: string, forking: boolean | undefined) {
   if (chainID == "31337" && forking) {
     return arbitrum; // we'll be always forking mainnet arbitrum
   } else if (chainID == "31337" && !forking) {

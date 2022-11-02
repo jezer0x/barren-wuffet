@@ -11,7 +11,7 @@ import {
   ETH_ADDRESS
 } from "../Constants";
 import { getAddressFromEvent, getHashFromEvent } from "../helper";
-import { getLiveAddresses } from "../../deploy/live_addresses";
+import { getProtocolAddresses } from "../../deploy/protocol_addresses";
 import { IOps__factory } from "../../typechain-types";
 
 async function makeSubConstraints() {
@@ -28,7 +28,7 @@ async function makeSubConstraints() {
 }
 
 async function main() {
-  const liveAddresses: any = await getLiveAddresses("31337", true);
+  const protocolAddresses: any = await getProtocolAddresses("31337", true);
   const BW = await ethers.getContract("BarrenWuffet");
   const McFundAddr = await getAddressFromEvent(
     BW.createFund("marlieChungerFund", await makeSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []),
@@ -66,8 +66,8 @@ async function main() {
     }
   ];
 
-  const usdc_contract = new Contract(liveAddresses.tokens.USDC, erc20abifrag, ethers.provider);
-  const USDC_TOKEN = { t: TOKEN_TYPE.ERC20, addr: liveAddresses.tokens.USDC, id: BigNumber.from(0) };
+  const usdc_contract = new Contract(protocolAddresses.tokens.USDC, erc20abifrag, ethers.provider);
+  const USDC_TOKEN = { t: TOKEN_TYPE.ERC20, addr: protocolAddresses.tokens.USDC, id: BigNumber.from(0) };
 
   let balance_usdc = await usdc_contract.balanceOf(McFundAddr);
 
@@ -87,7 +87,7 @@ async function main() {
       data: ethers.utils.defaultAbiCoder.encode(
         ["address[]", "uint256"],
         [
-          [liveAddresses.tokens.WETH, liveAddresses.tokens.USDC],
+          [protocolAddresses.tokens.WETH, protocolAddresses.tokens.USDC],
           BigNumber.from(19).mul(BigNumber.from(10).pow(8)) // translates to ~1900USD/ETH [1900000000e18/1e18]
         ]
       ),
@@ -110,7 +110,7 @@ async function main() {
       data: ethers.utils.defaultAbiCoder.encode(
         ["address[]", "uint256"],
         [
-          [liveAddresses.tokens.USDC, liveAddresses.tokens.WETH],
+          [protocolAddresses.tokens.USDC, protocolAddresses.tokens.WETH],
           BigNumber.from(500).mul(BigNumber.from(10).pow(24)) // translates to ~2000USD/ETH [1e18*1e18 / 1900000000]
         ]
       ),
@@ -135,7 +135,7 @@ async function main() {
         callee: sushiSwapExactXForY.address,
         data: ethers.utils.defaultAbiCoder.encode(
           ["address[]", "uint256"],
-          [[liveAddresses.tokens.WETH, liveAddresses.tokens.WETH], 0]
+          [[protocolAddresses.tokens.WETH, protocolAddresses.tokens.WETH], 0]
         ),
         inputTokens: [ETH_TOKEN], // eth
         outputTokens: [USDC_TOKEN] // swapping for USDC
@@ -157,7 +157,7 @@ async function main() {
           data: ethers.utils.defaultAbiCoder.encode(
             ["address[]", "uint256"],
             [
-              [liveAddresses.tokens.WETH, liveAddresses.tokens.USDC],
+              [protocolAddresses.tokens.WETH, protocolAddresses.tokens.USDC],
               BigNumber.from(19).mul(BigNumber.from(10).pow(8)) // translates to ~1900USD/ETH [1900000000e18/1e18]
             ]
           ),
@@ -195,7 +195,7 @@ async function main() {
     throw "Something went wrong! canExec was false";
   }
 
-  const gelatoOps = new Contract(liveAddresses.gelato.ops, IOps__factory.abi, ethers.provider);
+  const gelatoOps = new Contract(protocolAddresses.gelato.ops, IOps__factory.abi, ethers.provider);
 
   // impersonate gelato bot and do the bot's work
   const gelatoBotAddr = await gelatoOps.gelato();
