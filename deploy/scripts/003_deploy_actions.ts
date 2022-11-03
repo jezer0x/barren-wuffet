@@ -19,7 +19,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
   const whitelistService = await ethers.getContract("WhitelistService");
   const actWlHash = await whitelistService.getWhitelistHash(deployer, "actions");
-  console.log("actWlHash", actWlHash);
+
   try {
     await whitelistService.createWhitelist("actions");
   } catch {
