@@ -752,18 +752,12 @@ export class AddRuleCollateralCall__Inputs {
     return this._call.inputValues[0].value.toBytes();
   }
 
-  get collateralTokens(): Array<AddRuleCollateralCallCollateralTokensStruct> {
-    return this._call.inputValues[1].value.toTupleArray<
-      AddRuleCollateralCallCollateralTokensStruct
-    >();
-  }
-
   get collaterals(): Array<BigInt> {
-    return this._call.inputValues[2].value.toBigIntArray();
+    return this._call.inputValues[1].value.toBigIntArray();
   }
 
   get fees(): Array<BigInt> {
-    return this._call.inputValues[3].value.toBigIntArray();
+    return this._call.inputValues[2].value.toBigIntArray();
   }
 }
 
@@ -772,20 +766,6 @@ export class AddRuleCollateralCall__Outputs {
 
   constructor(call: AddRuleCollateralCall) {
     this._call = call;
-  }
-}
-
-export class AddRuleCollateralCallCollateralTokensStruct extends ethereum.Tuple {
-  get t(): i32 {
-    return this[0].toI32();
-  }
-
-  get addr(): Address {
-    return this[1].toAddress();
-  }
-
-  get id(): BigInt {
-    return this[2].toBigInt();
   }
 }
 
@@ -1027,40 +1007,6 @@ export class DepositCallCollateralTokenStruct extends ethereum.Tuple {
   }
 }
 
-export class IncreaseRuleIncentiveCall extends ethereum.Call {
-  get inputs(): IncreaseRuleIncentiveCall__Inputs {
-    return new IncreaseRuleIncentiveCall__Inputs(this);
-  }
-
-  get outputs(): IncreaseRuleIncentiveCall__Outputs {
-    return new IncreaseRuleIncentiveCall__Outputs(this);
-  }
-}
-
-export class IncreaseRuleIncentiveCall__Inputs {
-  _call: IncreaseRuleIncentiveCall;
-
-  constructor(call: IncreaseRuleIncentiveCall) {
-    this._call = call;
-  }
-
-  get ruleHash(): Bytes {
-    return this._call.inputValues[0].value.toBytes();
-  }
-
-  get amount(): BigInt {
-    return this._call.inputValues[1].value.toBigInt();
-  }
-}
-
-export class IncreaseRuleIncentiveCall__Outputs {
-  _call: IncreaseRuleIncentiveCall;
-
-  constructor(call: IncreaseRuleIncentiveCall) {
-    this._call = call;
-  }
-}
-
 export class InitializeCall extends ethereum.Call {
   get inputs(): InitializeCall__Inputs {
     return new InitializeCall__Inputs(this);
@@ -1112,6 +1058,10 @@ export class InitializeCall__Inputs {
 
   get _declaredTokenAddrs(): Array<Address> {
     return this._call.inputValues[7].value.toAddressArray();
+  }
+
+  get botFrontendAddr(): Address {
+    return this._call.inputValues[8].value.toAddress();
   }
 }
 
@@ -1564,35 +1514,5 @@ export class WithdrawManagementFeeCallValue0Struct extends ethereum.Tuple {
 
   get id(): BigInt {
     return this[2].toBigInt();
-  }
-}
-
-export class WithdrawRuleIncentiveCall extends ethereum.Call {
-  get inputs(): WithdrawRuleIncentiveCall__Inputs {
-    return new WithdrawRuleIncentiveCall__Inputs(this);
-  }
-
-  get outputs(): WithdrawRuleIncentiveCall__Outputs {
-    return new WithdrawRuleIncentiveCall__Outputs(this);
-  }
-}
-
-export class WithdrawRuleIncentiveCall__Inputs {
-  _call: WithdrawRuleIncentiveCall;
-
-  constructor(call: WithdrawRuleIncentiveCall) {
-    this._call = call;
-  }
-
-  get ruleHash(): Bytes {
-    return this._call.inputValues[0].value.toBytes();
-  }
-}
-
-export class WithdrawRuleIncentiveCall__Outputs {
-  _call: WithdrawRuleIncentiveCall;
-
-  constructor(call: WithdrawRuleIncentiveCall) {
-    this._call = call;
   }
 }

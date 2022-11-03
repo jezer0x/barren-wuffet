@@ -8,16 +8,12 @@ import {
   GT,
   ERC20_DECIMALS,
   TST1_PRICE_IN_ETH,
-  DEFAULT_INCENTIVE,
-  ETH_PRICE_IN_USD,
   PRICE_TRIGGER_DECIMALS,
-  TST1_PRICE_IN_USD,
   ETH_PRICE_IN_TST1,
   ETH_ADDRESS,
   PRICE_TRIGGER_TYPE,
   DEFAULT_SUB_TO_MAN_FEE_PCT,
   ETH_TOKEN,
-  LT,
   TOKEN_TYPE
 } from "./Constants";
 import { getAddressFromEvent, getHashFromEvent, tx } from "./helper";
@@ -94,10 +90,10 @@ export async function createRule(
   wallet: SignerWithAddress,
   activate: boolean = false
 ): Promise<string> {
-  const p = _roboCop.connect(wallet).createRule(triggers, actions, { value: DEFAULT_INCENTIVE });
-  // send 1 eth as incentive.
+  const p = _roboCop.connect(wallet).createRule(triggers, actions);
+
   const ruleHash = getHashFromEvent(
-    _roboCop.connect(wallet).createRule(triggers, actions, { value: DEFAULT_INCENTIVE }),
+    _roboCop.connect(wallet).createRule(triggers, actions),
     "Created",
     _roboCop,
     "ruleHash"
@@ -256,13 +252,13 @@ export async function setupSwapTrades(
 
   const tx = await degenStreet
     .connect(traderWallet)
-    .createTrade([passingTST1toETHSwapPriceTrigger], [swapTST1ToETHAction], constraints, { value: DEFAULT_INCENTIVE });
+    .createTrade([passingTST1toETHSwapPriceTrigger], [swapTST1ToETHAction], constraints);
 
   const tradeTST1forETHHash: Bytes = await getHashFromEvent(tx, "Created", degenStreet, "tradeHash");
 
   const tx2 = await degenStreet
     .connect(traderWallet)
-    .createTrade([passingETHtoTST1SwapPriceTrigger], [swapETHToTST1Action], constraints, { value: DEFAULT_INCENTIVE });
+    .createTrade([passingETHtoTST1SwapPriceTrigger], [swapETHToTST1Action], constraints);
 
   const tradeETHforTST1Hash: Bytes = await getHashFromEvent(tx2, "Created", degenStreet, "tradeHash");
 

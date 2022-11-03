@@ -13,6 +13,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const whitelistService = await ethers.getContract("WhitelistService");
   const roboCopBeacon = await ethers.getContract("RoboCopBeacon");
   const fundBeacon = await ethers.getContract("FundBeacon");
+  const botFrontend = await ethers.getContract("BotFrontend");
   const trigWlHash = await whitelistService.getWhitelistHash(deployer, "triggers");
   const actWlHash = await whitelistService.getWhitelistHash(deployer, "actions");
 
@@ -29,7 +30,8 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
       actWlHash,
       whitelistService.address,
       roboCopBeacon.address,
-      fundBeacon.address
+      fundBeacon.address,
+      botFrontend.address
     ],
     log: true
   });
@@ -37,9 +39,26 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   if (bwDeployResult.newlyDeployed) {
     const bw = await ethers.getContract("BarrenWuffet");
     await bw.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
+
+    try {
+      await botFrontend.setBarrenWuffet(bw.address);
+    } catch {
+      console.warn(
+        `new BW ${bw.address} not set in BotFrontend because you're not the owner!
+        Please ensure new BW is set manually in BotFrontend!`
+      );
+    }
+  }
+
+  if ((await botFrontend.owner()) != process.env.PLATFORM_MULTI_SIG_ADDR) {
+    try {
+      await botFrontend.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
+    } catch {
+      console.warn(`BotFrontend owner could not be set to multiSigAddr! Please set manually!`);
+    }
   }
 };
 
 export default func;
 func.tags = ["BarrenWuffet"];
-func.dependencies = ["RoboCopBeacon", "FundBeacon", "WhitelistService"];
+func.dependencies = ["RoboCopBeacon", "FundBeacon", "WhitelistService", "BotFrontend"];

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.17;
 
 import "../utils/subscriptions/ISubscription.sol";
 import "../utils/Constants.sol";
@@ -70,7 +70,8 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         bytes32 _triggerWhitelistHash,
         bytes32 _actionWhitelistHash,
         address roboCopBeaconAddr,
-        address[] calldata _declaredTokenAddrs
+        address[] calldata _declaredTokenAddrs,
+        address botFrontendAddr
     ) external nonReentrant initializer {
         __ReentrancyGuard_init();
 
@@ -102,7 +103,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
 
         bytes memory nodata;
         roboCop = IRoboCop(address(new BeaconProxy(roboCopBeaconAddr, nodata)));
-        roboCop.initialize(address(this));
+        roboCop.initialize(address(this), botFrontendAddr);
     }
 
     function _onlyDeclaredTokens(Token[] memory tokens) internal view returns (bool) {
@@ -188,7 +189,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
     }
 
     function _validateAndTakeFees(
-        Token[] calldata tokens,
+        Token[] memory tokens,
         uint256[] calldata collaterals,
         uint256[] calldata fees
     ) internal {
@@ -232,7 +233,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         Action[] memory actions = new Action[](1);
         actions[0] = action;
         bytes32 ruleHash = _createRule(triggers, actions);
-        _addRuleCollateral(ruleHash, action.inputTokens, collaterals, fees);
+        _addRuleCollateral(ruleHash, collaterals, fees);
         roboCop.activateRule(ruleHash);
         roboCop.executeRule(ruleHash); // should be immediately executable
         _redeemRuleOutputs();
@@ -261,23 +262,6 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         ruleHash = roboCop.createRule(triggers, actions);
     }
 
-    function increaseRuleIncentive(bytes32 ruleHash, uint256 amount)
-        external
-        onlyDeployedFund
-        onlyFundManager
-        nonReentrant
-    {
-        assets.decreaseAsset(Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}), amount);
-        roboCop.increaseIncentive{value: amount}(ruleHash);
-    }
-
-    function withdrawRuleIncentive(bytes32 ruleHash) external onlyDeployedFund onlyFundManager nonReentrant {
-        assets.decreaseAsset(
-            Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}),
-            roboCop.withdrawIncentive(ruleHash)
-        );
-    }
-
     function activateRule(bytes32 ruleHash) external onlyDeployedFund onlyFundManager nonReentrant {
         roboCop.activateRule(ruleHash);
     }
@@ -288,19 +272,18 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
 
     function addRuleCollateral(
         bytes32 ruleHash,
-        Token[] calldata collateralTokens,
         uint256[] calldata collaterals,
         uint256[] calldata fees
     ) external onlyDeployedFund onlyFundManager nonReentrant {
-        _addRuleCollateral(ruleHash, collateralTokens, collaterals, fees);
+        _addRuleCollateral(ruleHash, collaterals, fees);
     }
 
     function _addRuleCollateral(
         bytes32 ruleHash,
-        Token[] calldata collateralTokens,
         uint256[] calldata collaterals,
         uint256[] calldata fees
     ) internal {
+        Token[] memory collateralTokens = roboCop.getInputTokens(ruleHash);
         _validateAndTakeFees(collateralTokens, collaterals, fees);
         uint256 ethCollateral = 0;
 

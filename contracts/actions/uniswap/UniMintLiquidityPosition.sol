@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.17;
 
 import "../IAction.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
@@ -9,7 +9,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
-import "hardhat/console.sol";
 import "../SimpleSwapUtils.sol";
 
 /*
@@ -127,11 +126,9 @@ contract UniMintLiquidityPosition is IAction, DelegatePerform {
             }
         }
 
-        console.log("calling mint");
         (uint256 tokenId, uint256 liquidity, uint256 amount0, uint256 amount1) = nonfungiblePositionManager.mint{
             value: ethCollateral
         }(params);
-        console.log("minted");
 
         // Remove allowance and refund in both assets.
         action.inputTokens[0].approve(address(nonfungiblePositionManager), 0);

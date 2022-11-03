@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./IRoboCop.sol";
@@ -13,9 +13,11 @@ import "@openzeppelin/contracts/proxy/Clones.sol";
 contract RoboCopFactory is Ownable {
     event Created(address indexed roboCopAddr);
     address roboCopBeaconAddr;
+    address botFrontendAddr;
 
-    constructor(address _roboCopBeaconAddr) {
+    constructor(address _roboCopBeaconAddr, address _botFrontendAddr) {
         configure(_roboCopBeaconAddr);
+        botFrontendAddr = _botFrontendAddr;
     }
 
     function configure(address _roboCopBeaconAddr) public onlyOwner {
@@ -24,7 +26,7 @@ contract RoboCopFactory is Ownable {
 
     function createRoboCop() external {
         IRoboCop roboCop = IRoboCop(Clones.clone(roboCopBeaconAddr));
-        roboCop.initialize(msg.sender);
+        roboCop.initialize(msg.sender, botFrontendAddr);
         emit Created(address(roboCop));
     }
 }

@@ -584,7 +584,7 @@ describe("BarrenWuffet", () => {
 
         const addAmt = [utils.parseEther("1")];
 
-        await expect(jerkshireFund.marlieChunger.addRuleCollateral(ruleHash, [ETH_TOKEN], addAmt, [0]))
+        await expect(jerkshireFund.marlieChunger.addRuleCollateral(ruleHash, addAmt, [0]))
           .to.changeEtherBalances([jerkshireFund.x, rcInstance, marlieChunger], [addAmt[0].mul(-1), addAmt[0], 0])
           .emit(rcInstance, "CollateralAdded")
           .withArgs(ruleHash, addAmt);
@@ -605,7 +605,7 @@ describe("BarrenWuffet", () => {
           const { ruleHash, rcInstance } = await createOneRule(fixtureVars);
 
           const collateral = [utils.parseEther("0.6")];
-          await jerkshireFund.marlieChunger.addRuleCollateral(ruleHash, [ETH_TOKEN], collateral, [0]);
+          await jerkshireFund.marlieChunger.addRuleCollateral(ruleHash, collateral, [0]);
 
           if (isActive) {
             await jerkshireFund.marlieChunger.activateRule(ruleHash);
@@ -643,7 +643,7 @@ describe("BarrenWuffet", () => {
         const ruleFns = [
           () => jerkshireFund.fairyLink.activateRule(ruleHash),
           () => jerkshireFund.fairyLink.deactivateRule(ruleHash),
-          () => jerkshireFund.fairyLink.addRuleCollateral(ruleHash, [ETH_TOKEN], [utils.parseEther("1")], [0]),
+          () => jerkshireFund.fairyLink.addRuleCollateral(ruleHash, [utils.parseEther("1")], [0]),
           () => jerkshireFund.fairyLink.reduceRuleCollateral(ruleHash, [utils.parseEther("0.6")]),
           () => jerkshireFund.fairyLink.cancelRule(ruleHash)
         ];

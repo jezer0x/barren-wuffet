@@ -101,28 +101,6 @@
         "type": "bytes32"
       },
       {
-        "components": [
-          {
-            "internalType": "enum TokenType",
-            "name": "t",
-            "type": "uint8"
-          },
-          {
-            "internalType": "address",
-            "name": "addr",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "id",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct Token[]",
-        "name": "collateralTokens",
-        "type": "tuple[]"
-      },
-      {
         "internalType": "uint256[]",
         "name": "collaterals",
         "type": "uint256[]"
@@ -392,24 +370,6 @@
   {
     "inputs": [
       {
-        "internalType": "bytes32",
-        "name": "ruleHash",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "increaseRuleIncentive",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "address",
         "name": "_manager",
         "type": "address"
@@ -524,6 +484,11 @@
         "internalType": "address[]",
         "name": "_declaredTokenAddrs",
         "type": "address[]"
+      },
+      {
+        "internalType": "address",
+        "name": "botFrontendAddr",
+        "type": "address"
       }
     ],
     "name": "initialize",
@@ -959,19 +924,6 @@
         "type": "uint256[]"
       }
     ],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "ruleHash",
-        "type": "bytes32"
-      }
-    ],
-    "name": "withdrawRuleIncentive",
-    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },

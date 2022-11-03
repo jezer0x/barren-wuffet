@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.17;
 
 import "./RuleTypes.sol";
 
@@ -14,7 +14,7 @@ interface IRoboCop {
     event PositionCreated(bytes32 positionHash, bytes precursorAction, bytes[] nextActions);
     event PositionsClosed(bytes closingAction, bytes32[] positionHashesClosed);
 
-    function initialize(address owner) external;
+    function initialize(address owner, address botFrontendAddr) external;
 
     function getRule(bytes32 ruleHash) external view returns (Rule memory);
 
@@ -30,11 +30,7 @@ interface IRoboCop {
 
     function reduceCollateral(bytes32 ruleHash, uint256[] memory amounts) external;
 
-    function increaseIncentive(bytes32 ruleHash) external payable;
-
-    function withdrawIncentive(bytes32 ruleHash) external returns (uint256 balance);
-
-    function createRule(Trigger[] calldata triggers, Action[] calldata actions) external payable returns (bytes32);
+    function createRule(Trigger[] calldata triggers, Action[] calldata actions) external returns (bytes32);
 
     function activateRule(bytes32 ruleHash) external;
 

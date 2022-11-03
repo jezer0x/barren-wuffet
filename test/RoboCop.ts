@@ -17,7 +17,6 @@ import { expectEthersObjDeepEqual } from "./helper";
 import {
   BAD_RULE_HASH,
   ERC20_DECIMALS,
-  DEFAULT_INCENTIVE,
   PRICE_TRIGGER_DECIMALS,
   TST1_PRICE_IN_ETH,
   ETH_PRICE_IN_TST1,
@@ -28,8 +27,6 @@ import {
 } from "./Constants";
 import { RuleStructOutput } from "../typechain-types/contracts/rules/RoboCop";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { assert } from "console";
-import { AbiCoder } from "@ethersproject/abi";
 
 describe("RoboCop", () => {
   const deployRoboCopFixture = deployments.createFixture(async (hre, options) => {
@@ -103,7 +100,7 @@ describe("RoboCop", () => {
     // We dont need to check that validate is a view fn. solidity enforces that
     // if the interface is used.
 
-    it("Should emit Created event, and consume ETH incentive if Trigger and Action are valid", async () => {
+    it("Should emit Created event", async () => {
       const {
         roboCop,
         uniSwapExactInputSingle,
@@ -115,30 +112,9 @@ describe("RoboCop", () => {
       const passingTrigger = makePassingTrigger(priceTrigger.address, testToken1); // pass / fail shouldnt matter here
       const executableAction = makeSwapAction(uniSwapExactInputSingle.address, [testToken1.address]);
 
-      const incentive = utils.parseEther("0.02");
-      await expect(
-        roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction], { value: incentive })
-      )
-        .to.changeEtherBalances([roboCop, ruleMakerWallet], [incentive, BigNumber.from(0).sub(incentive)])
-        .and.to.emit(roboCop, "Created")
+      await expect(roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction]))
+        .to.emit(roboCop, "Created")
         .withArgs(anyValue);
-    });
-
-    it("creates rule without incentive", async () => {
-      const {
-        roboCop,
-        uniSwapExactInputSingle,
-        priceTrigger,
-        ruleMakerWallet,
-        testToken1
-      } = await deployRoboCopFixture();
-
-      const failingTrigger = makePassingTrigger(priceTrigger.address, testToken1); // pass / fail shouldnt matter here
-      const executableAction = makeSwapAction(uniSwapExactInputSingle.address, [testToken1.address]);
-      await expect(roboCop.connect(ruleMakerWallet).createRule([failingTrigger], [executableAction])).to.emit(
-        roboCop,
-        "Created"
-      );
     });
 
     it("If trigger, action, user, block are the same, ruleHash should be the same -> making the second creation fail", async () => {
@@ -554,23 +530,15 @@ describe("RoboCop", () => {
 
     // For some insane reason, if the native test is after the erc20 test,
     // the addCollateral fails in the erc20 test.
-    it("Should allow anyone to execute the rule once (native) and get a incentive if gas is paid, and the trigger passes", async () => {
-      // execute valid rule with collateral by someone else. and get a incentive.
+    it("Should allow anyone to execute the rule once (native), and the trigger passes", async () => {
+      // execute valid rule with collateral by someone else
       const { ruleHashEth, ruleMakerWallet, botWallet, roboCop, testToken1 } = await deployValidRuleFixture();
       const collateral = utils.parseEther("2");
       await expect(
         roboCop.connect(ruleMakerWallet).addCollateral(ruleHashEth, [collateral], { value: collateral })
       ).to.emit(roboCop, "CollateralAdded");
       const ex = expect(roboCop.connect(botWallet).executeRule(ruleHashEth));
-      await ex.to
-        .changeEtherBalances(
-          // we dont care about the balance of the swap contracts,
-          // because that's a downstream impact we dont care about here.
-          [botWallet, ruleMakerWallet, roboCop],
-          [DEFAULT_INCENTIVE, 0, collateral.add(DEFAULT_INCENTIVE).mul(-1)]
-        )
-        .and.to.emit(roboCop, "Executed")
-        .withArgs(ruleHashEth, botWallet.address);
+      await ex.to.emit(roboCop, "Executed").withArgs(ruleHashEth, botWallet.address);
 
       await ex.to.changeTokenBalances(
         testToken1,
@@ -582,8 +550,8 @@ describe("RoboCop", () => {
       await expect(roboCop.connect(botWallet).executeRule(ruleHashEth)).to.be.revertedWith("Rule isn't Activated");
     });
 
-    it("Should allow anyone to execute the rule (token) and get a incentive if gas is paid, and all the triggers passes", async () => {
-      // execute valid rule with collateral by someone else. and get a incentive.
+    it("Should allow anyone to execute the rule (token), and all the triggers passes", async () => {
+      // execute valid rule with collateral by someone else
       const { ruleHashToken, ruleMakerWallet, botWallet, roboCop, testToken1 } = await deployValidRuleFixture();
       const collateral = BigNumber.from(5196).mul(ERC20_DECIMALS);
       await expect(testToken1.connect(ruleMakerWallet).approve(roboCop.address, collateral)).to.not.be.reverted;
@@ -596,19 +564,6 @@ describe("RoboCop", () => {
         .changeTokenBalances(testToken1, [botWallet, ruleMakerWallet, roboCop], [0, 0, collateral.mul(-1)])
         .and.emit(roboCop, "Executed")
         .withArgs(ruleHashToken, botWallet.address);
-
-      await ex.to.changeEtherBalances(
-        // this should reflect the incentive.
-        [botWallet, ruleMakerWallet, roboCop],
-        [
-          DEFAULT_INCENTIVE,
-          0,
-          collateral
-            .mul(TST1_PRICE_IN_ETH)
-            .div(PRICE_TRIGGER_DECIMALS)
-            .sub(DEFAULT_INCENTIVE)
-        ]
-      );
 
       // TODO need to implement caller getting paid.
       await expect(roboCop.connect(botWallet).executeRule(ruleHashToken)).to.be.revertedWith("Rule isn't Activated");
@@ -760,79 +715,6 @@ describe("RoboCop", () => {
     it.skip("Should redeem balance only from the final action if multiple actions were executed", async () => {});
   });
 
-  describe("Change incentive", () => {
-    it(`should accummulate the incentive provided to the executor, as the incentive is increased by different wallets and not be editable after execution`, async () => {
-      const { ruleHashEth, ruleMakerWallet, botWallet, roboCop } = await deployValidRuleFixture();
-      const collateralAmount = BigNumber.from(3).mul(ERC20_DECIMALS);
-      await roboCop
-        .connect(ruleMakerWallet)
-        .addCollateral(ruleHashEth, [collateralAmount], { value: collateralAmount });
-
-      await roboCop.connect(ruleMakerWallet).increaseIncentive(ruleHashEth, { value: DEFAULT_INCENTIVE });
-      await roboCop.connect(botWallet).increaseIncentive(ruleHashEth, { value: DEFAULT_INCENTIVE });
-      await expect(roboCop.connect(botWallet).executeRule(ruleHashEth))
-        .to // default incentive + the 2 increases above.
-        .changeEtherBalance(botWallet, DEFAULT_INCENTIVE.mul(3));
-
-      await expect(
-        roboCop.connect(botWallet).increaseIncentive(ruleHashEth, { value: DEFAULT_INCENTIVE })
-      ).to.be.revertedWithoutReason();
-      await expect(roboCop.connect(botWallet).withdrawIncentive(ruleHashEth)).to.be.revertedWith("Incentive paid");
-    });
-
-    it(`should allow any user to only remove the incentive they added`, async () => {
-      const { ruleHashEth, ruleMakerWallet, botWallet, roboCop } = await deployValidRuleFixture();
-      const collateralAmount = BigNumber.from(3).mul(ERC20_DECIMALS);
-      await roboCop
-        .connect(ruleMakerWallet)
-        .addCollateral(ruleHashEth, [collateralAmount], { value: collateralAmount });
-
-      await roboCop.connect(ruleMakerWallet).increaseIncentive(ruleHashEth, { value: DEFAULT_INCENTIVE });
-      await expect(roboCop.connect(botWallet).withdrawIncentive(ruleHashEth)).to.revertedWith("0 contribution");
-
-      await roboCop.connect(botWallet).increaseIncentive(ruleHashEth, { value: DEFAULT_INCENTIVE });
-      await expect(roboCop.connect(botWallet).withdrawIncentive(ruleHashEth)).to.changeEtherBalances(
-        [botWallet, roboCop],
-        [DEFAULT_INCENTIVE, DEFAULT_INCENTIVE.mul(-1)]
-      );
-      await expect(roboCop.connect(botWallet).withdrawIncentive(ruleHashEth)).to.revertedWith("0 contribution");
-
-      await expect(roboCop.connect(botWallet).executeRule(ruleHashEth)).to.changeEtherBalance(
-        botWallet,
-        DEFAULT_INCENTIVE.mul(2)
-      );
-    });
-
-    it(`should allow any user to change the incentive if the rule is inactive`, async () => {
-      const { ruleHashEth, ruleMakerWallet, botWallet, roboCop } = await deployValidRuleFixture();
-      const collateralAmount = BigNumber.from(3).mul(ERC20_DECIMALS);
-      await roboCop.connect(ruleMakerWallet).deactivateRule(ruleHashEth);
-
-      await roboCop.connect(botWallet).increaseIncentive(ruleHashEth, { value: DEFAULT_INCENTIVE });
-      await expect(roboCop.connect(botWallet).withdrawIncentive(ruleHashEth)).changeEtherBalance(
-        botWallet,
-        DEFAULT_INCENTIVE
-      );
-      // tries to reduce the incentive added at the point of rule creation
-      await expect(roboCop.connect(ruleMakerWallet).withdrawIncentive(ruleHashEth)).changeEtherBalance(
-        ruleMakerWallet,
-        DEFAULT_INCENTIVE
-      );
-
-      await roboCop.connect(botWallet).increaseIncentive(ruleHashEth, { value: DEFAULT_INCENTIVE });
-
-      await roboCop.connect(ruleMakerWallet).activateRule(ruleHashEth);
-      await roboCop
-        .connect(ruleMakerWallet)
-        .addCollateral(ruleHashEth, [collateralAmount], { value: collateralAmount });
-
-      await expect(roboCop.connect(botWallet).executeRule(ruleHashEth)).to.changeEtherBalance(
-        botWallet,
-        DEFAULT_INCENTIVE
-      );
-    });
-  });
-
   describe("Get Rule", () => {
     it("revert getRule if rule doesnt exist", async () => {
       const { roboCop } = await deployValidRuleFixture();
@@ -866,8 +748,7 @@ describe("RoboCop", () => {
         actions: [ethSwapAction],
         collaterals: [collateralAmount],
         status: 2,
-        outputs: [collateralAmount.mul(ETH_PRICE_IN_TST1).div(PRICE_TRIGGER_DECIMALS)],
-        incentive: DEFAULT_INCENTIVE
+        outputs: [collateralAmount.mul(ETH_PRICE_IN_TST1).div(PRICE_TRIGGER_DECIMALS)]
       };
 
       const actualRule = await roboCop.getRule(ruleHashEth);

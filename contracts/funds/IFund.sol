@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.17;
 
 import "../utils/subscriptions/ISubscription.sol";
 import "../utils/Constants.sol";
@@ -34,8 +34,11 @@ interface IFund is ISubscription {
         bytes32 _triggerWhitelistHash,
         bytes32 _actionWhitelistHash,
         address roboCopImplementationAddr,
-        address[] calldata _declaredTokens
+        address[] calldata _declaredTokens,
+        address botFrontendAddr
     ) external;
+
+    function roboCop() external view returns (IRoboCop);
 
     function getInputTokens() external pure returns (Token[] memory);
 
@@ -59,17 +62,12 @@ interface IFund is ISubscription {
 
     function createRule(Trigger[] calldata triggers, Action[] calldata actions) external returns (bytes32 ruleHash);
 
-    function increaseRuleIncentive(bytes32 ruleHash, uint256 amount) external;
-
-    function withdrawRuleIncentive(bytes32 ruleHash) external;
-
     function activateRule(bytes32 ruleHash) external;
 
     function deactivateRule(bytes32 ruleHash) external;
 
     function addRuleCollateral(
         bytes32 ruleHash,
-        Token[] calldata collateralTokens,
         uint256[] calldata collaterals,
         uint256[] calldata fees
     ) external;

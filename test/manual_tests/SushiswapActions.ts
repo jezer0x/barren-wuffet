@@ -1,5 +1,5 @@
 import { ethers, getNamedAccounts } from "hardhat";
-import { time } from "@nomicfoundation/hardhat-network-helpers";
+import { impersonateAccount, time } from "@nomicfoundation/hardhat-network-helpers";
 import { Contract, BigNumber, utils } from "ethers";
 import {
   GT,
@@ -7,9 +7,13 @@ import {
   DEFAULT_SUB_TO_MAN_FEE_PCT,
   ETH_TOKEN,
   TOKEN_TYPE,
-  TIMESTAMP_TRIGGER_TYPE
+  TIMESTAMP_TRIGGER_TYPE,
+  ETH_ADDRESS
 } from "../Constants";
-import { getAddressFromEvent } from "../helper";
+import { getAddressFromEvent, getHashFromEvent } from "../helper";
+import { getProtocolAddresses } from "../../deploy/protocol_addresses";
+import { IOps__factory } from "../../typechain-types";
+
 async function makeSubConstraints() {
   const latestTime = await time.latest();
   return {
@@ -24,6 +28,7 @@ async function makeSubConstraints() {
 }
 
 async function main() {
+  const protocolAddresses: any = await getProtocolAddresses("31337", true);
   const BW = await ethers.getContract("BarrenWuffet");
   const McFundAddr = await getAddressFromEvent(
     BW.createFund("marlieChungerFund", await makeSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []),
@@ -33,7 +38,7 @@ async function main() {
   );
 
   const McFund = await ethers.getContractAt("Fund", McFundAddr);
-
+  const McFundRoboCop = await ethers.getContractAt("RoboCop", await McFund.roboCop());
   await McFund.deposit(ETH_TOKEN, BigNumber.from(11).mul(ERC20_DECIMALS), {
     value: BigNumber.from(11).mul(ERC20_DECIMALS)
   });
@@ -61,8 +66,8 @@ async function main() {
     }
   ];
 
-  const usdc_contract = new Contract("0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", erc20abifrag, ethers.provider);
-  const USDC_TOKEN = { t: TOKEN_TYPE.ERC20, addr: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", id: BigNumber.from(0) };
+  const usdc_contract = new Contract(protocolAddresses.tokens.USDC, erc20abifrag, ethers.provider);
+  const USDC_TOKEN = { t: TOKEN_TYPE.ERC20, addr: protocolAddresses.tokens.USDC, id: BigNumber.from(0) };
 
   let balance_usdc = await usdc_contract.balanceOf(McFundAddr);
 
@@ -82,7 +87,7 @@ async function main() {
       data: ethers.utils.defaultAbiCoder.encode(
         ["address[]", "uint256"],
         [
-          ["0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"],
+          [protocolAddresses.tokens.WETH, protocolAddresses.tokens.USDC],
           BigNumber.from(19).mul(BigNumber.from(10).pow(8)) // translates to ~1900USD/ETH [1900000000e18/1e18]
         ]
       ),
@@ -105,7 +110,7 @@ async function main() {
       data: ethers.utils.defaultAbiCoder.encode(
         ["address[]", "uint256"],
         [
-          ["0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"],
+          [protocolAddresses.tokens.USDC, protocolAddresses.tokens.WETH],
           BigNumber.from(500).mul(BigNumber.from(10).pow(24)) // translates to ~2000USD/ETH [1e18*1e18 / 1900000000]
         ]
       ),
@@ -130,7 +135,7 @@ async function main() {
         callee: sushiSwapExactXForY.address,
         data: ethers.utils.defaultAbiCoder.encode(
           ["address[]", "uint256"],
-          [["0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"], 0]
+          [[protocolAddresses.tokens.WETH, protocolAddresses.tokens.WETH], 0]
         ),
         inputTokens: [ETH_TOKEN], // eth
         outputTokens: [USDC_TOKEN] // swapping for USDC
@@ -142,6 +147,78 @@ async function main() {
     console.log("Wrong _path send during swap doesn't work");
   }
 
+  // Case 4: Trying out the Gelato Bot frontend with sushi Swap()
+  const ruleHash = await getHashFromEvent(
+    McFund.createRule(
+      [trueTrigger],
+      [
+        {
+          callee: sushiSwapExactXForY.address,
+          data: ethers.utils.defaultAbiCoder.encode(
+            ["address[]", "uint256"],
+            [
+              [protocolAddresses.tokens.WETH, protocolAddresses.tokens.USDC],
+              BigNumber.from(19).mul(BigNumber.from(10).pow(8)) // translates to ~1900USD/ETH [1900000000e18/1e18]
+            ]
+          ),
+          inputTokens: [ETH_TOKEN], // eth
+          outputTokens: [USDC_TOKEN] // swapping for USDC
+        }
+      ]
+    ),
+    "Created",
+    McFundRoboCop,
+    "ruleHash"
+  );
+
+  // TODO: why is this failing
+  // await McFund.addRuleCollateral(ruleHash, [BigNumber.from(1).mul(ERC20_DECIMALS)], [BigNumber.from(0)]); // 0 fees set in deploy
+  // console.log("here");
+  await McFund.activateRule(ruleHash);
+
+  // botFrontend must fund the treasury, else bot won't exec
+  const botFrontend = await ethers.getContract("BotFrontend");
+  await botFrontend.deposit(ethers.utils.parseEther("0.1"), { value: ethers.utils.parseEther("0.1") });
+
+  const resolverHash = ethers.utils.keccak256(
+    new ethers.utils.AbiCoder().encode(
+      ["address", "bytes"],
+      [
+        botFrontend.address,
+        botFrontend.interface.encodeFunctionData("checker(address,bytes32)", [McFundRoboCop.address, ruleHash])
+      ]
+    )
+  );
+  const [canExec, execData] = await botFrontend.checker(McFundRoboCop.address, ruleHash);
+
+  if (!canExec) {
+    throw "Something went wrong! canExec was false";
+  }
+
+  const gelatoOps = new Contract(protocolAddresses.gelato.ops, IOps__factory.abi, ethers.provider);
+
+  // impersonate gelato bot and do the bot's work
+  const gelatoBotAddr = await gelatoOps.gelato();
+  await impersonateAccount(gelatoBotAddr);
+  const gelatoBot = await ethers.getSigner(gelatoBotAddr);
+
+  await gelatoOps
+    .connect(gelatoBot)
+    .exec(
+      ethers.utils.parseEther("0.01"),
+      ETH_ADDRESS,
+      botFrontend.address,
+      true,
+      false,
+      resolverHash,
+      botFrontend.address,
+      execData
+    );
+
+  // balance_usdc = await usdc_contract.balanceOf(McFundAddr);
+  // console.log("USDC balance after selling 1 more ETH:", balance_usdc.toString());
+
+  // Case 5: add LP
   const sushiAddLiquidity = await ethers.getContract("SushiAddLiquidity");
 
   const usdc_weth_slp_contract = new Contract(
@@ -156,9 +233,8 @@ async function main() {
     id: BigNumber.from(0)
   };
 
-  console.log(usdc_weth_slp_contract.address);
+  console.log("usdc_eth_slp_contract.address = ", usdc_weth_slp_contract.address);
 
-  // Case 4: add LP
   await McFund.takeAction(
     trueTrigger,
     {
@@ -173,8 +249,7 @@ async function main() {
 
   console.log("WETH-USDC-SLP received after LP: ", (await usdc_weth_slp_contract.balanceOf(McFundAddr)).toString());
 
-  // Case 5: subscribers get back the SLP token if funds are closed -> no position stuff required
-
+  // Case 6: subscribers get back the SLP token if funds are closed -> no position stuff required
   await McFund.closeFund(); // trader closes fund prematurely
   await McFund.withdraw(); // trader was subscriber himself
 

@@ -13,7 +13,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const { deployer } = await getNamedAccounts();
   const whitelistService = await ethers.getContract("WhitelistService");
   let trigWlHash = await whitelistService.getWhitelistHash(deployer, "triggers");
-  console.log("trigWlHash", trigWlHash);
+
   try {
     await whitelistService.createWhitelist("triggers");
   } catch {

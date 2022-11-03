@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.17;
 import "./Constants.sol";
 import "../actions/ActionTypes.sol";
 import "./subscriptions/Subscriptions.sol";

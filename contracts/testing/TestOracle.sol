@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.17;
 
 // Alternatively this contract can be mocked in the test suite using Waffle by providing just the json and setting the return values
 // https://ethereum.stackexchange.com/questions/127626/how-to-mock-smart-contract-function-for-testing-in-hardhat

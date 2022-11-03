@@ -53,6 +53,13 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
       args: [WETH.address],
       log: true
     });
+
+    await deploy("TestGelatoOps", {
+      contract: "TestGelatoOps",
+      from: deployer,
+      args: [],
+      log: true
+    });
   }
 };
 

@@ -1,20 +1,12 @@
 import { ethers, getNamedAccounts } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
-import { Contract, Bytes, BigNumber, utils } from "ethers";
+import { Contract, BigNumber, utils } from "ethers";
+import { getProtocolAddresses } from "../../deploy/protocol_addresses";
 import {
   GT,
   ERC20_DECIMALS,
-  TST1_PRICE_IN_ETH,
-  DEFAULT_INCENTIVE,
-  ETH_PRICE_IN_USD,
-  PRICE_TRIGGER_DECIMALS,
-  TST1_PRICE_IN_USD,
-  ETH_PRICE_IN_TST1,
-  ETH_ADDRESS,
-  PRICE_TRIGGER_TYPE,
   DEFAULT_SUB_TO_MAN_FEE_PCT,
   ETH_TOKEN,
-  LT,
   TOKEN_TYPE,
   TIMESTAMP_TRIGGER_TYPE
 } from "../Constants";
@@ -36,6 +28,7 @@ async function makeSubConstraints() {
 }
 
 async function main() {
+  const protocolAddresses: any = await getProtocolAddresses("31337", true);
   const BW = await ethers.getContract("BarrenWuffet");
   const McFundAddr = await getAddressFromEvent(
     BW.createFund("marlieChungerFund", await makeSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []),
@@ -73,9 +66,9 @@ async function main() {
     }
   ];
 
-  const usdc_contract = new Contract("0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", erc20abifrag, ethers.provider);
+  const usdc_contract = new Contract(protocolAddresses.tokens.USDC, erc20abifrag, ethers.provider);
   const dai_contract = new Contract("0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1", erc20abifrag, ethers.provider);
-  const USDC_TOKEN = { t: TOKEN_TYPE.ERC20, addr: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", id: BigNumber.from(0) };
+  const USDC_TOKEN = { t: TOKEN_TYPE.ERC20, addr: protocolAddresses.tokens.USDC, id: BigNumber.from(0) };
   const DAI_TOKEN = { t: TOKEN_TYPE.ERC20, addr: "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1", id: BigNumber.from(0) };
 
   let balance_usdc = await usdc_contract.balanceOf(McFundAddr);

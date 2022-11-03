@@ -10,9 +10,10 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const roboCopImplementation = await ethers.getContract("RoboCop");
 
   if ((await getChainId()) == "31337" && !hre.config.networks.hardhat.forking?.enabled) {
+    const botFrontend = await ethers.getContract("BotFrontend");
     await deploy("RoboCopFactory", {
       from: deployer,
-      args: [roboCopImplementation.address],
+      args: [roboCopImplementation.address, botFrontend.address],
       log: true
     });
   }
@@ -20,4 +21,4 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
 export default func;
 func.tags = ["RoboCopFactory"];
-func.dependencies = ["RoboCop", "Libraries"];
+func.dependencies = ["RoboCop", "Libraries", "BotFrontend"];
