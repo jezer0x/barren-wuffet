@@ -261,6 +261,11 @@
             "internalType": "struct Token",
             "name": "allowedDepositToken",
             "type": "tuple"
+          },
+          {
+            "internalType": "bool",
+            "name": "onlyWhitelistedInvestors",
+            "type": "bool"
           }
         ],
         "internalType": "struct Subscriptions.Constraints",

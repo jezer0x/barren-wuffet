@@ -162,6 +162,10 @@ export class BarrenWuffet__createFundInputConstraintsStruct extends ethereum.Tup
       BarrenWuffet__createFundInputConstraintsAllowedDepositTokenStruct
     >(this[6].toTuple());
   }
+
+  get onlyWhitelistedInvestors(): boolean {
+    return this[7].toBoolean();
+  }
 }
 
 export class BarrenWuffet__createFundInputConstraintsAllowedDepositTokenStruct extends ethereum.Tuple {
@@ -268,7 +272,7 @@ export class BarrenWuffet extends ethereum.SmartContract {
   ): Address {
     let result = super.call(
       "createFund",
-      "createFund(string,(uint256,uint256,uint256,uint256,uint256,uint256,(uint8,address,uint256)),uint256,address[]):(address)",
+      "createFund(string,(uint256,uint256,uint256,uint256,uint256,uint256,(uint8,address,uint256),bool),uint256,address[]):(address)",
       [
         ethereum.Value.fromString(name),
         ethereum.Value.fromTuple(constraints),
@@ -288,7 +292,7 @@ export class BarrenWuffet extends ethereum.SmartContract {
   ): ethereum.CallResult<Address> {
     let result = super.tryCall(
       "createFund",
-      "createFund(string,(uint256,uint256,uint256,uint256,uint256,uint256,(uint8,address,uint256)),uint256,address[]):(address)",
+      "createFund(string,(uint256,uint256,uint256,uint256,uint256,uint256,(uint8,address,uint256),bool),uint256,address[]):(address)",
       [
         ethereum.Value.fromString(name),
         ethereum.Value.fromTuple(constraints),
@@ -604,6 +608,10 @@ export class CreateFundCallConstraintsStruct extends ethereum.Tuple {
     return changetype<CreateFundCallConstraintsAllowedDepositTokenStruct>(
       this[6].toTuple()
     );
+  }
+
+  get onlyWhitelistedInvestors(): boolean {
+    return this[7].toBoolean();
   }
 }
 

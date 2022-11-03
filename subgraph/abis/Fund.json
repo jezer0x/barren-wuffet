@@ -96,6 +96,19 @@
   {
     "inputs": [
       {
+        "internalType": "address[]",
+        "name": "investors",
+        "type": "address[]"
+      }
+    ],
+    "name": "addInvestorToWhitelist",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "bytes32",
         "name": "ruleHash",
         "type": "bytes32"
@@ -427,6 +440,11 @@
             "internalType": "struct Token",
             "name": "allowedDepositToken",
             "type": "tuple"
+          },
+          {
+            "internalType": "bool",
+            "name": "onlyWhitelistedInvestors",
+            "type": "bool"
           }
         ],
         "internalType": "struct Subscriptions.Constraints",
@@ -625,6 +643,11 @@
             "internalType": "struct Token",
             "name": "allowedDepositToken",
             "type": "tuple"
+          },
+          {
+            "internalType": "bool",
+            "name": "onlyWhitelistedInvestors",
+            "type": "bool"
           }
         ],
         "internalType": "struct Subscriptions.Constraints",

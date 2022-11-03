@@ -220,6 +220,10 @@ export class Fund__subStuffResultConstraintsStruct extends ethereum.Tuple {
       this[6].toTuple()
     );
   }
+
+  get onlyWhitelistedInvestors(): boolean {
+    return this[7].toBoolean();
+  }
 }
 
 export class Fund__subStuffResultConstraintsAllowedDepositTokenStruct extends ethereum.Tuple {
@@ -557,7 +561,7 @@ export class Fund extends ethereum.SmartContract {
   subStuff(): Fund__subStuffResult {
     let result = super.call(
       "subStuff",
-      "subStuff():((uint256,uint256,uint256,uint256,uint256,uint256,(uint8,address,uint256)),uint256,uint256,uint256,address)",
+      "subStuff():((uint256,uint256,uint256,uint256,uint256,uint256,(uint8,address,uint256),bool),uint256,uint256,uint256,address)",
       []
     );
 
@@ -575,7 +579,7 @@ export class Fund extends ethereum.SmartContract {
   try_subStuff(): ethereum.CallResult<Fund__subStuffResult> {
     let result = super.tryCall(
       "subStuff",
-      "subStuff():((uint256,uint256,uint256,uint256,uint256,uint256,(uint8,address,uint256)),uint256,uint256,uint256,address)",
+      "subStuff():((uint256,uint256,uint256,uint256,uint256,uint256,(uint8,address,uint256),bool),uint256,uint256,uint256,address)",
       []
     );
     if (result.reverted) {
@@ -727,6 +731,36 @@ export class ActivateRuleCall__Outputs {
   _call: ActivateRuleCall;
 
   constructor(call: ActivateRuleCall) {
+    this._call = call;
+  }
+}
+
+export class AddInvestorToWhitelistCall extends ethereum.Call {
+  get inputs(): AddInvestorToWhitelistCall__Inputs {
+    return new AddInvestorToWhitelistCall__Inputs(this);
+  }
+
+  get outputs(): AddInvestorToWhitelistCall__Outputs {
+    return new AddInvestorToWhitelistCall__Outputs(this);
+  }
+}
+
+export class AddInvestorToWhitelistCall__Inputs {
+  _call: AddInvestorToWhitelistCall;
+
+  constructor(call: AddInvestorToWhitelistCall) {
+    this._call = call;
+  }
+
+  get investors(): Array<Address> {
+    return this._call.inputValues[0].value.toAddressArray();
+  }
+}
+
+export class AddInvestorToWhitelistCall__Outputs {
+  _call: AddInvestorToWhitelistCall;
+
+  constructor(call: AddInvestorToWhitelistCall) {
     this._call = call;
   }
 }
@@ -1102,6 +1136,10 @@ export class InitializeCall_constraintsStruct extends ethereum.Tuple {
     return changetype<InitializeCall_constraintsAllowedDepositTokenStruct>(
       this[6].toTuple()
     );
+  }
+
+  get onlyWhitelistedInvestors(): boolean {
+    return this[7].toBoolean();
   }
 }
 
