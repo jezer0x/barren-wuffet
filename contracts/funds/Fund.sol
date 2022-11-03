@@ -78,8 +78,6 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
 
         manager = _manager;
 
-        // For now we'll only allow subscribing with ETH
-        require(_constraints.allowedDepositToken.isETH());
         subStuff.setConstraints(_constraints);
         subStuff.setSubscriptionFeeParams(
             _feeParams.subscriberToManagerFeePercentage,
