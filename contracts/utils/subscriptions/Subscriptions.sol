@@ -26,6 +26,7 @@ library Subscriptions {
         uint256 deadline; // a block.timestamp, after which no one can deposit to this
         uint256 lockin; // a block.timestamp, until which no one can redeem (given trade/fund has been activated)
         Token allowedDepositToken;
+        bool onlyWhitelistedInvestors; // if set to true, will create an investor whitelist
     }
 
     struct SubStuff {

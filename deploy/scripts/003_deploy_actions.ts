@@ -26,25 +26,11 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     // loose test for "that that whitelist was already created"
   }
 
-  // await deployUniswapActions(
-  //   deploy,
-  //   deployer,
-  //   whitelistService,
-  //   actWlHash,
-  //   TokenLibAddr,
-  //   protocolAddresses
-  // );
+  await deployUniswapActions(deploy, deployer, whitelistService, actWlHash, TokenLibAddr, protocolAddresses);
 
   await deploySushiActions(deploy, deployer, whitelistService, actWlHash, TokenLibAddr, protocolAddresses);
 
-  // await deployGmxActions(
-  //   deploy,
-  //   deployer,
-  //   whitelistService,
-  //   actWlHash,
-  //   TokenLibAddr,
-  //   protocolAddresses
-  // );
+  //await deployGmxActions(deploy, deployer, whitelistService, actWlHash, TokenLibAddr, protocolAddresses);
 
   if ((await whitelistService.getWhitelistOwner(actWlHash)) == deployer) {
     await whitelistService.transferWhitelistOwnership(actWlHash, process.env.PLATFORM_MULTI_SIG_ADDR);

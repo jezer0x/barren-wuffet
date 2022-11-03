@@ -21,15 +21,12 @@ import "../utils/assets/AssetTracker.sol";
 
 // Error Codes
 // !AS = Not Active Subscriber
-// D = Not Deployed
-// !D = Not Deployed
 // PP = Pending Positions
 // OFM = Only Fund Manager
 // !AA = Not Authorized Action
 // !ATk = Not Authorized Token
 // !ATr = Not Authorized Trigger
-// !R = Not Raising
-// !C = Not Closed
+// WS = Wrong State
 
 contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
@@ -37,6 +34,10 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
     using AssetTracker for AssetTracker.Assets;
     using Subscriptions for Subscriptions.SubStuff;
     using TokenLib for Token;
+
+    // constants
+    string constant tokensWhitelistName = "tokens";
+    string constant investorsWhitelistName = "investors";
 
     // unique identifier for fund
     address manager;
@@ -90,10 +91,14 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         if (_declaredTokenAddrs.length == 0) {
             degenMode = true;
         } else {
-            bytes32 declaredTokenAddrWlHash = wlService.createWhitelist("fund");
+            bytes32 declaredTokenAddrWlHash = wlService.createWhitelist(tokensWhitelistName);
             for (uint256 i = 0; i < _declaredTokenAddrs.length; i++) {
                 wlService.addToWhitelist(declaredTokenAddrWlHash, _declaredTokenAddrs[i]);
             }
+        }
+
+        if (_constraints.onlyWhitelistedInvestors) {
+            wlService.createWhitelist(investorsWhitelistName);
         }
 
         // same action whitelist as RoboCop
@@ -110,7 +115,12 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         if (degenMode) return true;
         else {
             for (uint256 i = 0; i < tokens.length; i++) {
-                if (!wlService.isWhitelisted(wlService.getWhitelistHash(address(this), "fund"), tokens[i].addr)) {
+                if (
+                    !wlService.isWhitelisted(
+                        wlService.getWhitelistHash(address(this), tokensWhitelistName),
+                        tokens[i].addr
+                    )
+                ) {
                     return false;
                 }
             }
@@ -132,8 +142,13 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         _;
     }
 
-    modifier onlyDeployedFund() {
-        require(getStatus() == FundStatus.DEPLOYED, "!D");
+    modifier onlyFundStatus(FundStatus desiredStatus) {
+        require(getStatus() == desiredStatus, "WS");
+        _;
+    }
+
+    modifier onlyWhitelistedInvestor() {
+        require(wlService.isWhitelisted(wlService.getWhitelistHash(address(this), investorsWhitelistName), msg.sender));
         _;
     }
 
@@ -206,7 +221,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         Action calldata action,
         uint256[] calldata collaterals,
         uint256[] calldata fees
-    ) public nonReentrant onlyDeployedFund onlyFundManager {
+    ) public nonReentrant onlyFundStatus(FundStatus.DEPLOYED) onlyFundManager {
         return _takeAction(trigger, action, collaterals, fees);
     }
 
@@ -215,7 +230,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         Action calldata action,
         uint256[] calldata collaterals,
         uint256[] calldata fees
-    ) public nonReentrant onlyDeployedFund {
+    ) public nonReentrant onlyFundStatus(FundStatus.DEPLOYED) {
         require(block.timestamp >= subStuff.constraints.lockin); // fund expired
         require(roboCop.actionClosesPendingPosition(action)); // but positions are still open that can be closed by this
         _takeAction(trigger, action, collaterals, fees);
@@ -242,7 +257,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
     function createRule(Trigger[] calldata triggers, Action[] calldata actions)
         external
         nonReentrant
-        onlyDeployedFund
+        onlyFundStatus(FundStatus.DEPLOYED)
         onlyFundManager
         returns (bytes32)
     {
@@ -262,11 +277,16 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         ruleHash = roboCop.createRule(triggers, actions);
     }
 
-    function activateRule(bytes32 ruleHash) external onlyDeployedFund onlyFundManager nonReentrant {
+    function activateRule(bytes32 ruleHash) external onlyFundStatus(FundStatus.DEPLOYED) onlyFundManager nonReentrant {
         roboCop.activateRule(ruleHash);
     }
 
-    function deactivateRule(bytes32 ruleHash) external onlyDeployedFund onlyFundManager nonReentrant {
+    function deactivateRule(bytes32 ruleHash)
+        external
+        onlyFundStatus(FundStatus.DEPLOYED)
+        onlyFundManager
+        nonReentrant
+    {
         roboCop.deactivateRule(ruleHash);
     }
 
@@ -274,7 +294,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         bytes32 ruleHash,
         uint256[] calldata collaterals,
         uint256[] calldata fees
-    ) external onlyDeployedFund onlyFundManager nonReentrant {
+    ) external onlyFundStatus(FundStatus.DEPLOYED) onlyFundManager nonReentrant {
         _addRuleCollateral(ruleHash, collaterals, fees);
     }
 
@@ -302,7 +322,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
 
     function reduceRuleCollateral(bytes32 ruleHash, uint256[] calldata collaterals)
         external
-        onlyDeployedFund
+        onlyFundStatus(FundStatus.DEPLOYED)
         onlyFundManager
         nonReentrant
     {
@@ -318,7 +338,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         }
     }
 
-    function cancelRule(bytes32 ruleHash) external onlyDeployedFund onlyFundManager nonReentrant {
+    function cancelRule(bytes32 ruleHash) external onlyFundStatus(FundStatus.DEPLOYED) onlyFundManager nonReentrant {
         _cancelRule(ruleHash);
     }
 
@@ -330,7 +350,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         _reduceRuleCollateral(ruleHash, rule.collaterals);
     }
 
-    function redeemRuleOutputs() external onlyDeployedFund onlyFundManager nonReentrant {
+    function redeemRuleOutputs() external onlyFundStatus(FundStatus.DEPLOYED) onlyFundManager nonReentrant {
         _redeemRuleOutputs();
     }
 
@@ -342,10 +362,26 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         }
     }
 
-    function deposit(Token memory collateralToken, uint256 amountSent) external payable {
-        require(getStatus() == FundStatus.RAISING, "!R");
+    function deposit(Token memory collateralToken, uint256 amountSent)
+        external
+        payable
+        onlyFundStatus(FundStatus.RAISING)
+        onlyWhitelistedInvestor
+    {
         subStuff.deposit(assets, collateralToken, amountSent);
         emit Deposit(msg.sender, collateralToken.addr, amountSent);
+    }
+
+    function addInvestorToWhitelist(address[] calldata investors)
+        external
+        onlyFundManager
+        onlyFundStatus(FundStatus.RAISING)
+        nonReentrant
+    {
+        bytes32 wlHash = wlService.getWhitelistHash(address(this), investorsWhitelistName);
+        for (uint256 i = 0; i < investors.length; i++) {
+            wlService.addToWhitelist(wlHash, investors[i]);
+        }
     }
 
     function getStatus() public view returns (FundStatus) {
@@ -401,9 +437,13 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         }
     }
 
-    function withdrawManagementFee() public onlyFundManager nonReentrant returns (Token[] memory, uint256[] memory) {
-        require(getStatus() == FundStatus.CLOSED, "!C");
-
+    function withdrawManagementFee()
+        public
+        onlyFundManager
+        onlyFundStatus(FundStatus.CLOSED)
+        nonReentrant
+        returns (Token[] memory, uint256[] memory)
+    {
         Token[] memory tokens = new Token[](assets.tokens.length);
         uint256[] memory balances = new uint256[](assets.tokens.length);
 

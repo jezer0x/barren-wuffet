@@ -9,11 +9,6 @@ contract WhitelistService {
         _;
     }
 
-    modifier whitelistExists(bytes32 wlHash) {
-        require(whitelists[wlHash].owner != address(0));
-        _;
-    }
-
     mapping(bytes32 => Whitelist) whitelists;
 
     function getWhitelistHash(address creator, string calldata name) public pure returns (bytes32) {
@@ -25,7 +20,7 @@ contract WhitelistService {
         require(whitelists[wlHash].owner == address(0), "You've already created a whitelist of this name!");
         Whitelist storage wl = whitelists[wlHash];
         wl.owner = msg.sender;
-        wl.disabled = false;
+        wl.enabled = true;
 
         return wlHash;
     }
@@ -38,16 +33,17 @@ contract WhitelistService {
         whitelists[wlHash].whitelist[addr] = false;
     }
 
-    function isWhitelisted(bytes32 wlHash, address addr) public view whitelistExists(wlHash) returns (bool) {
-        return (whitelists[wlHash].disabled || whitelists[wlHash].whitelist[addr]);
+    function isWhitelisted(bytes32 wlHash, address addr) public view returns (bool) {
+        // if whitelist does not exist, will return true
+        return (!whitelists[wlHash].enabled || whitelists[wlHash].whitelist[addr]);
     }
 
     function disableWhitelist(bytes32 wlHash) public onlyWhitelistOwner(wlHash) {
-        whitelists[wlHash].disabled = true;
+        whitelists[wlHash].enabled = false;
     }
 
     function enableWhitelist(bytes32 wlHash) public onlyWhitelistOwner(wlHash) {
-        whitelists[wlHash].disabled = false;
+        whitelists[wlHash].enabled = true;
     }
 
     function transferWhitelistOwnership(bytes32 wlHash, address newOwner) public onlyWhitelistOwner(wlHash) {
