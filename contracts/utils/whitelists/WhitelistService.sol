@@ -25,7 +25,6 @@ contract WhitelistService {
         Whitelist storage wl = whitelists[wlHash];
         wl.owner = msg.sender;
         wl.enabled = true;
-
         return wlHash;
     }
 
@@ -38,8 +37,7 @@ contract WhitelistService {
     }
 
     function isWhitelisted(bytes32 wlHash, address addr) public view returns (bool) {
-        require(whitelistExists(wlHash), "Whitelist does not exist!");
-        return (!whitelists[wlHash].enabled || whitelists[wlHash].whitelist[addr]);
+        return (whitelistExists(wlHash) && ((!whitelists[wlHash].enabled) || whitelists[wlHash].whitelist[addr]));
     }
 
     function disableWhitelist(bytes32 wlHash) public onlyWhitelistOwner(wlHash) {

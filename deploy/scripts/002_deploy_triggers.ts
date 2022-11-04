@@ -44,7 +44,6 @@ async function deployPriceTrigger(deploy: any, deployer: string, whitelistServic
   });
 
   const priceTrigger = await ethers.getContract("PriceTrigger");
-  console.log(priceTrigger.address);
   if ((await priceTrigger.owner()) == deployer) {
     await priceTrigger.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
     console.log("Ownership of PriceTrigger transferred to ", process.env.PLATFORM_MULTI_SIG_ADDR);
