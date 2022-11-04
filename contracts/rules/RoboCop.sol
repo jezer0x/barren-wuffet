@@ -105,7 +105,7 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
         return (resTokens, resAmounts);
     }
 
-    function getRuleHashesByStatus(RuleStatus status) public returns (bytes32[] memory) {
+    function getRuleHashesByStatus(RuleStatus status) public view returns (bytes32[] memory) {
         bytes32[] memory keys = rules.keys();
 
         // Allocate the max length
@@ -360,7 +360,7 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
         return actionPositionsMap[keccak256(abi.encode(action))].length > 0;
     }
 
-    function _noteIdOfERC721Outputs(uint256[] memory outputs, Token[] memory outputTokens) internal {
+    function _noteIdOfERC721Outputs(uint256[] memory outputs, Token[] memory outputTokens) internal view {
         // Even if we know which NFT contract we're going to get an output from,
         // we probably don't know the id of the token issued (determined at the point of execution)
         // so we mutate the rule.outputToken accordingly
