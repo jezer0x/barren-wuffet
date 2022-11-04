@@ -17,6 +17,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const trigWlHash = await whitelistService.getWhitelistHash(deployer, "triggers");
   const actWlHash = await whitelistService.getWhitelistHash(deployer, "actions");
 
+  console.log("> Deploying Barren Wuffet");
   const bwDeployResult = await deploy("BarrenWuffet", {
     from: deployer,
     args: [
@@ -36,15 +37,21 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     log: true
   });
 
-  if (bwDeployResult.newlyDeployed) {
-    const bw = await ethers.getContract("BarrenWuffet");
-    await bw.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
+  const bw = await ethers.getContract("BarrenWuffet");
 
+  if ((await bw.owner()) != process.env.PLATFORM_MULTI_SIG_ADDR) {
+    await bw.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
+    console.log("Ownership of BarrenWuffet transferred to ", process.env.PLATFORM_MULTI_SIG_ADDR);
+  } else {
+    console.log("Owner of BarrentWuffet is already platform Multisig");
+  }
+
+  if (bwDeployResult.newlyDeployed) {
     try {
       await botFrontend.setBarrenWuffet(bw.address);
     } catch {
       console.warn(
-        `new BW ${bw.address} not set in BotFrontend because you're not the owner!
+        `new BW ${bw.address} not set in BotFrontend.
         Please ensure new BW is set manually in BotFrontend!`
       );
     }
@@ -53,10 +60,14 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   if ((await botFrontend.owner()) != process.env.PLATFORM_MULTI_SIG_ADDR) {
     try {
       await botFrontend.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
+      console.log("Ownership of BotFrontend transferred to ", process.env.PLATFORM_MULTI_SIG_ADDR);
     } catch {
-      console.warn(`BotFrontend owner could not be set to multiSigAddr! Please set manually!`);
+      console.log("Can't transfer ownership of BotFrontend as owner is ", await botFrontend.owner());
     }
+  } else {
+    console.log("Owner of BotFrontend is already platform Multisig");
   }
+  console.log("\n");
 };
 
 export default func;

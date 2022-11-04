@@ -5,7 +5,6 @@ import "hardhat-deploy";
 import "solidity-coverage";
 import "hardhat-contract-sizer";
 import "hardhat-gas-reporter";
-import "@graphprotocol/hardhat-graph";
 import "@openzeppelin/hardhat-upgrades";
 import dotenv from "dotenv";
 dotenv.config();
@@ -34,7 +33,8 @@ const config = {
     ...(process.env.ALCHEMY_API_KEY_GOERLI
       ? {
           goerli: {
-            url: `https://eth-goerli.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY_GOERLI}`,
+            //url: `https://eth-goerli.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY_GOERLI}`,
+            url: `https://goerli.infura.io/v3/${process.env.INFURA_API_KEY_GOERLI}`,
             accounts: [process.env.DEPLOYER_PRIV_KEY],
             verify: {
               etherscan: {

@@ -146,7 +146,10 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
     }
 
     modifier onlyWhitelistedInvestor() {
-        require(wlService.isWhitelisted(wlService.getWhitelistHash(address(this), investorsWhitelistName), msg.sender));
+        require(
+            !subStuff.constraints.onlyWhitelistedInvestors ||
+                wlService.isWhitelisted(wlService.getWhitelistHash(address(this), investorsWhitelistName), msg.sender)
+        );
         _;
     }
 

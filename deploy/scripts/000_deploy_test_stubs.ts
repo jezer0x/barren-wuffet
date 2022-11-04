@@ -11,6 +11,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
   // we only need TestStubs when running tests
   if ((await getChainId()) == "31337" && !hre.config.networks.hardhat.forking?.enabled) {
+    console.log("> Deploying Test Stubs");
     await deploy("TestOracleEth", {
       contract: "TestOracle",
       from: deployer,
@@ -60,6 +61,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
       args: [],
       log: true
     });
+    console.log("\n");
   }
 };
 

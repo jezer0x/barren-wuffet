@@ -7,6 +7,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
   const { deployer } = await getNamedAccounts();
 
+  console.log("> Deploying Libraries");
   const TokenLib = await deploy("TokenLib", { from: deployer, args: [], log: true });
   const AssetTrackerLib = await deploy("AssetTracker", {
     from: deployer,
@@ -24,6 +25,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
       TokenLib: TokenLib.address
     }
   });
+  console.log("\n");
 };
 
 export default func;
