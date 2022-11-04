@@ -23,7 +23,7 @@ library AssetTracker {
             if (assets.balances[tokenHash] == 0) {
                 assets.tokens.push(token);
             }
-            assets.balances[tokenHash] = amount;
+            assets.balances[tokenHash] += amount;
         } else {
             revert(Constants.TOKEN_TYPE_NOT_RECOGNIZED);
         }
