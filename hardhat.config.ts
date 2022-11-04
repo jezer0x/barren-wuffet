@@ -5,7 +5,6 @@ import "hardhat-deploy";
 import "solidity-coverage";
 import "hardhat-contract-sizer";
 import "hardhat-gas-reporter";
-import "@graphprotocol/hardhat-graph";
 import "@openzeppelin/hardhat-upgrades";
 import dotenv from "dotenv";
 dotenv.config();
