@@ -81,4 +81,6 @@ interface IFund is ISubscription {
     function getStatus() external view returns (FundStatus);
 
     function withdrawManagementFee() external returns (Token[] memory, uint256[] memory);
+
+    function addInvestorToWhitelist(address[] calldata investors) external;
 }

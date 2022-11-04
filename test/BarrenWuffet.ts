@@ -42,7 +42,8 @@ async function makeSubConstraints() {
     maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
     deadline: latestTime + 86400,
     lockin: latestTime + 86400 * 10,
-    allowedDepositToken: ETH_TOKEN
+    allowedDepositToken: ETH_TOKEN,
+    onlyWhitelistedInvestors: false
   };
 }
 
@@ -169,7 +170,8 @@ describe("BarrenWuffet", () => {
       maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
       deadline: latestTime + 86400,
       lockin: latestTime + 86400 * 10,
-      allowedDepositToken: ETH_TOKEN
+      allowedDepositToken: ETH_TOKEN,
+      onlyWhitelistedInvestors: false
     };
 
     const jerkshireAddr = await getAddressFromEvent(
@@ -372,12 +374,12 @@ describe("BarrenWuffet", () => {
           [makePassingTrigger(priceTrigger.address, testToken1)],
           [swapETHToTST1Action]
         )
-      ).be.revertedWith("!D");
+      ).be.revertedWith("WS");
     });
     it("should revert if ManagementFee withdrawal is attempted on a raising fund", async () => {
       const { jerkshireFund } = await raisingFundsFixture();
       await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
-      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("!C");
+      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("WS");
     });
 
     it.skip("should return fund status as DEPLOYED once the fund is created, deadline has been hit (min collateral has to be met)", async () => {
@@ -482,7 +484,7 @@ describe("BarrenWuffet", () => {
       );
 
       await expect(jerkshireFund.subscriber.deposit(ETH_TOKEN, depositAmt, { value: depositAmt })).to.be.revertedWith(
-        "!R"
+        "WS"
       );
     });
 
@@ -495,7 +497,7 @@ describe("BarrenWuffet", () => {
     it("should revert if ManagementFee withdrawal is attempted on a deployed fund", async () => {
       const { jerkshireFund } = await deployedFundsFixture();
 
-      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("!C");
+      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("WS");
     });
 
     describe("Manage rules", () => {

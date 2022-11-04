@@ -63,7 +63,7 @@ This section mostly follows: https://github.com/graphprotocol/hardhat-graph
 - yarn add @graphprotocol/hardhat-graph
 
 * From a terminal in the root folder, run `yarn hardhat node --hostname 0.0.0.0`. (Ensure forking is disabled).
-* If you're doing this for the first time: `yarn hardhat graph init --contract-name BarrenWuffet --address 0x82e01223d51Eb87e16A03E24687EDF0F294da6f1`. (replace the address with the address from deploy). Else put the new BarrenWuffet address in `subgraph.yaml`.
+* If you're doing this for the first time: `yarn hardhat graph init --contract-name BarrenWuffet --address 0xf5059a5D33d5853360D16C683c16e67980206f36`. (replace the address with the address from deploy). Else put the new BarrenWuffet address in `subgraph.yaml`.
 * from root, `docker-compose up --force-recreate`
 * `yarn create-local`
 * `yarn deploy-local`
