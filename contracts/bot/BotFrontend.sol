@@ -3,10 +3,11 @@ pragma solidity ^0.8.17;
 import "./IOps.sol";
 import "./ITaskTreasury.sol";
 import "../rules/IRoboCop.sol";
+import "./IBotFrontend.sol";
 import "./OpsReady.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract BotFrontend is OpsReady, Ownable {
+contract BotFrontend is IBotFrontend, OpsReady, Ownable {
     ITaskTreasury public immutable treasury;
     address public barrenWuffetAddr;
     mapping(address => mapping(bytes32 => bytes32)) public ruleToTaskIdMap;

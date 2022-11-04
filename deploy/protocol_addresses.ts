@@ -63,8 +63,8 @@ const goerli = {
 
   // https://docs.gelato.network/developer-products/gelato-ops-smart-contract-automation-hub/contract-addresses#arbitrum
   gelato: {
-    treasury: "0x644CB00854EDC55FE8CCC9c1967BABb22F08Ad2f",
-    ops: "0x255F82563b5973264e89526345EcEa766DB3baB2"
+    treasury: "0xF381dfd7a139caaB83c26140e5595C0b85DDadCd",
+    ops: "0xc1C6805B857Bef1f412519C4A842522431aFed39"
   },
 
   // https://docs.uniswap.org/protocol/reference/deployments
