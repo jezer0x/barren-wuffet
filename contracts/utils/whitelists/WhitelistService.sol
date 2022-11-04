@@ -38,7 +38,7 @@ contract WhitelistService {
     }
 
     function isWhitelisted(bytes32 wlHash, address addr) public view returns (bool) {
-        // if whitelist does not exist, will return true
+        require(whitelistExists(wlHash), "Whitelist does not exist!");
         return (!whitelists[wlHash].enabled || whitelists[wlHash].whitelist[addr]);
     }
 
