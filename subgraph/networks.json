@@ -3,5 +3,11 @@
     "BarrenWuffet": {
       "address": "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c"
     }
+  },
+  "goerli": {
+    "BarrenWuffet": {
+      "address": "0x39a1BDAccA4853ABe14F7f0451a306CeA9adD6A3",
+      "startBlock": 7887784
+    }
   }
 }

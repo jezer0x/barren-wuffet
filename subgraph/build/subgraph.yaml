@@ -4,11 +4,11 @@ schema:
 dataSources:
   - kind: ethereum
     name: BarrenWuffet
-    network: localhost
+    network: goerli
     source:
-      address: "0xf5059a5D33d5853360D16C683c16e67980206f36"
       abi: BarrenWuffet
-      startBlock: 20005467
+      address: "0x39a1BDAccA4853ABe14F7f0451a306CeA9adD6A3"
+      startBlock: 7887784
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.6
@@ -35,7 +35,7 @@ dataSources:
 templates:
   - kind: ethereum
     name: Fund
-    network: localhost
+    network: goerli
     source:
       abi: Fund
     mapping:
@@ -59,7 +59,7 @@ templates:
       file: templates/Fund/Fund.wasm
   - kind: ethereum
     name: RoboCop
-    network: localhost
+    network: goerli
     source:
       abi: RoboCop
     mapping:
