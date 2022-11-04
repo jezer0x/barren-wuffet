@@ -121,23 +121,23 @@ async function deploySushiActions(
     libraries: { TokenLib: TokenLibAddr }
   });
 
-  // const sushiAddLiquidity = await deploy("SushiAddLiquidity", {
-  //   from: deployer,
-  //   args: [router],
-  //   log: true,
-  //   libraries: { TokenLib: TokenLibAddr }
-  // });
+  const sushiAddLiquidity = await deploy("SushiAddLiquidity", {
+    from: deployer,
+    args: [router],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
 
-  // const sushiRemoveLiquidity = await deploy("SushiRemoveLiquidity", {
-  //   from: deployer,
-  //   args: [router],
-  //   log: true,
-  //   libraries: { TokenLib: TokenLibAddr }
-  // });
+  const sushiRemoveLiquidity = await deploy("SushiRemoveLiquidity", {
+    from: deployer,
+    args: [router],
+    log: true,
+    libraries: { TokenLib: TokenLibAddr }
+  });
 
   await addToWhitelist(deployer, whitelistService, actWlHash, sushiSwapExactXForY.address);
-  // await addToWhitelist(deployer, whitelistService, actWlHash, sushiAddLiquidity.address);
-  // await addToWhitelist(deployer, whitelistService, actWlHash, sushiRemoveLiquidity.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, sushiAddLiquidity.address);
+  await addToWhitelist(deployer, whitelistService, actWlHash, sushiRemoveLiquidity.address);
 }
 
 async function deployGmxActions(
