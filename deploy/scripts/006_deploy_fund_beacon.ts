@@ -21,11 +21,11 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   });
 
   const fundBeacon = await ethers.getContract("FundBeacon");
-  if (fbDeployResult.newlyDeployed) {
+  if ((await fundBeacon.owner()) != process.env.PLATFORM_MULTI_SIG_ADDR) {
     await fundBeacon.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
     console.log("Ownership of fundBeacon transferred to ", process.env.PLATFORM_MULTI_SIG_ADDR);
   } else {
-    console.log("Can't transfer ownership of fundBeacon as owner is ", await fundBeacon.owner());
+    console.log("Ownership of fundBeacon already with ", await fundBeacon.owner());
   }
   console.log("\n");
 };

@@ -38,14 +38,15 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   });
 
   const bw = await ethers.getContract("BarrenWuffet");
-  if (bwDeployResult.newlyDeployed) {
-    if ((await bw.owner()) != process.env.PLATFORM_MULTI_SIG_ADDR) {
-      await bw.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
-      console.log("Ownership of BarrenWuffet transferred to ", process.env.PLATFORM_MULTI_SIG_ADDR);
-    } else {
-      console.log("Owner of BarrentWuffet is already platform Multisig");
-    }
 
+  if ((await bw.owner()) != process.env.PLATFORM_MULTI_SIG_ADDR) {
+    await bw.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
+    console.log("Ownership of BarrenWuffet transferred to ", process.env.PLATFORM_MULTI_SIG_ADDR);
+  } else {
+    console.log("Owner of BarrentWuffet is already platform Multisig");
+  }
+
+  if (bwDeployResult.newlyDeployed) {
     try {
       await botFrontend.setBarrenWuffet(bw.address);
     } catch {
@@ -61,7 +62,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
       await botFrontend.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
       console.log("Ownership of BotFrontend transferred to ", process.env.PLATFORM_MULTI_SIG_ADDR);
     } catch {
-      console.log("Can't transfer ownership of BotFrontend as owner is ", await fundBeacon.owner());
+      console.log("Can't transfer ownership of BotFrontend as owner is ", await botFrontend.owner());
     }
   } else {
     console.log("Owner of BotFrontend is already platform Multisig");
