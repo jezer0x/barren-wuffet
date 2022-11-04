@@ -9,6 +9,10 @@ contract WhitelistService {
         _;
     }
 
+    function whitelistExists(bytes32 wlHash) public view returns (bool) {
+        return whitelists[wlHash].owner != address(0);
+    }
+
     mapping(bytes32 => Whitelist) whitelists;
 
     function getWhitelistHash(address creator, string calldata name) public pure returns (bytes32) {
@@ -17,7 +21,7 @@ contract WhitelistService {
 
     function createWhitelist(string calldata name) public returns (bytes32) {
         bytes32 wlHash = getWhitelistHash(msg.sender, name);
-        require(whitelists[wlHash].owner == address(0), "You've already created a whitelist of this name!");
+        require(!whitelistExists(wlHash), "Whitelist already exists!");
         Whitelist storage wl = whitelists[wlHash];
         wl.owner = msg.sender;
         wl.enabled = true;
@@ -47,6 +51,7 @@ contract WhitelistService {
     }
 
     function transferWhitelistOwnership(bytes32 wlHash, address newOwner) public onlyWhitelistOwner(wlHash) {
+        require(newOwner != address(0)); // since address(0) denotes whitelist doesn't exist
         whitelists[wlHash].owner = newOwner;
     }
 

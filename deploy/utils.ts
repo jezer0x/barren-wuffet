@@ -13,11 +13,14 @@ export async function addToWhitelist(deployer: string, whitelistService: Contrac
   if (!(await whitelistService.isWhitelisted(wlHash, addr))) {
     if ((await whitelistService.getWhitelistOwner(wlHash)) == deployer) {
       await whitelistService.addToWhitelist(wlHash, addr);
+      console.log(`${addr} added to whitelist ${whitelistService.address}::${wlHash}`);
     } else {
       console.warn(
         `${addr} not added to whitelist ${whitelistService.address}::${wlHash} because you're not the owner!
         Please ensure owner updates whitelist manually`
       );
     }
+  } else {
+    console.log("Already whitelisted!");
   }
 }

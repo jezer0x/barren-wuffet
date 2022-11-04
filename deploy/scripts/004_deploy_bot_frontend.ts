@@ -15,12 +15,14 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   var treasuryAddr = protocolAddresses.gelato.treasury;
   var opsAddr = protocolAddresses.gelato.ops;
 
+  console.log("> Deploying BotFrontend");
   // note: we will change the owner later, after setting BW addr
   await deploy("BotFrontend", {
     from: deployer,
     args: [treasuryAddr, opsAddr],
     log: true
   });
+  console.log("\n");
 };
 
 export default func;

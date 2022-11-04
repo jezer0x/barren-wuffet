@@ -10,6 +10,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
   const { SubLibAddr, AssetTrackerLibAddr, TokenLibAddr } = await getLibraries();
 
+  console.log("> Deplying Fund Implementation");
   await deploy("Fund", {
     from: deployer,
     args: [],
@@ -20,6 +21,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
       TokenLib: TokenLibAddr
     }
   });
+  console.log("\n");
 };
 
 export default func;

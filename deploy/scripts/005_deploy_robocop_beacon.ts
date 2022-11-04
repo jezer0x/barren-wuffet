@@ -13,6 +13,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
   const robocopImpl = await ethers.getContract("RoboCop");
 
+  console.log("> Deploying RoboCopBeacon");
   const rcbDeployResult = await deploy("RoboCopBeacon", {
     contract: "UpgradeableBeacon",
     from: deployer,
@@ -20,10 +21,14 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     log: true
   });
 
+  const roboCopBeacon = await ethers.getContract("RoboCopBeacon");
   if (rcbDeployResult.newlyDeployed) {
-    const roboCopBeacon = await ethers.getContract("RoboCopBeacon");
     await roboCopBeacon.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
+    console.log("Ownership of roboCopBeacon transferred to ", process.env.PLATFORM_MULTI_SIG_ADDR);
+  } else {
+    console.log("Can't transfer ownership of roboCopBeacon as owner is ", await roboCopBeacon.owner());
   }
+  console.log("\n");
 };
 
 export default func;

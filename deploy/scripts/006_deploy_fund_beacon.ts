@@ -12,6 +12,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
   const fundImpl = await ethers.getContract("Fund");
 
+  console.log("> Deploying FundBeacon");
   const fbDeployResult = await deploy("FundBeacon", {
     contract: "UpgradeableBeacon",
     from: deployer,
@@ -19,10 +20,14 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     log: true
   });
 
+  const fundBeacon = await ethers.getContract("FundBeacon");
   if (fbDeployResult.newlyDeployed) {
-    const fundBeacon = await ethers.getContract("FundBeacon");
     await fundBeacon.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
+    console.log("Ownership of fundBeacon transferred to ", process.env.PLATFORM_MULTI_SIG_ADDR);
+  } else {
+    console.log("Can't transfer ownership of fundBeacon as owner is ", await fundBeacon.owner());
   }
+  console.log("\n");
 };
 
 export default func;

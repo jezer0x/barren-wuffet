@@ -20,10 +20,13 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const whitelistService = await ethers.getContract("WhitelistService");
   const actWlHash = await whitelistService.getWhitelistHash(deployer, "actions");
 
-  try {
+  console.log("> Deploying Actions ");
+
+  if (!(await whitelistService.whitelistExists(actWlHash))) {
     await whitelistService.createWhitelist("actions");
-  } catch {
-    // loose test for "that that whitelist was already created"
+    console.log("actions whitelist created as ", whitelistService.address, "::", actWlHash);
+  } else {
+    console.log("triggers whitelist already exists as ", whitelistService.address, "::", actWlHash);
   }
 
   //await deployUniswapActions(deploy, deployer, whitelistService, actWlHash, TokenLibAddr, protocolAddresses);
@@ -34,7 +37,12 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
   if ((await whitelistService.getWhitelistOwner(actWlHash)) == deployer) {
     await whitelistService.transferWhitelistOwnership(actWlHash, process.env.PLATFORM_MULTI_SIG_ADDR);
-  } // else was already transferred
+    console.log(actWlHash, " ownership transferred to ", process.env.PLATFORM_MULTI_SIG_ADDR);
+  } else {
+    console.error("The Action Whitelist is already owned by ", await whitelistService.getWhitelistOwner(actWlHash));
+  }
+
+  console.log("\n");
 };
 
 async function deployUniswapActions(

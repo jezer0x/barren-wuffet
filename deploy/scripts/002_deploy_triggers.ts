@@ -14,10 +14,13 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const whitelistService = await ethers.getContract("WhitelistService");
   let trigWlHash = await whitelistService.getWhitelistHash(deployer, "triggers");
 
-  try {
+  console.log("> Deploying Triggers ");
+
+  if (!(await whitelistService.whitelistExists(trigWlHash))) {
     await whitelistService.createWhitelist("triggers");
-  } catch {
-    // loose test for "that that whitelist was already created"
+    console.log("triggers whitelist created as ", whitelistService.address, "::", trigWlHash);
+  } else {
+    console.log("triggers whitelist already exists as ", whitelistService.address, "::", trigWlHash);
   }
 
   await deployPriceTrigger(deploy, deployer, whitelistService, trigWlHash);
@@ -25,7 +28,12 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
   if ((await whitelistService.getWhitelistOwner(trigWlHash)) == deployer) {
     await whitelistService.transferWhitelistOwnership(trigWlHash, process.env.PLATFORM_MULTI_SIG_ADDR);
-  } // else this was already handed over?
+    console.log(trigWlHash, " ownership transferred to ", process.env.PLATFORM_MULTI_SIG_ADDR);
+  } else {
+    console.error("The trigger Whitelist is already owned by ", await whitelistService.getWhitelistOwner(trigWlHash));
+  }
+
+  console.log("\n");
 };
 
 async function deployPriceTrigger(deploy: any, deployer: string, whitelistService: Contract, trigWlHash: any) {
@@ -36,8 +44,12 @@ async function deployPriceTrigger(deploy: any, deployer: string, whitelistServic
   });
 
   const priceTrigger = await ethers.getContract("PriceTrigger");
+  console.log(priceTrigger.address);
   if ((await priceTrigger.owner()) == deployer) {
     await priceTrigger.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
+    console.log("Ownership of PriceTrigger transferred to ", process.env.PLATFORM_MULTI_SIG_ADDR);
+  } else {
+    console.log("Can't transfer ownership of PriceTrigger as owner is ", await priceTrigger.owner());
   }
 
   await addToWhitelist(deployer, whitelistService, trigWlHash, priceTrigger.address);
