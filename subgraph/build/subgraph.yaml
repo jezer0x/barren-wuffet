@@ -6,7 +6,7 @@ dataSources:
     name: BarrenWuffet
     network: localhost
     source:
-      address: "0xB0D4afd8879eD9F52b28595d31B441D079B2Ca07"
+      address: "0xf5059a5D33d5853360D16C683c16e67980206f36"
       abi: BarrenWuffet
       startBlock: 20005467
     mapping:

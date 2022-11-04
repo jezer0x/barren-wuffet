@@ -26,7 +26,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     // loose test for "that that whitelist was already created"
   }
 
-  await deployUniswapActions(deploy, deployer, whitelistService, actWlHash, TokenLibAddr, protocolAddresses);
+  //await deployUniswapActions(deploy, deployer, whitelistService, actWlHash, TokenLibAddr, protocolAddresses);
 
   await deploySushiActions(deploy, deployer, whitelistService, actWlHash, TokenLibAddr, protocolAddresses);
 
@@ -121,23 +121,23 @@ async function deploySushiActions(
     libraries: { TokenLib: TokenLibAddr }
   });
 
-  const sushiAddLiquidity = await deploy("SushiAddLiquidity", {
-    from: deployer,
-    args: [router],
-    log: true,
-    libraries: { TokenLib: TokenLibAddr }
-  });
+  // const sushiAddLiquidity = await deploy("SushiAddLiquidity", {
+  //   from: deployer,
+  //   args: [router],
+  //   log: true,
+  //   libraries: { TokenLib: TokenLibAddr }
+  // });
 
-  const sushiRemoveLiquidity = await deploy("SushiRemoveLiquidity", {
-    from: deployer,
-    args: [router],
-    log: true,
-    libraries: { TokenLib: TokenLibAddr }
-  });
+  // const sushiRemoveLiquidity = await deploy("SushiRemoveLiquidity", {
+  //   from: deployer,
+  //   args: [router],
+  //   log: true,
+  //   libraries: { TokenLib: TokenLibAddr }
+  // });
 
   await addToWhitelist(deployer, whitelistService, actWlHash, sushiSwapExactXForY.address);
-  await addToWhitelist(deployer, whitelistService, actWlHash, sushiAddLiquidity.address);
-  await addToWhitelist(deployer, whitelistService, actWlHash, sushiRemoveLiquidity.address);
+  // await addToWhitelist(deployer, whitelistService, actWlHash, sushiAddLiquidity.address);
+  // await addToWhitelist(deployer, whitelistService, actWlHash, sushiRemoveLiquidity.address);
 }
 
 async function deployGmxActions(

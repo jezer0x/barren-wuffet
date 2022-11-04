@@ -52,6 +52,11 @@
         "internalType": "address",
         "name": "_fundBeaconAddr",
         "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_botFrontendAddr",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -184,6 +189,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "botFrontend",
+    "outputs": [
+      {
+        "internalType": "contract IBotFrontend",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "string",
@@ -243,6 +261,11 @@
             "internalType": "struct Token",
             "name": "allowedDepositToken",
             "type": "tuple"
+          },
+          {
+            "internalType": "bool",
+            "name": "onlyWhitelistedInvestors",
+            "type": "bool"
           }
         ],
         "internalType": "struct Subscriptions.Constraints",

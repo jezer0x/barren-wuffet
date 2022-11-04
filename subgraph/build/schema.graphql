@@ -52,7 +52,7 @@ type Rule @entity {
   triggers: [Trigger!]! @derivedFrom(field: "rule")
   outputs: [BigInt!]!
   collaterals: [BigInt!]
-  # what about all the other kinds of events? collateralAdd/reduce, incentiveAdd/reduce?
+  # what about all the other kinds of events? collateralAdd/reduce
   fund: Fund!
 }
 

@@ -320,6 +320,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "botFrontend",
+    "outputs": [
+      {
+        "internalType": "contract IBotFrontend",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "bytes32",
@@ -432,7 +445,7 @@
         "type": "bytes32"
       }
     ],
-    "stateMutability": "payable",
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -642,11 +655,6 @@
             "internalType": "uint256[]",
             "name": "outputs",
             "type": "uint256[]"
-          },
-          {
-            "internalType": "uint256",
-            "name": "incentive",
-            "type": "uint256"
           }
         ],
         "internalType": "struct Rule",
@@ -692,21 +700,13 @@
   {
     "inputs": [
       {
-        "internalType": "bytes32",
-        "name": "ruleHash",
-        "type": "bytes32"
-      }
-    ],
-    "name": "increaseIncentive",
-    "outputs": [],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "address",
         "name": "_newOwner",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "botFrontendAddr",
         "type": "address"
       }
     ],
@@ -825,30 +825,6 @@
   {
     "inputs": [
       {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "name": "ruleIncentiveProviders",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "address",
         "name": "newOwner",
         "type": "address"
@@ -856,25 +832,6 @@
     ],
     "name": "transferOwnership",
     "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "ruleHash",
-        "type": "bytes32"
-      }
-    ],
-    "name": "withdrawIncentive",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "balance",
-        "type": "uint256"
-      }
-    ],
     "stateMutability": "nonpayable",
     "type": "function"
   },
