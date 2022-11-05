@@ -36,10 +36,14 @@ library TokenLib {
         uint256 amount
     ) public {
         if (isERC20(token)) {
-            IERC20(token.addr).safeTransfer(receiver, amount);
-        } else if (isETH(token) && amount > 0) {
-            payable(receiver).transfer(amount);
-        } else if (isERC721(token) && amount > 0) {
+            if (amount > 0) {
+                IERC20(token.addr).safeTransfer(receiver, amount);
+            }
+        } else if (isETH(token)) {
+            if (amount > 0) {
+                payable(receiver).transfer(amount);
+            }
+        } else if (isERC721(token)) {
             require(token.id == amount);
             IERC721(token.addr).safeTransferFrom(address(this), receiver, amount);
         } else {
