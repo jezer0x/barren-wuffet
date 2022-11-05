@@ -46,7 +46,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     console.log("Owner of BarrentWuffet is already platform Multisig");
   }
 
-  if (bwDeployResult.newlyDeployed) {
+  if ((await botFrontend.barrenWuffetAddr()) != bw.address) {
     try {
       await botFrontend.setBarrenWuffet(bw.address);
     } catch {
