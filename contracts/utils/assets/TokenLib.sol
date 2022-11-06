@@ -41,7 +41,8 @@ library TokenLib {
             }
         } else if (isETH(token)) {
             if (amount > 0) {
-                payable(receiver).transfer(amount);
+                (bool success, ) = receiver.call{value: amount}("");
+                require(success, "TokenLib: Eth Transfer failed");
             }
         } else if (isERC721(token)) {
             require(token.id == amount);
