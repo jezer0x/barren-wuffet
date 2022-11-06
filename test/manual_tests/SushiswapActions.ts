@@ -1,6 +1,6 @@
 import { ethers, getNamedAccounts } from "hardhat";
 import { impersonateAccount, time } from "@nomicfoundation/hardhat-network-helpers";
-import { Contract, BigNumber, utils } from "ethers";
+import { Contract, BigNumber, utils, Signer } from "ethers";
 import {
   GT,
   ERC20_DECIMALS,
@@ -29,8 +29,17 @@ async function makeSubConstraints() {
 }
 
 async function main() {
+  const { deployer } = await getNamedAccounts();
   const protocolAddresses: any = await getProtocolAddresses("31337", true);
   const BW = await ethers.getContract("BarrenWuffet");
+
+  // const multisigAddr = (await BW.feeParams())[0];
+  // await impersonateAccount(multisigAddr);
+  // const platformMultiSig = await ethers.getSigner(multisigAddr);
+
+  // const deployerSigner = await ethers.getSigner(deployer);
+  // deployerSigner.sendTransaction({ to: multisigAddr, value: ethers.utils.parseEther("10") });
+
   const McFundAddr = await getAddressFromEvent(
     BW.createFund("marlieChungerFund", await makeSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []),
     "Created",
@@ -43,6 +52,8 @@ async function main() {
   await McFund.deposit(ETH_TOKEN, BigNumber.from(11).mul(ERC20_DECIMALS), {
     value: BigNumber.from(11).mul(ERC20_DECIMALS)
   });
+
+  console.log("here");
 
   // increase to beyond deadline so we can start taking actions
   await time.increaseTo((await time.latest()) + 86400);
@@ -109,15 +120,6 @@ async function main() {
   const botFrontend = await ethers.getContract("BotFrontend");
   await botFrontend.deposit(ethers.utils.parseEther("0.1"), { value: ethers.utils.parseEther("0.1") });
 
-  const resolverHash = ethers.utils.keccak256(
-    new ethers.utils.AbiCoder().encode(
-      ["address", "bytes"],
-      [
-        botFrontend.address,
-        botFrontend.interface.encodeFunctionData("checker(address,bytes32)", [McFundRoboCop.address, ruleHash])
-      ]
-    )
-  );
   const [canExec, execData] = await botFrontend.checker(McFundRoboCop.address, ruleHash);
 
   if (!canExec) {
@@ -131,20 +133,31 @@ async function main() {
   await impersonateAccount(gelatoBotAddr);
   const gelatoBot = await ethers.getSigner(gelatoBotAddr);
 
-  await gelatoOps
-    .connect(gelatoBot)
-    .exec(
-      ethers.utils.parseEther("0.01"),
-      ETH_ADDRESS,
-      botFrontend.address,
-      true,
-      false,
-      resolverHash,
-      botFrontend.address,
-      execData
-    );
+  await gelatoOps.connect(gelatoBot).exec(
+    botFrontend.address,
+    botFrontend.address,
+    execData,
+    {
+      modules: [0],
+      args: [
+        ethers.utils.defaultAbiCoder.encode(
+          ["address", "bytes"],
+          [
+            botFrontend.address,
+            botFrontend.interface.encodeFunctionData("checker(address,bytes32)", [McFundRoboCop.address, ruleHash])
+          ]
+        )
+      ]
+    },
+    ethers.utils.parseEther("0.01"),
+    ETH_ADDRESS,
+    true,
+    false
+  );
 
   await McFund.redeemRuleOutputs();
+
+  console.log("here");
 
   var balance_usdc = await usdc_contract.balanceOf(McFundAddr);
   console.log("USDC balance after selling 2 ETH:", balance_usdc.toString());
@@ -233,7 +246,6 @@ async function main() {
   await McFund.closeFund(); // trader closes fund prematurely
   await McFund.withdraw(); // trader was subscriber himself
 
-  const { deployer } = await getNamedAccounts();
   console.log(
     "SLP Token balance after withdraw on closed fund: ",
     (await usdc_weth_slp_contract.balanceOf(deployer)).toString()

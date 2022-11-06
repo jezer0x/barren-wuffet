@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import "../bot/libraries/LibDataTypes.sol";
+
 contract TestGelatoOps {
     function createTask(
-        address _execAddress,
-        bytes4 _execSelector,
-        address _resolverAddress,
-        bytes calldata _resolverData
+        address execAddress,
+        bytes calldata execData,
+        LibDataTypes.ModuleData calldata moduleData,
+        address feeToken
     ) external returns (bytes32 task) {
         return "";
     }
