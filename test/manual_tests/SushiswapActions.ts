@@ -78,8 +78,8 @@ async function main() {
     }
   ];
 
-  const usdc_contract = new Contract(protocolAddresses.tokens.USDC, erc20abifrag, ethers.provider);
-  const USDC_TOKEN = { t: TOKEN_TYPE.ERC20, addr: protocolAddresses.tokens.USDC, id: BigNumber.from(0) };
+  const dai_contract = new Contract(protocolAddresses.tokens.DAI, erc20abifrag, ethers.provider);
+  const DAI_TOKEN = { t: TOKEN_TYPE.ERC20, addr: protocolAddresses.tokens.DAI, id: BigNumber.from(0) };
 
   const trueTrigger = {
     createTimeParams: utils.defaultAbiCoder.encode(["uint8", "uint256"], [GT, (await time.latest()) - 1]),
@@ -89,7 +89,7 @@ async function main() {
 
   const sushiSwapExactXForY = await ethers.getContract("SushiSwapExactXForY");
 
-  // Case 1: Sell ETH for USDC
+  // Case 1: Sell ETH for DAI
   const ruleHash = await getHashFromEvent(
     McFund.createRule(
       [trueTrigger],
@@ -99,12 +99,12 @@ async function main() {
           data: ethers.utils.defaultAbiCoder.encode(
             ["address[]", "uint256"],
             [
-              [protocolAddresses.tokens.WETH, protocolAddresses.tokens.USDC],
+              [protocolAddresses.tokens.WETH, protocolAddresses.tokens.DAI],
               BigNumber.from(19).mul(BigNumber.from(10).pow(8)) // translates to ~1900USD/ETH [1900000000e18/1e18]
             ]
           ),
           inputTokens: [ETH_TOKEN], // eth
-          outputTokens: [USDC_TOKEN] // swapping for USDC
+          outputTokens: [DAI_TOKEN] // swapping for DAI
         }
       ]
     ),
@@ -159,8 +159,8 @@ async function main() {
 
   console.log("here");
 
-  var balance_usdc = await usdc_contract.balanceOf(McFundAddr);
-  console.log("USDC balance after selling 2 ETH:", balance_usdc.toString());
+  var balance_dai = await dai_contract.balanceOf(McFundAddr);
+  console.log("DAI balance after selling 2 ETH:", balance_dai.toString());
 
   // Case 2: Swap ERC20 to ETH
   let prevEthBalance = await ethers.provider.getBalance(McFundAddr);
@@ -171,22 +171,22 @@ async function main() {
       data: ethers.utils.defaultAbiCoder.encode(
         ["address[]", "uint256"],
         [
-          [protocolAddresses.tokens.USDC, protocolAddresses.tokens.WETH],
+          [protocolAddresses.tokens.DAI, protocolAddresses.tokens.WETH],
           BigNumber.from(500).mul(BigNumber.from(10).pow(24)) // translates to ~2000USD/ETH [1e18*1e18 / 1900000000]
         ]
       ),
-      inputTokens: [USDC_TOKEN],
+      inputTokens: [DAI_TOKEN],
       outputTokens: [ETH_TOKEN]
     },
-    [(await usdc_contract.balanceOf(McFundAddr)).div(2)],
+    [(await dai_contract.balanceOf(McFundAddr)).div(2)],
     [BigNumber.from(0)] // 0 fees set in deploy
   );
   let postEthBalance = await ethers.provider.getBalance(McFundAddr);
   console.log(
-    "Ether received after selling half the USDC: ",
+    "Ether received after selling half the DAI: ",
     ethers.utils.formatEther(postEthBalance.sub(prevEthBalance))
   );
-  balance_usdc = await usdc_contract.balanceOf(McFundAddr);
+  balance_dai = await dai_contract.balanceOf(McFundAddr);
 
   // Case 3: path is wrong
   try {
@@ -199,7 +199,7 @@ async function main() {
           [[protocolAddresses.tokens.WETH, protocolAddresses.tokens.WETH], 0]
         ),
         inputTokens: [ETH_TOKEN], // eth
-        outputTokens: [USDC_TOKEN] // swapping for USDC
+        outputTokens: [DAI_TOKEN] // swapping for DAI
       },
       [BigNumber.from(1).mul(ERC20_DECIMALS)],
       [BigNumber.from(0)] // 0 fees set in deploy
@@ -208,39 +208,39 @@ async function main() {
     console.log("Wrong _path send during swap doesn't work");
   }
 
-  // balance_usdc = await usdc_contract.balanceOf(McFundAddr);
-  // console.log("USDC balance after selling 1 more ETH:", balance_usdc.toString());
+  // balance_dai = await dai_contract.balanceOf(McFundAddr);
+  // console.log("DAI balance after selling 1 more ETH:", balance_dai.toString());
 
   // Case 4: add LP
   const sushiAddLiquidity = await ethers.getContract("SushiAddLiquidity");
 
-  const usdc_weth_slp_contract = new Contract(
+  const dai_weth_slp_contract = new Contract(
     "0x905dfCD5649217c42684f23958568e533C711Aa3",
     erc20abifrag,
     ethers.provider
   );
 
-  const USDC_WETH_SLP_TOKEN = {
+  const DAI_WETH_SLP_TOKEN = {
     t: TOKEN_TYPE.ERC20,
-    addr: usdc_weth_slp_contract.address,
+    addr: dai_weth_slp_contract.address,
     id: BigNumber.from(0)
   };
 
-  console.log("usdc_eth_slp_contract.address = ", usdc_weth_slp_contract.address);
+  console.log("dai_eth_slp_contract.address = ", dai_weth_slp_contract.address);
 
   await McFund.takeAction(
     trueTrigger,
     {
       callee: sushiAddLiquidity.address,
       data: "0x",
-      inputTokens: [USDC_TOKEN, ETH_TOKEN],
-      outputTokens: [USDC_TOKEN, ETH_TOKEN, USDC_WETH_SLP_TOKEN]
+      inputTokens: [DAI_TOKEN, ETH_TOKEN],
+      outputTokens: [DAI_TOKEN, ETH_TOKEN, DAI_WETH_SLP_TOKEN]
     },
-    [balance_usdc, BigNumber.from(1).mul(ERC20_DECIMALS)],
+    [balance_dai, BigNumber.from(1).mul(ERC20_DECIMALS)],
     [BigNumber.from(0), BigNumber.from(0)] // 0 fees set in deploy
   );
 
-  console.log("WETH-USDC-SLP received after LP: ", (await usdc_weth_slp_contract.balanceOf(McFundAddr)).toString());
+  console.log("WETH-DAI-SLP received after LP: ", (await dai_weth_slp_contract.balanceOf(McFundAddr)).toString());
 
   // Case 5: subscribers get back the SLP token if funds are closed -> no position stuff required
   await McFund.closeFund(); // trader closes fund prematurely
@@ -248,7 +248,7 @@ async function main() {
 
   console.log(
     "SLP Token balance after withdraw on closed fund: ",
-    (await usdc_weth_slp_contract.balanceOf(deployer)).toString()
+    (await dai_weth_slp_contract.balanceOf(deployer)).toString()
   );
 }
 

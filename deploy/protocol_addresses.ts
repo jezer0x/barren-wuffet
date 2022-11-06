@@ -56,9 +56,9 @@ const arbitrum = {
 
 const goerli = {
   tokens: {
-    WETH: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
-    USDC: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
-    DAI: "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1"
+    WETH: "0xb4fbf271143f4fbf7b91a5ded31805e42b2208d6", // <- sushi
+    USDC: "0xde637d4c445ca2aae8f782ffac8d2971b93a4998", // or? uni: 0x07865c6E87B9F70255377e024ace6630C1Eaa37F //sushi: 0xd87ba7a50b2e7e660f678a895e4b72e7cb4ccd9c
+    DAI: "0xdc31ee1784292379fbb2964b3b9c4124d8f89c60"
   },
 
   // https://docs.gelato.network/developer-products/gelato-ops-smart-contract-automation-hub/contract-addresses#arbitrum
