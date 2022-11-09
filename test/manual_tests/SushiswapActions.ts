@@ -68,23 +68,19 @@ async function makeSubConstraints() {
 async function calculateMinOutPerInForSwap(
   tokenIn: TokenStruct,
   tokenOut: TokenStruct,
-  minAmountOfOutPerIn: FixedNumber
+  minAmountOfOutPerIn: Number
 ): Promise<BigNumber> {
   var tokenInDecimals =
     tokenIn == ETH_TOKEN ? 18 : await new Contract(await tokenIn.addr, erc20abifrag, ethers.provider).decimals();
   var tokenOutDecimals =
     tokenOut == ETH_TOKEN ? 18 : await new Contract(await tokenOut.addr, erc20abifrag, ethers.provider).decimals();
-  if (tokenOutDecimals + 18 < tokenInDecimals) {
-    throw new Error("Decimals are fucked");
-  } else {
-    return BigNumber.from(
-      minAmountOfOutPerIn
-        .mulUnsafe(FixedNumber.from(BigNumber.from(10).pow(tokenOutDecimals + 18 - tokenInDecimals)))
-        .round()
-        .toString()
-        .split(".")[0]
-    );
-  }
+  return BigNumber.from(
+    FixedNumber.from(minAmountOfOutPerIn.toFixed(18))
+      .mulUnsafe(FixedNumber.from(BigNumber.from(10).pow(tokenOutDecimals + 18 - tokenInDecimals)))
+      .round()
+      .toString()
+      .split(".")[0]
+  );
 }
 
 function createSushiSwapAction(
@@ -156,7 +152,7 @@ async function main() {
           sushiSwapExactXForY.address,
           ETH_TOKEN,
           DAI_TOKEN,
-          await calculateMinOutPerInForSwap(ETH_TOKEN, DAI_TOKEN, FixedNumber.from(1900)),
+          await calculateMinOutPerInForSwap(ETH_TOKEN, DAI_TOKEN, 1100),
           protocolAddresses.tokens.WETH
         )
       ]
@@ -210,8 +206,6 @@ async function main() {
 
   await McFund.redeemRuleOutputs();
 
-  console.log("here");
-
   var balance_dai = await dai_contract.balanceOf(McFundAddr);
   console.log("DAI balance after selling 2 ETH:", balance_dai.toString());
 
@@ -223,7 +217,7 @@ async function main() {
       sushiSwapExactXForY.address,
       DAI_TOKEN,
       ETH_TOKEN,
-      await calculateMinOutPerInForSwap(DAI_TOKEN, ETH_TOKEN, FixedNumber.from(1.0 / 2000)),
+      await calculateMinOutPerInForSwap(DAI_TOKEN, ETH_TOKEN, 1.0 / 1200),
       protocolAddresses.tokens.WETH
     ),
     [(await dai_contract.balanceOf(McFundAddr)).div(2)],
@@ -263,7 +257,7 @@ async function main() {
   const sushiAddLiquidity = await ethers.getContract("SushiAddLiquidity");
 
   const dai_weth_slp_contract = new Contract(
-    "0x905dfCD5649217c42684f23958568e533C711Aa3",
+    "0x692a0b300366d1042679397e40f3d2cb4b8f7d30",
     erc20abifrag,
     ethers.provider
   );
