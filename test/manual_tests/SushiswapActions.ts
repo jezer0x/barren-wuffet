@@ -1,6 +1,6 @@
 import { ethers, getNamedAccounts } from "hardhat";
 import { impersonateAccount, time } from "@nomicfoundation/hardhat-network-helpers";
-import { Contract, BigNumber, utils, Signer } from "ethers";
+import { Contract, BigNumber, utils, Signer, FixedNumber } from "ethers";
 import {
   GT,
   ERC20_DECIMALS,
@@ -13,6 +13,43 @@ import {
 import { getAddressFromEvent, getHashFromEvent } from "../helper";
 import { getProtocolAddresses } from "../../deploy/protocol_addresses";
 import { IOps__factory } from "../../typechain-types";
+import { Address } from "hardhat-deploy/types";
+import { TokenStruct } from "../../typechain-types/contracts/utils/subscriptions/Subscriptions";
+import { ActionStruct } from "../../typechain-types/contracts/actions/IAction";
+
+const erc20abifrag = [
+  {
+    constant: true,
+    inputs: [
+      {
+        name: "_owner",
+        type: "address"
+      }
+    ],
+    name: "balanceOf",
+    outputs: [
+      {
+        name: "balance",
+        type: "uint256"
+      }
+    ],
+    payable: false,
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "decimals",
+    outputs: [
+      {
+        internalType: "uint8",
+        name: "",
+        type: "uint8"
+      }
+    ],
+    stateMutability: "view",
+    type: "function"
+  }
+];
 
 async function makeSubConstraints() {
   const latestTime = await time.latest();
@@ -25,6 +62,49 @@ async function makeSubConstraints() {
     lockin: latestTime + 86400 * 10,
     allowedDepositToken: ETH_TOKEN,
     onlyWhitelistedInvestors: false
+  };
+}
+
+async function calculateMinOutPerInForSwap(
+  tokenIn: TokenStruct,
+  tokenOut: TokenStruct,
+  minAmountOfOutPerIn: FixedNumber
+): Promise<BigNumber> {
+  var tokenInDecimals =
+    tokenIn == ETH_TOKEN ? 18 : await new Contract(await tokenIn.addr, erc20abifrag, ethers.provider).decimals();
+  var tokenOutDecimals =
+    tokenOut == ETH_TOKEN ? 18 : await new Contract(await tokenOut.addr, erc20abifrag, ethers.provider).decimals();
+  if (tokenOutDecimals + 18 < tokenInDecimals) {
+    throw new Error("Decimals are fucked");
+  } else {
+    return BigNumber.from(
+      minAmountOfOutPerIn
+        .mulUnsafe(FixedNumber.from(BigNumber.from(10).pow(tokenOutDecimals + 18 - tokenInDecimals)))
+        .round()
+        .toString()
+        .split(".")[0]
+    );
+  }
+}
+
+function createSushiSwapAction(
+  callee: Address,
+  tokenIn: TokenStruct,
+  tokenOut: TokenStruct,
+  minAmountOfOutPerIn: BigNumber,
+  WETHAddr: Address
+): ActionStruct {
+  return {
+    callee: callee,
+    data: ethers.utils.defaultAbiCoder.encode(
+      ["address[]", "uint256"],
+      [
+        [tokenIn == ETH_TOKEN ? WETHAddr : tokenIn.addr, tokenOut == ETH_TOKEN ? WETHAddr : tokenOut.addr],
+        minAmountOfOutPerIn
+      ]
+    ),
+    inputTokens: [tokenIn],
+    outputTokens: [tokenOut]
   };
 }
 
@@ -53,30 +133,8 @@ async function main() {
     value: BigNumber.from(11).mul(ERC20_DECIMALS)
   });
 
-  console.log("here");
-
   // increase to beyond deadline so we can start taking actions
   await time.increaseTo((await time.latest()) + 86400);
-  const erc20abifrag = [
-    {
-      constant: true,
-      inputs: [
-        {
-          name: "_owner",
-          type: "address"
-        }
-      ],
-      name: "balanceOf",
-      outputs: [
-        {
-          name: "balance",
-          type: "uint256"
-        }
-      ],
-      payable: false,
-      type: "function"
-    }
-  ];
 
   const dai_contract = new Contract(protocolAddresses.tokens.DAI, erc20abifrag, ethers.provider);
   const DAI_TOKEN = { t: TOKEN_TYPE.ERC20, addr: protocolAddresses.tokens.DAI, id: BigNumber.from(0) };
@@ -94,18 +152,13 @@ async function main() {
     McFund.createRule(
       [trueTrigger],
       [
-        {
-          callee: sushiSwapExactXForY.address,
-          data: ethers.utils.defaultAbiCoder.encode(
-            ["address[]", "uint256"],
-            [
-              [protocolAddresses.tokens.WETH, protocolAddresses.tokens.DAI],
-              BigNumber.from(19).mul(BigNumber.from(10).pow(8)) // translates to ~1900USD/ETH [1900000000e18/1e18]
-            ]
-          ),
-          inputTokens: [ETH_TOKEN], // eth
-          outputTokens: [DAI_TOKEN] // swapping for DAI
-        }
+        createSushiSwapAction(
+          sushiSwapExactXForY.address,
+          ETH_TOKEN,
+          DAI_TOKEN,
+          await calculateMinOutPerInForSwap(ETH_TOKEN, DAI_TOKEN, FixedNumber.from(1900)),
+          protocolAddresses.tokens.WETH
+        )
       ]
     ),
     "Created",
@@ -166,18 +219,13 @@ async function main() {
   let prevEthBalance = await ethers.provider.getBalance(McFundAddr);
   await McFund.takeAction(
     trueTrigger,
-    {
-      callee: sushiSwapExactXForY.address,
-      data: ethers.utils.defaultAbiCoder.encode(
-        ["address[]", "uint256"],
-        [
-          [protocolAddresses.tokens.DAI, protocolAddresses.tokens.WETH],
-          BigNumber.from(500).mul(BigNumber.from(10).pow(24)) // translates to ~2000USD/ETH [1e18*1e18 / 1900000000]
-        ]
-      ),
-      inputTokens: [DAI_TOKEN],
-      outputTokens: [ETH_TOKEN]
-    },
+    createSushiSwapAction(
+      sushiSwapExactXForY.address,
+      DAI_TOKEN,
+      ETH_TOKEN,
+      await calculateMinOutPerInForSwap(DAI_TOKEN, ETH_TOKEN, FixedNumber.from(1.0 / 2000)),
+      protocolAddresses.tokens.WETH
+    ),
     [(await dai_contract.balanceOf(McFundAddr)).div(2)],
     [BigNumber.from(0)] // 0 fees set in deploy
   );

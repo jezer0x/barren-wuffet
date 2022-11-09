@@ -24,10 +24,10 @@ const config = {
           hardhat: {
             forking: {
               // url: `https://goerli.infura.io/v3/${process.env.INFURA_API_KEY_GOERLI}`,
-              // blockNumber: 7896691,
+              // blockNumber: 7900766,
               url: `https://arb-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY_ARBI}`,
               blockNumber: 20005467, // using a pre-nitro block
-              enabled: false
+              enabled: true
             }
           }
         }
