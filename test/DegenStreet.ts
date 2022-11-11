@@ -21,7 +21,7 @@ const MAX_COLLATERAL_PER_SUB = BigNumber.from(100).mul(ERC20_DECIMALS);
 const MIN_COLLATERAL_TOTAL = BigNumber.from(200).mul(ERC20_DECIMALS);
 const MAX_COLLATERAL_TOTAL = BigNumber.from(500).mul(ERC20_DECIMALS);
 
-async function makeSubConstraints(): Promise<SubscriptionConstraintsStruct> {
+async function makeDefaultSubConstraints(): Promise<SubscriptionConstraintsStruct> {
   return {
     minCollateralPerSub: MIN_COLLATERAL_PER_SUB,
     maxCollateralPerSub: MAX_COLLATERAL_PER_SUB,
@@ -61,7 +61,7 @@ describe.skip("DegenStreet", () => {
       priceTrigger,
       uniSwapExactInputSingle,
       testToken1,
-      await makeSubConstraints(),
+      await makeDefaultSubConstraints(),
       degenStreet,
       traderWallet
     );
@@ -99,7 +99,7 @@ describe.skip("DegenStreet", () => {
       );
       const passingTrigger = makePassingTrigger(priceTrigger.address);
       const executableAction = makeSwapAction(uniSwapExactInputSingle.address, testToken1.address, ETH_ADDRESS);
-      const properContraints = await makeSubConstraints();
+      const properContraints = await makeDefaultSubConstraints();
 
       await expect(
         await degenStreet
@@ -114,7 +114,7 @@ describe.skip("DegenStreet", () => {
       );
       const passingTrigger = makePassingTrigger(priceTrigger.address);
       const executableAction = makeSwapAction(uniSwapExactInputSingle.address, testToken1.address, ETH_ADDRESS);
-      const properContraints = await makeSubConstraints();
+      const properContraints = await makeDefaultSubConstraints();
 
       await network.provider.send("evm_setAutomine", [false]);
       const tx1 = await await degenStreet
@@ -147,7 +147,7 @@ describe.skip("DegenStreet", () => {
       );
       const passingTrigger = makePassingTrigger(priceTrigger.address);
       const executableAction = makeSwapAction(uniSwapExactInputSingle.address, testToken1.address, ETH_ADDRESS);
-      const properContraints = await makeSubConstraints();
+      const properContraints = await makeDefaultSubConstraints();
 
       await expect(
         await degenStreet

@@ -13,26 +13,13 @@ import {
 import { getAddressFromEvent } from "../helper";
 import { abi as FACTORY_ABI } from "@134dd3v/uniswap-v3-core-0.8-support/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json";
 import { abi as POOL_ABI } from "@134dd3v/uniswap-v3-core-0.8-support/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json";
-
-async function makeSubConstraints() {
-  const latestTime = await time.latest();
-  return {
-    minCollateralPerSub: BigNumber.from(10).mul(ERC20_DECIMALS),
-    maxCollateralPerSub: BigNumber.from(100).mul(ERC20_DECIMALS),
-    minCollateralTotal: BigNumber.from(10).mul(ERC20_DECIMALS),
-    maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
-    deadline: latestTime + 86400,
-    lockin: latestTime + 86400 * 10,
-    allowedDepositToken: ETH_TOKEN,
-    onlyWhitelistedInvestors: false
-  };
-}
+import { makeDefaultSubConstraints } from "../Fixtures";
 
 async function main() {
   const protocolAddresses: any = await getProtocolAddresses("31337", true);
   const BW = await ethers.getContract("BarrenWuffet");
   const McFundAddr = await getAddressFromEvent(
-    BW.createFund("marlieChungerFund", await makeSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []),
+    BW.createFund("marlieChungerFund", await makeDefaultSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []),
     "Created",
     BW.address,
     1
@@ -40,7 +27,7 @@ async function main() {
 
   const McFund = await ethers.getContractAt("Fund", McFundAddr);
 
-  await McFund.deposit(ETH_TOKEN, BigNumber.from(11).mul(ERC20_DECIMALS), {
+  await McFund.deposit(ETH_TOKEN, BigNumber.from(21).mul(ERC20_DECIMALS), {
     value: BigNumber.from(11).mul(ERC20_DECIMALS)
   });
 

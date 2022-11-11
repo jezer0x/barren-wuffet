@@ -12,12 +12,14 @@ import {
   ETH_PRICE_IN_TST1,
   ETH_ADDRESS,
   PRICE_TRIGGER_TYPE,
+  TIMESTAMP_TRIGGER_TYPE,
   DEFAULT_SUB_TO_MAN_FEE_PCT,
   ETH_TOKEN,
   TOKEN_TYPE
 } from "./Constants";
 import { getAddressFromEvent, getHashFromEvent, tx } from "./helper";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { Address } from "hardhat-deploy/types";
 
 export async function setupTestTokens() {
   return {
@@ -35,6 +37,15 @@ export function makePassingTrigger(triggerContract: string, testToken1: Contract
     ),
     triggerType: PRICE_TRIGGER_TYPE,
     callee: triggerContract
+  };
+}
+
+export async function makeTrueTrigger(): Promise<TriggerStruct> {
+  // will fail if TimestampTrigger is not deployed
+  return {
+    createTimeParams: utils.defaultAbiCoder.encode(["uint8", "uint256"], [GT, (await time.latest()) - 1]),
+    triggerType: TIMESTAMP_TRIGGER_TYPE,
+    callee: (await ethers.getContract("TimestampTrigger")).address
   };
 }
 
@@ -70,12 +81,12 @@ export function makeSwapAction(
   };
 }
 
-async function makeSubConstraints() {
+export async function makeDefaultSubConstraints() {
   const latestTime = await time.latest();
   return {
     minCollateralPerSub: BigNumber.from(10).mul(ERC20_DECIMALS),
     maxCollateralPerSub: BigNumber.from(100).mul(ERC20_DECIMALS),
-    minCollateralTotal: BigNumber.from(200).mul(ERC20_DECIMALS),
+    minCollateralTotal: BigNumber.from(20).mul(ERC20_DECIMALS),
     maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
     deadline: latestTime + 86400,
     lockin: latestTime + 86400 * 10,
@@ -293,7 +304,12 @@ export async function setupBarrenWuffet({ getNamedAccounts, ethers }: HardhatRun
   } = await setupSwapActions(priceTrigger, uniSwapExactInputSingle, testToken1);
 
   const marlieChungerFundAddr = await getAddressFromEvent(
-    barrenWuffetMarlie.createFund("marlieChungerFund", await makeSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []),
+    barrenWuffetMarlie.createFund(
+      "marlieChungerFund",
+      await makeDefaultSubConstraints(),
+      DEFAULT_SUB_TO_MAN_FEE_PCT,
+      []
+    ),
     "Created",
     barrenWuffetMarlie.address
   );
@@ -302,7 +318,7 @@ export async function setupBarrenWuffet({ getNamedAccounts, ethers }: HardhatRun
 
   const barrenWuffetFairy = await ethers.getContract("BarrenWuffet", fairyLink);
   const fairyLinkFundAddr = await getAddressFromEvent(
-    barrenWuffetFairy.createFund("fairyLinkFund", await makeSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []),
+    barrenWuffetFairy.createFund("fairyLinkFund", await makeDefaultSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []),
     "Created",
     barrenWuffetFairy.address
   );

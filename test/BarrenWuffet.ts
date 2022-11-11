@@ -3,7 +3,7 @@ import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect, use as chai_use, should as chai_should } from "chai";
 import { ethers, deployments, getNamedAccounts } from "hardhat";
 import { BigNumber, utils } from "ethers";
-import { makeFailingTrigger, makePassingTrigger, setupBarrenWuffet } from "./Fixtures";
+import { makeFailingTrigger, makePassingTrigger, setupBarrenWuffet, makeDefaultSubConstraints } from "./Fixtures";
 import {
   BAD_FUND_HASH,
   ETH_ADDRESS,
@@ -33,20 +33,6 @@ chai_use(smock.matchers);
 
 const ERC20_DECIMALS = BigNumber.from(10).pow(18);
 
-async function makeSubConstraints() {
-  const latestTime = await time.latest();
-  return {
-    minCollateralPerSub: BigNumber.from(10).mul(ERC20_DECIMALS),
-    maxCollateralPerSub: BigNumber.from(100).mul(ERC20_DECIMALS),
-    minCollateralTotal: BigNumber.from(200).mul(ERC20_DECIMALS),
-    maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
-    deadline: latestTime + 86400,
-    lockin: latestTime + 86400 * 10,
-    allowedDepositToken: ETH_TOKEN,
-    onlyWhitelistedInvestors: false
-  };
-}
-
 describe("BarrenWuffet", () => {
   const deployBarrenWuffetFixture = deployments.createFixture(async hre => {
     await deployments.fixture(["BarrenWuffet"]);
@@ -56,7 +42,7 @@ describe("BarrenWuffet", () => {
   describe("Fund FundStatus: Uninitialized", () => {
     it("should allow anyone to create a fund and emit Created event with the fund hash", async () => {
       const { barrenWuffetMarlie } = await deployBarrenWuffetFixture();
-      const validConstraints = await makeSubConstraints();
+      const validConstraints = await makeDefaultSubConstraints();
       await expect(barrenWuffetMarlie.createFund("Fund1", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []))
         .to.emit(barrenWuffetMarlie, "Created")
         .withArgs(anyValue, anyValue, "Fund1");
@@ -75,7 +61,7 @@ describe("BarrenWuffet", () => {
 
     it("should allow if the same user creates 2 funds with the same name", async () => {
       const { barrenWuffetMarlie } = await deployBarrenWuffetFixture();
-      const validConstraints = await makeSubConstraints();
+      const validConstraints = await makeDefaultSubConstraints();
       await barrenWuffetMarlie.createFund("Fund1", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []);
       await expect(barrenWuffetMarlie.createFund("Fund1", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []))
         .to.emit(barrenWuffetMarlie, "Created")
@@ -84,7 +70,7 @@ describe("BarrenWuffet", () => {
 
     it("should allow the same user to create 2 funds with different names", async () => {
       const { barrenWuffetMarlie } = await deployBarrenWuffetFixture();
-      const validConstraints = await makeSubConstraints();
+      const validConstraints = await makeDefaultSubConstraints();
       await barrenWuffetMarlie.createFund("Jerkshire", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []);
       await expect(barrenWuffetMarlie.createFund("Clerkshire", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []))
         .to.emit(barrenWuffetMarlie, "Created")
@@ -93,7 +79,7 @@ describe("BarrenWuffet", () => {
 
     it("should allow 2 different users to create funds with the same name", async () => {
       const { barrenWuffet, barrenWuffetMarlie, barrenWuffetFairy } = await deployBarrenWuffetFixture();
-      const validConstraints = await makeSubConstraints();
+      const validConstraints = await makeDefaultSubConstraints();
       await barrenWuffetMarlie.createFund("Jerkshire", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []);
       await expect(barrenWuffetFairy.createFund("Jerkshire", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []))
         .to.emit(barrenWuffet, "Created")
@@ -107,7 +93,7 @@ describe("BarrenWuffet", () => {
       // As this functionality is extended, this test needs to expand
       const { barrenWuffet, barrenWuffetMarlie } = await deployBarrenWuffetFixture();
       const { marlieChunger } = await getNamedAccounts();
-      const validConstraints = await makeSubConstraints();
+      const validConstraints = await makeDefaultSubConstraints();
       let fundAddr;
       await expect(barrenWuffetMarlie.createFund("Jerkshire", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []))
         .to.emit(barrenWuffet, "Created")
@@ -131,7 +117,7 @@ describe("BarrenWuffet", () => {
       // This is as yet unimplemented, so the function should revert.
 
       const { barrenWuffet, barrenWuffetMarlie } = await deployBarrenWuffetFixture();
-      const validConstraints = await makeSubConstraints();
+      const validConstraints = await makeDefaultSubConstraints();
       const { marlieChunger } = await getNamedAccounts();
       let fundAddr;
       await expect(barrenWuffetMarlie.createFund("Jerkshire", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []))
