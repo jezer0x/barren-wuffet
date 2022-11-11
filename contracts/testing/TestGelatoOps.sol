@@ -5,15 +5,15 @@ import "../bot/libraries/LibDataTypes.sol";
 
 contract TestGelatoOps {
     function createTask(
-        address execAddress,
-        bytes calldata execData,
-        LibDataTypes.ModuleData calldata moduleData,
-        address feeToken
-    ) external returns (bytes32 task) {
+        address,
+        bytes calldata,
+        LibDataTypes.ModuleData calldata,
+        address
+    ) external pure returns (bytes32 task) {
         return "";
     }
 
-    function cancelTask(bytes32 _taskId) external {
+    function cancelTask(bytes32) external pure {
         return;
     }
 

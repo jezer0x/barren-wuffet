@@ -82,7 +82,7 @@ export async function getProtocolAddresses(chainID: string, forking: boolean | u
   if (chainID == "31337" && forking) {
     return arbitrum; // we'll be always forking mainnet arbitrum
   } else if (chainID == "31337" && !forking) {
-    return await getLocalnetworkAddressesForTests(); // running tests mayhaps
+    return await getLocalNetworkAddressesForTests(); // running tests mayhaps
   } else if (chainID == "42161") {
     return arbitrum;
   } else if (chainID == "5") {
@@ -90,7 +90,7 @@ export async function getProtocolAddresses(chainID: string, forking: boolean | u
   }
 }
 
-async function getLocalnetworkAddressesForTests() {
+async function getLocalNetworkAddressesForTests() {
   return {
     tokens: {
       WETH: (await ethers.getContract("WETH")).address
