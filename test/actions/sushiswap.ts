@@ -1,52 +1,28 @@
 import { expect } from "chai";
-import { makeDefaultSubConstraints, makeTrueTrigger } from "../Fixtures";
-import { ETH_TOKEN, TOKEN_TYPE, DEFAULT_SUB_TO_MAN_FEE_PCT } from "../Constants";
-import { getAddressFromEvent } from "../helper";
+import { makeTrueTrigger } from "../Fixtures";
+import { ETH_TOKEN, TOKEN_TYPE } from "../Constants";
 import { config, ethers, getNamedAccounts, deployments } from "hardhat";
-import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { Contract, BigNumber } from "ethers";
-import { getProtocolAddresses } from "../../deploy/protocol_addresses";
 import {
   IERC20Metadata__factory,
   IUniswapV2Factory__factory,
   IUniswapV2Router02__factory
 } from "../../typechain-types";
-import { createSushiSwapAction, calculateMinOutPerInForSwap, getTokenOutPerTokenIn } from "./sushi_utils";
+import { createSushiSwapAction, calculateMinOutPerInForSwap, getTokenOutPerTokenIn } from "./sushiUtils";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { setupEnvForActionTests } from "./forkFixtures";
 
 async function setupEnvForSushiTests({ ethers }: HardhatRuntimeEnvironment) {
-  const protocolAddresses: any = await getProtocolAddresses("31337", true);
-  const BW = await ethers.getContract("BarrenWuffet");
-  const dai_contract = new Contract(protocolAddresses.tokens.DAI, IERC20Metadata__factory.abi, ethers.provider);
-  const DAI_TOKEN = { t: TOKEN_TYPE.ERC20, addr: protocolAddresses.tokens.DAI, id: BigNumber.from(0) };
-
-  const McFundAddr = await getAddressFromEvent(
-    BW.createFund("marlieChungerFund", await makeDefaultSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []),
-    "Created",
-    BW.address,
-    1
-  );
-
-  const McFund: Contract = await ethers.getContractAt("Fund", McFundAddr);
-  await McFund.deposit(ETH_TOKEN, ethers.utils.parseEther("21"), {
-    value: ethers.utils.parseEther("21")
-  });
-
-  // increase to beyond deadline so we can start taking actions
-  await time.increaseTo((await time.latest()) + 86400);
-
-  const trueTrigger = await makeTrueTrigger();
   const sushiSwapExactXForY = await ethers.getContract("SushiSwapExactXForY");
   const sushiAddLiquidity = await ethers.getContract("SushiAddLiquidity");
-
+  const { protocolAddresses, DAI_TOKEN, dai_contract, McFund } = await setupEnvForActionTests(ethers);
   return {
+    sushiSwapExactXForY,
+    sushiAddLiquidity,
     protocolAddresses,
     DAI_TOKEN,
     dai_contract,
-    McFund,
-    sushiSwapExactXForY,
-    sushiAddLiquidity,
-    trueTrigger
+    McFund
   };
 }
 
@@ -61,14 +37,7 @@ describe("Sushiswap", () => {
 
     describe("swap", () => {
       it("Should sell 2 ETH for DAI", async () => {
-        const {
-          protocolAddresses,
-          DAI_TOKEN,
-          trueTrigger,
-          McFund,
-          sushiSwapExactXForY,
-          dai_contract
-        } = await testPreReqs();
+        const { protocolAddresses, DAI_TOKEN, McFund, sushiSwapExactXForY, dai_contract } = await testPreReqs();
 
         const daiPerETH = parseFloat(
           ethers.utils.formatUnits(
@@ -84,7 +53,7 @@ describe("Sushiswap", () => {
 
         await expect(
           McFund.takeAction(
-            trueTrigger,
+            await makeTrueTrigger(),
             createSushiSwapAction(
               sushiSwapExactXForY.address,
               ETH_TOKEN,
@@ -103,14 +72,7 @@ describe("Sushiswap", () => {
       });
 
       it("Should sell DAI balance for almost all ETH back", async () => {
-        const {
-          protocolAddresses,
-          DAI_TOKEN,
-          trueTrigger,
-          McFund,
-          sushiSwapExactXForY,
-          dai_contract
-        } = await testPreReqs();
+        const { protocolAddresses, DAI_TOKEN, McFund, sushiSwapExactXForY, dai_contract } = await testPreReqs();
 
         // Get some DAI first
         const daiPerETH = parseFloat(
@@ -126,7 +88,7 @@ describe("Sushiswap", () => {
         );
 
         await McFund.takeAction(
-          trueTrigger,
+          await makeTrueTrigger(),
           createSushiSwapAction(
             sushiSwapExactXForY.address,
             ETH_TOKEN,
@@ -144,7 +106,7 @@ describe("Sushiswap", () => {
 
         await expect(
           McFund.takeAction(
-            trueTrigger,
+            await makeTrueTrigger(),
             createSushiSwapAction(
               sushiSwapExactXForY.address,
               DAI_TOKEN,
@@ -164,10 +126,10 @@ describe("Sushiswap", () => {
       });
 
       it("Should revert if wrong path is given", async () => {
-        const { protocolAddresses, DAI_TOKEN, trueTrigger, McFund, sushiSwapExactXForY } = await testPreReqs();
+        const { protocolAddresses, DAI_TOKEN, McFund, sushiSwapExactXForY } = await testPreReqs();
         await expect(
           McFund.takeAction(
-            trueTrigger,
+            await makeTrueTrigger(),
             {
               callee: sushiSwapExactXForY.address,
               data: ethers.utils.defaultAbiCoder.encode(
@@ -189,7 +151,6 @@ describe("Sushiswap", () => {
         const {
           protocolAddresses,
           DAI_TOKEN,
-          trueTrigger,
           McFund,
           dai_contract,
           sushiAddLiquidity,
@@ -210,7 +171,7 @@ describe("Sushiswap", () => {
         );
 
         await McFund.takeAction(
-          trueTrigger,
+          await makeTrueTrigger(),
           createSushiSwapAction(
             sushiSwapExactXForY.address,
             ETH_TOKEN,
@@ -245,7 +206,7 @@ describe("Sushiswap", () => {
 
         await expect(
           McFund.takeAction(
-            trueTrigger,
+            await makeTrueTrigger(),
             {
               callee: sushiAddLiquidity.address,
               data: "0x",
