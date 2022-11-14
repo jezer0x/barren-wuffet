@@ -1,16 +1,16 @@
 import { expect } from "chai";
-import { makeTrueTrigger } from "../Fixtures";
-import { ETH_TOKEN, TOKEN_TYPE } from "../Constants";
+import { makeTrueTrigger } from "../../Fixtures";
+import { ETH_TOKEN, TOKEN_TYPE } from "../../Constants";
 import { config, ethers, getNamedAccounts, deployments } from "hardhat";
 import { Contract, BigNumber } from "ethers";
 import {
   IERC20Metadata__factory,
   IUniswapV2Factory__factory,
   IUniswapV2Router02__factory
-} from "../../typechain-types";
+} from "../../../typechain-types";
 import { createSushiSwapAction, calculateMinOutPerInForSwap, getTokenOutPerTokenIn } from "./sushiUtils";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { setupEnvForActionTests } from "./forkFixtures";
+import { setupEnvForActionTests } from "../forkFixtures";
 
 async function setupEnvForSushiTests({ ethers }: HardhatRuntimeEnvironment) {
   const sushiSwapExactXForY = await ethers.getContract("SushiSwapExactXForY");

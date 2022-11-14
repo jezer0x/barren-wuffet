@@ -1,10 +1,10 @@
-import { ETH_TOKEN } from "../Constants";
+import { ETH_TOKEN } from "../../Constants";
 import { ethers } from "hardhat";
 import { Contract, BigNumber, FixedNumber } from "ethers";
-import { IERC20Metadata__factory, IUniswapV2Router02__factory } from "../../typechain-types";
+import { IERC20Metadata__factory, IUniswapV2Router02__factory } from "../../../typechain-types";
 import { Address } from "hardhat-deploy/types";
-import { TokenStruct } from "../../typechain-types/contracts/utils/subscriptions/Subscriptions";
-import { ActionStruct } from "../../typechain-types/contracts/actions/IAction";
+import { TokenStruct } from "../../../typechain-types/contracts/utils/subscriptions/Subscriptions";
+import { ActionStruct } from "../../../typechain-types/contracts/actions/IAction";
 
 export async function calculateMinOutPerInForSwap(
   tokenIn: TokenStruct,
