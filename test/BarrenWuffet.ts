@@ -329,14 +329,14 @@ describe("BarrenWuffet", () => {
     it("should not allow withdrawing if there have not been any deposits from this user", async () => {
       const { jerkshireFund } = await raisingFundsFixture();
       await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
-      await expect(jerkshireFund.subscriber2.withdraw()).to.be.rejectedWith("!AS");
+      await expect(jerkshireFund.subscriber2.withdraw()).to.be.rejectedWith("F: !ActiveSubscriber");
     });
 
     it("should allow only the fund manager to close a Raising fund, and the subscriber to withdraw funds", async () => {
       const { barrenWuffet, jerkshireFund, crackBlockFund } = await raisingFundsFixture();
       // add some funds so we can confirm that even a fund with funds can be closed
       await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
-      await expect(jerkshireFund.fairyLink.closeFund()).to.be.revertedWith("OFM");
+      await expect(jerkshireFund.fairyLink.closeFund()).to.be.revertedWith("F: Only Fund Manager");
       const { fundSubscriber, marlieChunger } = await getNamedAccounts();
       await expect(jerkshireFund.marlieChunger.closeFund())
         .to.changeEtherBalances([marlieChunger, barrenWuffet], [0, 0])
@@ -348,7 +348,7 @@ describe("BarrenWuffet", () => {
         .withArgs(fundSubscriber, ETH_ADDRESS, validDeposit);
 
       // this is a clean fund
-      await expect(crackBlockFund.marlieChunger.closeFund()).to.be.revertedWith("OFM");
+      await expect(crackBlockFund.marlieChunger.closeFund()).to.be.revertedWith("F: Only Fund Manager");
       await expect(crackBlockFund.fairyLink.closeFund()).to.emit(crackBlockFund.fairyLink, "Closed");
     });
 
@@ -360,12 +360,12 @@ describe("BarrenWuffet", () => {
           [makePassingTrigger(priceTrigger.address, testToken1)],
           [swapETHToTST1Action]
         )
-      ).be.revertedWith("WS");
+      ).be.revertedWith("F: Wrong State");
     });
     it("should revert if ManagementFee withdrawal is attempted on a raising fund", async () => {
       const { jerkshireFund } = await raisingFundsFixture();
       await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
-      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("WS");
+      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("F: Wrong State");
     });
 
     it.skip("should return fund status as DEPLOYED once the fund is created, deadline has been hit (min collateral has to be met)", async () => {
@@ -470,7 +470,7 @@ describe("BarrenWuffet", () => {
       );
 
       await expect(jerkshireFund.subscriber.deposit(ETH_TOKEN, depositAmt, { value: depositAmt })).to.be.revertedWith(
-        "WS"
+        "F: Wrong State"
       );
     });
 
@@ -483,7 +483,7 @@ describe("BarrenWuffet", () => {
     it("should revert if ManagementFee withdrawal is attempted on a deployed fund", async () => {
       const { jerkshireFund } = await deployedFundsFixture();
 
-      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("WS");
+      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("F: Wrong State");
     });
 
     describe("Manage rules", () => {

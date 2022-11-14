@@ -71,7 +71,7 @@ contract CurveSwap is IAction, DelegatePerform {
         returns (ActionResponse memory)
     {
         uint256[] memory outputs = new uint256[](1);
-        (address poolAddr, uint256 minAmountOfYPerX) = abi.decode(action.data, (address, uint256));
+        (address poolAddr, uint256 minYPerX) = abi.decode(action.data, (address, uint256));
         ISwapper swapper = ISwapper(_getSwapper());
 
         action.inputTokens[0].approve(address(swapper), runtimeParams.collaterals[0]);
@@ -80,7 +80,7 @@ contract CurveSwap is IAction, DelegatePerform {
             action.inputTokens[0].addr,
             action.outputTokens[0].addr,
             runtimeParams.collaterals[0],
-            (minAmountOfYPerX * runtimeParams.collaterals[0]) / 10**18,
+            (minYPerX * runtimeParams.collaterals[0]) / 10**18,
             address(this)
         );
         action.inputTokens[0].approve(address(swapper), 0);

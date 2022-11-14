@@ -1,14 +1,16 @@
 import { expect } from "chai";
 import { makeTrueTrigger } from "../../Fixtures";
-import { ETH_TOKEN, TOKEN_TYPE } from "../../Constants";
+import { ETH_TOKEN } from "../../Constants";
 import { config, ethers, deployments } from "hardhat";
 import { Contract, BigNumber } from "ethers";
+import { IERC20Metadata__factory } from "../../../typechain-types";
 import {
-  IERC20Metadata__factory,
-  IUniswapV2Factory__factory,
-  IUniswapV2Router02__factory
-} from "../../../typechain-types";
-import { createSushiSwapAction, encodeMinOutPerInForSushiSwap, getTokenOutPerTokenIn } from "./sushiUtils";
+  createSushiAddLiquidityAction,
+  createSushiSwapAction,
+  encodeMinBPerA,
+  getSLPToken,
+  getTokenOutPerTokenIn
+} from "./sushiUtils";
 import { setupEnvForSushiTests } from "../forkFixtures";
 
 describe("Sushiswap", () => {
@@ -43,7 +45,7 @@ describe("Sushiswap", () => {
               sushiSwapExactXForY.address,
               ETH_TOKEN,
               DAI_TOKEN,
-              await encodeMinOutPerInForSushiSwap(ETH_TOKEN, DAI_TOKEN, daiPerETH * 0.97), // some slippage tolerance
+              await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * 0.97), // some slippage tolerance
               protocolAddresses.tokens.WETH
             ),
             [ethers.utils.parseEther(String(2))],
@@ -66,7 +68,7 @@ describe("Sushiswap", () => {
               sushiSwapExactXForY.address,
               DAI_TOKEN,
               ETH_TOKEN,
-              await encodeMinOutPerInForSushiSwap(DAI_TOKEN, ETH_TOKEN, (1.0 / daiPerETH) * 0.97),
+              await encodeMinBPerA(DAI_TOKEN, ETH_TOKEN, (1.0 / daiPerETH) * 0.97),
               protocolAddresses.tokens.WETH
             ),
             [dai_balance],
@@ -131,52 +133,43 @@ describe("Sushiswap", () => {
             sushiSwapExactXForY.address,
             ETH_TOKEN,
             DAI_TOKEN,
-            await encodeMinOutPerInForSushiSwap(ETH_TOKEN, DAI_TOKEN, daiPerETH * 0.97), // some slippage tolerance
+            await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * 0.97), // some slippage tolerance
             protocolAddresses.tokens.WETH
           ),
           [ethers.utils.parseEther(String(2))],
           [BigNumber.from(0)] // 0 fees set in deploy
         );
 
-        const sushiSwapRouter = new Contract(
-          protocolAddresses.sushiswap.swap_router,
-          IUniswapV2Router02__factory.abi,
-          ethers.provider
-        );
-
-        const sushiSwapFactory = new Contract(
-          await sushiSwapRouter.factory(),
-          IUniswapV2Factory__factory.abi,
-          ethers.provider
-        );
-
-        const dai_weth_slp_addr = await sushiSwapFactory.getPair(protocolAddresses.tokens.WETH, DAI_TOKEN.addr);
-
-        const DAI_WETH_SLP_TOKEN = {
-          t: TOKEN_TYPE.ERC20,
-          addr: dai_weth_slp_addr,
-          id: BigNumber.from(0)
-        };
         const balance_dai = await dai_contract.balanceOf(McFund.address);
 
         await expect(
           McFund.takeAction(
             await makeTrueTrigger(),
-            {
-              callee: sushiAddLiquidity.address,
-              data: "0x",
-              inputTokens: [DAI_TOKEN, ETH_TOKEN],
-              outputTokens: [DAI_TOKEN, ETH_TOKEN, DAI_WETH_SLP_TOKEN]
-            },
-            [balance_dai, ethers.utils.parseEther("2")],
+            await createSushiAddLiquidityAction(
+              sushiAddLiquidity.address,
+              protocolAddresses.sushiswap.swap_router,
+              ETH_TOKEN,
+              DAI_TOKEN,
+              await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * 0.97), // some slippage tolerance
+              await encodeMinBPerA(DAI_TOKEN, ETH_TOKEN, (1.0 / daiPerETH) * 0.97), // some slippage tolerance
+              protocolAddresses.tokens.WETH
+            ),
+            [ethers.utils.parseEther("2"), balance_dai],
             [BigNumber.from(0), BigNumber.from(0)] // 0 fees set in deploy
           )
         ) // TODO: following 2 lines might fail because not all of both tokens used up in LP, need some tolerance
           .to.changeEtherBalance(McFund.address, ethers.utils.parseEther(String(-2)))
           .to.changeTokenBalance(dai_contract, McFund.address, balance_dai.mul(-1));
 
+        const dai_weth_slp_token = await getSLPToken(
+          protocolAddresses.sushiswap.swap_router,
+          protocolAddresses.tokens.WETH,
+          ETH_TOKEN,
+          DAI_TOKEN
+        );
+
         expect(
-          (await new Contract(dai_weth_slp_addr, IERC20Metadata__factory.abi, ethers.provider).balanceOf(
+          (await new Contract(dai_weth_slp_token.addr, IERC20Metadata__factory.abi, ethers.provider).balanceOf(
             McFund.address
           )) > 0
         );

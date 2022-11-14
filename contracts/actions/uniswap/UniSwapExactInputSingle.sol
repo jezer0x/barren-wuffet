@@ -31,7 +31,7 @@ contract UniSwapExactInputSingle is IAction, DelegatePerform {
 
     function validate(Action calldata action) external view returns (bool) {
         SimpleSwapUtils._validate(action);
-        (uint24 fee, uint256 minAmountOfYPerX) = abi.decode(action.data, (uint24, uint256));
+        (uint24 fee, uint256 minYPerX) = abi.decode(action.data, (uint24, uint256));
         return true;
     }
 
@@ -62,7 +62,7 @@ contract UniSwapExactInputSingle is IAction, DelegatePerform {
             inputToken.approve(address(swapRouter), runtimeParams.collaterals[0]);
             ethCollateral = 0;
         }
-        (uint24 fee, uint256 minAmountOfYPerX) = abi.decode(action.data, (uint24, uint256)); 
+        (uint24 fee, uint256 minYPerX) = abi.decode(action.data, (uint24, uint256)); 
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
             tokenIn: inputToken.addr,
             tokenOut: outputToken.addr,
@@ -70,7 +70,7 @@ contract UniSwapExactInputSingle is IAction, DelegatePerform {
             recipient: address(this),
             deadline: block.timestamp, // need to do an immediate swap
             amountIn: runtimeParams.collaterals[0],
-            amountOutMinimum: (minAmountOfYPerX * runtimeParams.collaterals[0]) / 10**18,
+            amountOutMinimum: (minYPerX * runtimeParams.collaterals[0]) / 10**18,
             sqrtPriceLimitX96: 0
         });
 

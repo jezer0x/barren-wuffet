@@ -42,7 +42,7 @@ contract UniMintLiquidityPosition is IAction, DelegatePerform {
         require(action.outputTokens.length == 3);
 
         // TODO: tl and tu might need to be taken at the point of perform instead.
-        (uint24 fee, int24 tl, int24 tu, uint256 minAmountOfYPerX) = abi.decode(action.data, (uint24, int24, int24, uint256));
+        (uint24 fee, int24 tl, int24 tu, uint256 minYPerX, uint256 minXPerY) = abi.decode(action.data, (uint24, int24, int24, uint256, uint256));
         return true;
     }
 
@@ -83,13 +83,13 @@ contract UniMintLiquidityPosition is IAction, DelegatePerform {
 
         // block scoping because stack too deep
         {
-            (uint24 fee, int24 tl, int24 tu, uint256 minAmountOfYPerX) = abi.decode(action.data, (uint24, int24, int24, uint256));
+            (uint24 fee, int24 tl, int24 tu, uint256 minYPerX, uint256 minXPerY) = abi.decode(action.data, (uint24, int24, int24, uint256, uint256));
             uint256 amount0Min;
             uint256 amount1Min;
 
             {
-                amount0Min = (minAmountOfYPerX * runtimeParams.collaterals[0]) / 10**18; 
-                amount1Min = (runtimeParams.collaterals[1] / minAmountOfYPerX) / 10**18; 
+                amount0Min = (minXPerY * runtimeParams.collaterals[1]) / 10**18; 
+                amount1Min = (minYPerX * runtimeParams.collaterals[0]) / 10**18; 
             }
 
             {

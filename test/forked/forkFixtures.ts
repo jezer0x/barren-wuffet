@@ -21,7 +21,7 @@ export async function setupEnvForActionTests(ethers: HardhatRuntimeEnvironment["
   );
 
   const McFund: Contract = await ethers.getContractAt("Fund", McFundAddr);
-  const McFundRobocop: Contract = await ethers.getContractAt("RoboCop", await McFund.robocop());
+  const McFundRoboCop: Contract = await ethers.getContractAt("RoboCop", await McFund.roboCop());
 
   await McFund.deposit(ETH_TOKEN, ethers.utils.parseEther("21"), {
     value: ethers.utils.parseEther("21")
@@ -35,14 +35,14 @@ export async function setupEnvForActionTests(ethers: HardhatRuntimeEnvironment["
     DAI_TOKEN,
     dai_contract,
     McFund,
-    McFundRobocop
+    McFundRoboCop
   };
 }
 
 export async function setupEnvForSushiTests({ ethers }: HardhatRuntimeEnvironment) {
   const sushiSwapExactXForY = await ethers.getContract("SushiSwapExactXForY");
   const sushiAddLiquidity = await ethers.getContract("SushiAddLiquidity");
-  const { protocolAddresses, DAI_TOKEN, dai_contract, McFund, McFundRobocop } = await setupEnvForActionTests(ethers);
+  const { protocolAddresses, DAI_TOKEN, dai_contract, McFund, McFundRoboCop } = await setupEnvForActionTests(ethers);
   return {
     sushiSwapExactXForY,
     sushiAddLiquidity,
@@ -50,14 +50,14 @@ export async function setupEnvForSushiTests({ ethers }: HardhatRuntimeEnvironmen
     DAI_TOKEN,
     dai_contract,
     McFund,
-    McFundRobocop
+    McFundRoboCop
   };
 }
 
 export async function setupEnvForUniTests({ ethers }: HardhatRuntimeEnvironment) {
   const swapUniAction = await ethers.getContract("UniSwapExactInputSingle");
   const mintLPAction = await ethers.getContract("UniMintLiquidityPosition");
-  const { protocolAddresses, DAI_TOKEN, dai_contract, McFund, McFundRobocop } = await setupEnvForActionTests(ethers);
+  const { protocolAddresses, DAI_TOKEN, dai_contract, McFund, McFundRoboCop } = await setupEnvForActionTests(ethers);
   return {
     swapUniAction,
     mintLPAction,
@@ -65,6 +65,6 @@ export async function setupEnvForUniTests({ ethers }: HardhatRuntimeEnvironment)
     DAI_TOKEN,
     dai_contract,
     McFund,
-    McFundRobocop
+    McFundRoboCop
   };
 }

@@ -9,7 +9,7 @@ import "../../utils/assets/TokenLib.sol";
 import "../DelegatePerform.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../SimpleSwapUtils.sol";
+import "../SimpleSwapUtils.sol"; 
 
 /*
     Reference: 
@@ -66,7 +66,7 @@ contract SushiAddLiquidity is IAction, DelegatePerform {
             ethIdx = 1;
         }
 
-        uint256 minAmountOfYPerX = abi.decode(action.data, (uint256));
+        (uint256 minYPerX, uint256 minXPerY) = abi.decode(action.data, (uint256, uint256));
         if (ethIdx >= 0) {
             uint256 tokenIdx = 1 - uint256(ethIdx);
 
@@ -77,8 +77,8 @@ contract SushiAddLiquidity is IAction, DelegatePerform {
             }(
                 action.inputTokens[tokenIdx].addr,
                 runtimeParams.collaterals[tokenIdx],
-                (minAmountOfYPerX * runtimeParams.collaterals[0]) / 10**18,
-                (runtimeParams.collaterals[1] / minAmountOfYPerX) / 10**18,
+                (minXPerY * runtimeParams.collaterals[1]) / 10**18,
+                (minYPerX * runtimeParams.collaterals[0]) / 10**18,
                 address(this),
                 block.timestamp
             );
@@ -95,8 +95,8 @@ contract SushiAddLiquidity is IAction, DelegatePerform {
                 action.inputTokens[1].addr,
                 runtimeParams.collaterals[0],
                 runtimeParams.collaterals[1],
-                (minAmountOfYPerX * runtimeParams.collaterals[0]) / 10**18,
-                (runtimeParams.collaterals[1] / minAmountOfYPerX) / 10**18,
+                (minXPerY * runtimeParams.collaterals[1]) / 10**18,
+                (minYPerX * runtimeParams.collaterals[0]) / 10**18,
                 address(this),
                 block.timestamp
             );

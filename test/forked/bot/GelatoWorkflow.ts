@@ -6,7 +6,7 @@ import { ERC20_DECIMALS, ETH_TOKEN, ETH_ADDRESS } from "../../Constants";
 import { getHashFromEvent } from "../../helper";
 import { IOps__factory } from "../../../typechain-types";
 import { makeTrueTrigger } from "../../Fixtures";
-import { encodeMinOutPerInForSushiSwap, createSushiSwapAction, getTokenOutPerTokenIn } from "../sushiswap/sushiUtils";
+import { encodeMinBPerA, createSushiSwapAction, getTokenOutPerTokenIn } from "../sushiswap/sushiUtils";
 import { setupEnvForSushiTests } from "../forkFixtures";
 
 describe("Gelato Bot", () => {
@@ -26,7 +26,7 @@ describe("Gelato Bot", () => {
           McFund,
           sushiSwapExactXForY,
           dai_contract,
-          McFundRobocop
+          McFundRoboCop
         } = await testPreReqs();
 
         const daiPerETH = parseFloat(
@@ -50,13 +50,13 @@ describe("Gelato Bot", () => {
                 sushiSwapExactXForY.address,
                 ETH_TOKEN,
                 DAI_TOKEN,
-                await encodeMinOutPerInForSushiSwap(ETH_TOKEN, DAI_TOKEN, daiPerETH * 0.97),
+                await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * 0.97),
                 protocolAddresses.tokens.WETH
               )
             ]
           ),
           "Created",
-          McFundRobocop,
+          McFundRoboCop,
           "ruleHash"
         );
 
@@ -67,7 +67,7 @@ describe("Gelato Bot", () => {
         const botFrontend = await ethers.getContract("BotFrontend");
         await botFrontend.deposit(ethers.utils.parseEther("0.1"), { value: ethers.utils.parseEther("0.1") });
 
-        const [canExec, execData] = await botFrontend.checker(McFundRobocop.address, ruleHash);
+        const [canExec, execData] = await botFrontend.checker(McFundRoboCop.address, ruleHash);
 
         if (!canExec) {
           throw "Something went wrong! canExec was false";
@@ -93,7 +93,7 @@ describe("Gelato Bot", () => {
                   [
                     botFrontend.address,
                     botFrontend.interface.encodeFunctionData("checker(address,bytes32)", [
-                      McFundRobocop.address,
+                      McFundRoboCop.address,
                       ruleHash
                     ])
                   ]
