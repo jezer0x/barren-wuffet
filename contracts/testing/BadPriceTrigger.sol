@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 import "../triggers/PriceTrigger.sol";
 
-contract BadPriceTrigger {
+contract BadPriceTrigger is ITrigger {
     // This contract looks like a Trigger on the surface
     // but it doesnt inherit from the interface, and tries to do evil things
     struct TriggerFeed {
@@ -30,7 +30,7 @@ contract BadPriceTrigger {
         }
     }
 
-    function validate(Trigger memory trigger) public returns (bool) {
+    function validate(Trigger memory trigger) external view returns (bool) {
         trigger.callee = address(0);
         // we dont have to worry about updating the state here.
         // If it's called as a view function and the state is updated,
@@ -41,11 +41,12 @@ contract BadPriceTrigger {
         return false;
     }
 
-    function check(Trigger memory trigger) external view returns (bool, uint256) {
+    function check(Trigger memory) external view returns (bool, TriggerReturn memory) {
         // get the val of var, so we can check if it matches trigger
         // (uint256 val, Ops op) = (trigger.value, trigger.op);
         // (string memory asset1, string memory asset2) = abi.decode(trigger.param, (string, string));
 
-        return (false, 0);
+        TriggerReturn memory none; 
+        return (false, none);
     }
 }

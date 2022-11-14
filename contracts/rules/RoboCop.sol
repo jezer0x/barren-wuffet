@@ -40,8 +40,8 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
         _disableInitializers();
     }
 
-    function initialize(address _newOwner, address botFrontendAddr) external nonReentrant initializer {
-        _transferOwnership(_newOwner);
+    function initialize(address newOwner, address botFrontendAddr) external nonReentrant initializer {
+        _transferOwnership(newOwner);
         botFrontend = IBotFrontend(botFrontendAddr);
     }
 
@@ -153,6 +153,10 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
             }
 
             if (tokens[i].isETH()) {
+                // slither warns about msg.value in a loop. 
+                // But ETH will be input token at most once in the list. 
+                // So this is safe
+                // slither-disable-next-line msg-value-loop
                 require(collateral == msg.value, "ETH: amount != msg.value");
             } else {
                 tokens[i].take(msg.sender, collateral);
@@ -176,7 +180,7 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
             amount = amounts[i];
             require(rule.collaterals[i] >= amount, "Not enough collateral.");
             rule.collaterals[i] -= amount;
-            tokens[i].send(msg.sender, amount);
+            tokens[i].send(owner(), amount);
             tokensOnHold[keccak256(abi.encode(tokens[i]))] -= amount;
         }
         _setRule(ruleHash, rule);
@@ -311,7 +315,6 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
         bool positionCreated;
         bytes32 positionHash;
         (positionCreated, positionHash) = Utils._createPosition(
-            action,
             response.position.nextActions,
             pendingPositions,
             actionPositionsMap
