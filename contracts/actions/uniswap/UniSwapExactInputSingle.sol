@@ -31,7 +31,7 @@ contract UniSwapExactInputSingle is IAction, DelegatePerform {
 
     function validate(Action calldata action) external view returns (bool) {
         SimpleSwapUtils._validate(action);
-        (uint24, uint256) = abi.decode(action.data, (uint24, uint256));
+        (uint24 fee, uint256 minAmountOfYPerX) = abi.decode(action.data, (uint24, uint256));
         return true;
     }
 
