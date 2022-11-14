@@ -18,9 +18,8 @@ import "../SimpleSwapUtils.sol";
     Tokens: 
         Will only have 2 input tokens and 3 output tokens (2 token residues, LP token )
 
-    TriggerReturn: 
-        Applicable TriggerReturn must be in (asset1, asset2, val) where val.decimals = 8, asset1 = inputToken[0] and asset2 = inputToken[1]
-        If not present, trade is in danger of getting frontrun.
+    Action.data: 
+        - uint256: minimum amount of Y tokens per X accepted (18 decimals)
 */
 contract SushiAddLiquidity is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
@@ -67,6 +66,7 @@ contract SushiAddLiquidity is IAction, DelegatePerform {
             ethIdx = 1;
         }
 
+        uint256 minAmountOfYPerX = abi.decode(action.data, (uint256));
         if (ethIdx >= 0) {
             uint256 tokenIdx = 1 - uint256(ethIdx);
 
@@ -77,16 +77,8 @@ contract SushiAddLiquidity is IAction, DelegatePerform {
             }(
                 action.inputTokens[tokenIdx].addr,
                 runtimeParams.collaterals[tokenIdx],
-                (SimpleSwapUtils._getRelevantPriceTriggerData(
-                    action.inputTokens[0],
-                    action.outputTokens[0],
-                    runtimeParams.triggerReturnArr
-                ) * runtimeParams.collaterals[0]) / 10**8,
-                SimpleSwapUtils._getRelevantPriceTriggerData(
-                    action.inputTokens[0],
-                    action.outputTokens[0],
-                    runtimeParams.triggerReturnArr
-                ) * runtimeParams.collaterals[1],
+                (minAmountOfYPerX * runtimeParams.collaterals[0]) / 10**18,
+                (runtimeParams.collaterals[1] / minAmountOfYPerX) / 10**18,
                 address(this),
                 block.timestamp
             );
@@ -103,16 +95,8 @@ contract SushiAddLiquidity is IAction, DelegatePerform {
                 action.inputTokens[1].addr,
                 runtimeParams.collaterals[0],
                 runtimeParams.collaterals[1],
-                (SimpleSwapUtils._getRelevantPriceTriggerData(
-                    action.inputTokens[0],
-                    action.inputTokens[1],
-                    runtimeParams.triggerReturnArr
-                ) * runtimeParams.collaterals[0]) / 10**8,
-                SimpleSwapUtils._getRelevantPriceTriggerData(
-                    action.inputTokens[0],
-                    action.inputTokens[1],
-                    runtimeParams.triggerReturnArr
-                ) * runtimeParams.collaterals[1],
+                (minAmountOfYPerX * runtimeParams.collaterals[0]) / 10**18,
+                (runtimeParams.collaterals[1] / minAmountOfYPerX) / 10**18,
                 address(this),
                 block.timestamp
             );

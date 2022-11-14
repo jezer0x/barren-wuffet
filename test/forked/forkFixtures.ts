@@ -53,3 +53,18 @@ export async function setupEnvForSushiTests({ ethers }: HardhatRuntimeEnvironmen
     McFundRobocop
   };
 }
+
+export async function setupEnvForUniTests({ ethers }: HardhatRuntimeEnvironment) {
+  const swapUniAction = await ethers.getContract("UniSwapExactInputSingle");
+  const mintLPAction = await ethers.getContract("UniMintLiquidityPosition");
+  const { protocolAddresses, DAI_TOKEN, dai_contract, McFund, McFundRobocop } = await setupEnvForActionTests(ethers);
+  return {
+    swapUniAction,
+    mintLPAction,
+    protocolAddresses,
+    DAI_TOKEN,
+    dai_contract,
+    McFund,
+    McFundRobocop
+  };
+}

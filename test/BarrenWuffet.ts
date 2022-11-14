@@ -752,14 +752,15 @@ describe("BarrenWuffet", () => {
     it("should revert if ManagementFee withdrawal is attempted on a closable fund", async () => {});
   });
 
+  // TODO: Need to fix the phrasing of these tests
   describe.skip("Fund transition: Close Fund", () => {
     it("should allow the fund manager to close a deployed fund (all open positions) and emit a Closed event if the fund is closable", async () => {});
 
-    it("should allow the fund manager to close a deployed fund with open positions that is NOT closable and emit Closed event", async () => {});
+    it("should allow the fund manager to close a deployed fund without open positions that is NOT closable and emit Closed event", async () => {});
 
-    it("should not allow anyone other than the  fund manager to close a closable fund", async () => {
-      // this might be made public in the future
-    });
+    it("should not allow anyone to close fund if there is one or more open position");
+
+    it("should allow anyone to close a closable fund ", async () => {});
   });
 
   describe.skip("Fund FundStatus: Closed", () => {

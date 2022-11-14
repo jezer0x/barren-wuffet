@@ -19,6 +19,14 @@ library SimpleSwapUtils {
         return true;
     }
 
+    /**
+     * Usage: 
+     * (SimpleSwapUtils._getRelevantPriceTriggerData(
+            action.inputTokens[0],
+            action.outputTokens[0],
+            runtimeParams.triggerReturnArr
+        ) * runtimeParams.collaterals[0]) / 10**8, // assumption: triggerReturn in the form of tokenIn/tokenOut.
+    */
     function _getRelevantPriceTriggerData(
         Token calldata tokenA,
         Token calldata tokenB,

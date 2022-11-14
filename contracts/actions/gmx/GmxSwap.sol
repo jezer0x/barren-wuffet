@@ -7,6 +7,11 @@ import "./IRouter.sol";
 import "./IReader.sol";
 import "../SimpleSwapUtils.sol";
 
+/*
+    Action.data: 
+        - address: poolAddr 
+        - uint256: minimum amount of Y tokens per X accepted (18 decimals)
+*/
 contract GmxSwap is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
     using TokenLib for Token;
@@ -47,11 +52,7 @@ contract GmxSwap is IAction, DelegatePerform {
         }
 
         (amountOut, fee) = reader.getAmountOut(router.vault(), _path[0], _path[1], _amountIn);
-        _minOut = ((SimpleSwapUtils._getRelevantPriceTriggerData(
-            action.inputTokens[0],
-            action.outputTokens[0],
-            runtimeParams.triggerReturnArr
-        ) * _amountIn) / 10**8);
+        _minOut = (abi.decode(action.data, (uint256)) * runtimeParams.collaterals[0]) / 10**18; 
         _minOut = _minOut > fee ? _minOut - fee : 0;
 
         if (action.inputTokens[0].isETH()) {

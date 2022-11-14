@@ -21,7 +21,7 @@ describe("Sushiswap", () => {
     });
 
     describe("swap", () => {
-      it("Should sell 2 ETH for DAI", async () => {
+      it("Should sell 2 ETH for DAI and then swap back for almost all the ETH", async () => {
         const { protocolAddresses, DAI_TOKEN, McFund, sushiSwapExactXForY, dai_contract } = await testPreReqs();
 
         const daiPerETH = parseFloat(
@@ -53,36 +53,6 @@ describe("Sushiswap", () => {
 
         expect(
           (await dai_contract.balanceOf(McFund.address)) >= ethers.utils.parseUnits(String(daiPerETH * 2 * 0.97), 18)
-        );
-      });
-
-      it("Should sell DAI balance for almost all ETH back", async () => {
-        const { protocolAddresses, DAI_TOKEN, McFund, sushiSwapExactXForY, dai_contract } = await testPreReqs();
-
-        // Get some DAI first
-        const daiPerETH = parseFloat(
-          ethers.utils.formatUnits(
-            await getTokenOutPerTokenIn(
-              protocolAddresses.sushiswap.swap_router,
-              ETH_TOKEN,
-              DAI_TOKEN,
-              protocolAddresses.tokens.WETH
-            ),
-            18
-          )
-        );
-
-        await McFund.takeAction(
-          await makeTrueTrigger(),
-          createSushiSwapAction(
-            sushiSwapExactXForY.address,
-            ETH_TOKEN,
-            DAI_TOKEN,
-            await encodeMinOutPerInForSushiSwap(ETH_TOKEN, DAI_TOKEN, daiPerETH * 0.97), // some slippage tolerance
-            protocolAddresses.tokens.WETH
-          ),
-          [ethers.utils.parseEther(String(2))],
-          [BigNumber.from(0)] // 0 fees set in deploy
         );
 
         // swap DAI back to ETH
