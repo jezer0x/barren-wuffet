@@ -12,6 +12,7 @@ import {
   getTokenOutPerTokenIn
 } from "./sushiUtils";
 import { setupEnvForSushiTests } from "../forkFixtures";
+import { getFees } from "../../helper";
 
 describe("Sushiswap", () => {
   // run these only when forking
@@ -38,6 +39,7 @@ describe("Sushiswap", () => {
           )
         );
 
+        let collaterals = [ethers.utils.parseEther(String(2))];
         await expect(
           McFund.takeAction(
             await makeTrueTrigger(),
@@ -48,8 +50,8 @@ describe("Sushiswap", () => {
               await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * 0.97), // some slippage tolerance
               protocolAddresses.tokens.WETH
             ),
-            [ethers.utils.parseEther(String(2))],
-            [BigNumber.from(0)] // 0 fees set in deploy
+            collaterals,
+            await getFees(McFund, collaterals)
           )
         ).to.changeEtherBalance(McFund.address, ethers.utils.parseEther("-2"));
 
@@ -61,6 +63,7 @@ describe("Sushiswap", () => {
         const dai_balance = await dai_contract.balanceOf(McFund.address);
         const prev_eth_balance = await ethers.provider.getBalance(McFund.address);
 
+        collaterals = [dai_balance];
         await expect(
           McFund.takeAction(
             await makeTrueTrigger(),
@@ -71,8 +74,8 @@ describe("Sushiswap", () => {
               await encodeMinBPerA(DAI_TOKEN, ETH_TOKEN, (1.0 / daiPerETH) * 0.97),
               protocolAddresses.tokens.WETH
             ),
-            [dai_balance],
-            [BigNumber.from(0)] // 0 fees set in deploy
+            collaterals,
+            await getFees(McFund, collaterals)
           )
         ).to.changeTokenBalance(dai_contract, McFund.address, dai_balance.mul(-1));
 
@@ -82,6 +85,7 @@ describe("Sushiswap", () => {
         );
       });
 
+      let collaterals = [ethers.utils.parseEther("1")];
       it("Should revert if wrong path is given", async () => {
         const { protocolAddresses, DAI_TOKEN, McFund, sushiSwapExactXForY } = await testPreReqs();
         await expect(
@@ -96,8 +100,8 @@ describe("Sushiswap", () => {
               inputTokens: [ETH_TOKEN], // eth
               outputTokens: [DAI_TOKEN] // swapping for DAI
             },
-            [ethers.utils.parseEther("1")],
-            [BigNumber.from(0)] // 0 fees set in deploy
+            collaterals,
+            await getFees(McFund, collaterals)
           )
         ).to.be.reverted;
       });
@@ -127,6 +131,7 @@ describe("Sushiswap", () => {
           )
         );
 
+        let collaterals = [ethers.utils.parseEther(String(2))];
         await McFund.takeAction(
           await makeTrueTrigger(),
           createSushiSwapAction(
@@ -136,12 +141,13 @@ describe("Sushiswap", () => {
             await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * 0.97), // some slippage tolerance
             protocolAddresses.tokens.WETH
           ),
-          [ethers.utils.parseEther(String(2))],
-          [BigNumber.from(0)] // 0 fees set in deploy
+          collaterals,
+          await getFees(McFund, collaterals)
         );
 
         const balance_dai = await dai_contract.balanceOf(McFund.address);
 
+        collaterals = [ethers.utils.parseEther("2"), balance_dai];
         await expect(
           McFund.takeAction(
             await makeTrueTrigger(),
@@ -154,8 +160,8 @@ describe("Sushiswap", () => {
               await encodeMinBPerA(DAI_TOKEN, ETH_TOKEN, (1.0 / daiPerETH) * 0.97), // some slippage tolerance
               protocolAddresses.tokens.WETH
             ),
-            [ethers.utils.parseEther("2"), balance_dai],
-            [BigNumber.from(0), BigNumber.from(0)] // 0 fees set in deploy
+            collaterals,
+            await getFees(McFund, collaterals)
           )
         ) // TODO: following 2 lines might fail because not all of both tokens used up in LP, need some tolerance
           .to.changeEtherBalance(McFund.address, ethers.utils.parseEther(String(-2)))

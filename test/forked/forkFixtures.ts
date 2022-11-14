@@ -42,29 +42,19 @@ export async function setupEnvForActionTests(ethers: HardhatRuntimeEnvironment["
 export async function setupEnvForSushiTests({ ethers }: HardhatRuntimeEnvironment) {
   const sushiSwapExactXForY = await ethers.getContract("SushiSwapExactXForY");
   const sushiAddLiquidity = await ethers.getContract("SushiAddLiquidity");
-  const { protocolAddresses, DAI_TOKEN, dai_contract, McFund, McFundRoboCop } = await setupEnvForActionTests(ethers);
   return {
     sushiSwapExactXForY,
     sushiAddLiquidity,
-    protocolAddresses,
-    DAI_TOKEN,
-    dai_contract,
-    McFund,
-    McFundRoboCop
+    ...(await setupEnvForActionTests(ethers))
   };
 }
 
 export async function setupEnvForUniTests({ ethers }: HardhatRuntimeEnvironment) {
   const swapUniAction = await ethers.getContract("UniSwapExactInputSingle");
   const mintLPAction = await ethers.getContract("UniMintLiquidityPosition");
-  const { protocolAddresses, DAI_TOKEN, dai_contract, McFund, McFundRoboCop } = await setupEnvForActionTests(ethers);
   return {
     swapUniAction,
     mintLPAction,
-    protocolAddresses,
-    DAI_TOKEN,
-    dai_contract,
-    McFund,
-    McFundRoboCop
+    ...(await setupEnvForActionTests(ethers))
   };
 }

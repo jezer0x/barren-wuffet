@@ -1,7 +1,8 @@
 import { expect } from "chai";
-import { BigNumber, Contract, ContractReceipt, ContractTransaction } from "ethers";
+import { BigNumber, Contract, ContractReceipt, ContractTransaction, FixedNumber } from "ethers";
 import { ETH_TOKEN, TOKEN_TYPE } from "./Constants";
 import { ethers, getNamedAccounts } from "hardhat";
+import { TokenStruct } from "../typechain-types/contracts/rules/RoboCop";
 
 export async function getAddressFromEvent(
   fnPromise: Promise<ContractTransaction>,
@@ -110,4 +111,23 @@ export async function whitelistAction(actionAddr: string) {
   const whitelistService = await ethers.getContract("WhitelistService");
   const actWlHash = await whitelistService.getWhitelistHash(deployer, "actions");
   await whitelistService.addToWhitelist(actWlHash, actionAddr);
+}
+
+export async function getFees(fund: Contract, collaterals: Array<BigNumber>) {
+  let fees = [];
+  const feePercentage = (await fund.feeParams()).managerToPlatformFeePercentage / 100.0;
+
+  for (var i = 0; i < collaterals.length; i++) {
+    fees.push(multiplyNumberWithBigNumber(feePercentage, collaterals[i]));
+  }
+  return fees;
+}
+
+export function multiplyNumberWithBigNumber(a: Number, b: BigNumber) {
+  return BigNumber.from(
+    FixedNumber.from(a.toFixed(18)) // toFixed(18) to catch case of FixedNumber.from(1.0/1100) failing
+      .mulUnsafe(FixedNumber.from(b)) // I don't know why mulUnsafe!
+      .toString()
+      .split(".")[0] // BigNumber can't take decimal...
+  );
 }

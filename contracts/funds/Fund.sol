@@ -39,7 +39,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
 
     // vars the fund needs to know
     IRoboCop public roboCop; // roboCop dedicated to this fund
-    FeeParams feeParams;
+    FeeParams public feeParams;
     WhitelistService public wlService;
     bytes32 triggerWhitelistHash;
     bytes32 actionWhitelistHash;

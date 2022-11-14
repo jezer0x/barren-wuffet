@@ -9,6 +9,7 @@ import {
 import { Address } from "hardhat-deploy/types";
 import { TokenStruct } from "../../../typechain-types/contracts/utils/subscriptions/Subscriptions";
 import { ActionStruct } from "../../../typechain-types/contracts/actions/IAction";
+import { multiplyNumberWithBigNumber } from "../../helper";
 
 export async function encodeMinBPerA(
   tokenA: TokenStruct,
@@ -19,12 +20,7 @@ export async function encodeMinBPerA(
   const tokenBAsERC20 = new Contract(await tokenB.addr, IERC20Metadata__factory.abi, ethers.provider);
   var tokenADecimals = tokenA == ETH_TOKEN ? 18 : await tokenAAsERC20.decimals();
   var tokenBDecimals = tokenB == ETH_TOKEN ? 18 : await tokenBAsERC20.decimals();
-  return BigNumber.from(
-    FixedNumber.from(minAmountOfBPerA.toFixed(18)) // toFixed(18) to catch case of FixedNumber.from(1.0/1100) failing
-      .mulUnsafe(FixedNumber.from(BigNumber.from(10).pow(tokenBDecimals + 18 - tokenADecimals))) // I don't know why mulUnsafe!
-      .toString()
-      .split(".")[0] // BigNumber can't take decimal...
-  );
+  return multiplyNumberWithBigNumber(minAmountOfBPerA, BigNumber.from(10).pow(tokenBDecimals + 18 - tokenADecimals));
 }
 
 function createPath(tokenIn: TokenStruct, tokenOut: TokenStruct, WETHAddr: Address) {
