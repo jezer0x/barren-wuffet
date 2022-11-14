@@ -46,17 +46,7 @@ library Utils {
         return keccak256(abi.encode(actionHashes, address(this)));
     }
 
-    function _getPositionHash(Action[] calldata actions) internal view returns (bytes32) {
-        bytes32[] memory actionHashes = new bytes32[](actions.length);
-        for (uint32 i = 0; i < actions.length; i++) {
-            actionHashes[i] = keccak256(abi.encode(actions[i]));
-        }
-
-        return _getPositionHash(actionHashes);
-    }
-
     function _createPosition(
-        Action memory precursorAction,
         Action[] memory nextActions,
         EnumerableSet.Bytes32Set storage _pendingPositions,
         mapping(bytes32 => bytes32[]) storage _actionPositionsMap
@@ -86,7 +76,7 @@ library Utils {
         mapping(bytes32 => bytes32[]) storage _actionPositionsMap
     ) internal returns (bool, bytes32[] memory deletedPositionHashes) {
         bytes32 actionHash = keccak256(abi.encode(action));
-        bytes32[] memory deletedPositionHashes = _actionPositionsMap[actionHash];
+        deletedPositionHashes = _actionPositionsMap[actionHash];
         if (deletedPositionHashes.length > 0) {
             // this action is part of a position, so before using it, we need to discard the position
             for (uint32 i = 0; i < deletedPositionHashes.length; i++) {

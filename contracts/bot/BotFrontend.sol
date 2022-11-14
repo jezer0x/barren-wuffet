@@ -71,11 +71,11 @@ contract BotFrontend is IBotFrontend, OpsReady, Ownable {
         IRoboCop(robocopAddr).executeRule(ruleHash);
     }
 
-    function deposit(uint256 _amount) external payable {
-        treasury.depositFunds{value: _amount}(address(this), ETH, _amount);
+    function deposit(uint256 amount) external payable {
+        treasury.depositFunds{value: msg.value}(address(this), ETH, amount);
     }
 
-    function withdraw(uint256 _amount) external onlyOwner {
-        treasury.withdrawFunds(payable(msg.sender), ETH, _amount);
+    function withdraw(uint256 amount) external onlyOwner {
+        treasury.withdrawFunds(payable(msg.sender), ETH, amount);
     }
 }

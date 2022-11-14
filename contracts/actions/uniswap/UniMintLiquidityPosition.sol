@@ -27,7 +27,7 @@ contract UniMintLiquidityPosition is IAction, DelegatePerform {
     using TokenLib for Token;
 
     INonfungiblePositionManager public immutable nonfungiblePositionManager;
-    address public immutable WETH9Addr;
+    address public immutable weth9Addr;
     address public immutable burnPositionAddr;
 
     constructor(
@@ -36,7 +36,7 @@ contract UniMintLiquidityPosition is IAction, DelegatePerform {
         address _burnPositionAddr
     ) {
         nonfungiblePositionManager = INonfungiblePositionManager(_nonfungiblePositionManager);
-        WETH9Addr = wethAddress;
+        weth9Addr = wethAddress;
         burnPositionAddr = _burnPositionAddr;
     }
 
@@ -66,13 +66,13 @@ contract UniMintLiquidityPosition is IAction, DelegatePerform {
 
         // Approve the position manager
         if (action.inputTokens[0].isETH()) {
-            token0Addr = WETH9Addr;
+            token0Addr = weth9Addr;
             token1Addr = action.inputTokens[1].addr;
             ethCollateral = runtimeParams.collaterals[0];
             IERC20(token1Addr).safeApprove(address(nonfungiblePositionManager), runtimeParams.collaterals[1]);
         } else if (action.inputTokens[1].isETH()) {
             token0Addr = action.inputTokens[0].addr;
-            token1Addr = WETH9Addr;
+            token1Addr = weth9Addr;
             ethCollateral = runtimeParams.collaterals[1];
             IERC20(token0Addr).safeApprove(address(nonfungiblePositionManager), runtimeParams.collaterals[0]);
         } else {
