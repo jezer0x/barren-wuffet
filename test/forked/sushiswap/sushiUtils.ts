@@ -6,7 +6,7 @@ import { Address } from "hardhat-deploy/types";
 import { TokenStruct } from "../../../typechain-types/contracts/utils/subscriptions/Subscriptions";
 import { ActionStruct } from "../../../typechain-types/contracts/actions/IAction";
 
-export async function calculateMinOutPerInForSwap(
+export async function encodeMinOutPerInForSushiSwap(
   tokenIn: TokenStruct,
   tokenOut: TokenStruct,
   minAmountOfOutPerIn: Number

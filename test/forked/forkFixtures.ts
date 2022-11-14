@@ -21,6 +21,8 @@ export async function setupEnvForActionTests(ethers: HardhatRuntimeEnvironment["
   );
 
   const McFund: Contract = await ethers.getContractAt("Fund", McFundAddr);
+  const McFundRobocop: Contract = await ethers.getContractAt("RoboCop", await McFund.robocop());
+
   await McFund.deposit(ETH_TOKEN, ethers.utils.parseEther("21"), {
     value: ethers.utils.parseEther("21")
   });
@@ -32,6 +34,22 @@ export async function setupEnvForActionTests(ethers: HardhatRuntimeEnvironment["
     protocolAddresses,
     DAI_TOKEN,
     dai_contract,
-    McFund
+    McFund,
+    McFundRobocop
+  };
+}
+
+export async function setupEnvForSushiTests({ ethers }: HardhatRuntimeEnvironment) {
+  const sushiSwapExactXForY = await ethers.getContract("SushiSwapExactXForY");
+  const sushiAddLiquidity = await ethers.getContract("SushiAddLiquidity");
+  const { protocolAddresses, DAI_TOKEN, dai_contract, McFund, McFundRobocop } = await setupEnvForActionTests(ethers);
+  return {
+    sushiSwapExactXForY,
+    sushiAddLiquidity,
+    protocolAddresses,
+    DAI_TOKEN,
+    dai_contract,
+    McFund,
+    McFundRobocop
   };
 }

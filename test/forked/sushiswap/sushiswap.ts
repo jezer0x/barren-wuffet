@@ -1,30 +1,15 @@
 import { expect } from "chai";
 import { makeTrueTrigger } from "../../Fixtures";
 import { ETH_TOKEN, TOKEN_TYPE } from "../../Constants";
-import { config, ethers, getNamedAccounts, deployments } from "hardhat";
+import { config, ethers, deployments } from "hardhat";
 import { Contract, BigNumber } from "ethers";
 import {
   IERC20Metadata__factory,
   IUniswapV2Factory__factory,
   IUniswapV2Router02__factory
 } from "../../../typechain-types";
-import { createSushiSwapAction, calculateMinOutPerInForSwap, getTokenOutPerTokenIn } from "./sushiUtils";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { setupEnvForActionTests } from "../forkFixtures";
-
-async function setupEnvForSushiTests({ ethers }: HardhatRuntimeEnvironment) {
-  const sushiSwapExactXForY = await ethers.getContract("SushiSwapExactXForY");
-  const sushiAddLiquidity = await ethers.getContract("SushiAddLiquidity");
-  const { protocolAddresses, DAI_TOKEN, dai_contract, McFund } = await setupEnvForActionTests(ethers);
-  return {
-    sushiSwapExactXForY,
-    sushiAddLiquidity,
-    protocolAddresses,
-    DAI_TOKEN,
-    dai_contract,
-    McFund
-  };
-}
+import { createSushiSwapAction, encodeMinOutPerInForSushiSwap, getTokenOutPerTokenIn } from "./sushiUtils";
+import { setupEnvForSushiTests } from "../forkFixtures";
 
 describe("Sushiswap", () => {
   // run these only when forking
@@ -58,7 +43,7 @@ describe("Sushiswap", () => {
               sushiSwapExactXForY.address,
               ETH_TOKEN,
               DAI_TOKEN,
-              await calculateMinOutPerInForSwap(ETH_TOKEN, DAI_TOKEN, daiPerETH * 0.97), // some slippage tolerance
+              await encodeMinOutPerInForSushiSwap(ETH_TOKEN, DAI_TOKEN, daiPerETH * 0.97), // some slippage tolerance
               protocolAddresses.tokens.WETH
             ),
             [ethers.utils.parseEther(String(2))],
@@ -93,7 +78,7 @@ describe("Sushiswap", () => {
             sushiSwapExactXForY.address,
             ETH_TOKEN,
             DAI_TOKEN,
-            await calculateMinOutPerInForSwap(ETH_TOKEN, DAI_TOKEN, daiPerETH * 0.97), // some slippage tolerance
+            await encodeMinOutPerInForSushiSwap(ETH_TOKEN, DAI_TOKEN, daiPerETH * 0.97), // some slippage tolerance
             protocolAddresses.tokens.WETH
           ),
           [ethers.utils.parseEther(String(2))],
@@ -111,7 +96,7 @@ describe("Sushiswap", () => {
               sushiSwapExactXForY.address,
               DAI_TOKEN,
               ETH_TOKEN,
-              await calculateMinOutPerInForSwap(DAI_TOKEN, ETH_TOKEN, (1.0 / daiPerETH) * 0.97),
+              await encodeMinOutPerInForSushiSwap(DAI_TOKEN, ETH_TOKEN, (1.0 / daiPerETH) * 0.97),
               protocolAddresses.tokens.WETH
             ),
             [dai_balance],
@@ -176,7 +161,7 @@ describe("Sushiswap", () => {
             sushiSwapExactXForY.address,
             ETH_TOKEN,
             DAI_TOKEN,
-            await calculateMinOutPerInForSwap(ETH_TOKEN, DAI_TOKEN, daiPerETH * 0.97), // some slippage tolerance
+            await encodeMinOutPerInForSushiSwap(ETH_TOKEN, DAI_TOKEN, daiPerETH * 0.97), // some slippage tolerance
             protocolAddresses.tokens.WETH
           ),
           [ethers.utils.parseEther(String(2))],
