@@ -11,7 +11,7 @@ import {
   IUniswapV2Factory__factory,
   IUniswapV2Router02__factory
 } from "../../typechain-types";
-import { getAmountOutSushi, createSushiSwapAction, calculateMinOutPerInForSwap } from "./sushi_utils";
+import { createSushiSwapAction, calculateMinOutPerInForSwap, getTokenOutPerTokenIn } from "./sushi_utils";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 async function setupEnvForSushiTests({ ethers }: HardhatRuntimeEnvironment) {
@@ -72,13 +72,13 @@ describe("Sushiswap", () => {
 
         const daiPerETH = parseFloat(
           ethers.utils.formatUnits(
-            await getAmountOutSushi(
+            await getTokenOutPerTokenIn(
               protocolAddresses.sushiswap.swap_router,
               ETH_TOKEN,
               DAI_TOKEN,
-              ethers.utils.parseEther("1"),
               protocolAddresses.tokens.WETH
-            )
+            ),
+            18
           )
         );
 
@@ -115,13 +115,13 @@ describe("Sushiswap", () => {
         // Get some DAI first
         const daiPerETH = parseFloat(
           ethers.utils.formatUnits(
-            await getAmountOutSushi(
+            await getTokenOutPerTokenIn(
               protocolAddresses.sushiswap.swap_router,
               ETH_TOKEN,
               DAI_TOKEN,
-              ethers.utils.parseEther("1"),
               protocolAddresses.tokens.WETH
-            )
+            ),
+            18
           )
         );
 
@@ -199,13 +199,13 @@ describe("Sushiswap", () => {
         // Get some DAI first
         const daiPerETH = parseFloat(
           ethers.utils.formatUnits(
-            await getAmountOutSushi(
+            await getTokenOutPerTokenIn(
               protocolAddresses.sushiswap.swap_router,
               ETH_TOKEN,
               DAI_TOKEN,
-              ethers.utils.parseEther("1"),
               protocolAddresses.tokens.WETH
-            )
+            ),
+            18
           )
         );
 
@@ -255,9 +255,9 @@ describe("Sushiswap", () => {
             [balance_dai, ethers.utils.parseEther("2")],
             [BigNumber.from(0), BigNumber.from(0)] // 0 fees set in deploy
           )
-        )
-          .to.changeEtherBalance(McFund.address, ethers.utils.parseEther(String(-2))) // might fail because not all of it is used up in LP
-          .to.changeTokenBalance(dai_contract, McFund.address, balance_dai.mul(-1)); // fails because not all of it is used up in the LP
+        ) // TODO: following 2 lines might fail because not all of both tokens used up in LP, need some tolerance
+          .to.changeEtherBalance(McFund.address, ethers.utils.parseEther(String(-2)))
+          .to.changeTokenBalance(dai_contract, McFund.address, balance_dai.mul(-1));
 
         expect(
           (await new Contract(dai_weth_slp_addr, IERC20Metadata__factory.abi, ethers.provider).balanceOf(

@@ -54,3 +54,19 @@ export async function getAmountOutSushi(
   const amountsOut = await sushiSwapRouter.getAmountsOut(amountIn, createPath(tokenIn, tokenOut, WETHAddr));
   return amountsOut[1];
 }
+
+export async function getTokenOutPerTokenIn(
+  swap_router_address: Address,
+  tokenIn: TokenStruct,
+  tokenOut: TokenStruct,
+  WETHAddr: Address
+) {
+  const one_unit =
+    tokenIn == ETH_TOKEN
+      ? ethers.utils.parseEther("1")
+      : ethers.utils.parseUnits(
+          "1",
+          await new Contract(await tokenIn.addr, IERC20Metadata__factory.abi, ethers.provider).decimals()
+        );
+  return await getAmountOutSushi(swap_router_address, tokenIn, tokenOut, one_unit, WETHAddr);
+}
