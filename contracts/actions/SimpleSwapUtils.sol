@@ -2,19 +2,20 @@
 pragma solidity ^0.8.17;
 
 import "./IAction.sol";
+import "../utils/Constants.sol"; 
 import "../utils/assets/TokenLib.sol";
 
 library SimpleSwapUtils {
     using TokenLib for Token;
 
     function _validate(Action calldata action) internal view returns (bool) {
-        require(action.inputTokens.length == 1);
-        require(action.inputTokens[0].isERC20() || action.inputTokens[0].isETH());
+        require(action.inputTokens.length == 1, Constants.WRONG_NUMBER_OF_INPUT_TOKENS);
+        require(action.inputTokens[0].isERC20() || action.inputTokens[0].isETH(), Constants.WRONG_TYPE_OF_INPUT_TOKEN);
 
-        require(action.outputTokens.length == 1);
-        require(action.outputTokens[0].isERC20() || action.outputTokens[0].isETH());
+        require(action.outputTokens.length == 1, Constants.WRONG_NUMBER_OF_INPUT_TOKENS);
+        require(action.outputTokens[0].isERC20() || action.outputTokens[0].isETH(), Constants.WRONG_TYPE_OF_OUTPUT_TOKEN);
 
-        require(!action.inputTokens[0].equals(action.outputTokens[0]));
+        require(!action.inputTokens[0].equals(action.outputTokens[0]), "Action: Input and Output tokens are the same!");
 
         return true;
     }

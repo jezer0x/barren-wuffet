@@ -32,20 +32,20 @@ contract SushiAddLiquidity is IAction, DelegatePerform {
     }
 
     function validate(Action calldata action) external view returns (bool) {
-        require(action.inputTokens.length == 2);
-        require(action.inputTokens[0].isERC20() || action.inputTokens[0].isETH());
-        require(action.inputTokens[1].isERC20() || action.inputTokens[1].isETH());
+        require(action.inputTokens.length == 2, Constants.WRONG_NUMBER_OF_INPUT_TOKENS);
+        require(action.inputTokens[0].isERC20() || action.inputTokens[0].isETH(), Constants.WRONG_TYPE_OF_INPUT_TOKEN);
+        require(action.inputTokens[1].isERC20() || action.inputTokens[1].isETH(), Constants.WRONG_TYPE_OF_INPUT_TOKEN);
 
-        require(action.outputTokens.length == 3);
-        require(action.outputTokens[0].equals(action.inputTokens[0]));
-        require(action.outputTokens[1].equals(action.inputTokens[1]));
+        require(action.outputTokens.length == 3, Constants.WRONG_TYPE_OF_OUTPUT_TOKEN);
+        require(action.outputTokens[0].equals(action.inputTokens[0]), Constants.WRONG_TYPE_OF_OUTPUT_TOKEN);
+        require(action.outputTokens[1].equals(action.inputTokens[1]), Constants.WRONG_TYPE_OF_OUTPUT_TOKEN);
 
         address token0Addr = action.inputTokens[0].isETH() ? router.WETH() : action.inputTokens[0].addr;
         address token1Addr = action.inputTokens[1].isETH() ? router.WETH() : action.inputTokens[1].addr;
 
         require(
             action.outputTokens[2].addr == IUniswapV2Factory(router.factory()).getPair(token0Addr, token1Addr),
-            "Wrong SLP Token"
+            "SushiAddLiquidity: Wrong SLP Token"
         );
 
         return true;

@@ -15,12 +15,12 @@ contract BotFrontend is IBotFrontend, OpsReady, Ownable {
     mapping(address => bool) public robocopRegistry;
 
     modifier onlyBarrenWuffet() {
-        require(msg.sender == barrenWuffetAddr);
+        require(msg.sender == barrenWuffetAddr, "BotFrontend: onlyBarrenWuffet");
         _;
     }
 
     modifier onlyRobocop() {
-        require(robocopRegistry[msg.sender]);
+        require(robocopRegistry[msg.sender], "BotFrontend: onlyRoboCop");
         _;
     }
 

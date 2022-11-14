@@ -19,15 +19,6 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../utils/whitelists/WhitelistService.sol";
 import "../utils/assets/AssetTracker.sol";
 
-// Error Codes
-// !AS = Not Active Subscriber
-// PP = Pending Positions
-// OFM = Only Fund Manager
-// !AA = Not Authorized Action
-// !ATk = Not Authorized Token
-// !ATr = Not Authorized Trigger
-// WS = Wrong State
-
 contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
@@ -126,19 +117,19 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
     }
 
     modifier onlyFundManager() {
-        require(manager == msg.sender);
+        require(manager == msg.sender, "F: onlyFundManager");
         _;
     }
 
     modifier onlyFundStatus(FundStatus desiredStatus) {
-        require(getStatus() == desiredStatus, "WS");
+        require(getStatus() == desiredStatus, "F: Wrong State");
         _;
     }
 
     modifier onlyWhitelistedInvestor() {
         require(
             !subStuff.constraints.onlyWhitelistedInvestors ||
-                wlService.isWhitelisted(investorsWhitelistHash, msg.sender)
+                wlService.isWhitelisted(investorsWhitelistHash, msg.sender), "F: onlyWhitelistedInvestors"
         );
         _;
     }
@@ -154,7 +145,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
     }
 
     function closeFund() external nonReentrant {
-        require(!roboCop.hasPendingPosition(), "PP");
+        require(!roboCop.hasPendingPosition(), "F: Pending Positions");
 
         if (getStatus() == FundStatus.CLOSABLE) {
             // anyone can call if closable
@@ -163,7 +154,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
                 subStuff.subscriberToManagerFeePercentage = 0;
             }
         } else {
-            require(manager == msg.sender, "OFM");
+            require(manager == msg.sender, "F: Only Fund Manager");
             // closed prematurely (so that people can withdraw their capital)
             // no managementFee since did not see through lockin
             subStuff.subscriberToManagerFeePercentage = 0;
@@ -201,7 +192,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
     ) internal {
         for (uint256 i = 0; i < tokens.length; i++) {
             if (tokens[i].isERC20() || tokens[i].isETH()) {
-                require(fees[i] >= ((collaterals[i] * feeParams.managerToPlatformFeePercentage) / 100_00));
+                require(fees[i] >= ((collaterals[i] * feeParams.managerToPlatformFeePercentage) / 100_00), "F: Not enough fees");
                 tokens[i].send(feeParams.platformFeeWallet, fees[i]);
             }
         }
@@ -222,8 +213,8 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         uint256[] calldata collaterals,
         uint256[] calldata fees
     ) public nonReentrant onlyFundStatus(FundStatus.DEPLOYED) {
-        require(block.timestamp >= subStuff.constraints.lockin); // fund expired
-        require(roboCop.actionClosesPendingPosition(action)); // but positions are still open that can be closed by this
+        require(block.timestamp >= subStuff.constraints.lockin, "F: not expired yet"); // fund expired
+        require(roboCop.actionClosesPendingPosition(action), "F: no relevant open position"); // but positions are still open that can be closed by this
         _takeAction(trigger, action, collaterals, fees);
         // TODO: how to make sure new action does not spawn another position?
     }
@@ -257,13 +248,13 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
 
     function _createRule(Trigger[] memory triggers, Action[] memory actions) internal returns (bytes32 ruleHash) {
         for (uint256 i = 0; i < triggers.length; i++) {
-            require(wlService.isWhitelisted(triggerWhitelistHash, triggers[i].callee), "!ATr");
+            require(wlService.isWhitelisted(triggerWhitelistHash, triggers[i].callee), "F: !AuthorizedTrigger");
         }
         for (uint256 i = 0; i < actions.length; i++) {
-            require(wlService.isWhitelisted(actionWhitelistHash, actions[i].callee), "!AA");
+            require(wlService.isWhitelisted(actionWhitelistHash, actions[i].callee), "F: !AuthorizedAction");
         }
         for (uint256 i = 0; i < actions.length; i++) {
-            require(_onlyDeclaredTokens(actions[i].outputTokens), "!ATk");
+            require(_onlyDeclaredTokens(actions[i].outputTokens), "F: !AuthorizedToken");
         }
         ruleHash = roboCop.createRule(triggers, actions);
     }
