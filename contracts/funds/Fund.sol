@@ -36,8 +36,8 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
     using TokenLib for Token;
 
     // constants
-    string constant tokensWhitelistName = "tokens";
-    string constant investorsWhitelistName = "investors";
+    string constant TOKENS_WHITELIST_NAME = "tokens";
+    string constant INVESTORS_WHITELIST_NAME = "investors";
 
     // unique identifier for fund
     address manager;
@@ -52,6 +52,8 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
     WhitelistService public wlService;
     bytes32 triggerWhitelistHash;
     bytes32 actionWhitelistHash;
+    bytes32 declaredTokensWhitelistHash; 
+    bytes32 investorsWhitelistHash; 
 
     // fund state that is modified over time
     AssetTracker.Assets assets;
@@ -77,6 +79,23 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         __ReentrancyGuard_init();
 
         manager = _manager;
+        feeParams = _feeParams;
+        wlService = WhitelistService(_wlServiceAddr);
+        triggerWhitelistHash = _triggerWhitelistHash;
+        actionWhitelistHash = _actionWhitelistHash;
+
+        if (_declaredTokenAddrs.length == 0) {
+            degenMode = true;
+        } else {
+            declaredTokensWhitelistHash = wlService.createWhitelist(TOKENS_WHITELIST_NAME);
+            for (uint256 i = 0; i < _declaredTokenAddrs.length; i++) {
+                wlService.addToWhitelist(declaredTokensWhitelistHash, _declaredTokenAddrs[i]);
+            }
+        }
+
+        if (_constraints.onlyWhitelistedInvestors) {
+            investorsWhitelistHash = wlService.createWhitelist(INVESTORS_WHITELIST_NAME);
+        }
 
         subStuff.setConstraints(_constraints);
         subStuff.setSubscriptionFeeParams(
@@ -84,28 +103,8 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
             _feeParams.subscriberToPlatformFeePercentage,
             _feeParams.platformFeeWallet
         );
-        feeParams = _feeParams;
 
-        if (_declaredTokenAddrs.length == 0) {
-            degenMode = true;
-        } else {
-            bytes32 declaredTokenAddrWlHash = wlService.createWhitelist(tokensWhitelistName);
-            for (uint256 i = 0; i < _declaredTokenAddrs.length; i++) {
-                wlService.addToWhitelist(declaredTokenAddrWlHash, _declaredTokenAddrs[i]);
-            }
-        }
-
-        if (_constraints.onlyWhitelistedInvestors) {
-            wlService.createWhitelist(investorsWhitelistName);
-        }
-
-        // same action whitelist as RoboCop
-        wlService = WhitelistService(_wlServiceAddr);
-        triggerWhitelistHash = _triggerWhitelistHash;
-        actionWhitelistHash = _actionWhitelistHash;
-
-        bytes memory nodata;
-        roboCop = IRoboCop(address(new BeaconProxy(roboCopBeaconAddr, nodata)));
+        roboCop = IRoboCop(address(new BeaconProxy(roboCopBeaconAddr, "")));
         roboCop.initialize(address(this), botFrontendAddr);
     }
 
@@ -115,7 +114,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
             for (uint256 i = 0; i < tokens.length; i++) {
                 if (
                     !wlService.isWhitelisted(
-                        wlService.getWhitelistHash(address(this), tokensWhitelistName),
+                        declaredTokensWhitelistHash,
                         tokens[i].addr
                     )
                 ) {
@@ -124,15 +123,6 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
             }
         }
         return true;
-    }
-
-    modifier onlyActiveSubscriber() {
-        require(
-            subStuff.subscriptions[msg.sender].collateralAmount > 0 &&
-                subStuff.subscriptions[msg.sender].status == Subscriptions.Status.ACTIVE,
-            "!AS"
-        );
-        _;
     }
 
     modifier onlyFundManager() {
@@ -148,7 +138,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
     modifier onlyWhitelistedInvestor() {
         require(
             !subStuff.constraints.onlyWhitelistedInvestors ||
-                wlService.isWhitelisted(wlService.getWhitelistHash(address(this), investorsWhitelistName), msg.sender)
+                wlService.isWhitelisted(investorsWhitelistHash, msg.sender)
         );
         _;
     }
@@ -318,6 +308,7 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
             }
         }
 
+        // slither-disable-next-line arbitrary-send-eth
         roboCop.addCollateral{value: ethCollateral}(ruleHash, collaterals);
     }
 
@@ -379,9 +370,8 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         onlyFundStatus(FundStatus.RAISING)
         nonReentrant
     {
-        bytes32 wlHash = wlService.getWhitelistHash(address(this), investorsWhitelistName);
         for (uint256 i = 0; i < investors.length; i++) {
-            wlService.addToWhitelist(wlHash, investors[i]);
+            wlService.addToWhitelist(investorsWhitelistHash, investors[i]);
         }
     }
 
@@ -417,7 +407,6 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
     function withdraw()
         external
         nonReentrant
-        onlyActiveSubscriber
         returns (Token[] memory tokens, uint256[] memory balances)
     {
         FundStatus status = getStatus();

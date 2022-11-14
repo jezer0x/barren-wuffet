@@ -38,6 +38,16 @@ library Subscriptions {
         address platformFeeWallet;
     }
 
+
+    modifier onlyActiveSubscriber(SubStuff storage subStuff) {
+        require(
+            subStuff.subscriptions[msg.sender].collateralAmount > 0 &&
+                subStuff.subscriptions[msg.sender].status == Subscriptions.Status.ACTIVE,
+            "!AS"
+        );
+        _;
+    }
+
     function deposit(
         SubStuff storage subStuff,
         AssetTracker.Assets storage assets,
@@ -124,6 +134,7 @@ library Subscriptions {
 
     function withdrawCollateral(SubStuff storage subStuff, AssetTracker.Assets storage assets)
         public
+        onlyActiveSubscriber(subStuff)
         returns (Token[] memory, uint256[] memory)
     {
         Subscriptions.Subscription storage subscription = subStuff.subscriptions[msg.sender];
@@ -146,6 +157,7 @@ library Subscriptions {
 
     function withdrawAssets(SubStuff storage subStuff, AssetTracker.Assets storage assets)
         public
+        onlyActiveSubscriber(subStuff)
         returns (Token[] memory, uint256[] memory)
     {
         Subscriptions.Subscription storage subscription = subStuff.subscriptions[msg.sender];

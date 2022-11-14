@@ -17,11 +17,11 @@ library TokenLib {
         Token memory token,
         address to,
         uint256 collateral
-    ) public returns (uint256 ethCollateral) {
+    ) public {
         if (isERC20(token)) {
             IERC20(token.addr).safeApprove(to, collateral);
         } else if (isETH(token)) {
-            ethCollateral = collateral;
+            // nothing to do
         } else if (isERC721(token)) {
             require(token.id == collateral);
             IERC721(token.addr).approve(to, collateral);
@@ -41,6 +41,8 @@ library TokenLib {
             }
         } else if (isETH(token)) {
             if (amount > 0) {
+                // setting receiver properly is library user's responsibility 
+                // slither-disable-next-line arbitrary-send-eth
                 (bool success, ) = receiver.call{value: amount}("");
                 require(success, "TokenLib: Eth Transfer failed");
             }
@@ -68,6 +70,8 @@ library TokenLib {
         uint256 collateral
     ) public {
         if (isERC20(token)) {
+            // setting sender properly is library user's responsibility 
+            // slither-disable-next-line arbitrary-send-erc20
             IERC20(token.addr).safeTransferFrom(sender, address(this), collateral);
         } else if (isERC721(token)) {
             require(token.id == collateral);
@@ -77,15 +81,15 @@ library TokenLib {
         }
     }
 
-    function isETH(Token memory token) public view returns (bool) {
+    function isETH(Token memory token) public pure returns (bool) {
         return equals(token, Token({t: TokenType.NATIVE, addr: Constants.ETH, id: 0}));
     }
 
-    function isERC20(Token memory token) public view returns (bool) {
+    function isERC20(Token memory token) public pure returns (bool) {
         return token.t == TokenType.ERC20;
     }
 
-    function isERC721(Token memory token) public view returns (bool) {
+    function isERC721(Token memory token) public pure returns (bool) {
         return token.t == TokenType.ERC721;
     }
 }

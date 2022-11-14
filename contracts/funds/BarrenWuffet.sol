@@ -86,8 +86,7 @@ contract BarrenWuffet is Ownable, Pausable {
         uint256 subscriberToManagerFeePercentage,
         address[] calldata declaredTokens
     ) external whenNotPaused returns (address) {
-        bytes memory nodata;
-        IFund fund = IFund(address(new BeaconProxy(fundBeaconAddr, nodata)));
+        IFund fund = IFund(address(new BeaconProxy(fundBeaconAddr, "")));
 
         // overwrite the default feeParams.managerToPlatformFeePercentage using the one provided
         require(subscriberToManagerFeePercentage <= 100_00);

@@ -28,11 +28,11 @@ contract SushiSwapExactXForY is IAction, DelegatePerform {
     using TokenLib for Token;
 
     IUniswapV2Router02 public immutable swapRouter;
-    address public immutable WETH9Addr;
+    address public immutable weth9Addr;
 
     constructor(address swapRouterAddress, address wethAddress) {
         swapRouter = IUniswapV2Router02(swapRouterAddress);
-        WETH9Addr = wethAddress;
+        weth9Addr = wethAddress;
     }
 
     function validate(Action calldata action) external view returns (bool) {

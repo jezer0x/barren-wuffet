@@ -25,11 +25,11 @@ contract UniSwapExactInputSingle is IAction, DelegatePerform {
     using TokenLib for Token;
 
     ISwapRouter public immutable swapRouter;
-    address public immutable WETH9Addr;
+    address public immutable weth9Addr;
 
     constructor(address swapRouterAddress, address wethAddress) {
         swapRouter = ISwapRouter(swapRouterAddress);
-        WETH9Addr = wethAddress;
+        weth9Addr = wethAddress;
     }
 
     function validate(Action calldata action) external view returns (bool) {
@@ -49,13 +49,13 @@ contract UniSwapExactInputSingle is IAction, DelegatePerform {
 
         if (action.inputTokens[0].isETH()) {
             // if input is ETH, we need to set it to WETH and pass take not of what to send as msg.value
-            inputToken = Token({t: TokenType.ERC20, addr: WETH9Addr, id: 0});
+            inputToken = Token({t: TokenType.ERC20, addr: weth9Addr, id: 0});
             outputToken = action.outputTokens[0];
             ethCollateral = runtimeParams.collaterals[0];
         } else if (action.outputTokens[0].isETH()) {
             // if output is ETH, we need to set it to WETH, and approve the input token amount for swapRouter
             inputToken = action.inputTokens[0];
-            outputToken = Token({t: TokenType.ERC20, addr: WETH9Addr, id: 0});
+            outputToken = Token({t: TokenType.ERC20, addr: weth9Addr, id: 0});
             inputToken.approve(address(swapRouter), runtimeParams.collaterals[0]);
             ethCollateral = 0;
         } else {

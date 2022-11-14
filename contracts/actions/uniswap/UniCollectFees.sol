@@ -22,11 +22,11 @@ contract UniCollectFees is IAction, DelegatePerform {
     using TokenLib for Token;
 
     INonfungiblePositionManager public immutable nonfungiblePositionManager;
-    address public immutable WETH9Addr;
+    address public immutable weth9Addr;
 
     constructor(address _nonfungiblePositionManager, address wethAddress) {
         nonfungiblePositionManager = INonfungiblePositionManager(_nonfungiblePositionManager);
-        WETH9Addr = wethAddress;
+        weth9Addr = wethAddress;
     }
 
     function validate(Action calldata action) external view returns (bool) {
