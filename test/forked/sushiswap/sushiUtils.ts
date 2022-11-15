@@ -4,6 +4,7 @@ import { Contract, BigNumber, FixedNumber } from "ethers";
 import {
   IERC20Metadata__factory,
   IUniswapV2Factory__factory,
+  IUniswapV2Pair__factory,
   IUniswapV2Router02__factory
 } from "../../../typechain-types";
 import { Address } from "hardhat-deploy/types";
@@ -62,6 +63,24 @@ export async function createSushiAddLiquidityAction(
   };
 }
 
+export async function createSushiRemoveLiquidityAction(
+  callee: Address,
+  tokenSLP: TokenStruct,
+  minAmountOfAPerSLP: BigNumber,
+  minAmountOfBPerSLP: BigNumber
+) {
+  const { tokenA, tokenB } = await getTokensFromSLP(tokenSLP);
+
+  {
+    return {
+      callee: callee,
+      data: ethers.utils.defaultAbiCoder.encode(["uint256", "uint256"], [minAmountOfAPerSLP, minAmountOfBPerSLP]),
+      inputTokens: [tokenSLP],
+      outputTokens: [tokenA, tokenB]
+    };
+  }
+}
+
 export async function getSLPToken(swap_router: Address, WETHAddr: Address, token1: TokenStruct, token2: TokenStruct) {
   const sushiSwapRouter = new Contract(swap_router, IUniswapV2Router02__factory.abi, ethers.provider);
 
@@ -83,7 +102,34 @@ export async function getSLPToken(swap_router: Address, WETHAddr: Address, token
   };
 }
 
-export async function getAmountOutSushi(
+export async function getTokensFromSLP(tokenSLP: TokenStruct) {
+  const slp_contract = new Contract(await tokenSLP.addr, IUniswapV2Pair__factory.abi, ethers.provider);
+  const token0addr = await slp_contract.token0();
+  const token1addr = await slp_contract.token1();
+
+  return {
+    tokenA: { t: TOKEN_TYPE.ERC20, addr: token0addr, id: BigNumber.from(0) },
+    tokenB: { t: TOKEN_TYPE.ERC20, addr: token1addr, id: BigNumber.from(0) }
+  };
+}
+
+export async function getTokensOutPerSLP(tokenSLP: TokenStruct) {
+  const { tokenA, tokenB } = await getTokensFromSLP(tokenSLP);
+  const slp_addr = await tokenSLP.addr;
+  const slp_contract = new Contract(slp_addr, IUniswapV2Pair__factory.abi, ethers.provider);
+
+  const balance0 = await new Contract(tokenA.addr, IERC20Metadata__factory.abi, ethers.provider).balanceOf(slp_addr);
+  const balance1 = await new Contract(tokenA.addr, IERC20Metadata__factory.abi, ethers.provider).balanceOf(slp_addr);
+  const liquidity = ethers.utils.parseUnits("1", await slp_contract.decimals());
+  const totalSupply = await slp_contract.totalSupply();
+
+  return {
+    amountAPerSLP: liquidity.mul(balance0).div(totalSupply),
+    amountBPerSLP: liquidity.mul(balance1).div(totalSupply)
+  };
+}
+
+export async function getAmountOutSushiSwap(
   swap_router_address: Address,
   tokenIn: TokenStruct,
   tokenOut: TokenStruct,
@@ -95,7 +141,7 @@ export async function getAmountOutSushi(
   return amountsOut[1];
 }
 
-export async function getTokenOutPerTokenIn(
+export async function getTokenOutPerTokenInSushiSwap(
   swap_router_address: Address,
   tokenIn: TokenStruct,
   tokenOut: TokenStruct,
@@ -108,5 +154,5 @@ export async function getTokenOutPerTokenIn(
           "1",
           await new Contract(await tokenIn.addr, IERC20Metadata__factory.abi, ethers.provider).decimals()
         );
-  return await getAmountOutSushi(swap_router_address, tokenIn, tokenOut, one_unit, WETHAddr);
+  return await getAmountOutSushiSwap(swap_router_address, tokenIn, tokenOut, one_unit, WETHAddr);
 }

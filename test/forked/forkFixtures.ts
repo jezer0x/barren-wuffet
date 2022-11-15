@@ -42,9 +42,12 @@ export async function setupEnvForActionTests(ethers: HardhatRuntimeEnvironment["
 export async function setupEnvForSushiTests({ ethers }: HardhatRuntimeEnvironment) {
   const sushiSwapExactXForY = await ethers.getContract("SushiSwapExactXForY");
   const sushiAddLiquidity = await ethers.getContract("SushiAddLiquidity");
+  const sushiRemoveLiquidity = await ethers.getContract("SushiRemoveLiquidity");
+
   return {
     sushiSwapExactXForY,
     sushiAddLiquidity,
+    sushiRemoveLiquidity,
     ...(await setupEnvForActionTests(ethers))
   };
 }

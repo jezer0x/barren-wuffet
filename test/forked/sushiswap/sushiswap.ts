@@ -6,10 +6,13 @@ import { Contract, BigNumber } from "ethers";
 import { IERC20Metadata__factory } from "../../../typechain-types";
 import {
   createSushiAddLiquidityAction,
+  createSushiRemoveLiquidityAction,
   createSushiSwapAction,
   encodeMinBPerA,
   getSLPToken,
-  getTokenOutPerTokenIn
+  getTokenOutPerTokenInSushiSwap,
+  getTokensFromSLP,
+  getTokensOutPerSLP
 } from "./sushiUtils";
 import { setupEnvForSushiTests } from "../forkFixtures";
 import { getFees } from "../../helper";
@@ -29,7 +32,7 @@ describe("Sushiswap", () => {
 
         const daiPerETH = parseFloat(
           ethers.utils.formatUnits(
-            await getTokenOutPerTokenIn(
+            await getTokenOutPerTokenInSushiSwap(
               protocolAddresses.sushiswap.swap_router,
               ETH_TOKEN,
               DAI_TOKEN,
@@ -108,20 +111,21 @@ describe("Sushiswap", () => {
     });
 
     describe("add and remove lp", () => {
-      it("Should give back LP ERC20 tokens when liquidity is added", async () => {
+      it("Should give back LP ERC20 tokens when liquidity is added and give back tokens when liquidity is removed", async () => {
         const {
           protocolAddresses,
           DAI_TOKEN,
           McFund,
           dai_contract,
           sushiAddLiquidity,
-          sushiSwapExactXForY
+          sushiSwapExactXForY,
+          sushiRemoveLiquidity
         } = await testPreReqs();
 
         // Get some DAI first
         const daiPerETH = parseFloat(
           ethers.utils.formatUnits(
-            await getTokenOutPerTokenIn(
+            await getTokenOutPerTokenInSushiSwap(
               protocolAddresses.sushiswap.swap_router,
               ETH_TOKEN,
               DAI_TOKEN,
@@ -163,9 +167,11 @@ describe("Sushiswap", () => {
             collaterals,
             await getFees(McFund, collaterals)
           )
-        ) // TODO: following 2 lines might fail because not all of both tokens used up in LP, need some tolerance
-          .to.changeEtherBalance(McFund.address, ethers.utils.parseEther(String(-2)))
-          .to.changeTokenBalance(dai_contract, McFund.address, balance_dai.mul(-1));
+        );
+
+        // TODO: following 2 lines might fail because not all of both tokens used up in LP, need some tolerance
+        // .to.changeEtherBalance(McFund.address, ethers.utils.parseEther(String(-2)))
+        // .to.changeTokenBalance(dai_contract, McFund.address, balance_dai.mul(-1));
 
         const dai_weth_slp_token = await getSLPToken(
           protocolAddresses.sushiswap.swap_router,
@@ -174,11 +180,56 @@ describe("Sushiswap", () => {
           DAI_TOKEN
         );
 
-        expect(
-          (await new Contract(dai_weth_slp_token.addr, IERC20Metadata__factory.abi, ethers.provider).balanceOf(
-            McFund.address
-          )) > 0
+        const dai_weth_slp_contract = new Contract(
+          dai_weth_slp_token.addr,
+          IERC20Metadata__factory.abi,
+          ethers.provider
         );
+
+        expect((await dai_weth_slp_contract.balanceOf(McFund.address)) > 0);
+
+        // Don't need to do the tokenA and tokenB stuff because we already know what they are (DAI and ETH)
+        // But doing so for demo purposes as it'll be needed in frontend
+        const { tokenA, tokenB } = await getTokensFromSLP(dai_weth_slp_token);
+        const { amountAPerSLP, amountBPerSLP } = await getTokensOutPerSLP(dai_weth_slp_token);
+        const minTokenAPerSLP = await encodeMinBPerA(
+          dai_weth_slp_token,
+          tokenA,
+          parseFloat(
+            ethers.utils.formatUnits(
+              amountAPerSLP,
+              await new Contract(tokenA.addr, IERC20Metadata__factory.abi, ethers.provider).decimals()
+            )
+          ) * 0.97
+        ); // some slippage tolerance
+
+        const minTokenBPerSLP = await encodeMinBPerA(
+          dai_weth_slp_token,
+          tokenB,
+          parseFloat(
+            ethers.utils.formatUnits(
+              amountBPerSLP,
+              await new Contract(tokenB.addr, IERC20Metadata__factory.abi, ethers.provider).decimals()
+            )
+          ) * 0.97
+        ); // some slippage tolerance
+
+        collaterals = [await dai_weth_slp_contract.balanceOf(McFund.address)];
+        await expect(
+          McFund.takeAction(
+            await makeTrueTrigger(),
+            await createSushiRemoveLiquidityAction(
+              sushiRemoveLiquidity.address,
+              dai_weth_slp_token,
+              minTokenAPerSLP,
+              minTokenBPerSLP
+            ),
+            collaterals,
+            await getFees(McFund, collaterals)
+          )
+        ); // TODO: check tokenA and tokenB balances to see if they've gone up + slippage tolerance
+
+        expect((await dai_weth_slp_contract.balanceOf(McFund.address)) == 0);
       });
     });
   }

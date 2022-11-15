@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import "../IAction.sol";
 import "@sushiswap/core/contracts/uniswapv2/interfaces/IUniswapV2Router02.sol";
+import "@sushiswap/core/contracts/uniswapv2/interfaces/IUniswapV2Pair.sol";
 import "@sushiswap/core/contracts/uniswapv2/interfaces/IUniswapV2Factory.sol";
 import "../../utils/Constants.sol";
 import "../../utils/assets/TokenLib.sol";
@@ -17,6 +18,9 @@ import "../SimpleSwapUtils.sol";
 
     Tokens: 
         Will only have 1 input token and 2 output tokens
+
+    Action.data: 
+        - (uint256 minXPerSLP, uint256 minYPerSLP) : minimum amount of X and Y tokens you'll take for SLP tokens given 
 */
 contract SushiRemoveLiquidity is IAction, DelegatePerform {
     using SafeERC20 for IERC20;

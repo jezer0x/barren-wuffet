@@ -18,9 +18,6 @@ const config = {
       }
     ]
   },
-  mocha: {
-    timeout: 20000
-  },
   networks: {
     ...(process.env.ALCHEMY_API_KEY_ARBI
       ? {

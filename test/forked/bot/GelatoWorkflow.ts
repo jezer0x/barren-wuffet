@@ -6,7 +6,7 @@ import { ERC20_DECIMALS, ETH_TOKEN, ETH_ADDRESS } from "../../Constants";
 import { getHashFromEvent } from "../../helper";
 import { IOps__factory } from "../../../typechain-types";
 import { makeTrueTrigger } from "../../Fixtures";
-import { encodeMinBPerA, createSushiSwapAction, getTokenOutPerTokenIn } from "../sushiswap/sushiUtils";
+import { encodeMinBPerA, createSushiSwapAction, getTokenOutPerTokenInSushiSwap } from "../sushiswap/sushiUtils";
 import { setupEnvForSushiTests } from "../forkFixtures";
 
 describe("Gelato Bot", () => {
@@ -31,7 +31,7 @@ describe("Gelato Bot", () => {
 
         const daiPerETH = parseFloat(
           ethers.utils.formatUnits(
-            await getTokenOutPerTokenIn(
+            await getTokenOutPerTokenInSushiSwap(
               protocolAddresses.sushiswap.swap_router,
               ETH_TOKEN,
               DAI_TOKEN,
