@@ -17,6 +17,8 @@ import {
 import { setupEnvForSushiTests } from "../forkFixtures";
 import { getFees } from "../../helper";
 
+const DEFAULT_SLIPPAGE = DEFAULT_SLIPPAGE;
+
 describe("Sushiswap", () => {
   // run these only when forking
   if (config.networks.hardhat.forking?.enabled) {
@@ -50,7 +52,7 @@ describe("Sushiswap", () => {
               sushiSwapExactXForY.address,
               ETH_TOKEN,
               DAI_TOKEN,
-              await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * 0.97), // some slippage tolerance
+              await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * DEFAULT_SLIPPAGE), // some slippage tolerance
               protocolAddresses.tokens.WETH
             ),
             collaterals,
@@ -59,7 +61,8 @@ describe("Sushiswap", () => {
         ).to.changeEtherBalance(McFund.address, ethers.utils.parseEther("-2"));
 
         expect(
-          (await dai_contract.balanceOf(McFund.address)) >= ethers.utils.parseUnits(String(daiPerETH * 2 * 0.97), 18)
+          (await dai_contract.balanceOf(McFund.address)) >=
+            ethers.utils.parseUnits(String(daiPerETH * 2 * DEFAULT_SLIPPAGE), 18)
         );
 
         // swap DAI back to ETH
@@ -74,7 +77,7 @@ describe("Sushiswap", () => {
               sushiSwapExactXForY.address,
               DAI_TOKEN,
               ETH_TOKEN,
-              await encodeMinBPerA(DAI_TOKEN, ETH_TOKEN, (1.0 / daiPerETH) * 0.97),
+              await encodeMinBPerA(DAI_TOKEN, ETH_TOKEN, (1.0 / daiPerETH) * DEFAULT_SLIPPAGE),
               protocolAddresses.tokens.WETH
             ),
             collaterals,
@@ -84,7 +87,7 @@ describe("Sushiswap", () => {
 
         expect(
           (await ethers.provider.getBalance(McFund.address)).sub(prev_eth_balance) >
-            ethers.utils.parseUnits(String((dai_balance * 0.97) / daiPerETH), 18)
+            ethers.utils.parseUnits(String((dai_balance * DEFAULT_SLIPPAGE) / daiPerETH), 18)
         );
       });
 
@@ -142,36 +145,41 @@ describe("Sushiswap", () => {
             sushiSwapExactXForY.address,
             ETH_TOKEN,
             DAI_TOKEN,
-            await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * 0.97), // some slippage tolerance
+            await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * DEFAULT_SLIPPAGE), // some slippage tolerance
             protocolAddresses.tokens.WETH
           ),
           collaterals,
           await getFees(McFund, collaterals)
         );
 
-        const balance_dai = await dai_contract.balanceOf(McFund.address);
+        let balance_dai = await dai_contract.balanceOf(McFund.address);
+        let balance_eth = await ethers.provider.getBalance(McFund.address);
 
         collaterals = [ethers.utils.parseEther("2"), balance_dai];
-        await expect(
-          McFund.takeAction(
-            await makeTrueTrigger(),
-            await createSushiAddLiquidityAction(
-              sushiAddLiquidity.address,
-              protocolAddresses.sushiswap.swap_router,
-              ETH_TOKEN,
-              DAI_TOKEN,
-              await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * 0.97), // some slippage tolerance
-              await encodeMinBPerA(DAI_TOKEN, ETH_TOKEN, (1.0 / daiPerETH) * 0.97), // some slippage tolerance
-              protocolAddresses.tokens.WETH
-            ),
-            collaterals,
-            await getFees(McFund, collaterals)
-          )
+        await McFund.takeAction(
+          await makeTrueTrigger(),
+          await createSushiAddLiquidityAction(
+            sushiAddLiquidity.address,
+            protocolAddresses.sushiswap.swap_router,
+            ETH_TOKEN,
+            DAI_TOKEN,
+            await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * DEFAULT_SLIPPAGE), // some slippage tolerance
+            await encodeMinBPerA(DAI_TOKEN, ETH_TOKEN, (1.0 / daiPerETH) * DEFAULT_SLIPPAGE), // some slippage tolerance
+            protocolAddresses.tokens.WETH
+          ),
+          collaterals,
+          await getFees(McFund, collaterals)
         );
 
-        // TODO: following 2 lines might fail because not all of both tokens used up in LP, need some tolerance
-        // .to.changeEtherBalance(McFund.address, ethers.utils.parseEther(String(-2)))
-        // .to.changeTokenBalance(dai_contract, McFund.address, balance_dai.mul(-1));
+        expect(
+          balance_eth.sub(await ethers.provider.getBalance(McFund.address)) >=
+            ethers.utils.parseUnits(String(daiPerETH * DEFAULT_SLIPPAGE))
+        );
+
+        expect(
+          balance_dai.sub(await dai_contract.balanceOf(McFund.address)) >=
+            ethers.utils.parseUnits(String(balance_dai * DEFAULT_SLIPPAGE), 18)
+        );
 
         const dai_weth_slp_token = await getSLPToken(
           protocolAddresses.sushiswap.swap_router,
@@ -200,7 +208,7 @@ describe("Sushiswap", () => {
               amountAPerSLP,
               await new Contract(tokenA.addr, IERC20Metadata__factory.abi, ethers.provider).decimals()
             )
-          ) * 0.97
+          ) * DEFAULT_SLIPPAGE
         ); // some slippage tolerance
 
         const minTokenBPerSLP = await encodeMinBPerA(
@@ -211,11 +219,13 @@ describe("Sushiswap", () => {
               amountBPerSLP,
               await new Contract(tokenB.addr, IERC20Metadata__factory.abi, ethers.provider).decimals()
             )
-          ) * 0.97
+          ) * DEFAULT_SLIPPAGE
         ); // some slippage tolerance
 
+        balance_dai = await dai_contract.balanceOf(McFund.address);
+        balance_eth = await ethers.provider.getBalance(McFund.address);
         collaterals = [await dai_weth_slp_contract.balanceOf(McFund.address)];
-        await expect(
+        balance_dai = await expect(
           McFund.takeAction(
             await makeTrueTrigger(),
             await createSushiRemoveLiquidityAction(
@@ -227,8 +237,30 @@ describe("Sushiswap", () => {
             collaterals,
             await getFees(McFund, collaterals)
           )
-        ); // TODO: check tokenA and tokenB balances to see if they've gone up + slippage tolerance
-
+        );
+        expect(
+          (await ethers.provider.getBalance(McFund.address)).sub(balance_eth) >=
+            ethers.utils.parseEther(
+              String(
+                amountAPerSLP
+                  .mul(collaterals[0])
+                  .mul(DEFAULT_SLIPPAGE * 100)
+                  .div(100)
+              )
+            )
+        );
+        expect(
+          (await dai_contract.balanceOf(McFund.address)).sub(balance_dai) >=
+            ethers.utils.parseUnits(
+              String(
+                amountBPerSLP
+                  .mul(collaterals[0])
+                  .mul(DEFAULT_SLIPPAGE * 100)
+                  .div(100)
+              ),
+              18
+            )
+        );
         expect((await dai_weth_slp_contract.balanceOf(McFund.address)) == 0);
       });
     });
