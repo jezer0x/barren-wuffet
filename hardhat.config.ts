@@ -27,7 +27,7 @@ const config = {
               // blockNumber: 7900766,
               url: `https://arb-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY_ARBI}`,
               blockNumber: 36696692,
-              enabled: true
+              enabled: false
             }
           }
         }

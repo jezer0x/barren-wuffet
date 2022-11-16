@@ -1,6 +1,6 @@
 import { ethers } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
-import { TriggerStruct, ActionStruct, RoboCop } from "../typechain-types/contracts/rules/RoboCop";
+import { TriggerStruct, ActionStruct } from "../typechain-types/contracts/rules/RoboCop";
 import { Fund } from "../typechain-types";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Contract, Bytes, BigNumber, utils } from "ethers";
@@ -19,7 +19,6 @@ import {
 } from "./Constants";
 import { createTimestampTrigger, getAddressFromEvent, getHashFromEvent, tx } from "./helper";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { Address } from "hardhat-deploy/types";
 import { createUniSwapAction } from "./forked/uniswap/uniUtils";
 
 export async function setupTestTokens() {
@@ -185,6 +184,11 @@ export async function setupRoboCop(hre: HardhatRuntimeEnvironment) {
     "Created",
     roboCopFactoryDeployer.address
   );
+
+  // make bw register this robocop with BotFrontend
+  const botFrontend = await ethers.getContract("BotFrontend");
+  await botFrontend.setBarrenWuffet(deployer);
+  await botFrontend.registerRobocop(roboCopAddr);
 
   const roboCop = await ethers.getContractAt("RoboCop", roboCopAddr);
 

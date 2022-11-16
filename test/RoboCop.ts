@@ -30,7 +30,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 describe("RoboCop", () => {
   const deployRoboCopFixture = deployments.createFixture(async (hre, options) => {
-    await deployments.fixture(["RoboCopFactory"]);
+    await deployments.fixture(["BarrenWuffet", "RoboCopFactory"]);
     return await setupRoboCop(hre);
   });
 
@@ -264,12 +264,12 @@ describe("RoboCop", () => {
       const tokenSwapAction = makeSwapAction(uniSwapExactInputSingle.address, testToken1.address, ETH_ADDRESS);
       const ruleHash = await createRuleInRoboCop(roboCop, [passingTrigger], [tokenSwapAction], ruleMakerWallet, true);
 
-      await expect(roboCop.connect(botWallet).executeRule(ruleHash)).to.be.rejectedWith("Trigger != Satisfied");
+      await expect(roboCop.connect(botWallet).executeRule(ruleHash)).to.be.rejectedWith("RC: Trigger not satisfied");
     });
   });
 
   const deployValidRuleFixture = deployments.createFixture(async (hre, options) => {
-    await deployments.fixture(["RoboCopFactory"]);
+    await deployments.fixture(["BarrenWuffet", "RoboCopFactory"]);
     return await setupValidRuleFixture(hre);
   });
 
@@ -356,13 +356,15 @@ describe("RoboCop", () => {
     it("should revert if > 0 native is not sent to addCollateral for an native action", async () => {
       const { ruleHashEth, ruleMakerWallet, roboCop } = await deployValidRuleFixture();
 
-      await expect(roboCop.connect(ruleMakerWallet).addCollateral(ruleHashEth, [0])).to.be.revertedWith("amount <= 0");
+      await expect(roboCop.connect(ruleMakerWallet).addCollateral(ruleHashEth, [0])).to.be.revertedWith(
+        "RC: amount <= 0"
+      );
     });
 
     it("should revert if > 0 ERC20 isnt sent / approved to addCollateral for an ERC20 rule", async () => {
       const { ruleHashToken, ruleMakerWallet, roboCop, testToken1 } = await deployValidRuleFixture();
       await expect(roboCop.connect(ruleMakerWallet).addCollateral(ruleHashToken, [0])).to.be.revertedWith(
-        "amount <= 0"
+        "RC: amount <= 0"
       );
       await testToken1.connect(ruleMakerWallet).approve(roboCop.address, 6);
       await expect(roboCop.connect(ruleMakerWallet).addCollateral(ruleHashToken, [10])).to.be.revertedWith(
@@ -413,7 +415,7 @@ describe("RoboCop", () => {
     it("should revert if collateral amount does not match msg.value for native actions", async () => {
       const { ruleHashEth, ruleMakerWallet, roboCop, botWallet } = await deployValidRuleFixture();
       await expect(roboCop.connect(ruleMakerWallet).addCollateral(ruleHashEth, [12], { value: 3 })).to.be.revertedWith(
-        "ETH: amount != msg.value"
+        "RC: amount != msg.value"
       );
     });
 
@@ -423,7 +425,7 @@ describe("RoboCop", () => {
         const { ruleHashEth, ruleHashToken, roboCop, ruleMakerWallet } = await deployValidRuleFixture();
         const ruleHash = isNative ? ruleHashEth : ruleHashToken;
         await expect(roboCop.connect(ruleMakerWallet).reduceCollateral(ruleHash, [12])).to.be.revertedWith(
-          "Not enough collateral."
+          "RC: Not enough collateral."
         );
       });
 
@@ -511,10 +513,10 @@ describe("RoboCop", () => {
 
         await expect(
           roboCop.connect(ruleMakerWallet).reduceCollateral(ruleHash, [collateralAmount.add(1)])
-        ).to.be.revertedWith("Not enough collateral.");
+        ).to.be.revertedWith("RC: Not enough collateral.");
         await roboCop.connect(ruleMakerWallet).reduceCollateral(ruleHash, [collateralAmount]);
         await expect(roboCop.connect(ruleMakerWallet).reduceCollateral(ruleHash, [1])).to.be.revertedWith(
-          "Not enough collateral."
+          "RC: Not enough collateral."
         );
       });
     });
@@ -564,7 +566,7 @@ describe("RoboCop", () => {
         [0, 0, collateral.mul(ETH_PRICE_IN_TST1).div(PRICE_TRIGGER_DECIMALS)]
       );
 
-      await expect(roboCop.connect(botWallet).executeRule(ruleHashEth)).to.be.revertedWith("Rule isn't Activated");
+      await expect(roboCop.connect(botWallet).executeRule(ruleHashEth)).to.be.revertedWith("RC: !Activated");
     });
 
     it("Should allow anyone to execute the rule (token), and all the triggers passes", async () => {
@@ -583,7 +585,7 @@ describe("RoboCop", () => {
         .withArgs(ruleHashToken, botWallet.address);
 
       // TODO need to implement caller getting paid.
-      await expect(roboCop.connect(botWallet).executeRule(ruleHashToken)).to.be.revertedWith("Rule isn't Activated");
+      await expect(roboCop.connect(botWallet).executeRule(ruleHashToken)).to.be.revertedWith("RC: !Activated");
     });
 
     it("Should revert if anyone tries to execute the rule twice", async () => {
@@ -595,7 +597,7 @@ describe("RoboCop", () => {
         .to.emit(roboCop, "Executed")
         .withArgs(ruleHashToken, botWallet.address);
 
-      await expect(roboCop.connect(botWallet).executeRule(ruleHashToken)).to.be.revertedWith("Rule isn't Activated");
+      await expect(roboCop.connect(botWallet).executeRule(ruleHashToken)).to.be.revertedWith("RC: !Activated");
     });
 
     it("Should not allow adding / removing collateral after a rule is executed", async () => {
@@ -609,9 +611,9 @@ describe("RoboCop", () => {
 
       await expect(
         roboCop.connect(ruleMakerWallet).reduceCollateral(ruleHashToken, [collateralAmount])
-      ).to.be.revertedWith("Can't reduce collateral");
+      ).to.be.revertedWith("RC: Can't reduce collateral");
       await expect(roboCop.connect(ruleMakerWallet).addCollateral(ruleHashToken, [1])).to.be.revertedWith(
-        "Can't add collateral"
+        "RC: Can't add collateral"
       );
     });
   });
@@ -626,7 +628,7 @@ describe("RoboCop", () => {
       await expect(roboCop.connect(ruleMakerWallet).deactivateRule(ruleHashToken))
         .to.emit(roboCop, "Deactivated")
         .withArgs(ruleHashToken);
-      await expect(roboCop.connect(botWallet).executeRule(ruleHashToken)).to.be.revertedWith("Rule isn't Activated");
+      await expect(roboCop.connect(botWallet).executeRule(ruleHashToken)).to.be.revertedWith("RC: !Activated");
     });
 
     it("Should allow executing a rule that has been activated (after it was deactivated)", async () => {
