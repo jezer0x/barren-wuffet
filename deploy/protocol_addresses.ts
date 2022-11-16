@@ -19,7 +19,8 @@ const arbitrum = {
   // https://docs.uniswap.org/protocol/reference/deployments
   uniswap: {
     swap_router: "0xe592427a0aece92de3edee1f18e0157c05861564",
-    non_fungible_position_manager: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+    non_fungible_position_manager: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+    quoter: "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6"
   },
 
   sushiswap: {
@@ -56,7 +57,7 @@ const arbitrum = {
 
 const goerli = {
   tokens: {
-    WETH: "0xb4fbf271143f4fbf7b91a5ded31805e42b2208d6", // <- sushi
+    WETH: "0xb4fbf271143f4fbf7b91a5ded31805e42b2208d6", // <- sushi, uni
     USDC: "0xde637d4c445ca2aae8f782ffac8d2971b93a4998", // or? uni: 0x07865c6E87B9F70255377e024ace6630C1Eaa37F //sushi: 0xd87ba7a50b2e7e660f678a895e4b72e7cb4ccd9c
     DAI: "0xdc31ee1784292379fbb2964b3b9c4124d8f89c60"
   },
@@ -70,7 +71,8 @@ const goerli = {
   // https://docs.uniswap.org/protocol/reference/deployments
   uniswap: {
     swap_router: "0xe592427a0aece92de3edee1f18e0157c05861564",
-    non_fungible_position_manager: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+    non_fungible_position_manager: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+    quoter: "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6"
   },
 
   sushiswap: {

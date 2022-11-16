@@ -3,7 +3,6 @@ pragma solidity ^0.8.17;
 
 import "../IAction.sol";
 import "@sushiswap/core/contracts/uniswapv2/interfaces/IUniswapV2Router02.sol";
-import "@sushiswap/core/contracts/uniswapv2/interfaces/IUniswapV2Pair.sol";
 import "@sushiswap/core/contracts/uniswapv2/interfaces/IUniswapV2Factory.sol";
 import "../../utils/Constants.sol";
 import "../../utils/assets/TokenLib.sol";

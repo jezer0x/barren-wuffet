@@ -16,6 +16,10 @@ import "../SimpleSwapUtils.sol";
 
     Tokens: 
         Will only have 1 input token and 1 output token
+
+    Action.data:
+        - fee  
+        - uint256: minimum amount of Y tokens per X accepted (18 decimals)
 */
 contract UniSwapExactInputSingle is IAction, DelegatePerform {
     using SafeERC20 for IERC20;

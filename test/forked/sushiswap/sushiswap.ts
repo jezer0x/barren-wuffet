@@ -17,7 +17,7 @@ import {
 import { setupEnvForSushiTests } from "../forkFixtures";
 import { getFees } from "../../helper";
 
-const DEFAULT_SLIPPAGE = DEFAULT_SLIPPAGE;
+const DEFAULT_SLIPPAGE = 0.97;
 
 describe("Sushiswap", () => {
   // run these only when forking
@@ -91,8 +91,8 @@ describe("Sushiswap", () => {
         );
       });
 
-      let collaterals = [ethers.utils.parseEther("1")];
       it("Should revert if wrong path is given", async () => {
+        let collaterals = [ethers.utils.parseEther("1")];
         const { protocolAddresses, DAI_TOKEN, McFund, sushiSwapExactXForY } = await testPreReqs();
         await expect(
           McFund.takeAction(

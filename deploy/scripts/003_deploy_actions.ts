@@ -29,7 +29,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     console.log("triggers whitelist already exists as ", whitelistService.address, "::", actWlHash);
   }
 
-  //await deployUniswapActions(deploy, deployer, whitelistService, actWlHash, TokenLibAddr, protocolAddresses);
+  await deployUniswapActions(deploy, deployer, whitelistService, actWlHash, TokenLibAddr, protocolAddresses);
 
   await deploySushiActions(deploy, deployer, whitelistService, actWlHash, TokenLibAddr, protocolAddresses);
 
