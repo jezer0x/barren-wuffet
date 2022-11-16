@@ -6,7 +6,7 @@ import { setupEnvForUniTests } from "../forkFixtures";
 import { makeTrueTrigger } from "../../Fixtures";
 import { abi as FACTORY_ABI } from "@134dd3v/uniswap-v3-core-0.8-support/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json";
 import { abi as POOL_ABI } from "@134dd3v/uniswap-v3-core-0.8-support//artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json";
-import { createUniSwapAction, getTokenOutPerTokenInUniSwap } from "./uniswapUtils";
+import { createUniSwapAction, getTokenOutPerTokenInUniSwap } from "./uniUtils";
 import { encodeMinBPerA } from "../sushiswap/sushiUtils";
 import { getFees } from "../../helper";
 import { expect } from "chai";
