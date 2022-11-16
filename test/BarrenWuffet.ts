@@ -641,7 +641,7 @@ describe("BarrenWuffet", () => {
             [],
             []
           )
-        ).to.be.revertedWithoutReason();
+        ).to.be.revertedWith("F: onlyFundManager");
 
         const ruleFns = [
           () => jerkshireFund.fairyLink.activateRule(ruleHash),
@@ -652,7 +652,7 @@ describe("BarrenWuffet", () => {
         ];
 
         for (const fn of ruleFns) {
-          await expect(fn()).to.be.revertedWithoutReason();
+          await expect(fn()).to.be.revertedWith("F: onlyFundManager");
         }
       });
 
@@ -669,7 +669,7 @@ describe("BarrenWuffet", () => {
         // TODO param.fees missing
         await expect(
           jerkshireFund.fairyLink.takeAction(passingTrigger, swapETHToTST1Action, [etherToSwap], [0])
-        ).to.be.revertedWithoutReason();
+        ).to.be.revertedWith("F: onlyFundManager");
       });
 
       it("should call 'perform' on the action when fund manager calls takeAction", async () => {

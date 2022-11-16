@@ -20,6 +20,7 @@ import {
 import { createTimestampTrigger, getAddressFromEvent, getHashFromEvent, tx } from "./helper";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { Address } from "hardhat-deploy/types";
+import { createUniSwapAction } from "./forked/uniswap/uniUtils";
 
 export async function setupTestTokens() {
   return {
@@ -58,23 +59,24 @@ export function makeFailingTrigger(triggerContract: string, testToken1: Contract
 
 export function makeSwapAction(
   swapContract: string,
-  inputTokens: [string] = [ETH_ADDRESS],
-  outputTokens: [string] = [ETH_ADDRESS]
+  inputTokenAddr: string = ETH_ADDRESS,
+  outputTokenAddr: string = ETH_ADDRESS
 ): ActionStruct {
-  return {
-    callee: swapContract,
-    data: ethers.utils.defaultAbiCoder.encode(["uint24"], [3000]),
-    inputTokens: inputTokens.map(addr => ({
-      t: addr === ETH_ADDRESS ? TOKEN_TYPE.NATIVE : TOKEN_TYPE.ERC20,
-      addr: addr,
+  return createUniSwapAction(
+    swapContract,
+    {
+      t: inputTokenAddr === ETH_ADDRESS ? TOKEN_TYPE.NATIVE : TOKEN_TYPE.ERC20,
+      addr: inputTokenAddr,
       id: BigNumber.from(0)
-    })), // eth
-    outputTokens: outputTokens.map(addr => ({
-      t: addr === ETH_ADDRESS ? TOKEN_TYPE.NATIVE : TOKEN_TYPE.ERC20,
-      addr: addr,
+    },
+    {
+      t: outputTokenAddr === ETH_ADDRESS ? TOKEN_TYPE.NATIVE : TOKEN_TYPE.ERC20,
+      addr: outputTokenAddr,
       id: BigNumber.from(0)
-    }))
-  };
+    },
+    3000,
+    BigNumber.from(0) // we'll take anything
+  );
 }
 
 export async function makeDefaultSubConstraints() {
@@ -91,19 +93,23 @@ export async function makeDefaultSubConstraints() {
   };
 }
 
-export async function createRule(
+export async function createRuleInRoboCop(
   _roboCop: Contract,
   triggers: TriggerStruct[],
   actions: ActionStruct[],
   wallet: SignerWithAddress,
   activate: boolean = false
 ): Promise<string> {
-  return getHashFromEvent(
-    _roboCop.connect(wallet).createRule(triggers, actions, activate, [], []),
+  const ruleHash = getHashFromEvent(
+    _roboCop.connect(wallet).createRule(triggers, actions),
     "Created",
     _roboCop,
     "ruleHash"
   );
+  if (activate) {
+    await tx(_roboCop.connect(wallet).activateRule(ruleHash));
+  }
+  return ruleHash;
 }
 
 async function deployTestOracle() {
@@ -223,8 +229,8 @@ export async function setupSwapActions(
     callee: priceTrigger.address
   };
 
-  const swapTST1ToETHAction = makeSwapAction(uniSwapExactInputSingle.address, [testToken1.address], [ETH_ADDRESS]);
-  const swapETHToTST1Action = makeSwapAction(uniSwapExactInputSingle.address, [ETH_ADDRESS], [testToken1.address]);
+  const swapTST1ToETHAction = makeSwapAction(uniSwapExactInputSingle.address, testToken1.address, ETH_ADDRESS);
+  const swapETHToTST1Action = makeSwapAction(uniSwapExactInputSingle.address, ETH_ADDRESS, testToken1.address);
 
   return {
     passingETHtoTST1SwapPriceTrigger,
