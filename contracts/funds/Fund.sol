@@ -187,8 +187,8 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
 
     function _validateAndTakeFees(
         Token[] memory tokens,
-        uint256[] calldata collaterals,
-        uint256[] calldata fees
+        uint256[] memory collaterals,
+        uint256[] memory fees
     ) internal {
         for (uint256 i = 0; i < tokens.length; i++) {
             if (tokens[i].isERC20() || tokens[i].isETH()) {
@@ -229,24 +229,35 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
         triggers[0] = trigger;
         Action[] memory actions = new Action[](1);
         actions[0] = action;
-        bytes32 ruleHash = _createRule(triggers, actions);
-        _addRuleCollateral(ruleHash, collaterals, fees);
-        roboCop.activateRule(ruleHash);
+        bytes32 ruleHash = _createRule(triggers, actions, true, collaterals, fees);
         roboCop.executeRule(ruleHash); // should be immediately executable
         _redeemRuleOutputs();
     }
 
-    function createRule(Trigger[] calldata triggers, Action[] calldata actions)
-        external
+    function createRule(Trigger[] calldata triggers, Action[] calldata actions, bool activate, uint256[] calldata collaterals,
+        uint256[] calldata fees) external
         nonReentrant
         onlyFundStatus(FundStatus.DEPLOYED)
         onlyFundManager
-        returns (bytes32)
+        returns (bytes32) 
     {
-        return _createRule(triggers, actions);
+        return _createRule(triggers, actions, activate, collaterals, fees);
+
     }
 
-    function _createRule(Trigger[] memory triggers, Action[] memory actions) internal returns (bytes32 ruleHash) {
+    function createRules(Trigger[][] calldata triggersArr, Action[][] calldata actionsArr, bool[] calldata activateArr, uint256[][] calldata collateralsArr,
+        uint256[][] calldata feesArr) external         nonReentrant
+        onlyFundStatus(FundStatus.DEPLOYED)
+        onlyFundManager returns (bytes32[] memory) {
+            bytes32[] memory ruleHashes = new bytes32[](triggersArr.length); 
+            for (uint i = 0; i < triggersArr.length; i++) {
+                ruleHashes[i] = _createRule(triggersArr[i], actionsArr[i], activateArr[i], collateralsArr[i], feesArr[i]);
+            }
+            return ruleHashes; 
+        }
+
+    function _createRule(Trigger[] memory triggers, Action[] memory actions, bool activate, uint256[] memory collaterals,
+        uint256[] memory fees) internal returns (bytes32 ruleHash) {
         for (uint256 i = 0; i < triggers.length; i++) {
             require(wlService.isWhitelisted(triggerWhitelistHash, triggers[i].callee), "F: !AuthorizedTrigger");
         }
@@ -257,6 +268,16 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
             require(_onlyDeclaredTokens(actions[i].outputTokens), "F: !AuthorizedToken");
         }
         ruleHash = roboCop.createRule(triggers, actions);
+
+        if (collaterals.length > 0) {
+            _addRuleCollateral(ruleHash, collaterals, fees);
+        }
+
+        if (activate) {
+            roboCop.activateRule(ruleHash);
+        }
+
+        return ruleHash; 
     }
 
     function activateRule(bytes32 ruleHash) external onlyFundStatus(FundStatus.DEPLOYED) onlyFundManager nonReentrant {
@@ -282,8 +303,8 @@ contract Fund is IFund, IERC721Receiver, Initializable, ReentrancyGuardUpgradeab
 
     function _addRuleCollateral(
         bytes32 ruleHash,
-        uint256[] calldata collaterals,
-        uint256[] calldata fees
+        uint256[] memory collaterals,
+        uint256[] memory fees
     ) internal {
         Token[] memory collateralTokens = roboCop.getInputTokens(ruleHash);
         _validateAndTakeFees(collateralTokens, collaterals, fees);
