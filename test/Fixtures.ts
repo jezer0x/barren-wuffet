@@ -17,7 +17,7 @@ import {
   ETH_TOKEN,
   TOKEN_TYPE
 } from "./Constants";
-import { getAddressFromEvent, getHashFromEvent, tx } from "./helper";
+import { createTimestampTrigger, getAddressFromEvent, getHashFromEvent, tx } from "./helper";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { Address } from "hardhat-deploy/types";
 
@@ -42,11 +42,7 @@ export function makePassingTrigger(triggerContract: string, testToken1: Contract
 
 export async function makeTrueTrigger(): Promise<TriggerStruct> {
   // will fail if TimestampTrigger is not deployed
-  return {
-    createTimeParams: utils.defaultAbiCoder.encode(["uint8", "uint256"], [GT, (await time.latest()) - 1]),
-    triggerType: TIMESTAMP_TRIGGER_TYPE,
-    callee: (await ethers.getContract("TimestampTrigger")).address
-  };
+  return createTimestampTrigger((await ethers.getContract("TimestampTrigger")).address, GT, (await time.latest()) - 1);
 }
 
 export function makeFailingTrigger(triggerContract: string, testToken1: Contract): TriggerStruct {
@@ -102,20 +98,12 @@ export async function createRule(
   wallet: SignerWithAddress,
   activate: boolean = false
 ): Promise<string> {
-  const p = _roboCop.connect(wallet).createRule(triggers, actions);
-
-  const ruleHash = getHashFromEvent(
-    _roboCop.connect(wallet).createRule(triggers, actions),
+  return getHashFromEvent(
+    _roboCop.connect(wallet).createRule(triggers, actions, activate, [], []),
     "Created",
     _roboCop,
     "ruleHash"
   );
-
-  if (activate) {
-    await tx(_roboCop.connect(wallet).activateRule(ruleHash));
-  }
-
-  return ruleHash;
 }
 
 async function deployTestOracle() {

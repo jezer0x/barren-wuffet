@@ -358,7 +358,10 @@ describe("BarrenWuffet", () => {
       await expect(
         jerkshireFund.marlieChunger.createRule(
           [makePassingTrigger(priceTrigger.address, testToken1)],
-          [swapETHToTST1Action]
+          [swapETHToTST1Action],
+          false,
+          [],
+          []
         )
       ).be.revertedWith("F: Wrong State");
     });
@@ -496,7 +499,10 @@ describe("BarrenWuffet", () => {
         await expect(
           jerkshireFund.marlieChunger.createRule(
             [makePassingTrigger(priceTrigger.address, testToken1)],
-            [swapETHToTST1Action]
+            [swapETHToTST1Action],
+            false,
+            [],
+            []
           )
         )
           .to.emit(roboCopInst, "Created")
@@ -505,7 +511,10 @@ describe("BarrenWuffet", () => {
         await expect(
           jerkshireFund.marlieChunger.createRule(
             [makeFailingTrigger(priceTrigger.address, testToken1)],
-            [swapETHToTST1Action]
+            [swapETHToTST1Action],
+            false,
+            [],
+            []
           )
         )
           .to.emit(roboCopInst, "Created")
@@ -523,7 +532,10 @@ describe("BarrenWuffet", () => {
         const ruleHash = await getHashFromEvent(
           jerkshireFund.marlieChunger.createRule(
             [makePassingTrigger(priceTrigger.address, testToken1)],
-            [swapETHToTST1Action]
+            [swapETHToTST1Action],
+            false,
+            [],
+            []
           ),
           "Created",
           roboCopInst1,
@@ -624,7 +636,10 @@ describe("BarrenWuffet", () => {
         await expect(
           jerkshireFund.fairyLink.createRule(
             [makePassingTrigger(priceTrigger.address, testToken1)],
-            [swapETHToTST1Action]
+            [swapETHToTST1Action],
+            false,
+            [],
+            []
           )
         ).to.be.revertedWithoutReason();
 

@@ -1,8 +1,10 @@
 import { expect } from "chai";
 import { BigNumber, Contract, ContractReceipt, ContractTransaction, FixedNumber } from "ethers";
-import { ETH_TOKEN, TOKEN_TYPE } from "./Constants";
+import { ETH_TOKEN, GT, LT, TIMESTAMP_TRIGGER_TYPE, TOKEN_TYPE } from "./Constants";
 import { ethers, getNamedAccounts } from "hardhat";
-import { TokenStruct } from "../typechain-types/contracts/rules/RoboCop";
+import { ActionStruct } from "../typechain-types/contracts/actions/IAction";
+import { TriggerStruct } from "../typechain-types/contracts/triggers/ITrigger";
+import { LibDataTypes } from "../typechain-types/contracts/testing/TestGelatoOps";
 
 export async function getAddressFromEvent(
   fnPromise: Promise<ContractTransaction>,
@@ -130,4 +132,69 @@ export function multiplyNumberWithBigNumber(a: Number, b: BigNumber) {
       .toString()
       .split(".")[0] // BigNumber can't take decimal...
   );
+}
+
+export function createTwapTriggerSet(
+  startTime: number,
+  numIntervals: number,
+  gapBetweenIntervals: number,
+  timestampTriggerAddr: string,
+  tolerance: number = 13,
+  additionalTriggers: TriggerStruct[] = []
+) {
+  var triggersSet = [];
+
+  for (var i = 0; i < numIntervals; i++) {
+    triggersSet.push(
+      additionalTriggers.concat([
+        createTimestampTrigger(timestampTriggerAddr, GT, startTime + i * gapBetweenIntervals - 1),
+        createTimestampTrigger(timestampTriggerAddr, LT, startTime + i * gapBetweenIntervals + tolerance)
+      ])
+    );
+  }
+
+  return triggersSet;
+}
+
+export async function createTwapOnChain(
+  fundContract: Contract,
+  totalCollaterals: BigNumber[],
+  action: ActionStruct,
+  startTime: number,
+  numIntervals: number,
+  gapBetweenIntervals: number,
+  timestampTriggerAddr: string,
+  tolerance: number = 13,
+  additionalTriggers: TriggerStruct[] = []
+) {
+  const triggersSet = createTwapTriggerSet(
+    startTime,
+    numIntervals,
+    gapBetweenIntervals,
+    timestampTriggerAddr,
+    tolerance,
+    additionalTriggers
+  );
+  const collateralsPerInterval = totalCollaterals.map(collateral => {
+    return collateral.div(numIntervals);
+  });
+
+  var txSet = [];
+
+  for (var i = 0; i < triggersSet.length; i++) {
+    txSet.push(fundContract.createRule(triggersSet[i], [action], false, [], []));
+    const ruleHash = await fundContract.staticCall.createRule(triggersSet[i], [action], false, [], []); // simulate to get ruleHash
+    txSet.push(
+      fundContract.addRuleCollateral(ruleHash, collateralsPerInterval, getFees(fundContract, collateralsPerInterval))
+    );
+    txSet.push(fundContract.activateRule(ruleHash));
+  }
+}
+
+export function createTimestampTrigger(timestampTriggerAddr: string, operator: number, target: number) {
+  return {
+    createTimeParams: ethers.utils.defaultAbiCoder.encode(["uint8", "uint256"], [operator, target]),
+    triggerType: TIMESTAMP_TRIGGER_TYPE,
+    callee: timestampTriggerAddr
+  };
 }

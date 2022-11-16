@@ -39,7 +39,10 @@ describe("RoboCop", () => {
       //empty triggerArray just means executable anytime!
       const { roboCop, uniSwapExactInputSingle, ruleMakerWallet, testToken1 } = await deployRoboCopFixture();
       const executableAction = makeSwapAction(uniSwapExactInputSingle.address, [testToken1.address]);
-      await expect(roboCop.connect(ruleMakerWallet).createRule([], [executableAction])).to.emit(roboCop, "Created");
+      await expect(roboCop.connect(ruleMakerWallet).createRule([], [executableAction], false, [], [])).to.emit(
+        roboCop,
+        "Created"
+      );
     });
 
     it("Should revert if trigger doesnt have a callee with validateTrigger", async () => {
@@ -49,7 +52,7 @@ describe("RoboCop", () => {
       const executableAction = makeSwapAction(uniSwapExactInputSingle.address, [testToken1.address]);
 
       await expect(
-        roboCop.connect(ruleMakerWallet).createRule([badTrigger], [executableAction])
+        roboCop.connect(ruleMakerWallet).createRule([badTrigger], [executableAction], false, [], [])
       ).to.be.revertedWithoutReason();
     });
 
@@ -62,9 +65,9 @@ describe("RoboCop", () => {
       const badTrigger = makePassingTrigger(badPriceTrigger.address, testToken1);
       const executableAction = makeSwapAction(uniSwapExactInputSingle.address, [testToken1.address]);
 
-      await expect(roboCop.connect(ruleMakerWallet).createRule([badTrigger], [executableAction])).to.be.revertedWith(
-        "Invalid Trigger"
-      );
+      await expect(
+        roboCop.connect(ruleMakerWallet).createRule([badTrigger], [executableAction], false, [], [])
+      ).to.be.revertedWith("Invalid Trigger");
     });
 
     // We dont need to check that validate is a view fn. solidity enforces that
@@ -79,7 +82,9 @@ describe("RoboCop", () => {
         testToken1
       } = await deployRoboCopFixture();
       const passingTrigger = makePassingTrigger(priceTrigger.address, testToken1);
-      await expect(roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [])).to.be.revertedWithoutReason();
+      await expect(
+        roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [], false, [], [])
+      ).to.be.revertedWithoutReason();
     });
 
     it("Should revert if action doesnt have a callee with validate", async () => {
@@ -89,7 +94,7 @@ describe("RoboCop", () => {
       const badAction = makeSwapAction(constants.AddressZero, [testToken1.address]);
 
       await expect(
-        roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [badAction])
+        roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [badAction], false, [], [])
       ).to.be.revertedWithoutReason();
     });
 
@@ -112,7 +117,7 @@ describe("RoboCop", () => {
       const passingTrigger = makePassingTrigger(priceTrigger.address, testToken1); // pass / fail shouldnt matter here
       const executableAction = makeSwapAction(uniSwapExactInputSingle.address, [testToken1.address]);
 
-      await expect(roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction]))
+      await expect(roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction], false, [], []))
         .to.emit(roboCop, "Created")
         .withArgs(anyValue);
     });
@@ -132,16 +137,19 @@ describe("RoboCop", () => {
       var rule1Hash: string;
 
       await network.provider.send("evm_setAutomine", [false]);
-      const tx1 = await roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction]);
-      const tx2 = await roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction]);
+      const tx1 = await roboCop
+        .connect(ruleMakerWallet)
+        .createRule([passingTrigger], [executableAction], false, [], []);
+      const tx2 = await roboCop
+        .connect(ruleMakerWallet)
+        .createRule([passingTrigger], [executableAction], false, [], []);
 
       await network.provider.send("evm_mine", []);
       await network.provider.send("evm_setAutomine", [true]);
       // different block time, so this 3rd rule should work
-      await expect(roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction])).to.emit(
-        roboCop,
-        "Created"
-      );
+      await expect(
+        roboCop.connect(ruleMakerWallet).createRule([passingTrigger], [executableAction], false, [], [])
+      ).to.emit(roboCop, "Created");
 
       try {
         await tx1.wait();
@@ -174,7 +182,7 @@ describe("RoboCop", () => {
       const executableAction = makeSwapAction(uniSwapExactInputSingle.address, [testToken1.address]);
 
       await expect(
-        roboCop.connect(ruleMakerWallet2).createRule([passingTrigger], [executableAction])
+        roboCop.connect(ruleMakerWallet2).createRule([passingTrigger], [executableAction], false, [], [])
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });

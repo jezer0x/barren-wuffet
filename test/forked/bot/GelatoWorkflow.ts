@@ -53,7 +53,10 @@ describe("Gelato Bot", () => {
                 await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * 0.97),
                 protocolAddresses.tokens.WETH
               )
-            ]
+            ],
+            false,
+            [],
+            []
           ),
           "Created",
           McFundRoboCop,
