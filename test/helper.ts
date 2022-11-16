@@ -179,16 +179,19 @@ export async function createTwapOnChain(
     return collateral.div(numIntervals);
   });
 
-  var txSet = [];
+  var actionsSet = [];
+  var activatesSet = [];
+  var collateralsSet = [];
+  var feesSet = [];
 
   for (var i = 0; i < triggersSet.length; i++) {
-    txSet.push(fundContract.createRule(triggersSet[i], [action], false, [], []));
-    const ruleHash = await fundContract.staticCall.createRule(triggersSet[i], [action], false, [], []); // simulate to get ruleHash
-    txSet.push(
-      fundContract.addRuleCollateral(ruleHash, collateralsPerInterval, getFees(fundContract, collateralsPerInterval))
-    );
-    txSet.push(fundContract.activateRule(ruleHash));
+    actionsSet.push(action);
+    activatesSet.push(true);
+    collateralsSet.push(collateralsPerInterval);
+    feesSet.push(getFees(fundContract, collateralsPerInterval));
   }
+
+  await fundContract.createRules(triggersSet, actionsSet, activatesSet, collateralsSet, feesSet);
 }
 
 export function createTimestampTrigger(timestampTriggerAddr: string, operator: number, target: number) {
