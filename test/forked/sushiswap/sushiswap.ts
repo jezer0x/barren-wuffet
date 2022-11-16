@@ -15,7 +15,8 @@ import {
   getTokensOutPerSLP
 } from "./sushiUtils";
 import { setupEnvForSushiTests } from "../forkFixtures";
-import { getFees } from "../../helper";
+import { createTwapOnChain, getFees } from "../../helper";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 const DEFAULT_SLIPPAGE = 0.97;
 

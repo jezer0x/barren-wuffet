@@ -147,7 +147,7 @@ export function createTwapTriggerSet(
   for (var i = 0; i < numIntervals; i++) {
     triggersSet.push(
       additionalTriggers.concat([
-        createTimestampTrigger(timestampTriggerAddr, GT, startTime + i * gapBetweenIntervals - 1),
+        createTimestampTrigger(timestampTriggerAddr, GT, startTime + i * gapBetweenIntervals),
         createTimestampTrigger(timestampTriggerAddr, LT, startTime + i * gapBetweenIntervals + tolerance)
       ])
     );
@@ -156,6 +156,35 @@ export function createTwapTriggerSet(
   return triggersSet;
 }
 
+/**
+ * 
+ * @param fundContract 
+ * @param totalCollaterals: total number of assets to be used in the action
+ * @param action 
+ * @param startTime; block.timestamp where the first rule should be executed
+ * @param numIntervals: How many transactions do you want
+ * @param gapBetweenIntervals: In seconds
+ * @param timestampTriggerAddr 
+ * @param tolerance: specifying a window within which a tx may pass. Needed for inherent uncertainty of when a block is mined. 
+ * @param additionalTriggers: more triggers to be included for each tx
+ * 
+ * Example Usage: 
+ *         await createTwapOnChain(
+          McFund,
+          [ethers.utils.parseEther("20")],
+          createSushiSwapAction(
+            sushiSwapExactXForY.address,
+            ETH_TOKEN,
+            DAI_TOKEN,
+            await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * DEFAULT_SLIPPAGE),
+            protocolAddresses.tokens.WETH
+          ),
+          await time.latest(),
+          10,
+          120,
+          (await ethers.getContract("TimestampTrigger")).address
+        );
+ */
 export async function createTwapOnChain(
   fundContract: Contract,
   totalCollaterals: BigNumber[],
@@ -185,10 +214,10 @@ export async function createTwapOnChain(
   var feesSet = [];
 
   for (var i = 0; i < triggersSet.length; i++) {
-    actionsSet.push(action);
+    actionsSet.push([action]);
     activatesSet.push(true);
     collateralsSet.push(collateralsPerInterval);
-    feesSet.push(getFees(fundContract, collateralsPerInterval));
+    feesSet.push(await getFees(fundContract, collateralsPerInterval));
   }
 
   await fundContract.createRules(triggersSet, actionsSet, activatesSet, collateralsSet, feesSet);

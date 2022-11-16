@@ -57,6 +57,7 @@ const config = {
     fundSubscriber2: 5,
     ruleMaker: 6
   },
+  mocha: { timeout: 60000 },
   paths: {
     sources: "contracts",
     deploy: "deploy/scripts"
