@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { makeTrueTrigger } from "../../Fixtures";
 import { ETH_TOKEN } from "../../Constants";
 import { config, ethers, deployments } from "hardhat";
-import { Contract, BigNumber } from "ethers";
+import { Contract, BigNumber, utils } from "ethers";
 import { IERC20Metadata__factory } from "../../../typechain-types";
 import {
   createSushiAddLiquidityAction,
@@ -15,10 +15,10 @@ import {
   getTokensOutPerSLP
 } from "./sushiUtils";
 import { setupEnvForSushiTests } from "../forkFixtures";
-import { createTwapOnChain, getFees } from "../../helper";
-import { time } from "@nomicfoundation/hardhat-network-helpers";
+import { getFees, multiplyNumberWithBigNumber } from "../../helper";
 
 const DEFAULT_SLIPPAGE = 0.97;
+const NUM_ETHER = 2;
 
 describe("Sushiswap", () => {
   // run these only when forking
@@ -30,7 +30,7 @@ describe("Sushiswap", () => {
     });
 
     describe("swap", () => {
-      it("Should sell 2 ETH for DAI and then swap back for almost all the ETH", async () => {
+      it("Should sell NUM_ETHER ETH for DAI and then swap back for almost all the ETH", async () => {
         const { protocolAddresses, DAI_TOKEN, McFund, sushiSwapExactXForY, dai_contract } = await testPreReqs();
 
         const daiPerETH = parseFloat(
@@ -45,7 +45,7 @@ describe("Sushiswap", () => {
           )
         );
 
-        let collaterals = [ethers.utils.parseEther(String(2))];
+        let collaterals = [ethers.utils.parseEther(String(NUM_ETHER))];
         await expect(
           McFund.takeAction(
             await makeTrueTrigger(),
@@ -59,11 +59,11 @@ describe("Sushiswap", () => {
             collaterals,
             await getFees(McFund, collaterals)
           )
-        ).to.changeEtherBalance(McFund.address, ethers.utils.parseEther("-2"));
+        ).to.changeEtherBalance(McFund.address, ethers.utils.parseEther(`-${NUM_ETHER}`));
 
         expect(
           (await dai_contract.balanceOf(McFund.address)) >=
-            ethers.utils.parseUnits(String(daiPerETH * 2 * DEFAULT_SLIPPAGE), 18)
+            ethers.utils.parseUnits(String(daiPerETH * NUM_ETHER * DEFAULT_SLIPPAGE), 18)
         );
 
         // swap DAI back to ETH
@@ -88,7 +88,7 @@ describe("Sushiswap", () => {
 
         expect(
           (await ethers.provider.getBalance(McFund.address)).sub(prev_eth_balance) >
-            ethers.utils.parseUnits(String((dai_balance * DEFAULT_SLIPPAGE) / daiPerETH), 18)
+            multiplyNumberWithBigNumber(DEFAULT_SLIPPAGE / daiPerETH, dai_balance)
         );
       });
 
@@ -139,7 +139,7 @@ describe("Sushiswap", () => {
           )
         );
 
-        let collaterals = [ethers.utils.parseEther(String(2))];
+        let collaterals = [ethers.utils.parseEther(String(NUM_ETHER))];
         await McFund.takeAction(
           await makeTrueTrigger(),
           createSushiSwapAction(
@@ -156,7 +156,7 @@ describe("Sushiswap", () => {
         let balance_dai = await dai_contract.balanceOf(McFund.address);
         let balance_eth = await ethers.provider.getBalance(McFund.address);
 
-        collaterals = [ethers.utils.parseEther("2"), balance_dai];
+        collaterals = [ethers.utils.parseEther(NUM_ETHER.toString()), balance_dai];
         await McFund.takeAction(
           await makeTrueTrigger(),
           await createSushiAddLiquidityAction(
@@ -174,12 +174,12 @@ describe("Sushiswap", () => {
 
         expect(
           balance_eth.sub(await ethers.provider.getBalance(McFund.address)) >=
-            ethers.utils.parseUnits(String(daiPerETH * DEFAULT_SLIPPAGE))
+            ethers.utils.parseEther(String(daiPerETH * DEFAULT_SLIPPAGE))
         );
 
         expect(
           balance_dai.sub(await dai_contract.balanceOf(McFund.address)) >=
-            ethers.utils.parseUnits(String(balance_dai * DEFAULT_SLIPPAGE), 18)
+            multiplyNumberWithBigNumber(DEFAULT_SLIPPAGE, balance_dai)
         );
 
         const dai_weth_slp_token = await getSLPToken(
@@ -226,41 +226,26 @@ describe("Sushiswap", () => {
         balance_dai = await dai_contract.balanceOf(McFund.address);
         balance_eth = await ethers.provider.getBalance(McFund.address);
         collaterals = [await dai_weth_slp_contract.balanceOf(McFund.address)];
-        balance_dai = await expect(
-          McFund.takeAction(
-            await makeTrueTrigger(),
-            await createSushiRemoveLiquidityAction(
-              sushiRemoveLiquidity.address,
-              dai_weth_slp_token,
-              minTokenAPerSLP,
-              minTokenBPerSLP
-            ),
-            collaterals,
-            await getFees(McFund, collaterals)
-          )
+
+        await McFund.takeAction(
+          await makeTrueTrigger(),
+          await createSushiRemoveLiquidityAction(
+            sushiRemoveLiquidity.address,
+            dai_weth_slp_token,
+            minTokenAPerSLP,
+            minTokenBPerSLP
+          ),
+          collaterals,
+          await getFees(McFund, collaterals)
         );
+
         expect(
           (await ethers.provider.getBalance(McFund.address)).sub(balance_eth) >=
-            ethers.utils.parseEther(
-              String(
-                amountAPerSLP
-                  .mul(collaterals[0])
-                  .mul(DEFAULT_SLIPPAGE * 100)
-                  .div(100)
-              )
-            )
+            multiplyNumberWithBigNumber(DEFAULT_SLIPPAGE, amountAPerSLP.mul(collaterals[0]))
         );
         expect(
           (await dai_contract.balanceOf(McFund.address)).sub(balance_dai) >=
-            ethers.utils.parseUnits(
-              String(
-                amountBPerSLP
-                  .mul(collaterals[0])
-                  .mul(DEFAULT_SLIPPAGE * 100)
-                  .div(100)
-              ),
-              18
-            )
+            multiplyNumberWithBigNumber(DEFAULT_SLIPPAGE, amountBPerSLP.mul(collaterals[0]))
         );
         expect((await dai_weth_slp_contract.balanceOf(McFund.address)) == 0);
       });
