@@ -3,11 +3,11 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
-  const { deploy } = deployments;
+  const { deploy, log } = deployments;
 
   const { deployer } = await getNamedAccounts();
 
-  console.log("> Deploying Libraries");
+  log("> Deploying Libraries");
   const TokenLib = await deploy("TokenLib", { from: deployer, args: [], log: true });
   const AssetTrackerLib = await deploy("AssetTracker", {
     from: deployer,
@@ -25,7 +25,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
       TokenLib: TokenLib.address
     }
   });
-  console.log("\n");
+  log("\n");
 };
 
 export default func;

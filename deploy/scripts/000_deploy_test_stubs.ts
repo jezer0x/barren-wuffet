@@ -5,13 +5,13 @@ import { BigNumber } from "ethers";
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, getChainId } = hre;
-  const { deploy } = deployments;
+  const { deploy, log } = deployments;
 
   const { deployer } = await getNamedAccounts();
 
   // we only need TestStubs when running tests
   if ((await getChainId()) == "31337" && !hre.config.networks.hardhat.forking?.enabled) {
-    console.log("> Deploying Test Stubs");
+    log("> Deploying Test Stubs");
     await deploy("TestOracleEth", {
       contract: "TestOracle",
       from: deployer,
@@ -61,7 +61,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
       args: [],
       log: true
     });
-    console.log("\n");
+    log("\n");
   }
 };
 

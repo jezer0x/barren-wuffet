@@ -4,13 +4,13 @@ import { getLibraries } from "../utils";
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
-  const { deploy } = deployments;
+  const { deploy, log } = deployments;
 
   const { deployer } = await getNamedAccounts();
 
   const { SubLibAddr, AssetTrackerLibAddr, TokenLibAddr } = await getLibraries();
 
-  console.log("> Deplying Fund Implementation");
+  log("> Deplying Fund Implementation");
   await deploy("Fund", {
     from: deployer,
     args: [],
@@ -21,7 +21,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
       TokenLib: TokenLibAddr
     }
   });
-  console.log("\n");
+  log("\n");
 };
 
 export default func;

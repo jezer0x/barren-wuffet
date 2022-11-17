@@ -9,34 +9,40 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   dotenv.config({ path: (await getChainId()) == "31337" ? ".test.env" : ".env", override: true });
 
   const { deployments, getNamedAccounts } = hre;
-  const { deploy } = deployments;
+  const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
   const whitelistService = await ethers.getContract("WhitelistService");
   let trigWlHash = await whitelistService.getWhitelistHash(deployer, "triggers");
 
-  console.log("> Deploying Triggers ");
+  log("> Deploying Triggers ");
 
   if (!(await whitelistService.whitelistExists(trigWlHash))) {
     await whitelistService.createWhitelist("triggers");
-    console.log("triggers whitelist created as ", whitelistService.address, "::", trigWlHash);
+    log("triggers whitelist created as ", whitelistService.address, "::", trigWlHash);
   } else {
-    console.log("triggers whitelist already exists as ", whitelistService.address, "::", trigWlHash);
+    log("triggers whitelist already exists as ", whitelistService.address, "::", trigWlHash);
   }
 
-  await deployPriceTrigger(deploy, deployer, whitelistService, trigWlHash);
-  await deployTimestampTrigger(deploy, deployer, whitelistService, trigWlHash);
+  await deployPriceTrigger(deploy, deployer, whitelistService, trigWlHash, log);
+  await deployTimestampTrigger(deploy, deployer, whitelistService, trigWlHash, log);
 
   if ((await whitelistService.getWhitelistOwner(trigWlHash)) == deployer) {
     await whitelistService.transferWhitelistOwnership(trigWlHash, process.env.PLATFORM_MULTI_SIG_ADDR);
-    console.log(trigWlHash, " ownership transferred to ", process.env.PLATFORM_MULTI_SIG_ADDR);
+    log(trigWlHash, " ownership transferred to ", process.env.PLATFORM_MULTI_SIG_ADDR);
   } else {
     console.error("The trigger Whitelist is already owned by ", await whitelistService.getWhitelistOwner(trigWlHash));
   }
 
-  console.log("\n");
+  log("\n");
 };
 
-async function deployPriceTrigger(deploy: any, deployer: string, whitelistService: Contract, trigWlHash: any) {
+async function deployPriceTrigger(
+  deploy: any,
+  deployer: string,
+  whitelistService: Contract,
+  trigWlHash: any,
+  logFn: any
+) {
   await deploy("PriceTrigger", {
     from: deployer,
     args: [],
@@ -46,22 +52,28 @@ async function deployPriceTrigger(deploy: any, deployer: string, whitelistServic
   const priceTrigger = await ethers.getContract("PriceTrigger");
   if ((await priceTrigger.owner()) == deployer) {
     await priceTrigger.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
-    console.log("Ownership of PriceTrigger transferred to ", process.env.PLATFORM_MULTI_SIG_ADDR);
+    logFn("Ownership of PriceTrigger transferred to ", process.env.PLATFORM_MULTI_SIG_ADDR);
   } else {
-    console.log("Can't transfer ownership of PriceTrigger as owner is ", await priceTrigger.owner());
+    logFn("Can't transfer ownership of PriceTrigger as owner is ", await priceTrigger.owner());
   }
 
-  await addToWhitelist(deployer, whitelistService, trigWlHash, priceTrigger.address);
+  await addToWhitelist(deployer, whitelistService, trigWlHash, priceTrigger.address, logFn);
 }
 
-async function deployTimestampTrigger(deploy: any, deployer: string, whitelistService: Contract, trigWlHash: any) {
+async function deployTimestampTrigger(
+  deploy: any,
+  deployer: string,
+  whitelistService: Contract,
+  trigWlHash: any,
+  logFn: any
+) {
   const tsTrigger = await deploy("TimestampTrigger", {
     from: deployer,
     args: [],
     log: true
   });
 
-  await addToWhitelist(deployer, whitelistService, trigWlHash, tsTrigger.address);
+  await addToWhitelist(deployer, whitelistService, trigWlHash, tsTrigger.address, logFn);
 }
 
 export default func;
