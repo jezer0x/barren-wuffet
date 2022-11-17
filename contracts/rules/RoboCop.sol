@@ -193,7 +193,7 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
         onlyOwner
         returns (bytes32)
     {
-        bytes32 ruleHash = getRuleHash(triggers, actions);
+        bytes32 ruleHash = getRuleHash(triggers, actions, address(this));
         require(!rules.contains(ruleHash), "RC: Duplicate Rule");
         Rule memory newRule;
         require(actions.length > 0); // has to do something, else is a waste!
@@ -274,8 +274,8 @@ contract RoboCop is IRoboCop, IERC721Receiver, Initializable, Ownable, Reentranc
         botFrontend.stopTask(ruleHash);
     }
 
-    function getRuleHash(Trigger[] calldata triggers, Action[] calldata actions) public view returns (bytes32) {
-        return keccak256(abi.encode(triggers, actions, msg.sender, address(this)));
+    function getRuleHash(Trigger[] calldata triggers, Action[] calldata actions, address fund) public pure returns (bytes32) {
+        return keccak256(abi.encode(triggers, actions, fund));
     }
 
     function _checkTriggers(Trigger[] memory triggers) internal view returns (bool, TriggerReturn[] memory) {
