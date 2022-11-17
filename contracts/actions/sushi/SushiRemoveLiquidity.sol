@@ -17,6 +17,9 @@ import "../SimpleSwapUtils.sol";
 
     Tokens: 
         Will only have 1 input token and 2 output tokens
+
+    Action.data: 
+        - (uint256 minXPerSLP, uint256 minYPerSLP) : minimum amount of X and Y tokens you'll take for SLP tokens given 
 */
 contract SushiRemoveLiquidity is IAction, DelegatePerform {
     using SafeERC20 for IERC20;

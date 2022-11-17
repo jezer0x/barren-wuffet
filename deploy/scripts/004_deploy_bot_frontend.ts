@@ -4,25 +4,22 @@ import { ethers, getChainId } from "hardhat";
 import { getProtocolAddresses } from "../protocol_addresses";
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
-  const protocolAddresses: any = await getProtocolAddresses(
-    await getChainId(),
-    hre.config.networks.hardhat.forking?.enabled
-  );
+  const protocolAddresses: any = await getProtocolAddresses(await getChainId());
   const { deployments, getNamedAccounts } = hre;
-  const { deploy } = deployments;
+  const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
 
   var treasuryAddr = protocolAddresses.gelato.treasury;
   var opsAddr = protocolAddresses.gelato.ops;
 
-  console.log("> Deploying BotFrontend");
+  log("> Deploying BotFrontend");
   // note: we will change the owner later, after setting BW addr
   await deploy("BotFrontend", {
     from: deployer,
     args: [treasuryAddr, opsAddr],
     log: true
   });
-  console.log("\n");
+  log("\n");
 };
 
 export default func;

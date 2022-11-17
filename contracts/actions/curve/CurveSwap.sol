@@ -29,13 +29,9 @@ interface ISwapper {
     Tokens: 
         Will only have 1 input token and 1 output token
 
-    TriggerReturn: 
-        Applicable TriggerReturn must be in (asset1, asset2, val) where val.decimals = 8, asset1 = inputToken and asset2 = outputToken
-        If not present, trade is in danger of getting frontrun. 
-
-    Action: 
-        action.data must be in the form of (address)
-
+    Action.data: 
+        - address: poolAddr 
+        - uint256: minimum amount of Y tokens per X accepted (18 decimals)
 */
 contract CurveSwap is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
@@ -75,7 +71,7 @@ contract CurveSwap is IAction, DelegatePerform {
         returns (ActionResponse memory)
     {
         uint256[] memory outputs = new uint256[](1);
-        address poolAddr = abi.decode(action.data, (address));
+        (address poolAddr, uint256 minYPerX) = abi.decode(action.data, (address, uint256));
         ISwapper swapper = ISwapper(_getSwapper());
 
         action.inputTokens[0].approve(address(swapper), runtimeParams.collaterals[0]);
@@ -84,11 +80,7 @@ contract CurveSwap is IAction, DelegatePerform {
             action.inputTokens[0].addr,
             action.outputTokens[0].addr,
             runtimeParams.collaterals[0],
-            (SimpleSwapUtils._getRelevantPriceTriggerData(
-                action.inputTokens[0],
-                action.outputTokens[0],
-                runtimeParams.triggerReturnArr
-            ) * runtimeParams.collaterals[0]) / 10**8,
+            (minYPerX * runtimeParams.collaterals[0]) / 10**18,
             address(this)
         );
         action.inputTokens[0].approve(address(swapper), 0);

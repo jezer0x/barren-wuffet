@@ -1,7 +1,10 @@
 import { expect } from "chai";
-import { BigNumber, Contract, ContractReceipt, ContractTransaction } from "ethers";
-import { ETH_TOKEN, TOKEN_TYPE } from "./Constants";
-import { ethers, getNamedAccounts } from "hardhat";
+import { BigNumber, Contract, ContractReceipt, ContractTransaction, FixedNumber } from "ethers";
+import { ETH_TOKEN, GT, LT, TIMESTAMP_TRIGGER_TYPE, TOKEN_TYPE } from "./Constants";
+import { config, ethers, getNamedAccounts } from "hardhat";
+import { ActionStruct } from "../typechain-types/contracts/actions/IAction";
+import { TriggerStruct } from "../typechain-types/contracts/triggers/ITrigger";
+import { LibDataTypes } from "../typechain-types/contracts/testing/TestGelatoOps";
 
 export async function getAddressFromEvent(
   fnPromise: Promise<ContractTransaction>,
@@ -110,4 +113,128 @@ export async function whitelistAction(actionAddr: string) {
   const whitelistService = await ethers.getContract("WhitelistService");
   const actWlHash = await whitelistService.getWhitelistHash(deployer, "actions");
   await whitelistService.addToWhitelist(actWlHash, actionAddr);
+}
+
+export async function getFees(fund: Contract, collaterals: Array<BigNumber>) {
+  let fees = [];
+  const feePercentage = (await fund.feeParams()).managerToPlatformFeePercentage / 100.0;
+
+  for (var i = 0; i < collaterals.length; i++) {
+    fees.push(multiplyNumberWithBigNumber(feePercentage, collaterals[i]));
+  }
+  return fees;
+}
+
+export function multiplyNumberWithBigNumber(a: Number, b: BigNumber) {
+  return BigNumber.from(
+    FixedNumber.from(a.toFixed(18)) // toFixed(18) to catch case of FixedNumber.from(1.0/1100) failing
+      .mulUnsafe(FixedNumber.from(b)) // I don't know why mulUnsafe!
+      .toString()
+      .split(".")[0] // BigNumber can't take decimal...
+  );
+}
+
+export function createTwapTriggerSet(
+  startTime: number,
+  numIntervals: number,
+  gapBetweenIntervals: number,
+  timestampTriggerAddr: string,
+  tolerance: number = 13,
+  additionalTriggers: TriggerStruct[] = []
+) {
+  var triggersSet = [];
+
+  for (var i = 0; i < numIntervals; i++) {
+    triggersSet.push(
+      additionalTriggers.concat([
+        createTimestampTrigger(timestampTriggerAddr, GT, startTime + i * gapBetweenIntervals),
+        createTimestampTrigger(timestampTriggerAddr, LT, startTime + i * gapBetweenIntervals + tolerance)
+      ])
+    );
+  }
+
+  return triggersSet;
+}
+
+/**
+ * 
+ * @param fundContract 
+ * @param totalCollaterals: total number of assets to be used in the action
+ * @param action 
+ * @param startTime; block.timestamp where the first rule should be executed
+ * @param numIntervals: How many transactions do you want
+ * @param gapBetweenIntervals: In seconds
+ * @param timestampTriggerAddr 
+ * @param tolerance: specifying a window within which a tx may pass. Needed for inherent uncertainty of when a block is mined. 
+ * @param additionalTriggers: more triggers to be included for each tx
+ * 
+ * Example Usage: 
+ *         await createTwapOnChain(
+          McFund,
+          [ethers.utils.parseEther("20")],
+          createSushiSwapAction(
+            sushiSwapExactXForY.address,
+            ETH_TOKEN,
+            DAI_TOKEN,
+            await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * DEFAULT_SLIPPAGE),
+            protocolAddresses.tokens.WETH
+          ),
+          await time.latest(),
+          10,
+          120,
+          (await ethers.getContract("TimestampTrigger")).address
+        );
+ */
+export async function createTwapOnChain(
+  fundContract: Contract,
+  totalCollaterals: BigNumber[],
+  action: ActionStruct,
+  startTime: number,
+  numIntervals: number,
+  gapBetweenIntervals: number,
+  timestampTriggerAddr: string,
+  tolerance: number = 13,
+  additionalTriggers: TriggerStruct[] = []
+) {
+  const triggersSet = createTwapTriggerSet(
+    startTime,
+    numIntervals,
+    gapBetweenIntervals,
+    timestampTriggerAddr,
+    tolerance,
+    additionalTriggers
+  );
+  const collateralsPerInterval = totalCollaterals.map(collateral => {
+    return collateral.div(numIntervals);
+  });
+
+  var actionsSet = [];
+  var activatesSet = [];
+  var collateralsSet = [];
+  var feesSet = [];
+
+  for (var i = 0; i < triggersSet.length; i++) {
+    actionsSet.push([action]);
+    activatesSet.push(true);
+    collateralsSet.push(collateralsPerInterval);
+    feesSet.push(await getFees(fundContract, collateralsPerInterval));
+  }
+
+  await fundContract.createRules(triggersSet, actionsSet, activatesSet, collateralsSet, feesSet);
+}
+
+export function createTimestampTrigger(timestampTriggerAddr: string, operator: number, target: number) {
+  return {
+    createTimeParams: ethers.utils.defaultAbiCoder.encode(["uint8", "uint256"], [operator, target]),
+    triggerType: TIMESTAMP_TRIGGER_TYPE,
+    callee: timestampTriggerAddr
+  };
+}
+
+export function isForked(): boolean {
+  if (config.networks.hardhat.forking?.enabled) {
+    return true;
+  } else {
+    return false;
+  }
 }

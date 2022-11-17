@@ -1,10 +1,12 @@
 import { ethers } from "hardhat";
+import { isForked } from "../test/helper";
 
 const arbitrum = {
   tokens: {
     WETH: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
     USDC: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
-    DAI: "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1"
+    DAI: "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1",
+    GMX: "0xfc5A1A6EB076a2C7aD06eD22C90d7E710E35ad0a"
   },
 
   // https://docs.gelato.network/developer-products/gelato-ops-smart-contract-automation-hub/contract-addresses#arbitrum
@@ -19,7 +21,9 @@ const arbitrum = {
   // https://docs.uniswap.org/protocol/reference/deployments
   uniswap: {
     swap_router: "0xe592427a0aece92de3edee1f18e0157c05861564",
-    non_fungible_position_manager: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+    non_fungible_position_manager: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+    quoter: "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6",
+    factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984"
   },
 
   sushiswap: {
@@ -56,7 +60,7 @@ const arbitrum = {
 
 const goerli = {
   tokens: {
-    WETH: "0xb4fbf271143f4fbf7b91a5ded31805e42b2208d6", // <- sushi
+    WETH: "0xb4fbf271143f4fbf7b91a5ded31805e42b2208d6", // <- sushi, uni
     USDC: "0xde637d4c445ca2aae8f782ffac8d2971b93a4998", // or? uni: 0x07865c6E87B9F70255377e024ace6630C1Eaa37F //sushi: 0xd87ba7a50b2e7e660f678a895e4b72e7cb4ccd9c
     DAI: "0xdc31ee1784292379fbb2964b3b9c4124d8f89c60"
   },
@@ -70,7 +74,9 @@ const goerli = {
   // https://docs.uniswap.org/protocol/reference/deployments
   uniswap: {
     swap_router: "0xe592427a0aece92de3edee1f18e0157c05861564",
-    non_fungible_position_manager: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+    non_fungible_position_manager: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+    quoter: "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6",
+    factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984"
   },
 
   sushiswap: {
@@ -78,11 +84,11 @@ const goerli = {
   }
 };
 
-export async function getProtocolAddresses(chainID: string, forking: boolean | undefined) {
-  if (chainID == "31337" && forking) {
+export async function getProtocolAddresses(chainID: string) {
+  if (chainID == "31337" && isForked()) {
     return arbitrum; // we'll be always forking mainnet arbitrum
-  } else if (chainID == "31337" && !forking) {
-    return await getLocalnetworkAddressesForTests(); // running tests mayhaps
+  } else if (chainID == "31337" && !isForked()) {
+    return await getLocalNetworkAddressesForTests(); // running tests mayhaps
   } else if (chainID == "42161") {
     return arbitrum;
   } else if (chainID == "5") {
@@ -90,7 +96,7 @@ export async function getProtocolAddresses(chainID: string, forking: boolean | u
   }
 }
 
-async function getLocalnetworkAddressesForTests() {
+async function getLocalNetworkAddressesForTests() {
   return {
     tokens: {
       WETH: (await ethers.getContract("WETH")).address

@@ -24,6 +24,8 @@ interface IRoboCop {
 
     function redeemOutputs() external returns (Token[] memory, uint256[] memory);
 
+    function getRuleHash(Trigger[] calldata triggers, Action[] calldata actions, address fundAddr) external pure returns (bytes32); 
+
     function getRuleHashesByStatus(RuleStatus status) external returns (bytes32[] memory);
 
     function addCollateral(bytes32 ruleHash, uint256[] memory amounts) external payable;

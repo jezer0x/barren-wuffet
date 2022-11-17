@@ -55,8 +55,8 @@ contract BarrenWuffet is Ownable, Pausable {
     }
 
     function setSubscriptionFeeParams(FeeParams memory _feeParams) public onlyOwner {
-        require(_feeParams.subscriberToPlatformFeePercentage <= 100_00);
-        require(_feeParams.managerToPlatformFeePercentage <= 100_00);
+        require(_feeParams.subscriberToPlatformFeePercentage <= 100_00, "BW: fee > 100%");
+        require(_feeParams.managerToPlatformFeePercentage <= 100_00, "BW: fee > 100%");
         feeParams = _feeParams;
     }
 
@@ -89,7 +89,7 @@ contract BarrenWuffet is Ownable, Pausable {
         IFund fund = IFund(address(new BeaconProxy(fundBeaconAddr, "")));
 
         // overwrite the default feeParams.managerToPlatformFeePercentage using the one provided
-        require(subscriberToManagerFeePercentage <= 100_00);
+        require(subscriberToManagerFeePercentage <= 100_00, "BW: fee > 100%");
         feeParams.subscriberToManagerFeePercentage = subscriberToManagerFeePercentage;
 
         fund.initialize(

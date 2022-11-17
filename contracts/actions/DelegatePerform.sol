@@ -8,9 +8,8 @@ contract DelegatePerform {
         _this = address(this);
     }
 
-    // Ensures that function can only be called via `delegateCall` and not directly.
     modifier delegateOnly() {
-        require(address(this) != _this);
+        require(address(this) != _this, "Action: only delegateCall()");
         _;
     }
 }

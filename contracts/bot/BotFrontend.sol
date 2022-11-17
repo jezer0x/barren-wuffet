@@ -15,12 +15,12 @@ contract BotFrontend is IBotFrontend, OpsReady, Ownable {
     mapping(address => bool) public robocopRegistry;
 
     modifier onlyBarrenWuffet() {
-        require(msg.sender == barrenWuffetAddr);
+        require(msg.sender == barrenWuffetAddr, "BotFrontend: onlyBarrenWuffet");
         _;
     }
 
     modifier onlyRobocop() {
-        require(robocopRegistry[msg.sender]);
+        require(robocopRegistry[msg.sender], "BotFrontend: onlyRoboCop");
         _;
     }
 
@@ -46,11 +46,14 @@ contract BotFrontend is IBotFrontend, OpsReady, Ownable {
             address(0) // i.e. treasury will pay
         );
 
+        emit TaskStart(msg.sender, ruleHash, taskId); 
         ruleToTaskIdMap[msg.sender][ruleHash] = taskId;
     }
 
     function stopTask(bytes32 ruleHash) external {
-        IOps(ops).cancelTask(ruleToTaskIdMap[msg.sender][ruleHash]);
+        bytes32 taskId = ruleToTaskIdMap[msg.sender][ruleHash]; 
+        emit TaskStop(msg.sender, ruleHash, taskId); 
+        IOps(ops).cancelTask(taskId);
     }
 
     // If roboCop is not registered by BarrentWuffet, it can't use startTask

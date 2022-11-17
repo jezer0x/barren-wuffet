@@ -17,10 +17,6 @@ import "../SimpleSwapUtils.sol";
 
     Tokens: 
         Will only have 2 input tokens and 3 output (refund of first 2, and an NFT)
-
-    TriggerReturn: 
-        Applicable TriggerReturn must be in (asset1, asset2, val) where val.decimals = 8, asset1 = inputTokens[0] and asset2 = inputTokens[1]
-        If not present, trade is in danger of getting frontrun.
 */
 contract UniMintLiquidityPosition is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
@@ -46,7 +42,7 @@ contract UniMintLiquidityPosition is IAction, DelegatePerform {
         require(action.outputTokens.length == 3);
 
         // TODO: tl and tu might need to be taken at the point of perform instead.
-        (uint24 fee, int24 tl, int24 tu) = abi.decode(action.data, (uint24, int24, int24));
+        (uint24 fee, int24 tl, int24 tu, uint256 minYPerX, uint256 minXPerY) = abi.decode(action.data, (uint24, int24, int24, uint256, uint256));
         return true;
     }
 
@@ -87,29 +83,16 @@ contract UniMintLiquidityPosition is IAction, DelegatePerform {
 
         // block scoping because stack too deep
         {
+            (uint24 fee, int24 tl, int24 tu, uint256 minYPerX, uint256 minXPerY) = abi.decode(action.data, (uint24, int24, int24, uint256, uint256));
             uint256 amount0Min;
             uint256 amount1Min;
 
             {
-                amount0Min =
-                    (SimpleSwapUtils._getRelevantPriceTriggerData(
-                        action.inputTokens[0],
-                        action.inputTokens[1],
-                        runtimeParams.triggerReturnArr
-                    ) * runtimeParams.collaterals[0]) /
-                    10**8;
-
-                amount1Min =
-                    SimpleSwapUtils._getRelevantPriceTriggerData(
-                        action.inputTokens[0],
-                        action.inputTokens[1],
-                        runtimeParams.triggerReturnArr
-                    ) *
-                    runtimeParams.collaterals[1];
+                amount0Min = (minXPerY * runtimeParams.collaterals[1]) / 10**18; 
+                amount1Min = (minYPerX * runtimeParams.collaterals[0]) / 10**18; 
             }
 
             {
-                (uint24 fee, int24 tl, int24 tu) = abi.decode(action.data, (uint24, int24, int24));
                 params = INonfungiblePositionManager.MintParams({
                     token0: token0Addr,
                     token1: token1Addr,

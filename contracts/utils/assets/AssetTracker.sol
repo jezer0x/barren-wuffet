@@ -39,7 +39,7 @@ library AssetTracker {
             delete assets.balances[tokenHash];
             removeFromAssets(assets, token);
         } else if (token.isERC20() || token.isETH()) {
-            require(assets.balances[tokenHash] >= amount);
+            require(assets.balances[tokenHash] >= amount, "AssetTracker: Not enough balance");
             assets.balances[tokenHash] -= amount;
             // TODO: could be made more efficient if we kept token => idx in storage
             if (assets.balances[tokenHash] == 0) {

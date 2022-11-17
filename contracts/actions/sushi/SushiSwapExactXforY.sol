@@ -46,11 +46,11 @@ contract SushiSwapExactXForY is IAction, DelegatePerform {
     {
         uint256[] memory outputs = new uint256[](1);
         uint256[] memory amounts;
-        (address[] memory path, uint256 minAmountOfYPerX) = abi.decode(action.data, (address[], uint256));
+        (address[] memory path, uint256 minYPerX) = abi.decode(action.data, (address[], uint256));
 
         if (action.inputTokens[0].isETH()) {
             amounts = swapRouter.swapExactETHForTokens{value: runtimeParams.collaterals[0]}({
-                amountOutMin: (minAmountOfYPerX * runtimeParams.collaterals[0]) / 10**18,
+                amountOutMin: (minYPerX * runtimeParams.collaterals[0]) / 10**18,
                 path: path,
                 to: address(this),
                 deadline: block.timestamp
@@ -59,7 +59,7 @@ contract SushiSwapExactXForY is IAction, DelegatePerform {
             action.inputTokens[0].approve(address(swapRouter), runtimeParams.collaterals[0]);
             amounts = swapRouter.swapExactTokensForETH({
                 amountIn: runtimeParams.collaterals[0],
-                amountOutMin: (minAmountOfYPerX * runtimeParams.collaterals[0]) / 10**18,
+                amountOutMin: (minYPerX * runtimeParams.collaterals[0]) / 10**18,
                 path: path,
                 to: address(this),
                 deadline: block.timestamp
@@ -68,7 +68,7 @@ contract SushiSwapExactXForY is IAction, DelegatePerform {
             action.inputTokens[0].approve(address(swapRouter), runtimeParams.collaterals[0]);
             amounts = swapRouter.swapExactTokensForTokens({
                 amountIn: runtimeParams.collaterals[0],
-                amountOutMin: (minAmountOfYPerX * runtimeParams.collaterals[0]) / 10**18,
+                amountOutMin: (minYPerX * runtimeParams.collaterals[0]) / 10**18,
                 path: path,
                 to: address(this),
                 deadline: block.timestamp

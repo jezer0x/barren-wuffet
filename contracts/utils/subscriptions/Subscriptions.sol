@@ -43,7 +43,7 @@ library Subscriptions {
         require(
             subStuff.subscriptions[msg.sender].collateralAmount > 0 &&
                 subStuff.subscriptions[msg.sender].status == Subscriptions.Status.ACTIVE,
-            "!AS"
+            "F: !ActiveSubscriber"
         );
         _;
     }

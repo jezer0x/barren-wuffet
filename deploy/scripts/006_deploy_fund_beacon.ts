@@ -6,13 +6,13 @@ import dotenv from "dotenv";
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   dotenv.config({ path: (await getChainId()) == "31337" ? ".test.env" : ".env", override: true });
   const { deployments, getNamedAccounts } = hre;
-  const { deploy } = deployments;
+  const { deploy, log } = deployments;
 
   const { deployer } = await getNamedAccounts();
 
   const fundImpl = await ethers.getContract("Fund");
 
-  console.log("> Deploying FundBeacon");
+  log("> Deploying FundBeacon");
   const fbDeployResult = await deploy("FundBeacon", {
     contract: "UpgradeableBeacon",
     from: deployer,
@@ -23,11 +23,11 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const fundBeacon = await ethers.getContract("FundBeacon");
   if ((await fundBeacon.owner()) != process.env.PLATFORM_MULTI_SIG_ADDR) {
     await fundBeacon.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
-    console.log("Ownership of fundBeacon transferred to ", process.env.PLATFORM_MULTI_SIG_ADDR);
+    log("Ownership of fundBeacon transferred to ", process.env.PLATFORM_MULTI_SIG_ADDR);
   } else {
-    console.log("Ownership of fundBeacon already with ", await fundBeacon.owner());
+    log("Ownership of fundBeacon already with ", await fundBeacon.owner());
   }
-  console.log("\n");
+  log("\n");
 };
 
 export default func;

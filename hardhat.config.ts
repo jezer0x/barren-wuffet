@@ -26,8 +26,8 @@ const config = {
               // url: `https://goerli.infura.io/v3/${process.env.INFURA_API_KEY_GOERLI}`,
               // blockNumber: 7900766,
               url: `https://arb-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY_ARBI}`,
-              blockNumber: 36696692,
-              enabled: true
+              blockNumber: 38873811,
+              enabled: process.env.FORKIT?.toUpperCase() === "TRUE"
             }
           }
         }
@@ -57,6 +57,7 @@ const config = {
     fundSubscriber2: 5,
     ruleMaker: 6
   },
+  mocha: { timeout: 60000 },
   paths: {
     sources: "contracts",
     deploy: "deploy/scripts"

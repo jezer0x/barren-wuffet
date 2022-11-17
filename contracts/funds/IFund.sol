@@ -60,7 +60,11 @@ interface IFund is ISubscription {
         uint256[] calldata fees
     ) external;
 
-    function createRule(Trigger[] calldata triggers, Action[] calldata actions) external returns (bytes32 ruleHash);
+    function createRule(Trigger[] calldata triggers, Action[] calldata actions, bool activate, uint256[] calldata collaterals,
+        uint256[] calldata fees) external returns (bytes32 ruleHash);
+
+    function createRules(Trigger[][] calldata triggersArr, Action[][] calldata actionsArr, bool[] calldata activateArr, uint256[][] calldata collateralsArr,
+        uint256[][] calldata feesArr) external returns (bytes32[] memory ruleHashes);
 
     function activateRule(bytes32 ruleHash) external;
 

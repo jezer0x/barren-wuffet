@@ -9,7 +9,7 @@ import "../../utils/assets/TokenLib.sol";
 import "../DelegatePerform.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../SimpleSwapUtils.sol";
+import "../SimpleSwapUtils.sol"; 
 
 /*
     Reference: 
@@ -18,9 +18,8 @@ import "../SimpleSwapUtils.sol";
     Tokens: 
         Will only have 2 input tokens and 3 output tokens (2 token residues, LP token )
 
-    TriggerReturn: 
-        Applicable TriggerReturn must be in (asset1, asset2, val) where val.decimals = 8, asset1 = inputToken[0] and asset2 = inputToken[1]
-        If not present, trade is in danger of getting frontrun.
+    Action.data: 
+        - uint256: minimum amount of Y tokens per X accepted (18 decimals)
 */
 contract SushiAddLiquidity is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
@@ -33,20 +32,20 @@ contract SushiAddLiquidity is IAction, DelegatePerform {
     }
 
     function validate(Action calldata action) external view returns (bool) {
-        require(action.inputTokens.length == 2);
-        require(action.inputTokens[0].isERC20() || action.inputTokens[0].isETH());
-        require(action.inputTokens[1].isERC20() || action.inputTokens[1].isETH());
+        require(action.inputTokens.length == 2, Constants.WRONG_NUMBER_OF_INPUT_TOKENS);
+        require(action.inputTokens[0].isERC20() || action.inputTokens[0].isETH(), Constants.WRONG_TYPE_OF_INPUT_TOKEN);
+        require(action.inputTokens[1].isERC20() || action.inputTokens[1].isETH(), Constants.WRONG_TYPE_OF_INPUT_TOKEN);
 
-        require(action.outputTokens.length == 3);
-        require(action.outputTokens[0].equals(action.inputTokens[0]));
-        require(action.outputTokens[1].equals(action.inputTokens[1]));
+        require(action.outputTokens.length == 3, Constants.WRONG_TYPE_OF_OUTPUT_TOKEN);
+        require(action.outputTokens[0].equals(action.inputTokens[0]), Constants.WRONG_TYPE_OF_OUTPUT_TOKEN);
+        require(action.outputTokens[1].equals(action.inputTokens[1]), Constants.WRONG_TYPE_OF_OUTPUT_TOKEN);
 
         address token0Addr = action.inputTokens[0].isETH() ? router.WETH() : action.inputTokens[0].addr;
         address token1Addr = action.inputTokens[1].isETH() ? router.WETH() : action.inputTokens[1].addr;
 
         require(
             action.outputTokens[2].addr == IUniswapV2Factory(router.factory()).getPair(token0Addr, token1Addr),
-            "Wrong SLP Token"
+            "SushiAddLiquidity: Wrong SLP Token"
         );
 
         return true;
@@ -67,6 +66,7 @@ contract SushiAddLiquidity is IAction, DelegatePerform {
             ethIdx = 1;
         }
 
+        (uint256 minYPerX, uint256 minXPerY) = abi.decode(action.data, (uint256, uint256));
         if (ethIdx >= 0) {
             uint256 tokenIdx = 1 - uint256(ethIdx);
 
@@ -77,16 +77,8 @@ contract SushiAddLiquidity is IAction, DelegatePerform {
             }(
                 action.inputTokens[tokenIdx].addr,
                 runtimeParams.collaterals[tokenIdx],
-                (SimpleSwapUtils._getRelevantPriceTriggerData(
-                    action.inputTokens[0],
-                    action.outputTokens[0],
-                    runtimeParams.triggerReturnArr
-                ) * runtimeParams.collaterals[0]) / 10**8,
-                SimpleSwapUtils._getRelevantPriceTriggerData(
-                    action.inputTokens[0],
-                    action.outputTokens[0],
-                    runtimeParams.triggerReturnArr
-                ) * runtimeParams.collaterals[1],
+                (minXPerY * runtimeParams.collaterals[1]) / 10**18,
+                (minYPerX * runtimeParams.collaterals[0]) / 10**18,
                 address(this),
                 block.timestamp
             );
@@ -103,16 +95,8 @@ contract SushiAddLiquidity is IAction, DelegatePerform {
                 action.inputTokens[1].addr,
                 runtimeParams.collaterals[0],
                 runtimeParams.collaterals[1],
-                (SimpleSwapUtils._getRelevantPriceTriggerData(
-                    action.inputTokens[0],
-                    action.inputTokens[1],
-                    runtimeParams.triggerReturnArr
-                ) * runtimeParams.collaterals[0]) / 10**8,
-                SimpleSwapUtils._getRelevantPriceTriggerData(
-                    action.inputTokens[0],
-                    action.inputTokens[1],
-                    runtimeParams.triggerReturnArr
-                ) * runtimeParams.collaterals[1],
+                (minXPerY * runtimeParams.collaterals[1]) / 10**18,
+                (minYPerX * runtimeParams.collaterals[0]) / 10**18,
                 address(this),
                 block.timestamp
             );

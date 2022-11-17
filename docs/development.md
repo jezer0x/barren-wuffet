@@ -16,8 +16,8 @@ This project is written using [Hardhat](https://hardhat.org/)
 
 If you want to test against smart contracts that are live, you need to use an alchemy archival node (with an API key) and ask hardhat to run a local instance forked from mainnet.
 
-Step 1: `yarn hardhat node --fork https://arb-mainnet.g.alchemy.com/v2/<API KEY> --fork-ignore-unknown-tx-type true --fork-block-number 22330560 --no-deploy`
-Step 2: `yarn hardhat test --network localhost`
+Step 1: Ensure your `.env` file has an api key from alchemy
+Step 2: `FORKIT=TRUE yarn hardhat test <testfileName>`
 
 ## Deployment
 

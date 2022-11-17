@@ -3,7 +3,7 @@ import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect, use as chai_use, should as chai_should } from "chai";
 import { ethers, deployments, getNamedAccounts } from "hardhat";
 import { BigNumber, utils } from "ethers";
-import { makeFailingTrigger, makePassingTrigger, setupBarrenWuffet } from "./Fixtures";
+import { makeFailingTrigger, makePassingTrigger, setupBarrenWuffet, makeDefaultSubConstraints } from "./Fixtures";
 import {
   BAD_FUND_HASH,
   ETH_ADDRESS,
@@ -33,20 +33,6 @@ chai_use(smock.matchers);
 
 const ERC20_DECIMALS = BigNumber.from(10).pow(18);
 
-async function makeSubConstraints() {
-  const latestTime = await time.latest();
-  return {
-    minCollateralPerSub: BigNumber.from(10).mul(ERC20_DECIMALS),
-    maxCollateralPerSub: BigNumber.from(100).mul(ERC20_DECIMALS),
-    minCollateralTotal: BigNumber.from(200).mul(ERC20_DECIMALS),
-    maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
-    deadline: latestTime + 86400,
-    lockin: latestTime + 86400 * 10,
-    allowedDepositToken: ETH_TOKEN,
-    onlyWhitelistedInvestors: false
-  };
-}
-
 describe("BarrenWuffet", () => {
   const deployBarrenWuffetFixture = deployments.createFixture(async hre => {
     await deployments.fixture(["BarrenWuffet"]);
@@ -56,7 +42,7 @@ describe("BarrenWuffet", () => {
   describe("Fund FundStatus: Uninitialized", () => {
     it("should allow anyone to create a fund and emit Created event with the fund hash", async () => {
       const { barrenWuffetMarlie } = await deployBarrenWuffetFixture();
-      const validConstraints = await makeSubConstraints();
+      const validConstraints = await makeDefaultSubConstraints();
       await expect(barrenWuffetMarlie.createFund("Fund1", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []))
         .to.emit(barrenWuffetMarlie, "Created")
         .withArgs(anyValue, anyValue, "Fund1");
@@ -75,7 +61,7 @@ describe("BarrenWuffet", () => {
 
     it("should allow if the same user creates 2 funds with the same name", async () => {
       const { barrenWuffetMarlie } = await deployBarrenWuffetFixture();
-      const validConstraints = await makeSubConstraints();
+      const validConstraints = await makeDefaultSubConstraints();
       await barrenWuffetMarlie.createFund("Fund1", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []);
       await expect(barrenWuffetMarlie.createFund("Fund1", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []))
         .to.emit(barrenWuffetMarlie, "Created")
@@ -84,7 +70,7 @@ describe("BarrenWuffet", () => {
 
     it("should allow the same user to create 2 funds with different names", async () => {
       const { barrenWuffetMarlie } = await deployBarrenWuffetFixture();
-      const validConstraints = await makeSubConstraints();
+      const validConstraints = await makeDefaultSubConstraints();
       await barrenWuffetMarlie.createFund("Jerkshire", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []);
       await expect(barrenWuffetMarlie.createFund("Clerkshire", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []))
         .to.emit(barrenWuffetMarlie, "Created")
@@ -93,7 +79,7 @@ describe("BarrenWuffet", () => {
 
     it("should allow 2 different users to create funds with the same name", async () => {
       const { barrenWuffet, barrenWuffetMarlie, barrenWuffetFairy } = await deployBarrenWuffetFixture();
-      const validConstraints = await makeSubConstraints();
+      const validConstraints = await makeDefaultSubConstraints();
       await barrenWuffetMarlie.createFund("Jerkshire", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []);
       await expect(barrenWuffetFairy.createFund("Jerkshire", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []))
         .to.emit(barrenWuffet, "Created")
@@ -107,7 +93,7 @@ describe("BarrenWuffet", () => {
       // As this functionality is extended, this test needs to expand
       const { barrenWuffet, barrenWuffetMarlie } = await deployBarrenWuffetFixture();
       const { marlieChunger } = await getNamedAccounts();
-      const validConstraints = await makeSubConstraints();
+      const validConstraints = await makeDefaultSubConstraints();
       let fundAddr;
       await expect(barrenWuffetMarlie.createFund("Jerkshire", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []))
         .to.emit(barrenWuffet, "Created")
@@ -131,7 +117,7 @@ describe("BarrenWuffet", () => {
       // This is as yet unimplemented, so the function should revert.
 
       const { barrenWuffet, barrenWuffetMarlie } = await deployBarrenWuffetFixture();
-      const validConstraints = await makeSubConstraints();
+      const validConstraints = await makeDefaultSubConstraints();
       const { marlieChunger } = await getNamedAccounts();
       let fundAddr;
       await expect(barrenWuffetMarlie.createFund("Jerkshire", validConstraints, DEFAULT_SUB_TO_MAN_FEE_PCT, []))
@@ -343,14 +329,14 @@ describe("BarrenWuffet", () => {
     it("should not allow withdrawing if there have not been any deposits from this user", async () => {
       const { jerkshireFund } = await raisingFundsFixture();
       await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
-      await expect(jerkshireFund.subscriber2.withdraw()).to.be.rejectedWith("!AS");
+      await expect(jerkshireFund.subscriber2.withdraw()).to.be.rejectedWith("F: !ActiveSubscriber");
     });
 
     it("should allow only the fund manager to close a Raising fund, and the subscriber to withdraw funds", async () => {
       const { barrenWuffet, jerkshireFund, crackBlockFund } = await raisingFundsFixture();
       // add some funds so we can confirm that even a fund with funds can be closed
       await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
-      await expect(jerkshireFund.fairyLink.closeFund()).to.be.revertedWith("OFM");
+      await expect(jerkshireFund.fairyLink.closeFund()).to.be.revertedWith("F: Only Fund Manager");
       const { fundSubscriber, marlieChunger } = await getNamedAccounts();
       await expect(jerkshireFund.marlieChunger.closeFund())
         .to.changeEtherBalances([marlieChunger, barrenWuffet], [0, 0])
@@ -362,7 +348,7 @@ describe("BarrenWuffet", () => {
         .withArgs(fundSubscriber, ETH_ADDRESS, validDeposit);
 
       // this is a clean fund
-      await expect(crackBlockFund.marlieChunger.closeFund()).to.be.revertedWith("OFM");
+      await expect(crackBlockFund.marlieChunger.closeFund()).to.be.revertedWith("F: Only Fund Manager");
       await expect(crackBlockFund.fairyLink.closeFund()).to.emit(crackBlockFund.fairyLink, "Closed");
     });
 
@@ -372,14 +358,17 @@ describe("BarrenWuffet", () => {
       await expect(
         jerkshireFund.marlieChunger.createRule(
           [makePassingTrigger(priceTrigger.address, testToken1)],
-          [swapETHToTST1Action]
+          [swapETHToTST1Action],
+          false,
+          [],
+          []
         )
-      ).be.revertedWith("WS");
+      ).be.revertedWith("F: Wrong State");
     });
     it("should revert if ManagementFee withdrawal is attempted on a raising fund", async () => {
       const { jerkshireFund } = await raisingFundsFixture();
       await jerkshireFund.subscriber.deposit(ETH_TOKEN, validDeposit, { value: validDeposit });
-      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("WS");
+      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("F: Wrong State");
     });
 
     it.skip("should return fund status as DEPLOYED once the fund is created, deadline has been hit (min collateral has to be met)", async () => {
@@ -484,7 +473,7 @@ describe("BarrenWuffet", () => {
       );
 
       await expect(jerkshireFund.subscriber.deposit(ETH_TOKEN, depositAmt, { value: depositAmt })).to.be.revertedWith(
-        "WS"
+        "F: Wrong State"
       );
     });
 
@@ -497,7 +486,7 @@ describe("BarrenWuffet", () => {
     it("should revert if ManagementFee withdrawal is attempted on a deployed fund", async () => {
       const { jerkshireFund } = await deployedFundsFixture();
 
-      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("WS");
+      await expect(jerkshireFund.marlieChunger.withdrawManagementFee()).to.be.revertedWith("F: Wrong State");
     });
 
     describe("Manage rules", () => {
@@ -510,7 +499,10 @@ describe("BarrenWuffet", () => {
         await expect(
           jerkshireFund.marlieChunger.createRule(
             [makePassingTrigger(priceTrigger.address, testToken1)],
-            [swapETHToTST1Action]
+            [swapETHToTST1Action],
+            false,
+            [],
+            []
           )
         )
           .to.emit(roboCopInst, "Created")
@@ -519,7 +511,10 @@ describe("BarrenWuffet", () => {
         await expect(
           jerkshireFund.marlieChunger.createRule(
             [makeFailingTrigger(priceTrigger.address, testToken1)],
-            [swapETHToTST1Action]
+            [swapETHToTST1Action],
+            false,
+            [],
+            []
           )
         )
           .to.emit(roboCopInst, "Created")
@@ -537,7 +532,10 @@ describe("BarrenWuffet", () => {
         const ruleHash = await getHashFromEvent(
           jerkshireFund.marlieChunger.createRule(
             [makePassingTrigger(priceTrigger.address, testToken1)],
-            [swapETHToTST1Action]
+            [swapETHToTST1Action],
+            false,
+            [],
+            []
           ),
           "Created",
           roboCopInst1,
@@ -638,9 +636,12 @@ describe("BarrenWuffet", () => {
         await expect(
           jerkshireFund.fairyLink.createRule(
             [makePassingTrigger(priceTrigger.address, testToken1)],
-            [swapETHToTST1Action]
+            [swapETHToTST1Action],
+            false,
+            [],
+            []
           )
-        ).to.be.revertedWithoutReason();
+        ).to.be.revertedWith("F: onlyFundManager");
 
         const ruleFns = [
           () => jerkshireFund.fairyLink.activateRule(ruleHash),
@@ -651,7 +652,7 @@ describe("BarrenWuffet", () => {
         ];
 
         for (const fn of ruleFns) {
-          await expect(fn()).to.be.revertedWithoutReason();
+          await expect(fn()).to.be.revertedWith("F: onlyFundManager");
         }
       });
 
@@ -668,7 +669,7 @@ describe("BarrenWuffet", () => {
         // TODO param.fees missing
         await expect(
           jerkshireFund.fairyLink.takeAction(passingTrigger, swapETHToTST1Action, [etherToSwap], [0])
-        ).to.be.revertedWithoutReason();
+        ).to.be.revertedWith("F: onlyFundManager");
       });
 
       it("should call 'perform' on the action when fund manager calls takeAction", async () => {
@@ -766,14 +767,15 @@ describe("BarrenWuffet", () => {
     it("should revert if ManagementFee withdrawal is attempted on a closable fund", async () => {});
   });
 
+  // TODO: Need to fix the phrasing of these tests
   describe.skip("Fund transition: Close Fund", () => {
     it("should allow the fund manager to close a deployed fund (all open positions) and emit a Closed event if the fund is closable", async () => {});
 
-    it("should allow the fund manager to close a deployed fund with open positions that is NOT closable and emit Closed event", async () => {});
+    it("should allow the fund manager to close a deployed fund without open positions that is NOT closable and emit Closed event", async () => {});
 
-    it("should not allow anyone other than the  fund manager to close a closable fund", async () => {
-      // this might be made public in the future
-    });
+    it("should not allow anyone to close fund if there is one or more open position");
+
+    it("should allow anyone to close a closable fund ", async () => {});
   });
 
   describe.skip("Fund FundStatus: Closed", () => {

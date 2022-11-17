@@ -1,6 +1,6 @@
 import { ethers } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
-import { TriggerStruct, ActionStruct, RoboCop } from "../typechain-types/contracts/rules/RoboCop";
+import { TriggerStruct, ActionStruct } from "../typechain-types/contracts/rules/RoboCop";
 import { Fund } from "../typechain-types";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Contract, Bytes, BigNumber, utils } from "ethers";
@@ -12,12 +12,14 @@ import {
   ETH_PRICE_IN_TST1,
   ETH_ADDRESS,
   PRICE_TRIGGER_TYPE,
+  TIMESTAMP_TRIGGER_TYPE,
   DEFAULT_SUB_TO_MAN_FEE_PCT,
   ETH_TOKEN,
   TOKEN_TYPE
 } from "./Constants";
-import { getAddressFromEvent, getHashFromEvent, tx } from "./helper";
+import { createTimestampTrigger, getAddressFromEvent, getHashFromEvent, tx } from "./helper";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { createUniSwapAction } from "./forked/uniswap/uniUtils";
 
 export async function setupTestTokens() {
   return {
@@ -38,6 +40,11 @@ export function makePassingTrigger(triggerContract: string, testToken1: Contract
   };
 }
 
+export async function makeTrueTrigger(): Promise<TriggerStruct> {
+  // will fail if TimestampTrigger is not deployed
+  return createTimestampTrigger((await ethers.getContract("TimestampTrigger")).address, GT, (await time.latest()) - 1);
+}
+
 export function makeFailingTrigger(triggerContract: string, testToken1: Contract): TriggerStruct {
   return {
     createTimeParams: utils.defaultAbiCoder.encode(
@@ -51,31 +58,32 @@ export function makeFailingTrigger(triggerContract: string, testToken1: Contract
 
 export function makeSwapAction(
   swapContract: string,
-  inputTokens: [string] = [ETH_ADDRESS],
-  outputTokens: [string] = [ETH_ADDRESS]
+  inputTokenAddr: string = ETH_ADDRESS,
+  outputTokenAddr: string = ETH_ADDRESS
 ): ActionStruct {
-  return {
-    callee: swapContract,
-    data: ethers.utils.defaultAbiCoder.encode(["uint24"], [3000]),
-    inputTokens: inputTokens.map(addr => ({
-      t: addr === ETH_ADDRESS ? TOKEN_TYPE.NATIVE : TOKEN_TYPE.ERC20,
-      addr: addr,
+  return createUniSwapAction(
+    swapContract,
+    {
+      t: inputTokenAddr === ETH_ADDRESS ? TOKEN_TYPE.NATIVE : TOKEN_TYPE.ERC20,
+      addr: inputTokenAddr,
       id: BigNumber.from(0)
-    })), // eth
-    outputTokens: outputTokens.map(addr => ({
-      t: addr === ETH_ADDRESS ? TOKEN_TYPE.NATIVE : TOKEN_TYPE.ERC20,
-      addr: addr,
+    },
+    {
+      t: outputTokenAddr === ETH_ADDRESS ? TOKEN_TYPE.NATIVE : TOKEN_TYPE.ERC20,
+      addr: outputTokenAddr,
       id: BigNumber.from(0)
-    }))
-  };
+    },
+    3000,
+    BigNumber.from(0) // we'll take anything
+  );
 }
 
-async function makeSubConstraints() {
+export async function makeDefaultSubConstraints() {
   const latestTime = await time.latest();
   return {
     minCollateralPerSub: BigNumber.from(10).mul(ERC20_DECIMALS),
     maxCollateralPerSub: BigNumber.from(100).mul(ERC20_DECIMALS),
-    minCollateralTotal: BigNumber.from(200).mul(ERC20_DECIMALS),
+    minCollateralTotal: BigNumber.from(20).mul(ERC20_DECIMALS),
     maxCollateralTotal: BigNumber.from(500).mul(ERC20_DECIMALS),
     deadline: latestTime + 86400,
     lockin: latestTime + 86400 * 10,
@@ -84,26 +92,22 @@ async function makeSubConstraints() {
   };
 }
 
-export async function createRule(
+export async function createRuleInRoboCop(
   _roboCop: Contract,
   triggers: TriggerStruct[],
   actions: ActionStruct[],
   wallet: SignerWithAddress,
   activate: boolean = false
 ): Promise<string> {
-  const p = _roboCop.connect(wallet).createRule(triggers, actions);
-
   const ruleHash = getHashFromEvent(
     _roboCop.connect(wallet).createRule(triggers, actions),
     "Created",
     _roboCop,
     "ruleHash"
   );
-
   if (activate) {
     await tx(_roboCop.connect(wallet).activateRule(ruleHash));
   }
-
   return ruleHash;
 }
 
@@ -181,6 +185,11 @@ export async function setupRoboCop(hre: HardhatRuntimeEnvironment) {
     roboCopFactoryDeployer.address
   );
 
+  // make bw register this robocop with BotFrontend
+  const botFrontend = await ethers.getContract("BotFrontend");
+  await botFrontend.setBarrenWuffet(deployer);
+  await botFrontend.registerRobocop(roboCopAddr);
+
   const roboCop = await ethers.getContractAt("RoboCop", roboCopAddr);
 
   // Only Owner can do most things, since RoboCop is no longer a singleton
@@ -224,8 +233,8 @@ export async function setupSwapActions(
     callee: priceTrigger.address
   };
 
-  const swapTST1ToETHAction = makeSwapAction(uniSwapExactInputSingle.address, [testToken1.address], [ETH_ADDRESS]);
-  const swapETHToTST1Action = makeSwapAction(uniSwapExactInputSingle.address, [ETH_ADDRESS], [testToken1.address]);
+  const swapTST1ToETHAction = makeSwapAction(uniSwapExactInputSingle.address, testToken1.address, ETH_ADDRESS);
+  const swapETHToTST1Action = makeSwapAction(uniSwapExactInputSingle.address, ETH_ADDRESS, testToken1.address);
 
   return {
     passingETHtoTST1SwapPriceTrigger,
@@ -293,7 +302,12 @@ export async function setupBarrenWuffet({ getNamedAccounts, ethers }: HardhatRun
   } = await setupSwapActions(priceTrigger, uniSwapExactInputSingle, testToken1);
 
   const marlieChungerFundAddr = await getAddressFromEvent(
-    barrenWuffetMarlie.createFund("marlieChungerFund", await makeSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []),
+    barrenWuffetMarlie.createFund(
+      "marlieChungerFund",
+      await makeDefaultSubConstraints(),
+      DEFAULT_SUB_TO_MAN_FEE_PCT,
+      []
+    ),
     "Created",
     barrenWuffetMarlie.address
   );
@@ -302,7 +316,7 @@ export async function setupBarrenWuffet({ getNamedAccounts, ethers }: HardhatRun
 
   const barrenWuffetFairy = await ethers.getContract("BarrenWuffet", fairyLink);
   const fairyLinkFundAddr = await getAddressFromEvent(
-    barrenWuffetFairy.createFund("fairyLinkFund", await makeSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []),
+    barrenWuffetFairy.createFund("fairyLinkFund", await makeDefaultSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []),
     "Created",
     barrenWuffetFairy.address
   );

@@ -17,8 +17,9 @@ import "../SimpleSwapUtils.sol";
     Tokens: 
         Will only have 1 input token and 1 output token
 
-    TriggerReturn: 
-        Applicable TriggerReturn must be in (asset1, asset2, val) where val.decimals = 8, asset1 = inputToken and asset2 = outputToken
+    Action.data:
+        - fee  
+        - uint256: minimum amount of Y tokens per X accepted (18 decimals)
 */
 contract UniSwapExactInputSingle is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
@@ -34,7 +35,7 @@ contract UniSwapExactInputSingle is IAction, DelegatePerform {
 
     function validate(Action calldata action) external view returns (bool) {
         SimpleSwapUtils._validate(action);
-        uint24 fee = abi.decode(action.data, (uint24));
+        (uint24 fee, uint256 minYPerX) = abi.decode(action.data, (uint24, uint256));
         return true;
     }
 
@@ -65,19 +66,15 @@ contract UniSwapExactInputSingle is IAction, DelegatePerform {
             inputToken.approve(address(swapRouter), runtimeParams.collaterals[0]);
             ethCollateral = 0;
         }
-
+        (uint24 fee, uint256 minYPerX) = abi.decode(action.data, (uint24, uint256)); 
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
             tokenIn: inputToken.addr,
             tokenOut: outputToken.addr,
-            fee: abi.decode(action.data, (uint24)),
+            fee: fee,
             recipient: address(this),
             deadline: block.timestamp, // need to do an immediate swap
             amountIn: runtimeParams.collaterals[0],
-            amountOutMinimum: (SimpleSwapUtils._getRelevantPriceTriggerData(
-                action.inputTokens[0],
-                action.outputTokens[0],
-                runtimeParams.triggerReturnArr
-            ) * runtimeParams.collaterals[0]) / 10**8, // assumption: triggerReturn in the form of tokenIn/tokenOut.
+            amountOutMinimum: (minYPerX * runtimeParams.collaterals[0]) / 10**18,
             sqrtPriceLimitX96: 0
         });
 

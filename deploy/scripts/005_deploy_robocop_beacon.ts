@@ -7,13 +7,13 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   dotenv.config({ path: (await getChainId()) == "31337" ? ".test.env" : ".env", override: true });
 
   const { deployments, getNamedAccounts } = hre;
-  const { deploy } = deployments;
+  const { deploy, log } = deployments;
 
   const { deployer } = await getNamedAccounts();
 
   const robocopImpl = await ethers.getContract("RoboCop");
 
-  console.log("> Deploying RoboCopBeacon");
+  log("> Deploying RoboCopBeacon");
   const rcbDeployResult = await deploy("RoboCopBeacon", {
     contract: "UpgradeableBeacon",
     from: deployer,
@@ -24,11 +24,11 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const roboCopBeacon = await ethers.getContract("RoboCopBeacon");
   if ((await roboCopBeacon.owner()) != process.env.PLATFORM_MULTI_SIG_ADDR) {
     await roboCopBeacon.transferOwnership(process.env.PLATFORM_MULTI_SIG_ADDR);
-    console.log("Ownership of roboCopBeacon transferred to ", process.env.PLATFORM_MULTI_SIG_ADDR);
+    log("Ownership of roboCopBeacon transferred to ", process.env.PLATFORM_MULTI_SIG_ADDR);
   } else {
-    console.log("Ownership of roboCopBeacon already with ", await roboCopBeacon.owner());
+    log("Ownership of roboCopBeacon already with ", await roboCopBeacon.owner());
   }
-  console.log("\n");
+  log("\n");
 };
 
 export default func;
