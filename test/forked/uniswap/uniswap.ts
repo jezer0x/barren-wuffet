@@ -4,9 +4,7 @@ import { Contract, BigNumber, utils, ContractReceipt, ContractTransaction } from
 import { ERC20_DECIMALS, ETH_TOKEN, TOKEN_TYPE } from "../../Constants";
 import { setupEnvForUniTests } from "../forkFixtures";
 import { makeTrueTrigger } from "../../Fixtures";
-import { abi as FACTORY_ABI } from "@134dd3v/uniswap-v3-core-0.8-support/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json";
-import { abi as POOL_ABI } from "@134dd3v/uniswap-v3-core-0.8-support//artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json";
-import { createUniSwapAction, getTokenOutPerTokenInUniSwap } from "./uniUtils";
+import { createUniMintLPAction, createUniSwapAction, getTokenOutPerTokenInUniSwap } from "./uniUtils";
 import { encodeMinBPerA } from "../sushiswap/sushiUtils";
 import { getFees, isForked, multiplyNumberWithBigNumber } from "../../helper";
 import { expect } from "chai";
@@ -126,53 +124,29 @@ describe("Uniswap", () => {
 
         let balance_dai = await dai_contract.balanceOf(McFund.address);
 
-        let LP_NFT = {
-          t: TOKEN_TYPE.ERC721,
-          addr: await mintLPAction.nonfungiblePositionManager(),
-          id: BigNumber.from(0)
-        };
-
-        const poolFactory = new Contract(protocolAddresses.uniswap.factory, FACTORY_ABI, ethers.provider);
-        const pool = new Contract(
-          await poolFactory.getPool(protocolAddresses.tokens.WETH, DAI_TOKEN.addr, 500),
-          POOL_ABI,
-          ethers.provider
-        );
-
-        var S0 = await pool.slot0();
-        var CT = parseInt(S0.tick);
-        var Tsp = parseInt(await pool.tickSpacing());
-        var NHT = Math.floor(CT / Tsp) * Tsp;
-        var NLT = Math.floor(CT / Tsp) * Tsp + Tsp;
-        if (NLT > NHT) {
-          var temp = NLT;
-          NLT = NHT;
-          NHT = temp;
-        }
-
         collaterals = [ethers.utils.parseEther(NUM_ETH.toString()), balance_dai];
 
+        console.log(ethers.utils.formatUnits(await dai_contract.balanceOf(McFund.address), 18));
+        console.log(ethers.utils.formatEther(await ethers.provider.getBalance(McFund.address)));
+        console.log("---");
         const tx: ContractTransaction = await McFund.takeAction(
           await makeTrueTrigger(),
-          {
-            callee: mintLPAction.address,
-            data: ethers.utils.defaultAbiCoder.encode(
-              ["uint24", "int24", "int24", "uint256", "uint256"],
-              [
-                500,
-                NLT.toString(),
-                NHT.toString(),
-                await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * DEFAULT_SLIPPAGE),
-                await encodeMinBPerA(DAI_TOKEN, ETH_TOKEN, (1.0 / daiPerETH) * DEFAULT_SLIPPAGE)
-              ]
-            ),
-            inputTokens: [ETH_TOKEN, DAI_TOKEN],
-            outputTokens: [ETH_TOKEN, DAI_TOKEN, LP_NFT]
-          },
+          await createUniMintLPAction(
+            mintLPAction,
+            protocolAddresses.uniswap.factory,
+            ETH_TOKEN,
+            DAI_TOKEN,
+            protocolAddresses.tokens.WETH,
+            500,
+            await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * DEFAULT_SLIPPAGE),
+            await encodeMinBPerA(DAI_TOKEN, ETH_TOKEN, (1.0 / daiPerETH) * DEFAULT_SLIPPAGE)
+          ),
           collaterals,
           await getFees(McFund, collaterals)
         );
 
+        console.log(ethers.utils.formatUnits(await dai_contract.balanceOf(McFund.address), 18));
+        console.log(ethers.utils.formatEther(await ethers.provider.getBalance(McFund.address)));
         const burnActionAsData = (await tx.wait()).events.find(
           //@ts-ignore
           (x: { event: string }) => x.event === "PositionCreated"

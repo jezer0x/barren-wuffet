@@ -5,7 +5,8 @@ const arbitrum = {
   tokens: {
     WETH: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
     USDC: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
-    DAI: "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1"
+    DAI: "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1",
+    GMX: "0xfc5A1A6EB076a2C7aD06eD22C90d7E710E35ad0a"
   },
 
   // https://docs.gelato.network/developer-products/gelato-ops-smart-contract-automation-hub/contract-addresses#arbitrum
