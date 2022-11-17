@@ -8,12 +8,13 @@ import { abi as FACTORY_ABI } from "@134dd3v/uniswap-v3-core-0.8-support/artifac
 import { abi as POOL_ABI } from "@134dd3v/uniswap-v3-core-0.8-support//artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json";
 import { createUniSwapAction, getTokenOutPerTokenInUniSwap } from "./uniUtils";
 import { encodeMinBPerA } from "../sushiswap/sushiUtils";
-import { getFees } from "../../helper";
+import { getFees, multiplyNumberWithBigNumber } from "../../helper";
 import { expect } from "chai";
 
 // NOTE: applicable fees have to be found from uniswap v3 sdk / subgraph.
 const DEFAULT_FEE = 3000; // corresponds to 0.03%
 const DEFAULT_SLIPPAGE = 0.97;
+const NUM_ETH = 1;
 
 describe("Uniswap", () => {
   // run these only when forking
@@ -25,7 +26,7 @@ describe("Uniswap", () => {
     });
 
     describe("swap", () => {
-      it("Should sell 1 ETH for DAI and then swap back for almost all the ETH", async () => {
+      it("Should sell NUM_ETH ETH for DAI and then swap back for almost all the ETH", async () => {
         const { protocolAddresses, DAI_TOKEN, McFund, swapUniAction, dai_contract } = await testPreReqs();
 
         const daiPerETHBN = await getTokenOutPerTokenInUniSwap(
@@ -38,7 +39,7 @@ describe("Uniswap", () => {
 
         const daiPerETH = parseFloat(ethers.utils.formatUnits(daiPerETHBN, 18));
 
-        let collaterals = [ethers.utils.parseEther("1")];
+        let collaterals = [ethers.utils.parseEther(NUM_ETH.toString())];
         await expect(
           McFund.takeAction(
             await makeTrueTrigger(),
@@ -52,7 +53,7 @@ describe("Uniswap", () => {
             collaterals,
             await getFees(McFund, collaterals)
           )
-        ).to.changeEtherBalance(McFund.address, ethers.utils.parseEther("-1"));
+        ).to.changeEtherBalance(McFund.address, ethers.utils.parseEther(`-${NUM_ETH}`));
 
         expect(
           (await dai_contract.balanceOf(McFund.address)) >=
@@ -77,17 +78,17 @@ describe("Uniswap", () => {
             collaterals,
             await getFees(McFund, collaterals)
           )
-        ).to.changeTokenBalance(dai_contract, McFund.address, dai_balance.mul(-1));
+        ).to.changeTokenBalance(dai_contract, McFund.address, dai_balance.mul(-NUM_ETH));
 
         expect(
           (await ethers.provider.getBalance(McFund.address)).sub(prev_eth_balance) >
-            ethers.utils.parseUnits(String((dai_balance * DEFAULT_SLIPPAGE) / daiPerETH), 18)
+            multiplyNumberWithBigNumber(DEFAULT_SLIPPAGE / daiPerETH, dai_balance)
         );
       });
     });
 
     describe.skip("lp", () => {
-      it("Should sell 1 ETH for DAI and then swap back for almost all the ETH", async () => {
+      it("Should LP 1 ETH and DAI and then swap back for almost all the ETH", async () => {
         const { DAI_TOKEN, McFund, swapUniAction, dai_contract, mintLPAction } = await testPreReqs();
 
         // get some DAI first
