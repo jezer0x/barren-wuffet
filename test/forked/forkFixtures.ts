@@ -8,7 +8,7 @@ import { IERC20Metadata__factory } from "../../typechain-types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 export async function setupEnvForActionTests(ethers: HardhatRuntimeEnvironment["ethers"]) {
-  const protocolAddresses: any = await getProtocolAddresses("31337", true);
+  const protocolAddresses: any = await getProtocolAddresses("31337");
   const BW = await ethers.getContract("BarrenWuffet");
   const dai_contract = new Contract(protocolAddresses.tokens.DAI, IERC20Metadata__factory.abi, ethers.provider);
   const DAI_TOKEN = { t: TOKEN_TYPE.ERC20, addr: protocolAddresses.tokens.DAI, id: BigNumber.from(0) };

@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { BigNumber, Contract, ContractReceipt, ContractTransaction, FixedNumber } from "ethers";
 import { ETH_TOKEN, GT, LT, TIMESTAMP_TRIGGER_TYPE, TOKEN_TYPE } from "./Constants";
-import { ethers, getNamedAccounts } from "hardhat";
+import { config, ethers, getNamedAccounts } from "hardhat";
 import { ActionStruct } from "../typechain-types/contracts/actions/IAction";
 import { TriggerStruct } from "../typechain-types/contracts/triggers/ITrigger";
 import { LibDataTypes } from "../typechain-types/contracts/testing/TestGelatoOps";
@@ -229,4 +229,12 @@ export function createTimestampTrigger(timestampTriggerAddr: string, operator: n
     triggerType: TIMESTAMP_TRIGGER_TYPE,
     callee: timestampTriggerAddr
   };
+}
+
+export function isForked(): boolean {
+  if (config.networks.hardhat.forking?.enabled) {
+    return true;
+  } else {
+    return false;
+  }
 }

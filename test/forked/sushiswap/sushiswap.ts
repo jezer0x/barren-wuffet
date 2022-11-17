@@ -15,14 +15,14 @@ import {
   getTokensOutPerSLP
 } from "./sushiUtils";
 import { setupEnvForSushiTests } from "../forkFixtures";
-import { getFees, multiplyNumberWithBigNumber } from "../../helper";
+import { getFees, isForked, multiplyNumberWithBigNumber } from "../../helper";
 
 const DEFAULT_SLIPPAGE = 0.97;
 const NUM_ETHER = 2;
 
 describe("Sushiswap", () => {
   // run these only when forking
-  if (config.networks.hardhat.forking?.enabled) {
+  if (isForked()) {
     // setup
     const testPreReqs = deployments.createFixture(async hre => {
       await deployments.fixture(["BarrenWuffet"]);

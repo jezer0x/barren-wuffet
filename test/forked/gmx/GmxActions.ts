@@ -17,7 +17,7 @@ import { getAddressFromEvent } from "../../helper";
 import { makeDefaultSubConstraints } from "../../Fixtures";
 
 async function main() {
-  const protocolAddresses: any = await getProtocolAddresses("31337", true);
+  const protocolAddresses: any = await getProtocolAddresses("31337");
   const BW = await ethers.getContract("BarrenWuffet");
   const McFundAddr = await getAddressFromEvent(
     BW.createFund("marlieChungerFund", await makeDefaultSubConstraints(), DEFAULT_SUB_TO_MAN_FEE_PCT, []),

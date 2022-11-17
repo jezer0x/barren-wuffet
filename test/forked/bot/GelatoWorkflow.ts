@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { impersonateAccount } from "@nomicfoundation/hardhat-network-helpers";
 import { Contract, BigNumber } from "ethers";
 import { ERC20_DECIMALS, ETH_TOKEN, ETH_ADDRESS } from "../../Constants";
-import { getHashFromEvent } from "../../helper";
+import { getHashFromEvent, isForked } from "../../helper";
 import { IOps__factory } from "../../../typechain-types";
 import { makeTrueTrigger } from "../../Fixtures";
 import { encodeMinBPerA, createSushiSwapAction, getTokenOutPerTokenInSushiSwap } from "../sushiswap/sushiUtils";
@@ -11,7 +11,7 @@ import { setupEnvForSushiTests } from "../forkFixtures";
 
 describe("Gelato Bot", () => {
   // run these only when forking
-  if (config.networks.hardhat.forking?.enabled) {
+  if (isForked()) {
     // setup
     const testPreReqs = deployments.createFixture(async hre => {
       await deployments.fixture(["BarrenWuffet"]);

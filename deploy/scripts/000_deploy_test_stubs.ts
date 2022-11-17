@@ -2,6 +2,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 import { ERC20_DECIMALS, ETH_PRICE_IN_USD, TST1_PRICE_IN_USD } from "../../test/Constants";
 import { BigNumber } from "ethers";
+import { isForked } from "../../test/helper";
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, getChainId } = hre;
@@ -10,7 +11,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const { deployer } = await getNamedAccounts();
 
   // we only need TestStubs when running tests
-  if ((await getChainId()) == "31337" && !hre.config.networks.hardhat.forking?.enabled) {
+  if ((await getChainId()) == "31337" && !isForked()) {
     log("> Deploying Test Stubs");
     await deploy("TestOracleEth", {
       contract: "TestOracle",

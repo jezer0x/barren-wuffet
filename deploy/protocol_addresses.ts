@@ -1,4 +1,5 @@
 import { ethers } from "hardhat";
+import { isForked } from "../test/helper";
 
 const arbitrum = {
   tokens: {
@@ -80,10 +81,10 @@ const goerli = {
   }
 };
 
-export async function getProtocolAddresses(chainID: string, forking: boolean | undefined) {
-  if (chainID == "31337" && forking) {
+export async function getProtocolAddresses(chainID: string) {
+  if (chainID == "31337" && isForked()) {
     return arbitrum; // we'll be always forking mainnet arbitrum
-  } else if (chainID == "31337" && !forking) {
+  } else if (chainID == "31337" && !isForked()) {
     return await getLocalNetworkAddressesForTests(); // running tests mayhaps
   } else if (chainID == "42161") {
     return arbitrum;

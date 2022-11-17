@@ -8,7 +8,7 @@ import { abi as FACTORY_ABI } from "@134dd3v/uniswap-v3-core-0.8-support/artifac
 import { abi as POOL_ABI } from "@134dd3v/uniswap-v3-core-0.8-support//artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json";
 import { createUniSwapAction, getTokenOutPerTokenInUniSwap } from "./uniUtils";
 import { encodeMinBPerA } from "../sushiswap/sushiUtils";
-import { getFees, multiplyNumberWithBigNumber } from "../../helper";
+import { getFees, isForked, multiplyNumberWithBigNumber } from "../../helper";
 import { expect } from "chai";
 
 // NOTE: applicable fees have to be found from uniswap v3 sdk / subgraph.
@@ -18,7 +18,7 @@ const NUM_ETH = 1;
 
 describe("Uniswap", () => {
   // run these only when forking
-  if (config.networks.hardhat.forking?.enabled) {
+  if (isForked()) {
     // setup
     const testPreReqs = deployments.createFixture(async hre => {
       await deployments.fixture(["BarrenWuffet"]);

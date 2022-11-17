@@ -4,10 +4,7 @@ import { ethers, getChainId } from "hardhat";
 import { getProtocolAddresses } from "../protocol_addresses";
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
-  const protocolAddresses: any = await getProtocolAddresses(
-    await getChainId(),
-    hre.config.networks.hardhat.forking?.enabled
-  );
+  const protocolAddresses: any = await getProtocolAddresses(await getChainId());
   const { deployments, getNamedAccounts } = hre;
   const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();

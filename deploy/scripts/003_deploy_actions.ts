@@ -5,12 +5,10 @@ import { addToWhitelist, getLibraries } from "../utils";
 import { Contract } from "ethers";
 import dotenv from "dotenv";
 import { getProtocolAddresses } from "../protocol_addresses";
+import { isForked } from "../../test/helper";
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
-  const protocolAddresses = await getProtocolAddresses(
-    await getChainId(),
-    hre.config.networks.hardhat.forking?.enabled
-  );
+  const protocolAddresses = await getProtocolAddresses(await getChainId());
   dotenv.config({ path: (await getChainId()) == "31337" ? ".test.env" : ".env", override: true });
   const { deployments, getNamedAccounts } = hre;
   const { deploy, log } = deployments;
