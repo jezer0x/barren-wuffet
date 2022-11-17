@@ -126,9 +126,6 @@ describe("Uniswap", () => {
 
         collaterals = [ethers.utils.parseEther(NUM_ETH.toString()), balance_dai];
 
-        console.log(ethers.utils.formatUnits(await dai_contract.balanceOf(McFund.address), 18));
-        console.log(ethers.utils.formatEther(await ethers.provider.getBalance(McFund.address)));
-        console.log("---");
         const tx: ContractTransaction = await McFund.takeAction(
           await makeTrueTrigger(),
           await createUniMintLPAction(
@@ -137,7 +134,7 @@ describe("Uniswap", () => {
             ETH_TOKEN,
             DAI_TOKEN,
             protocolAddresses.tokens.WETH,
-            500,
+            DEFAULT_FEE,
             await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * DEFAULT_SLIPPAGE),
             await encodeMinBPerA(DAI_TOKEN, ETH_TOKEN, (1.0 / daiPerETH) * DEFAULT_SLIPPAGE)
           ),
@@ -145,8 +142,6 @@ describe("Uniswap", () => {
           await getFees(McFund, collaterals)
         );
 
-        console.log(ethers.utils.formatUnits(await dai_contract.balanceOf(McFund.address), 18));
-        console.log(ethers.utils.formatEther(await ethers.provider.getBalance(McFund.address)));
         const burnActionAsData = (await tx.wait()).events.find(
           //@ts-ignore
           (x: { event: string }) => x.event === "PositionCreated"
