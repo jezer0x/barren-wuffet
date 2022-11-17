@@ -1,6 +1,6 @@
 import { ethers, getNamedAccounts, config, deployments } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
-import { Contract, BigNumber, utils } from "ethers";
+import { Contract, BigNumber, utils, ContractReceipt, ContractTransaction } from "ethers";
 import { ERC20_DECIMALS, ETH_TOKEN, TOKEN_TYPE } from "../../Constants";
 import { setupEnvForUniTests } from "../forkFixtures";
 import { makeTrueTrigger } from "../../Fixtures";
@@ -13,7 +13,7 @@ import { expect } from "chai";
 
 // NOTE: applicable fees have to be found from uniswap v3 sdk / subgraph.
 const DEFAULT_FEE = 3000; // corresponds to 0.03%
-const DEFAULT_SLIPPAGE = 0.97;
+const DEFAULT_SLIPPAGE = 0;
 const NUM_ETH = 1;
 
 describe("Uniswap", () => {
@@ -87,21 +87,41 @@ describe("Uniswap", () => {
       });
     });
 
-    describe.skip("lp", () => {
-      it("Should LP 1 ETH and DAI and then swap back for almost all the ETH", async () => {
-        const { DAI_TOKEN, McFund, swapUniAction, dai_contract, mintLPAction } = await testPreReqs();
+    describe("lp", () => {
+      it("Should LP 1 ETH and DAI and then remove the LP assets back", async () => {
+        const {
+          DAI_TOKEN,
+          McFund,
+          swapUniAction,
+          dai_contract,
+          mintLPAction,
+          protocolAddresses,
+          McFundRoboCop
+        } = await testPreReqs();
+
+        const daiPerETHBN = await getTokenOutPerTokenInUniSwap(
+          protocolAddresses.uniswap.quoter,
+          ETH_TOKEN,
+          DAI_TOKEN,
+          DEFAULT_FEE,
+          protocolAddresses.tokens.WETH
+        );
+
+        const daiPerETH = parseFloat(ethers.utils.formatUnits(daiPerETHBN, 18));
 
         // get some DAI first
+        let collaterals = [ethers.utils.parseEther(NUM_ETH.toString())];
         await McFund.takeAction(
           await makeTrueTrigger(),
-          {
-            callee: swapUniAction.address,
-            data: ethers.utils.defaultAbiCoder.encode(["uint24"], [DEFAULT_FEE]),
-            inputTokens: [ETH_TOKEN],
-            outputTokens: [DAI_TOKEN]
-          },
-          [BigNumber.from(1).mul(ERC20_DECIMALS)],
-          [BigNumber.from(0)] // 0 fees set in deploy
+          createUniSwapAction(
+            swapUniAction.address,
+            ETH_TOKEN,
+            DAI_TOKEN,
+            DEFAULT_FEE,
+            await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * DEFAULT_SLIPPAGE)
+          ),
+          collaterals,
+          await getFees(McFund, collaterals)
         );
 
         let balance_dai = await dai_contract.balanceOf(McFund.address);
@@ -112,9 +132,9 @@ describe("Uniswap", () => {
           id: BigNumber.from(0)
         };
 
-        const poolFactory = new Contract("0x1F98431c8aD98523631AE4a59f267346ea31F984", FACTORY_ABI, ethers.provider);
+        const poolFactory = new Contract(protocolAddresses.uniswap.factory, FACTORY_ABI, ethers.provider);
         const pool = new Contract(
-          await poolFactory.getPool(DAI_TOKEN.addr, DAI_TOKEN.addr, 500),
+          await poolFactory.getPool(protocolAddresses.tokens.WETH, DAI_TOKEN.addr, 500),
           POOL_ABI,
           ethers.provider
         );
@@ -130,23 +150,32 @@ describe("Uniswap", () => {
           NHT = temp;
         }
 
-        const tx = await McFund.takeAction(
+        collaterals = [ethers.utils.parseEther(NUM_ETH.toString()), balance_dai];
+
+        const tx: ContractTransaction = await McFund.takeAction(
           await makeTrueTrigger(),
           {
-            callee: (await ethers.getContract("UniMintLiquidityPosition")).address,
+            callee: mintLPAction.address,
             data: ethers.utils.defaultAbiCoder.encode(
-              ["uint24", "int24", "int24"],
-              [500, NLT.toString(), NHT.toString()]
+              ["uint24", "int24", "int24", "uint256", "uint256"],
+              [
+                500,
+                NLT.toString(),
+                NHT.toString(),
+                await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * DEFAULT_SLIPPAGE),
+                await encodeMinBPerA(DAI_TOKEN, ETH_TOKEN, (1.0 / daiPerETH) * DEFAULT_SLIPPAGE)
+              ]
             ),
-            inputTokens: [DAI_TOKEN, DAI_TOKEN],
-            outputTokens: [DAI_TOKEN, DAI_TOKEN, LP_NFT]
+            inputTokens: [ETH_TOKEN, DAI_TOKEN],
+            outputTokens: [ETH_TOKEN, DAI_TOKEN, LP_NFT]
           },
-          [balance_dai, balance_dai],
-          [BigNumber.from(0), BigNumber.from(0)] // 0 fees set in deploy
+          collaterals,
+          await getFees(McFund, collaterals)
         );
+
         const burnActionAsData = (await tx.wait()).events.find(
           //@ts-ignore
-          (x: { event: string; address: string }) => x.event === "PositionCreated"
+          (x: { event: string }) => x.event === "PositionCreated"
         ).args.nextActions[0];
 
         const burnAction = ethers.utils.defaultAbiCoder.decode(

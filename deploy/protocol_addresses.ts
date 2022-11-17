@@ -21,7 +21,8 @@ const arbitrum = {
   uniswap: {
     swap_router: "0xe592427a0aece92de3edee1f18e0157c05861564",
     non_fungible_position_manager: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
-    quoter: "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6"
+    quoter: "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6",
+    factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984"
   },
 
   sushiswap: {
@@ -73,7 +74,8 @@ const goerli = {
   uniswap: {
     swap_router: "0xe592427a0aece92de3edee1f18e0157c05861564",
     non_fungible_position_manager: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
-    quoter: "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6"
+    quoter: "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6",
+    factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984"
   },
 
   sushiswap: {
