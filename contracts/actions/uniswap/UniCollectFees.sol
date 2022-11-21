@@ -34,8 +34,8 @@ contract UniCollectFees is IAction, DelegatePerform {
         require(action.inputTokens[0].isERC721());
         require(action.outputTokens.length == 3);
         require(action.inputTokens[0].equals(action.outputTokens[0]));
-        require(action.outputTokens[1].isERC20() || action.outputTokens[0].isETH());
-        require(action.outputTokens[2].isERC20() || action.outputTokens[1].isETH());
+        require(action.outputTokens[1].isERC20() || action.outputTokens[1].isETH());
+        require(action.outputTokens[2].isERC20() || action.outputTokens[2].isETH());
 
         (, , address token0, address token1, , , , , , , , ) = nonfungiblePositionManager.positions(
             action.inputTokens[0].id
@@ -58,12 +58,25 @@ contract UniCollectFees is IAction, DelegatePerform {
 
         INonfungiblePositionManager.CollectParams memory params = INonfungiblePositionManager.CollectParams({
             tokenId: action.inputTokens[0].id,
-            recipient: address(this),
+            recipient: address(0),
             amount0Max: _amount0Max,
             amount1Max: _amount1Max
         });
 
         (uint256 amount0, uint256 amount1) = nonfungiblePositionManager.collect(params);
+
+        if (action.outputTokens[1].isETH()) {
+            nonfungiblePositionManager.unwrapWETH9(amount0, address(this)); 
+        } else if (action.outputTokens[1].isERC20()) {
+            nonfungiblePositionManager.sweepToken(action.outputTokens[1].addr, amount0, address(this)); 
+        } 
+
+        if (action.outputTokens[2].isETH()) {
+            nonfungiblePositionManager.unwrapWETH9(amount1, address(this)); 
+        } else if (action.outputTokens[2].isERC20()) {
+            nonfungiblePositionManager.sweepToken(action.outputTokens[2].addr, amount1, address(this)); 
+        } 
+            
 
         outputs[0] = action.inputTokens[0].id;
         outputs[1] = amount0;
