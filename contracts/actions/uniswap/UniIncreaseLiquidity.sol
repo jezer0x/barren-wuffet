@@ -84,6 +84,10 @@ contract UniIncreaseLiquidity is IAction, DelegatePerform {
         outputs[1] = amount0;
         outputs[2] = amount1;
 
+        if (ethCollateral > 0) {
+            nonfungiblePositionManager.refundETH();
+        }
+        
         Position memory none;
         return ActionResponse({tokenOutputs: outputs, position: none});
     }

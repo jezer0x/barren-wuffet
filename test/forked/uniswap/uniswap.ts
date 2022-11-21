@@ -4,9 +4,14 @@ import { Contract, BigNumber, utils, ContractReceipt, ContractTransaction } from
 import { ERC20_DECIMALS, ETH_TOKEN, TOKEN_TYPE } from "../../Constants";
 import { setupEnvForUniTests } from "../forkFixtures";
 import { makeTrueTrigger } from "../../Fixtures";
-import { createUniMintLPAction, createUniSwapAction, getTokenOutPerTokenInUniSwap } from "./uniUtils";
+import {
+  createUniBurnAction,
+  createUniMintLPAction,
+  createUniSwapAction,
+  getTokenOutPerTokenInUniSwap
+} from "./uniUtils";
 import { encodeMinBPerA } from "../sushiswap/sushiUtils";
-import { getFees, isForked, multiplyNumberWithBigNumber } from "../../helper";
+import { getArgsFromEvent, getFees, isForked, multiplyNumberWithBigNumber } from "../../helper";
 import { expect } from "chai";
 
 // NOTE: applicable fees have to be found from uniswap v3 sdk / subgraph.
@@ -122,53 +127,75 @@ describe("Uniswap", () => {
           await getFees(McFund, collaterals)
         );
 
-        let balance_dai = await dai_contract.balanceOf(McFund.address);
+        let initial_balance_dai = await dai_contract.balanceOf(McFund.address);
+        let initial_balance_eth = await ethers.provider.getBalance(McFund.address);
+        console.log(initial_balance_eth.toString());
+        console.log(initial_balance_dai.toString());
+        collaterals = [ethers.utils.parseEther(NUM_ETH.toString()), initial_balance_dai];
 
-        collaterals = [ethers.utils.parseEther(NUM_ETH.toString()), balance_dai];
+        // LP in
+        // NOTE: in prod, you'll get this burnActionData from the graph :: position related to ruleHash for the AddLP
+        const burnActionAsData = (
+          await getArgsFromEvent(
+            McFund.takeAction(
+              await makeTrueTrigger(),
+              await createUniMintLPAction(
+                mintLPAction,
+                protocolAddresses.uniswap.factory,
+                ETH_TOKEN,
+                DAI_TOKEN,
+                protocolAddresses.tokens.WETH,
+                DEFAULT_FEE,
+                await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * DEFAULT_SLIPPAGE),
+                await encodeMinBPerA(DAI_TOKEN, ETH_TOKEN, (1.0 / daiPerETH) * DEFAULT_SLIPPAGE)
+              ),
+              collaterals,
+              await getFees(McFund, collaterals)
+            ),
+            "PositionCreated",
+            McFundRoboCop
+          )
+        )?.nextActions[0];
 
-        const tx: ContractTransaction = await McFund.takeAction(
-          await makeTrueTrigger(),
-          await createUniMintLPAction(
-            mintLPAction,
-            protocolAddresses.uniswap.factory,
-            ETH_TOKEN,
-            DAI_TOKEN,
-            protocolAddresses.tokens.WETH,
-            DEFAULT_FEE,
-            await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * DEFAULT_SLIPPAGE),
-            await encodeMinBPerA(DAI_TOKEN, ETH_TOKEN, (1.0 / daiPerETH) * DEFAULT_SLIPPAGE)
-          ),
-          collaterals,
-          await getFees(McFund, collaterals)
-        );
-
-        const burnActionAsData = (await tx.wait()).events.find(
-          //@ts-ignore
-          (x: { event: string }) => x.event === "PositionCreated"
-        ).args.nextActions[0];
-
-        const burnAction = ethers.utils.defaultAbiCoder.decode(
-          ["(address,bytes,(uint8,address,uint256)[],(uint8,address,uint256)[])"], // signature of an Action struct
-          burnActionAsData
-        )[0];
-
+        const burnAction = createUniBurnAction(burnActionAsData);
         const nft_id = burnAction[2][0][2];
 
-        // TODO: increaseLiquidity
-        // TODO: decreaseLiquidity
-        // TODO: swap some large sums so that range gets fees
-        // TODO: collect fees
+        const mid_balance_eth = await ethers.provider.getBalance(McFund.address);
+        const mid_balance_dai = await dai_contract.balanceOf(McFund.address);
 
-        // A long time has passed; people can now force close the position since lockin period has passed
-        await time.increaseTo((await time.latest()) + 86400 * 10);
+        console.log("----");
+        console.log(mid_balance_eth.toString());
+        console.log(mid_balance_dai.toString());
 
-        await McFund.takeActionToClosePosition(await makeTrueTrigger(), burnAction, [nft_id], [0]);
+        expect(
+          initial_balance_eth.sub(mid_balance_eth) >= ethers.utils.parseEther(String(daiPerETH * DEFAULT_SLIPPAGE))
+        );
+        expect(
+          initial_balance_dai.sub(mid_balance_dai) >= multiplyNumberWithBigNumber(DEFAULT_SLIPPAGE, initial_balance_dai)
+        );
+        // TODO: check if you have the NFT
 
-        // TODO: check that collateral was received
+        await McFund.takeAction(await makeTrueTrigger(), burnAction, [nft_id], [0]);
 
-        // Fund can be closed now
-        await McFund.closeFund();
+        expect(
+          (await ethers.provider.getBalance(McFund.address)).sub(mid_balance_eth) >=
+            multiplyNumberWithBigNumber(DEFAULT_SLIPPAGE, collaterals[0])
+        );
+        expect(
+          (await dai_contract.balanceOf(McFund.address)).sub(mid_balance_dai) >=
+            multiplyNumberWithBigNumber(DEFAULT_SLIPPAGE, collaterals[1])
+        );
+
+        console.log("----");
+        console.log((await ethers.provider.getBalance(McFund.address)).toString());
+        console.log((await dai_contract.balanceOf(McFund.address)).toString());
+        // TODO: check NFT is gone
       });
+
+      // TODO: increaseLiquidity
+      // TODO: decreaseLiquidity
+      // TODO: swap some large sums so that range gets fees
+      // TODO: collect fees
     });
   }
 });

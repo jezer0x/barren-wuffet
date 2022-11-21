@@ -17,7 +17,6 @@ import { abi as POOL_ABI } from "@134dd3v/uniswap-v3-core-0.8-support//artifacts
 // might not be there, in which case cd into `node_modules/@uniswap/v3-periphery` and run `npm i` and `npx hardhat compile`
 // source: https://ethereum.stackexchange.com/a/136054
 import { abi as QUOTER_ABI } from "@uniswap/v3-periphery/artifacts/contracts/interfaces/IQuoter.sol/IQuoter.json";
-import { encodeMinBPerA } from "../sushiswap/sushiUtils";
 
 export async function getAmountOutUniSwap(
   quoter_address: Address,
@@ -78,8 +77,8 @@ export async function createUniMintLPAction(
   tokenB: TokenStruct,
   wethAddr: Address,
   fee: number,
-  minXPerY: BigNumber,
-  minYPerX: BigNumber
+  minBPerA: BigNumber,
+  minAPerB: BigNumber
 ) {
   let LP_NFT = {
     t: TOKEN_TYPE.ERC721,
@@ -88,15 +87,21 @@ export async function createUniMintLPAction(
   };
 
   const poolFactory = new Contract(uniswapFactoryAddr, FACTORY_ABI, ethers.provider);
-  const pool = new Contract(
-    await poolFactory.getPool(
-      tokenA == ETH_TOKEN ? wethAddr : tokenA.addr,
-      tokenB == ETH_TOKEN ? wethAddr : tokenB.addr,
-      fee
-    ),
-    POOL_ABI,
-    ethers.provider
-  );
+
+  var tokenAAddr = tokenA == ETH_TOKEN ? wethAddr : tokenA.addr;
+  var tokenBAddr = tokenB == ETH_TOKEN ? wethAddr : tokenB.addr;
+
+  // Swapping because nonfungiblePositionManager does not do this automatically
+  if (tokenAAddr > tokenBAddr) {
+    console.log(tokenAAddr, tokenBAddr);
+    throw Error("tokenA.addr MUST be < tokenB.addr. Please adjust the order and collaterals accordingly.");
+  }
+
+  const pool = new Contract(await poolFactory.getPool(tokenAAddr, tokenBAddr, fee), POOL_ABI, ethers.provider);
+
+  console.log("pool tokens match?");
+  console.log(tokenA.addr, await pool.token0());
+  console.log(tokenB.addr, await pool.token1());
 
   var S0 = await pool.slot0();
   var CT = parseInt(S0.tick);
@@ -109,13 +114,25 @@ export async function createUniMintLPAction(
     NHT = temp;
   }
 
+  console.log("-----");
+  console.log("min use up demands:");
+  console.log(minBPerA.toString());
+  console.log(minAPerB.toString());
+
   return {
     callee: mintLPAction.address,
     data: ethers.utils.defaultAbiCoder.encode(
       ["uint24", "int24", "int24", "uint256", "uint256"],
-      [500, NLT.toString(), NHT.toString(), minXPerY, minYPerX]
+      [fee, NLT.toString(), NHT.toString(), minBPerA, minAPerB]
     ),
     inputTokens: [tokenA, tokenB],
     outputTokens: [tokenA, tokenB, LP_NFT]
   };
+}
+
+export function createUniBurnAction(actionAsData: any) {
+  return ethers.utils.defaultAbiCoder.decode(
+    ["(address,bytes,(uint8,address,uint256)[],(uint8,address,uint256)[])"], // signature of an Action struct
+    actionAsData
+  )[0];
 }

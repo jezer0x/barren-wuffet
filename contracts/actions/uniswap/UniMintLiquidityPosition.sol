@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import "../SimpleSwapUtils.sol";
+import "hardhat/console.sol"; 
 
 /*
     Reference: 
@@ -92,6 +93,23 @@ contract UniMintLiquidityPosition is IAction, DelegatePerform {
                 amount1Min = (minYPerX * runtimeParams.collaterals[0]) / 10**18; 
             }
 
+            console.log(minXPerY);
+            console.log(runtimeParams.collaterals[1]);  
+            console.log("=");
+            console.log(amount0Min);
+            console.log("vs"); 
+            console.log(runtimeParams.collaterals[0]);
+            console.log("----------");  
+            console.log(minYPerX);
+            console.log(runtimeParams.collaterals[0]);  
+            console.log("=");
+            console.log(amount1Min);
+            console.log("vs"); 
+            console.log(runtimeParams.collaterals[1]);
+            console.log("----------");  
+
+
+
             {
                 params = INonfungiblePositionManager.MintParams({
                     token0: token0Addr,
@@ -113,14 +131,26 @@ contract UniMintLiquidityPosition is IAction, DelegatePerform {
             value: ethCollateral
         }(params);
 
+        console.log("sc: LPed"); 
+        console.log(amount0);
+        console.log(amount1);
+
         // Remove allowance and refund in both assets.
         action.inputTokens[0].approve(address(nonfungiblePositionManager), 0);
         action.inputTokens[1].approve(address(nonfungiblePositionManager), 0);
 
-        outputs[0] = amount0 < runtimeParams.collaterals[0] ? runtimeParams.collaterals[0] - amount0 : 0;
-        outputs[1] = amount1 < runtimeParams.collaterals[1] ? runtimeParams.collaterals[1] - amount1 : 0;
+        outputs[0] = runtimeParams.collaterals[0] - amount0;
+        outputs[1] = runtimeParams.collaterals[1] - amount1;
         outputs[2] = tokenId;
 
+        console.log("sc: refunds:"); 
+        console.log( outputs[0]);
+        console.log( outputs[1]);
+
+        if (ethCollateral > 0) {
+            nonfungiblePositionManager.refundETH(); 
+        }
+        
         // setting up position
         Token[] memory inputTokens = new Token[](1);
         inputTokens[0] = Token({t: TokenType.ERC721, addr: address(nonfungiblePositionManager), id: tokenId});

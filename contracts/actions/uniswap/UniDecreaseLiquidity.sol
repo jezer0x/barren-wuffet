@@ -15,7 +15,7 @@ import "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.s
         https://docs.uniswap.org/protocol/guides/providing-liquidity/decrease-liquidity
 
     Tokens: 
-        Will only have 1 input tokens (NFT) and 3 outputs (NFT, amount taken out in token0 and token1)
+        Will only have 1 input token (NFT) and 1 output token (NFT)
 */
 contract UniDecreaseLiquidity is IAction, DelegatePerform {
     using SafeERC20 for IERC20;

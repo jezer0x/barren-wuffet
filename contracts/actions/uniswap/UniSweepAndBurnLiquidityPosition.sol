@@ -39,8 +39,8 @@ contract UniSweepAndBurnLiquidityPosition is IAction, DelegatePerform {
             action.inputTokens[0].id
         );
 
-        require(action.outputTokens[0].addr == token0);
-        require(action.outputTokens[1].addr == token1);
+        require(action.outputTokens[0].addr == token0 || (action.outputTokens[0].isETH() && token0 == weth9Addr));
+        require(action.outputTokens[1].addr == token1 || (action.outputTokens[1].isETH() && token1 == weth9Addr));
 
         return true;
     }
@@ -57,22 +57,34 @@ contract UniSweepAndBurnLiquidityPosition is IAction, DelegatePerform {
             .DecreaseLiquidityParams({
                 tokenId: action.inputTokens[0].id,
                 liquidity: liquidity,
-                amount0Min: tokens0Owed,
-                amount1Min: tokens1Owed,
-                deadline: block.timestamp
+                amount0Min: tokens0Owed, // TODO: have some slippage give?
+                amount1Min: tokens1Owed,    // TODO: have some slippage give?
+                deadline: block.timestamp 
             });
 
         (uint256 amount0, uint256 amount1) = nonfungiblePositionManager.decreaseLiquidity(params);
 
         INonfungiblePositionManager.CollectParams memory collectParams = INonfungiblePositionManager.CollectParams({
             tokenId: action.inputTokens[0].id,
-            recipient: address(this),
+            recipient: address(0),
             amount0Max: type(uint128).max,
             amount1Max: type(uint128).max
         });
 
         (amount0, amount1) = nonfungiblePositionManager.collect(collectParams);
 
+        if (action.outputTokens[0].isETH()) {
+            nonfungiblePositionManager.unwrapWETH9(amount0, address(this)); 
+        } else if (action.outputTokens[0].isERC20()) {
+            nonfungiblePositionManager.sweepToken(action.outputTokens[0].addr, amount0, address(this)); 
+        } 
+
+        if (action.outputTokens[1].isETH()) {
+            nonfungiblePositionManager.unwrapWETH9(amount1, address(this)); 
+        } else if (action.outputTokens[1].isERC20()) {
+            nonfungiblePositionManager.sweepToken(action.outputTokens[1].addr, amount1, address(this)); 
+        } 
+            
         uint256[] memory outputs = new uint256[](2);
         outputs[0] = amount0;
         outputs[1] = amount1;

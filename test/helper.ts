@@ -26,11 +26,10 @@ export async function getAddressFromEvent(
   return event.args[position];
 }
 
-export async function getHashFromEvent(
+export async function getArgsFromEvent(
   fnPromise: Promise<ContractTransaction>,
   eventName: string,
-  parseContract: Contract,
-  eventKey: string
+  parseContract: Contract
 ) {
   const receipt: ContractReceipt = await tx(fnPromise);
 
@@ -42,12 +41,22 @@ export async function getHashFromEvent(
   // Address is definitely part of the event object. Not sure why typescript wont recognize it.
   // Need the check to disambiguate same-name events from multiple objects
   //@ts-ignore
-  const hashEvent = parsedEvents?.find(
+  const targetEvent = parsedEvents?.find(
     //@ts-ignore
     (x: { name: string }) => x.name == eventName
   );
 
-  const args = hashEvent?.args;
+  return targetEvent?.args;
+}
+
+export async function getHashFromEvent(
+  fnPromise: Promise<ContractTransaction>,
+  eventName: string,
+  parseContract: Contract,
+  eventKey: string
+) {
+  const args = await getArgsFromEvent(fnPromise, eventName, parseContract);
+  //@ts-ignore
   return typeof args === "object" && args[eventKey];
 }
 
