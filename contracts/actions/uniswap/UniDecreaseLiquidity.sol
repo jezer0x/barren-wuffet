@@ -49,7 +49,7 @@ contract UniDecreaseLiquidity is IAction, DelegatePerform {
         return true;
     }
 
-    function perform(Action calldata action, ActionRuntimeParams calldata runtimeParams)
+    function perform(Action calldata action, ActionRuntimeParams calldata)
         external
         delegateOnly
         returns (ActionResponse memory)

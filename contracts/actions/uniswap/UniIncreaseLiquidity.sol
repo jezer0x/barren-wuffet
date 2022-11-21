@@ -37,6 +37,8 @@ contract UniIncreaseLiquidity is IAction, DelegatePerform {
         require(action.outputTokens[1].isERC20() || action.outputTokens[0].isETH());
         require(action.outputTokens[2].isERC20() || action.outputTokens[1].isETH());
 
+        (uint256 minYPerX, uint256 minXPerY) = abi.decode(action.data, (uint256, uint256));
+
         (, , address token0, address token1, , , , , , , , ) = nonfungiblePositionManager.positions(
             action.inputTokens[0].id
         );
@@ -65,14 +67,17 @@ contract UniIncreaseLiquidity is IAction, DelegatePerform {
             action.inputTokens[1].approve(address(nonfungiblePositionManager), runtimeParams.collaterals[1]);
             action.inputTokens[2].approve(address(nonfungiblePositionManager), runtimeParams.collaterals[2]);
         }
+ 
+
+        (uint256 minYPerX, uint256 minXPerY) = abi.decode(action.data, (uint256, uint256));
 
         INonfungiblePositionManager.IncreaseLiquidityParams memory params = INonfungiblePositionManager
             .IncreaseLiquidityParams({
                 tokenId: action.inputTokens[0].id,
                 amount0Desired: runtimeParams.collaterals[0],
                 amount1Desired: runtimeParams.collaterals[0],
-                amount0Min: 0, // TODO
-                amount1Min: 0,
+                amount0Min: (minXPerY * runtimeParams.collaterals[1]) / 10**18, 
+                amount1Min: (minYPerX * runtimeParams.collaterals[0]) / 10**18,
                 deadline: block.timestamp
             });
 
@@ -81,8 +86,8 @@ contract UniIncreaseLiquidity is IAction, DelegatePerform {
         );
 
         outputs[0] = action.inputTokens[0].id;
-        outputs[1] = amount0;
-        outputs[2] = amount1;
+        outputs[1] = runtimeParams.collaterals[0] - amount0;
+        outputs[2] = runtimeParams.collaterals[1] - amount1;
 
         if (ethCollateral > 0) {
             nonfungiblePositionManager.refundETH();
