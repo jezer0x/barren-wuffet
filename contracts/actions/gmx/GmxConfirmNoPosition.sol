@@ -44,16 +44,14 @@ contract GmxConfirmNoPosition is IAction, DelegatePerform {
             indexTokenAddrs,
             isLongs
         );
-        if (positions[0] == 0) {
-            // size of the position is 0
-            return
-                ActionResponse({
-                    tokenOutputs: new uint256[](0),
-                    position: Position({actionConstraints: new ActionConstraints[](0), nextActions: new Action[](0)})
-                });
-        } else {
-            revert("Position still exists!");
-        }
+
+        require(positions[0] == 0, "Position still exists!");
+        
+        return
+            ActionResponse({
+                tokenOutputs: new uint256[](0),
+                position: Position({actionConstraints: new ActionConstraints[](0), nextActions: new Action[](0)})
+            });
     }
 
     function validate(Action calldata action) external view returns (bool) {

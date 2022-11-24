@@ -52,10 +52,6 @@ contract GmxIncreasePosition is IAction, DelegatePerform {
         bytes32 key; 
         {
             uint256 size_delta = (params._leverage * params._inputTokenPrice * runtimeParams.collaterals[0]) / (10**(IERC20Metadata(params._path[0]).decimals())); 
-            console.log((params._minOutYPerXSwap * runtimeParams.collaterals[0]) / 10**18);
-            console.log(size_delta); 
-            console.log(params._acceptableIndexTokenPrice);
-
 
             if (action.inputTokens[0].isETH()) {
                 key = positionRouter.createIncreasePositionETH{
@@ -98,8 +94,8 @@ contract GmxIncreasePosition is IAction, DelegatePerform {
             nextActions[0] = Action({
                 callee: confirmReqCancelOrExecAddr,
                 data: abi.encode(
-                    true,
                     key,
+                    true,
                     params._path[params._path.length - 1],
                     params._indexToken,
                     params._isLong

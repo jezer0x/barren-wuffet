@@ -3,7 +3,6 @@ pragma solidity ^0.8.17;
 
 struct IncreasePositionRequest {
     address account;
-    address[] path;
     address indexToken;
     uint256 amountIn;
     uint256 minOut;
@@ -19,7 +18,6 @@ struct IncreasePositionRequest {
 
 struct DecreasePositionRequest {
     address account;
-    address[] path;
     address indexToken;
     uint256 collateralDelta;
     uint256 sizeDelta;
