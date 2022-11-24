@@ -32,8 +32,8 @@ contract GmxDecreasePosition is IAction, DelegatePerform {
     {
         DecreasePositionParams memory params = abi.decode(action.data, (DecreasePositionParams));
 
-        {
-            positionRouter.createDecreasePosition{value: runtimeParams.collaterals[0]}(
+        
+            bytes32 key = positionRouter.createDecreasePosition{value: runtimeParams.collaterals[0]}(
                 params._path,
                 params._indexToken,
                 params._collateralDelta,
@@ -43,16 +43,17 @@ contract GmxDecreasePosition is IAction, DelegatePerform {
                 params._acceptablePrice,
                 params._minOut,
                 runtimeParams.collaterals[0],
-                params._withdrawETH
+                params._withdrawETH, 
+                address(0)
             );
-        }
+        
 
         return
             ActionResponse({
                 tokenOutputs: new uint256[](0),
                 position: Position({
                     actionConstraints: new ActionConstraints[](0),
-                    nextActions: _getNextActions(params._withdrawETH, params._path, params._indexToken, params._isLong)
+                    nextActions: _getNextActions(params._withdrawETH, key, params._path, params._indexToken, params._isLong)
                 })
             });
     }
@@ -72,6 +73,7 @@ contract GmxDecreasePosition is IAction, DelegatePerform {
 
     function _getNextActions(
         bool _withdrawETH,
+        bytes32 key, 
         address[] memory _path,
         address _indexToken,
         bool _isLong
@@ -90,7 +92,7 @@ contract GmxDecreasePosition is IAction, DelegatePerform {
             callee: confirmReqCancelOrExecAddr,
             data: abi.encode(
                 false,
-                positionRouter.getRequestKey(address(this), positionRouter.decreasePositionsIndex(address(this))),
+                key, 
                 _path[_path.length - 1],
                 _indexToken,
                 _isLong

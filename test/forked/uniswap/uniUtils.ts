@@ -10,7 +10,7 @@ import {
 import { Address } from "hardhat-deploy/types";
 import { TokenStruct } from "../../../typechain-types/contracts/utils/subscriptions/Subscriptions";
 import { ActionStruct } from "../../../typechain-types/contracts/actions/IAction";
-import { multiplyNumberWithBigNumber } from "../../helper";
+import { getActionFromBytes, multiplyNumberWithBigNumber } from "../../helper";
 import { abi as FACTORY_ABI } from "@134dd3v/uniswap-v3-core-0.8-support/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json";
 import { abi as POOL_ABI } from "@134dd3v/uniswap-v3-core-0.8-support//artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json";
 
@@ -130,9 +130,6 @@ export async function createUniMintLPAction(
   };
 }
 
-export function createUniBurnAction(actionAsData: any) {
-  return ethers.utils.defaultAbiCoder.decode(
-    ["(address,bytes,(uint8,address,uint256)[],(uint8,address,uint256)[])"], // signature of an Action struct
-    actionAsData
-  )[0];
+export function createUniBurnAction(actionAsBytes: any) {
+  return getActionFromBytes(actionAsBytes);
 }

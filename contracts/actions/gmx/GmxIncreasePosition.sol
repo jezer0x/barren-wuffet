@@ -7,6 +7,18 @@ import "./IReader.sol";
 import "./IRouter.sol";
 import "./IPositionRouter.sol";
 import "../SimpleSwapUtils.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol"; 
+import "hardhat/console.sol";
+
+struct IncreasePositionParamsCustom {
+    address[] _path;
+    address _indexToken;
+    uint256 _minOutYPerXSwap;
+    uint256 _leverage;
+    uint256 _inputTokenPrice; 
+    bool _isLong;
+    uint256 _acceptableIndexTokenPrice;
+}
 
 contract GmxIncreasePosition is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
@@ -34,35 +46,40 @@ contract GmxIncreasePosition is IAction, DelegatePerform {
         delegateOnly
         returns (ActionResponse memory)
     {
-        IncreasePositionParams memory params = abi.decode(action.data, (IncreasePositionParams));
-        address router = positionRouter.router();
-        IRouter(router).approvePlugin(address(positionRouter));
+        IncreasePositionParamsCustom memory params = abi.decode(action.data, (IncreasePositionParamsCustom));
+        IRouter router = IRouter(positionRouter.router());
+        router.approvePlugin(address(positionRouter));
+        bytes32 key; 
         {
+            uint256 size_delta = (params._leverage * params._inputTokenPrice * runtimeParams.collaterals[0]) / (10**(IERC20Metadata(params._path[0]).decimals())); 
+
             if (action.inputTokens[0].isETH()) {
-                positionRouter.createIncreasePositionETH{
+                key = positionRouter.createIncreasePositionETH{
                     value: runtimeParams.collaterals[1] + runtimeParams.collaterals[0]
                 }(
                     params._path,
                     params._indexToken,
-                    params._minOut,
-                    params._sizeDelta,
+                    params._minOutYPerXSwap * runtimeParams.collaterals[0], 
+                    size_delta, 
                     params._isLong,
-                    params._acceptablePrice,
+                    params._acceptableIndexTokenPrice,
                     runtimeParams.collaterals[1],
-                    referralCode
+                    referralCode, 
+                    address(0)
                 );
             } else {
-                action.inputTokens[0].approve(router, runtimeParams.collaterals[0]);
-                positionRouter.createIncreasePosition{value: runtimeParams.collaterals[1]}(
+                action.inputTokens[0].approve(address(router), runtimeParams.collaterals[0]);
+                key = positionRouter.createIncreasePosition{value: runtimeParams.collaterals[1]}(
                     params._path,
                     params._indexToken,
                     runtimeParams.collaterals[0],
-                    params._minOut,
-                    params._sizeDelta,
+                    params._minOutYPerXSwap * runtimeParams.collaterals[0], 
+                    size_delta, 
                     params._isLong,
-                    params._acceptablePrice,
+                    params._acceptableIndexTokenPrice,
                     runtimeParams.collaterals[1],
-                    referralCode
+                    referralCode, 
+                    address(0)
                 );
             }
         }
@@ -78,7 +95,7 @@ contract GmxIncreasePosition is IAction, DelegatePerform {
                 callee: confirmReqCancelOrExecAddr,
                 data: abi.encode(
                     true,
-                    positionRouter.getRequestKey(address(this), positionRouter.increasePositionsIndex(address(this))),
+                    key,
                     params._path[params._path.length - 1],
                     params._indexToken,
                     params._isLong
@@ -104,7 +121,7 @@ contract GmxIncreasePosition is IAction, DelegatePerform {
         // no outputToken
         require(action.outputTokens.length == 0);
 
-        abi.decode(action.data, (IncreasePositionParams));
+        abi.decode(action.data, (IncreasePositionParamsCustom));
 
         return true;
     }

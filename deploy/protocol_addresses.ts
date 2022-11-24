@@ -53,7 +53,7 @@ const arbitrum = {
   // https://gmxio.gitbook.io/gmx/contracts
   gmx: {
     router: "0xaBBc5F99639c9B6bCb58544ddf04EFA6802F4064",
-    position_router: "0x3D6bA331e3D9702C5e8A8d254e5d8a285F223aba",
+    position_router: "0xb87a436B93fFE9D75c5cFA7bAcFff96430b09868",
     reader: "0x22199a49A999c351eF7927602CFB187ec3cae489"
   }
 };

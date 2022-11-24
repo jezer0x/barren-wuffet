@@ -5,7 +5,7 @@ import { IERC20Metadata__factory } from "../../../typechain-types";
 import { Address } from "hardhat-deploy/types";
 import { TokenStruct } from "../../../typechain-types/contracts/utils/subscriptions/Subscriptions";
 import { ActionStruct } from "../../../typechain-types/contracts/actions/IAction";
-import { multiplyNumberWithBigNumber } from "../../helper";
+import { getActionFromBytes, multiplyNumberWithBigNumber } from "../../helper";
 import { abi as FACTORY_ABI } from "@134dd3v/uniswap-v3-core-0.8-support/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json";
 import { abi as POOL_ABI } from "@134dd3v/uniswap-v3-core-0.8-support//artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json";
 
@@ -56,4 +56,40 @@ export function createGmxSwapAction(
     inputTokens: [tokenIn],
     outputTokens: [tokenOut]
   };
+}
+
+export function createIncreasePositionAction(
+  callee: Address,
+  tokenIn: TokenStruct,
+  indexTokenAddr: Address,
+  minAmountOfOutPerInForSwap: BigNumber, // leave this as 0 if you don't have to swap
+  leverage: BigNumber, // this is only indicative. Actual leverage depends on inputTokenPrice, leverage given and indexTokenPrice at the point of order execution
+  inputTokenPrice: number, // in USD
+  acceptableIndexTokenPrice: number, // in USD
+  WETHAddr: Address,
+  collateralTokenAddr: Address | undefined = undefined
+) {
+  return {
+    callee: callee,
+    data: ethers.utils.defaultAbiCoder.encode(
+      ["tuple(address[], address, uint256, uint256, uint256, bool, uint256)"],
+      [
+        [
+          [tokenIn == ETH_TOKEN ? WETHAddr : tokenIn.addr].concat(collateralTokenAddr ? [collateralTokenAddr] : []),
+          indexTokenAddr,
+          minAmountOfOutPerInForSwap,
+          leverage,
+          multiplyNumberWithBigNumber(inputTokenPrice, BigNumber.from(10).pow(30)),
+          true,
+          multiplyNumberWithBigNumber(acceptableIndexTokenPrice, BigNumber.from(10).pow(30))
+        ]
+      ]
+    ),
+    inputTokens: [tokenIn, ETH_TOKEN],
+    outputTokens: []
+  };
+}
+
+export function createGmxConfirmCancelOrExecRequestAction(actionAsBytes: any) {
+  return getActionFromBytes(actionAsBytes);
 }

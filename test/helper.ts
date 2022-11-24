@@ -255,3 +255,10 @@ export function isForked(): boolean {
     return false;
   }
 }
+
+export function getActionFromBytes(actionAsBytes: any) {
+  return ethers.utils.defaultAbiCoder.decode(
+    ["(address,bytes,(uint8,address,uint256)[],(uint8,address,uint256)[])"], // signature of an Action struct
+    actionAsBytes
+  )[0];
+}
