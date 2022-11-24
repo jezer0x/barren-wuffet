@@ -8,7 +8,6 @@ import "./IRouter.sol";
 import "./IPositionRouter.sol";
 import "../SimpleSwapUtils.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol"; 
-import "hardhat/console.sol";
 
 struct IncreasePositionParamsCustom {
     address[] _path;
