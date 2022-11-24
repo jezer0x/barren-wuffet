@@ -125,13 +125,9 @@ export async function whitelistAction(actionAddr: string) {
 }
 
 export async function getFees(fund: Contract, collaterals: Array<BigNumber>) {
-  let fees = [];
   const feePercentage = (await fund.feeParams()).managerToPlatformFeePercentage / 100.0;
 
-  for (var i = 0; i < collaterals.length; i++) {
-    fees.push(multiplyNumberWithBigNumber(feePercentage, collaterals[i]));
-  }
-  return fees;
+  return collaterals.map(c => multiplyNumberWithBigNumber(feePercentage, c));
 }
 
 export function multiplyNumberWithBigNumber(a: Number, b: BigNumber) {
@@ -165,15 +161,27 @@ export function createTwapTriggerSet(
   return triggersSet;
 }
 
+export interface TwapRange {
+  startTime: number;
+  numIntervals: number;
+  gapBetweenIntervals: number;
+}
+
+export function percentOf(amount: BigNumber, basisPoints: BigNumber): BigNumber {
+  return amount.mul(basisPoints).div(100);
+}
+
 /**
  * 
  * @param fundContract 
  * @param totalCollaterals: total number of assets to be used in the action
  * @param action 
- * @param startTime; block.timestamp where the first rule should be executed
- * @param numIntervals: How many transactions do you want
- * @param gapBetweenIntervals: In seconds
- * @param timestampTriggerAddr 
+ * @param twapRange: 
+ * { 
+ * startTime; block.timestamp where the first rule should be executed
+ * numIntervals: How many transactions do you want
+ *  gapBetweenIntervals: In seconds
+ * @param timestampTriggerAddr
  * @param tolerance: specifying a window within which a tx may pass. Needed for inherent uncertainty of when a block is mined. 
  * @param additionalTriggers: more triggers to be included for each tx
  * 
@@ -188,9 +196,10 @@ export function createTwapTriggerSet(
             await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * DEFAULT_SLIPPAGE),
             protocolAddresses.tokens.WETH
           ),
-          await time.latest(),
-          10,
-          120,
+          { startTime: await time.latest(),
+            numIntervals: 120 
+            gapBetweenIntervals: 10 
+          }
           (await ethers.getContract("TimestampTrigger")).address
         );
  */
@@ -198,13 +207,12 @@ export async function createTwapOnChain(
   fundContract: Contract,
   totalCollaterals: BigNumber[],
   action: ActionStruct,
-  startTime: number,
-  numIntervals: number,
-  gapBetweenIntervals: number,
+  twapRange: TwapRange,
   timestampTriggerAddr: string,
   tolerance: number = 13,
   additionalTriggers: TriggerStruct[] = []
 ) {
+  const { startTime, numIntervals, gapBetweenIntervals } = twapRange;
   const triggersSet = createTwapTriggerSet(
     startTime,
     numIntervals,
@@ -217,19 +225,19 @@ export async function createTwapOnChain(
     return collateral.div(numIntervals);
   });
 
-  var actionsSet = [];
-  var activatesSet = [];
-  var collateralsSet = [];
-  var feesSet = [];
+  const managerToPlatformFeePercentage = BigNumber.from(
+    (await fundContract.feeParams()).managerToPlatformFeePercentage
+  );
+  const numTriggers = triggersSet.length;
+  const platformFees = collateralsPerInterval.map(collateral => percentOf(collateral, managerToPlatformFeePercentage));
 
-  for (var i = 0; i < triggersSet.length; i++) {
-    actionsSet.push([action]);
-    activatesSet.push(true);
-    collateralsSet.push(collateralsPerInterval);
-    feesSet.push(await getFees(fundContract, collateralsPerInterval));
-  }
-
-  await fundContract.createRules(triggersSet, actionsSet, activatesSet, collateralsSet, feesSet);
+  await fundContract.createRules(
+    triggersSet,
+    Array(numTriggers).fill([action]),
+    Array(numTriggers).fill(true),
+    Array(numTriggers).fill(collateralsPerInterval),
+    Array(numTriggers).fill(platformFees)
+  );
 }
 
 export function createTimestampTrigger(timestampTriggerAddr: string, operator: number, target: number) {
