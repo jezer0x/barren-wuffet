@@ -69,6 +69,16 @@ export function createIncreasePositionAction(
   WETHAddr: Address,
   collateralTokenAddr: Address | undefined = undefined
 ) {
+  // struct IncreasePositionParamsCustom {
+  //     address[] _path;
+  //     address _indexToken;
+  //     uint256 _minOutYPerXSwap;
+  //     uint256 _leverage;
+  //     uint256 _inputTokenPrice;
+  //     bool _isLong;
+  //     uint256 _acceptableIndexTokenPrice;
+  // }
+
   return {
     callee: callee,
     data: ethers.utils.defaultAbiCoder.encode(

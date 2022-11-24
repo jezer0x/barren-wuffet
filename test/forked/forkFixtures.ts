@@ -9,6 +9,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { abi as GMX_READER_ABI } from "./gmx/GmxReader.json";
 import { abi as GMX_ROUTER_ABI } from "./gmx/GmxRouter.json";
 import { abi as GMX_POSITION_ROUTER_ABI } from "./gmx/GmxPositionRouter.json";
+import { abi as GMX_VAULT_ABI } from "./gmx/GmxVault.json";
 
 export async function setupEnvForActionTests(ethers: HardhatRuntimeEnvironment["ethers"]) {
   const protocolAddresses: any = await getProtocolAddresses("31337");
@@ -81,6 +82,7 @@ export async function setupEnvForGmxTests({ ethers }: HardhatRuntimeEnvironment)
     GMX_POSITION_ROUTER_ABI,
     ethers.provider
   );
+  const gmxVault = new Contract(await gmxRouter.vault(), GMX_VAULT_ABI, ethers.provider);
 
   return {
     swapGmxAction,
@@ -90,6 +92,7 @@ export async function setupEnvForGmxTests({ ethers }: HardhatRuntimeEnvironment)
     confirmNoPositionGmxActions,
     gmxReader,
     gmxRouter,
+    gmxVault,
     gmxPositionRouter,
     ...setupEnvRes
   };

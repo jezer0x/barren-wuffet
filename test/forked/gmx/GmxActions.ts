@@ -1,5 +1,5 @@
 import { ethers, getNamedAccounts, config, deployments } from "hardhat";
-import { time } from "@nomicfoundation/hardhat-network-helpers";
+import { impersonateAccount, time } from "@nomicfoundation/hardhat-network-helpers";
 import { Contract, BigNumber, utils, ContractReceipt, ContractTransaction } from "ethers";
 import { ERC20_DECIMALS, ETH_TOKEN, TOKEN_TYPE } from "../../Constants";
 import { setupEnvForGmxTests, setupEnvForUniTests } from "../forkFixtures";
@@ -13,9 +13,10 @@ import {
   createIncreasePositionAction,
   getTokenOutPerTokenInGmxSwap
 } from "./gmxUtils";
+import { abi as POSITION_ROUTER_ABI } from "./GmxPositionRouter.json";
 
-const DEFAULT_SLIPPAGE = 0.97;
-const NUM_ETH = 1;
+const DEFAULT_SLIPPAGE_SWAP = 0.95;
+const NUM_ETH = 10;
 
 describe("GMX", () => {
   before(function() {
@@ -42,7 +43,7 @@ describe("GMX", () => {
         gmxRouter
       } = await testPreReqs();
 
-      const daiPerETHBN = await getTokenOutPerTokenInGmxSwap(
+      var daiPerETHBN = await getTokenOutPerTokenInGmxSwap(
         gmxReader,
         await gmxRouter.vault(),
         ETH_TOKEN,
@@ -50,7 +51,8 @@ describe("GMX", () => {
         protocolAddresses.tokens.WETH
       );
 
-      const daiPerETH = parseFloat(ethers.utils.formatUnits(daiPerETHBN, 18));
+      var daiPerETH = parseFloat(ethers.utils.formatUnits(daiPerETHBN, 18));
+
       let collaterals = [ethers.utils.parseEther(NUM_ETH.toString())];
       await expect(
         McFund.takeAction(
@@ -59,7 +61,7 @@ describe("GMX", () => {
             swapGmxAction.address,
             ETH_TOKEN,
             DAI_TOKEN,
-            await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * DEFAULT_SLIPPAGE)
+            await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * DEFAULT_SLIPPAGE_SWAP)
           ),
           collaterals,
           await getFees(McFund, collaterals)
@@ -68,10 +70,21 @@ describe("GMX", () => {
 
       expect(
         (await dai_contract.balanceOf(McFund.address)) >=
-          ethers.utils.parseUnits(String(daiPerETH * DEFAULT_SLIPPAGE), 18)
+          ethers.utils.parseUnits(String(daiPerETH * NUM_ETH * DEFAULT_SLIPPAGE_SWAP), 18)
       );
 
       // swap DAI back to ETH
+
+      const ETHperDAIBN = await getTokenOutPerTokenInGmxSwap(
+        gmxReader,
+        await gmxRouter.vault(),
+        DAI_TOKEN,
+        ETH_TOKEN,
+        protocolAddresses.tokens.WETH
+      );
+
+      const ETHperDAI = parseFloat(ethers.utils.formatUnits(ETHperDAIBN, 18));
+
       const dai_balance = await dai_contract.balanceOf(McFund.address);
       const prev_eth_balance = await ethers.provider.getBalance(McFund.address);
 
@@ -83,16 +96,16 @@ describe("GMX", () => {
             swapGmxAction.address,
             DAI_TOKEN,
             ETH_TOKEN,
-            BigNumber.from(0) // await encodeMinBPerA(DAI_TOKEN, ETH_TOKEN, (1.0 / daiPerETH) * DEFAULT_SLIPPAGE)
+            await encodeMinBPerA(DAI_TOKEN, ETH_TOKEN, ETHperDAI * DEFAULT_SLIPPAGE_SWAP)
           ),
           collaterals,
           await getFees(McFund, collaterals)
         )
-      ).to.changeTokenBalance(dai_contract, McFund.address, dai_balance.mul(-NUM_ETH));
+      ).to.changeTokenBalance(dai_contract, McFund.address, dai_balance.mul(-1));
 
       expect(
         (await ethers.provider.getBalance(McFund.address)).sub(prev_eth_balance) >
-          multiplyNumberWithBigNumber(DEFAULT_SLIPPAGE / daiPerETH, dai_balance)
+          multiplyNumberWithBigNumber(DEFAULT_SLIPPAGE_SWAP * ETHperDAI * NUM_ETH, dai_balance)
       );
     });
   });
@@ -109,17 +122,18 @@ describe("GMX", () => {
         dai_contract,
         gmxReader,
         gmxRouter,
-        McFundRoboCop
+        McFundRoboCop,
+        gmxVault
       } = await testPreReqs();
 
-      const daiPerETHBN = await getTokenOutPerTokenInGmxSwap(
+      var daiPerETHBN = await getTokenOutPerTokenInGmxSwap(
         gmxReader,
         await gmxRouter.vault(),
         ETH_TOKEN,
         DAI_TOKEN,
         protocolAddresses.tokens.WETH
       );
-      const daiPerETH = parseFloat(ethers.utils.formatUnits(daiPerETHBN, 18));
+      var daiPerETH = parseFloat(ethers.utils.formatUnits(daiPerETHBN, 18));
 
       let collaterals = [ethers.utils.parseEther(NUM_ETH.toString())];
 
@@ -129,7 +143,7 @@ describe("GMX", () => {
           swapGmxAction.address,
           ETH_TOKEN,
           DAI_TOKEN,
-          await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * DEFAULT_SLIPPAGE)
+          await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * DEFAULT_SLIPPAGE_SWAP)
         ),
         collaterals,
         await getFees(McFund, collaterals)
@@ -137,6 +151,16 @@ describe("GMX", () => {
 
       var balance_dai = await dai_contract.balanceOf(McFund.address);
       collaterals = [balance_dai, await gmxPositionRouter.minExecutionFee()];
+
+      const ETHperDAIBN = await getTokenOutPerTokenInGmxSwap(
+        gmxReader,
+        await gmxRouter.vault(),
+        DAI_TOKEN,
+        ETH_TOKEN,
+        protocolAddresses.tokens.WETH
+      );
+
+      const ETHperDAI = parseFloat(ethers.utils.formatUnits(ETHperDAIBN, 18));
 
       // leverage ETH ~2x using ETH as collateral (includes a DAI to WETH Swap as well)
       const execOrCancelActionAsBytes = (
@@ -147,10 +171,11 @@ describe("GMX", () => {
               increasePositionGmxAction.address,
               DAI_TOKEN,
               protocolAddresses.tokens.WETH,
-              await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * DEFAULT_SLIPPAGE),
+              await encodeMinBPerA(DAI_TOKEN, ETH_TOKEN, ETHperDAI * DEFAULT_SLIPPAGE_SWAP),
               BigNumber.from(2),
               1,
-              daiPerETH * DEFAULT_SLIPPAGE,
+              parseFloat(ethers.utils.formatUnits(await gmxVault.getMaxPrice(protocolAddresses.tokens.WETH), 30)) *
+                (2 - DEFAULT_SLIPPAGE_SWAP),
               protocolAddresses.tokens.WETH,
               protocolAddresses.tokens.WETH
             ),
@@ -166,68 +191,27 @@ describe("GMX", () => {
       const confirmExecOrCancelAction = createGmxConfirmCancelOrExecRequestAction(execOrCancelActionAsBytes);
       await expect(McFund.takeAction(await makeTrueTrigger(), confirmExecOrCancelAction, [], [])).to.be.reverted;
 
-      // TODO: get nextAction and try it
+      // impersonated admin tries to make himself a keeper and then execute the increase position
+      var key = await gmxPositionRouter.getRequestKey(
+        McFundRoboCop.address,
+        await gmxPositionRouter.increasePositionsIndex(McFundRoboCop.address)
+      );
+      const gmxAdminAddr = await gmxPositionRouter.admin();
+      await impersonateAccount(gmxAdminAddr);
+      const gmxAdmin = await ethers.getSigner(gmxAdminAddr);
+      const gmxPositionRouterByAdmin = new Contract(gmxPositionRouter.address, POSITION_ROUTER_ABI, gmxAdmin);
+      await gmxPositionRouterByAdmin.setPositionKeeper(gmxAdminAddr, true);
+      await gmxPositionRouterByAdmin.executeIncreasePosition(key, gmxAdmin.address);
+
+      // this should pass now
+      await expect(McFund.takeAction(await makeTrueTrigger(), confirmExecOrCancelAction, [], [])).to.not.be.reverted;
+
+      // TODO
     });
   });
 });
 
 /*
-
-  const confirmReqExecOrCancel = await ethers.getContract("GmxConfirmRequestExecOrCancel");
-  const gmxReader = new Contract("0x22199a49A999c351eF7927602CFB187ec3cae489", Reader.abi, ethers.provider);
-  const gmxRouter = new Contract("0xaBBc5F99639c9B6bCb58544ddf04EFA6802F4064", Router.abi, ethers.provider);
-  const gmxPositionRouter = new Contract(
-    "0x3D6bA331e3D9702C5e8A8d254e5d8a285F223aba",
-    PositionRouter.abi,
-    ethers.provider
-  );
-
-  const rc = await McFund.roboCop();
-  var key = await gmxPositionRouter.getRequestKey(rc, await gmxPositionRouter.increasePositionsIndex(rc));
-
-  try {
-    await McFund.takeAction(
-      trueTrigger,
-      {
-        callee: confirmReqExecOrCancel.address,
-        data: ethers.utils.defaultAbiCoder.encode(
-          ["bool", "uint256", "address", "address", "bool"],
-          [true, key, protocolAddresses.tokens.USDC, protocolAddresses.tokens.WETH, true]
-        ),
-        inputTokens: [],
-        outputTokens: []
-      },
-      [],
-      []
-    );
-  } catch (e) {
-    console.log("Successfully failed at confirming reqExec!");
-  }
-
-  // impersonated admin tries to make himself a keeper and then execute the increase position
-  const gmxAdminAddr = await gmxPositionRouter.admin();
-  await impersonateAccount(gmxAdminAddr);
-  const gmxAdmin = await ethers.getSigner(gmxAdminAddr);
-  const gmxPositionRouterByAdmin = new Contract(gmxPositionRouter.address, PositionRouter.abi, gmxAdmin);
-  await gmxPositionRouterByAdmin.setPositionKeeper(gmxAdminAddr, true);
-  await gmxPositionRouterByAdmin.executeIncreasePosition(key, gmxAdmin.address);
-
-  // confirm exec passes
-  await McFund.takeAction(
-    trueTrigger,
-    {
-      callee: confirmReqExecOrCancel.address,
-      data: ethers.utils.defaultAbiCoder.encode(
-        ["bool", "uint256", "address", "address", "bool"],
-        [true, key, protocolAddresses.tokens.USDC, protocolAddresses.tokens.WETH, true]
-      ),
-      inputTokens: [],
-      outputTokens: []
-    },
-    [],
-    []
-  );
-
   const confirmNoPosition = await ethers.getContract("GmxConfirmNoPosition");
 
   // try confirm no pos should fail
