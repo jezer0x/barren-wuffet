@@ -16,7 +16,7 @@ import { expect } from "chai";
 
 // NOTE: applicable fees have to be found from uniswap v3 sdk / subgraph.
 const DEFAULT_FEE = 3000; // corresponds to 0.03%
-const DEFAULT_SLIPPAGE = 0;
+const DEFAULT_SLIPPAGE = 97;
 const NUM_ETH = 1;
 
 describe("Uniswap", () => {
@@ -25,8 +25,6 @@ describe("Uniswap", () => {
       this.skip();
     }
   });
-
-  // run these only when forking
 
   // setup
   const testPreReqs = deployments.createFixture(async hre => {

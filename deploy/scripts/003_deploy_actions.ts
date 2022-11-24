@@ -31,7 +31,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
   await deploySushiActions(deploy, deployer, whitelistService, actWlHash, TokenLibAddr, protocolAddresses, log);
 
-  //await deployGmxActions(deploy, deployer, whitelistService, actWlHash, TokenLibAddr, protocolAddresses, log);
+  await deployGmxActions(deploy, deployer, whitelistService, actWlHash, TokenLibAddr, protocolAddresses, log);
 
   if ((await whitelistService.getWhitelistOwner(actWlHash)) == deployer) {
     await whitelistService.transferWhitelistOwnership(actWlHash, process.env.PLATFORM_MULTI_SIG_ADDR);

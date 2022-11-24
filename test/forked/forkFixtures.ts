@@ -6,6 +6,9 @@ import { Contract, BigNumber } from "ethers";
 import { getProtocolAddresses } from "../../deploy/protocol_addresses";
 import { IERC20Metadata__factory } from "../../typechain-types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { abi as GMX_READER_ABI } from "./gmx/GmxReader.json";
+import { abi as GMX_ROUTER_ABI } from "./gmx/GmxRouter.json";
+import { abi as GMX_POSITION_ROUTER_ABI } from "./gmx/GmxPositionRouter.json";
 
 export async function setupEnvForActionTests(ethers: HardhatRuntimeEnvironment["ethers"]) {
   const protocolAddresses: any = await getProtocolAddresses("31337");
@@ -59,5 +62,35 @@ export async function setupEnvForUniTests({ ethers }: HardhatRuntimeEnvironment)
     swapUniAction,
     mintLPAction,
     ...(await setupEnvForActionTests(ethers))
+  };
+}
+
+export async function setupEnvForGmxTests({ ethers }: HardhatRuntimeEnvironment) {
+  const setupEnvRes = await setupEnvForActionTests(ethers);
+
+  const swapGmxAction = await ethers.getContract("GmxSwap");
+  const increasePositionGmxAction = await ethers.getContract("GmxIncreasePosition");
+  const decreasePositionGmxAction = await ethers.getContract("GmxDecreasePosition");
+  const confirmReqExecOrCancelGmxAction = await ethers.getContract("GmxConfirmRequestExecOrCancel");
+  const confirmNoPositionGmxActions = await ethers.getContract("GmxConfirmNoPosition");
+
+  const gmxReader = new Contract(setupEnvRes.protocolAddresses.gmx.reader, GMX_READER_ABI, ethers.provider);
+  const gmxRouter = new Contract(setupEnvRes.protocolAddresses.gmx.router, GMX_ROUTER_ABI, ethers.provider);
+  const gmxPositionRouter = new Contract(
+    setupEnvRes.protocolAddresses.gmx.position_router,
+    GMX_POSITION_ROUTER_ABI,
+    ethers.provider
+  );
+
+  return {
+    swapGmxAction,
+    increasePositionGmxAction,
+    decreasePositionGmxAction,
+    confirmReqExecOrCancelGmxAction,
+    confirmNoPositionGmxActions,
+    gmxReader,
+    gmxRouter,
+    gmxPositionRouter,
+    ...setupEnvRes
   };
 }

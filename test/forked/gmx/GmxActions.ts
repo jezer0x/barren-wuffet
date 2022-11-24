@@ -1,22 +1,100 @@
-import { ethers } from "hardhat";
-import { time, impersonateAccount } from "@nomicfoundation/hardhat-network-helpers";
-import { Contract, BigNumber, utils } from "ethers";
-import PositionRouter from "./GmxPositionRouter.json";
-import Reader from "./GmxReader.json";
-import Router from "./GmxRouter.json";
-import { getProtocolAddresses } from "../../../deploy/protocol_addresses";
-import {
-  GT,
-  ERC20_DECIMALS,
-  DEFAULT_SUB_TO_MAN_FEE_PCT,
-  ETH_TOKEN,
-  TOKEN_TYPE,
-  TIMESTAMP_TRIGGER_TYPE
-} from "../../Constants";
-import { getAddressFromEvent } from "../../helper";
-import { makeDefaultSubConstraints } from "../../Fixtures";
+import { ethers, getNamedAccounts, config, deployments } from "hardhat";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
+import { Contract, BigNumber, utils, ContractReceipt, ContractTransaction } from "ethers";
+import { ERC20_DECIMALS, ETH_TOKEN, TOKEN_TYPE } from "../../Constants";
+import { setupEnvForGmxTests, setupEnvForUniTests } from "../forkFixtures";
+import { makeTrueTrigger } from "../../Fixtures";
+import { encodeMinBPerA } from "../sushiswap/sushiUtils";
+import { getArgsFromEvent, getFees, isForked, multiplyNumberWithBigNumber } from "../../helper";
+import { expect } from "chai";
+import { createGmxSwapAction, getTokenOutPerTokenInGmxSwap } from "./gmxUtils";
 
-async function main() {
+const DEFAULT_SLIPPAGE = 0.97;
+const NUM_ETH = 1;
+
+describe("GMX", () => {
+  before(function() {
+    if (!isForked()) {
+      this.skip();
+    }
+  });
+
+  // setup
+  const testPreReqs = deployments.createFixture(async hre => {
+    await deployments.fixture(["BarrenWuffet"]);
+    return await setupEnvForGmxTests(hre);
+  });
+
+  describe("swap", () => {
+    it("Should sell NUM_ETH ETH for DAI and then swap back for almost all the ETH", async () => {
+      const {
+        protocolAddresses,
+        DAI_TOKEN,
+        McFund,
+        swapGmxAction,
+        dai_contract,
+        gmxReader,
+        gmxRouter
+      } = await testPreReqs();
+
+      const daiPerETHBN = await getTokenOutPerTokenInGmxSwap(
+        gmxReader,
+        await gmxRouter.vault(),
+        ETH_TOKEN,
+        DAI_TOKEN,
+        protocolAddresses.tokens.WETH
+      );
+
+      const daiPerETH = parseFloat(ethers.utils.formatUnits(daiPerETHBN, 18));
+      let collaterals = [ethers.utils.parseEther(NUM_ETH.toString())];
+      await expect(
+        McFund.takeAction(
+          await makeTrueTrigger(),
+          createGmxSwapAction(
+            swapGmxAction.address,
+            ETH_TOKEN,
+            DAI_TOKEN,
+            await encodeMinBPerA(ETH_TOKEN, DAI_TOKEN, daiPerETH * DEFAULT_SLIPPAGE)
+          ),
+          collaterals,
+          await getFees(McFund, collaterals)
+        )
+      ).to.changeEtherBalance(McFund.address, ethers.utils.parseEther(`-${NUM_ETH}`));
+
+      expect(
+        (await dai_contract.balanceOf(McFund.address)) >=
+          ethers.utils.parseUnits(String(daiPerETH * DEFAULT_SLIPPAGE), 18)
+      );
+
+      // swap DAI back to ETH
+      const dai_balance = await dai_contract.balanceOf(McFund.address);
+      const prev_eth_balance = await ethers.provider.getBalance(McFund.address);
+
+      collaterals = [await dai_contract.balanceOf(McFund.address)];
+      await expect(
+        McFund.takeAction(
+          await makeTrueTrigger(),
+          createGmxSwapAction(
+            swapGmxAction.address,
+            DAI_TOKEN,
+            ETH_TOKEN,
+            BigNumber.from(0) // await encodeMinBPerA(DAI_TOKEN, ETH_TOKEN, (1.0 / daiPerETH) * DEFAULT_SLIPPAGE)
+          ),
+          collaterals,
+          await getFees(McFund, collaterals)
+        )
+      ).to.changeTokenBalance(dai_contract, McFund.address, dai_balance.mul(-NUM_ETH));
+
+      expect(
+        (await ethers.provider.getBalance(McFund.address)).sub(prev_eth_balance) >
+          multiplyNumberWithBigNumber(DEFAULT_SLIPPAGE / daiPerETH, dai_balance)
+      );
+    });
+  });
+});
+
+/*
+  async function main() {
   const protocolAddresses: any = await getProtocolAddresses("31337");
   const BW = await ethers.getContract("BarrenWuffet");
   const McFundAddr = await getAddressFromEvent(
@@ -318,3 +396,4 @@ main().catch(error => {
   console.error(error);
   process.exitCode = 1;
 });
+*/
