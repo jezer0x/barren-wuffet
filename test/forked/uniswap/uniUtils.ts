@@ -80,6 +80,7 @@ export async function createUniMintLPAction(
   minBPerA: BigNumber,
   minAPerB: BigNumber
 ) {
+  const MAX_TICK = 887272;
   let LP_NFT = {
     t: TOKEN_TYPE.ERC721,
     addr: await mintLPAction.nonfungiblePositionManager(),
@@ -93,37 +94,21 @@ export async function createUniMintLPAction(
 
   // Swapping because nonfungiblePositionManager does not do this automatically
   if (tokenAAddr > tokenBAddr) {
-    console.log(tokenAAddr, tokenBAddr);
     throw Error("tokenA.addr MUST be < tokenB.addr. Please adjust the order and collaterals accordingly.");
   }
 
   const pool = new Contract(await poolFactory.getPool(tokenAAddr, tokenBAddr, fee), POOL_ABI, ethers.provider);
 
-  console.log("pool tokens match?");
-  console.log(tokenA.addr, await pool.token0());
-  console.log(tokenB.addr, await pool.token1());
-
-  var S0 = await pool.slot0();
-  var CT = parseInt(S0.tick);
+  // We only allow full range LPs now, like uniswap v2
   var Tsp = parseInt(await pool.tickSpacing());
-  var NHT = Math.floor(CT / Tsp) * Tsp;
-  var NLT = Math.floor(CT / Tsp) * Tsp + Tsp;
-  if (NLT > NHT) {
-    var temp = NLT;
-    NLT = NHT;
-    NHT = temp;
-  }
-
-  console.log("-----");
-  console.log("min use up demands:");
-  console.log(minBPerA.toString());
-  console.log(minAPerB.toString());
+  var minTick = Math.ceil((-1 * MAX_TICK) / Tsp) * Tsp;
+  var maxTick = Math.floor(MAX_TICK / Tsp) * Tsp;
 
   return {
     callee: mintLPAction.address,
     data: ethers.utils.defaultAbiCoder.encode(
       ["uint24", "int24", "int24", "uint256", "uint256"],
-      [fee, NLT.toString(), NHT.toString(), minBPerA, minAPerB]
+      [fee, minTick.toString(), maxTick.toString(), minBPerA, minAPerB]
     ),
     inputTokens: [tokenA, tokenB],
     outputTokens: [tokenA, tokenB, LP_NFT]

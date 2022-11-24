@@ -16,7 +16,7 @@ import { expect } from "chai";
 
 // NOTE: applicable fees have to be found from uniswap v3 sdk / subgraph.
 const DEFAULT_FEE = 3000; // corresponds to 0.03%
-const DEFAULT_SLIPPAGE = 97;
+const DEFAULT_SLIPPAGE = 0.97;
 const NUM_ETH = 1;
 
 describe("Uniswap", () => {
@@ -133,8 +133,6 @@ describe("Uniswap", () => {
 
       let initial_balance_dai = await dai_contract.balanceOf(McFund.address);
       let initial_balance_eth = await ethers.provider.getBalance(McFund.address);
-      console.log(initial_balance_eth.toString());
-      console.log(initial_balance_dai.toString());
       collaterals = [ethers.utils.parseEther(NUM_ETH.toString()), initial_balance_dai];
 
       // LP in
@@ -167,10 +165,6 @@ describe("Uniswap", () => {
       const mid_balance_eth = await ethers.provider.getBalance(McFund.address);
       const mid_balance_dai = await dai_contract.balanceOf(McFund.address);
 
-      console.log("----");
-      console.log(mid_balance_eth.toString());
-      console.log(mid_balance_dai.toString());
-
       expect(initial_balance_eth.sub(mid_balance_eth) >= ethers.utils.parseEther(String(daiPerETH * DEFAULT_SLIPPAGE)));
       expect(
         initial_balance_dai.sub(mid_balance_dai) >= multiplyNumberWithBigNumber(DEFAULT_SLIPPAGE, initial_balance_dai)
@@ -187,10 +181,6 @@ describe("Uniswap", () => {
         (await dai_contract.balanceOf(McFund.address)).sub(mid_balance_dai) >=
           multiplyNumberWithBigNumber(DEFAULT_SLIPPAGE, collaterals[1])
       );
-
-      console.log("----");
-      console.log((await ethers.provider.getBalance(McFund.address)).toString());
-      console.log((await dai_contract.balanceOf(McFund.address)).toString());
       // TODO: check NFT is gone
     });
 
