@@ -6,7 +6,6 @@ import "../DelegatePerform.sol";
 import "./IReader.sol";
 import "./IPositionRouter.sol";
 import "../SimpleSwapUtils.sol";
-import "hardhat/console.sol"; 
 
 contract GmxConfirmRequestExecOrCancel is IAction, DelegatePerform {
     using SafeERC20 for IERC20;
@@ -60,7 +59,7 @@ contract GmxConfirmRequestExecOrCancel is IAction, DelegatePerform {
             indexTokenAddrs,
             isLongs
         );
-        
+
         if (positions[0] == 0) {
             // size of the position is 0
             return

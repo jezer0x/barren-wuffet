@@ -1,5 +1,5 @@
 Arguments: 
-  /home/psyf/.nvm/versions/node/v16.14.2/bin/node /usr/share/yarn/bin/yarn.js add @134dd3v/uniswap-v3-periphery-0.8-support
+  /home/psyf/.nvm/versions/node/v16.14.2/bin/node /usr/share/yarn/bin/yarn.js add solidty-coverage
 
 PATH: 
   /home/psyf/.pyenv/plugins/pyenv-virtualenv/shims:/home/psyf/.pyenv/shims:/home/psyf/gems/bin:/home/psyf/.krew/bin:/home/psyf/.nvm/versions/node/v16.14.2/bin:/home/psyf/bin:/usr/local/bin:/home/psyf/.pyenv/plugins/pyenv-virtualenv/shims:/home/psyf/.pyenv/shims:/home/psyf/.pyenv/bin:/home/psyf/gems/bin:/home/psyf/.krew/bin:/home/psyf/.nvm/versions/node/v16.14.2/bin:/home/psyf/bin:/usr/local/bin:/home/psyf/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin:/usr/local/go/bin:/home/psyf/go/bin:/usr/local/go/bin:/home/psyf/go/bin
@@ -14,7 +14,7 @@ Platform:
   linux x64
 
 Trace: 
-  Error: https://registry.yarnpkg.com/@134dd3v%2funiswap-v3-periphery-0.8-support: Not found
+  Error: https://registry.yarnpkg.com/solidty-coverage: Not found
       at Request.params.callback [as _callback] (/usr/share/yarn/lib/cli.js:66145:18)
       at Request.self.callback (/usr/share/yarn/lib/cli.js:140890:22)
       at Request.emit (node:events:526:28)

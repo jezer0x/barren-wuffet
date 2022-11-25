@@ -1,12 +1,7 @@
 import { ETH_TOKEN, TOKEN_TYPE } from "../../Constants";
 import { ethers } from "hardhat";
 import { Contract, BigNumber, FixedNumber } from "ethers";
-import {
-  IERC20Metadata__factory,
-  IUniswapV2Factory__factory,
-  IUniswapV2Pair__factory,
-  IUniswapV2Router02__factory
-} from "../../../typechain-types";
+import { IERC20Metadata__factory } from "../../../typechain-types";
 import { Address } from "hardhat-deploy/types";
 import { TokenStruct } from "../../../typechain-types/contracts/utils/subscriptions/Subscriptions";
 import { ActionStruct } from "../../../typechain-types/contracts/actions/IAction";
@@ -16,7 +11,32 @@ import { abi as POOL_ABI } from "@134dd3v/uniswap-v3-core-0.8-support//artifacts
 
 // might not be there, in which case cd into `node_modules/@uniswap/v3-periphery` and run `npm i` and `npx hardhat compile`
 // source: https://ethereum.stackexchange.com/a/136054
-import { abi as QUOTER_ABI } from "@uniswap/v3-periphery/artifacts/contracts/interfaces/IQuoter.sol/IQuoter.json";
+const QUOTER_ABI = [
+  {
+    inputs: [
+      {
+        internalType: "bytes",
+        name: "path",
+        type: "bytes"
+      },
+      {
+        internalType: "uint256",
+        name: "amountIn",
+        type: "uint256"
+      }
+    ],
+    name: "quoteExactInput",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "amountOut",
+        type: "uint256"
+      }
+    ],
+    stateMutability: "nonpayable",
+    type: "function"
+  }
+];
 
 export async function getAmountOutUniSwap(
   quoter_address: Address,
